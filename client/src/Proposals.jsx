@@ -80,7 +80,13 @@ export default function Proposals() {
     }
   };
 
-  const clientUrl = (id) => `${window.location.protocol}//${window.location.hostname}:4000/proposal/${id}`;
+  const clientUrl = (id) => {
+    const isLocalReactDev = ["3000", "5173"].includes(window.location.port);
+    const origin = isLocalReactDev
+      ? `${window.location.protocol}//${window.location.hostname}:4000`
+      : window.location.origin;
+    return `${origin}/proposal/${id}`;
+  };
 
   // ── Styles ──────────────────────────────────────────────
   const styles = {
@@ -222,7 +228,7 @@ export default function Proposals() {
     <div style={styles.page}>
       {/* Header */}
       <div style={styles.header}>
-        <h1 style={styles.title}>Proposals</h1>
+        <h1 style={styles.title}>Client Proposals</h1>
         <button
           style={showForm ? S.btnSecondary : S.btnPrimary}
           onClick={() => { setShowForm(!showForm); setFormError(''); setSuccessMsg(''); }}
@@ -325,7 +331,7 @@ export default function Proposals() {
         <div style={styles.errorMsg}>{error}</div>
       ) : proposals.length === 0 ? (
         <div style={styles.empty}>
-          No proposals yet. Create one above to share a design with a client.
+          No proposals yet. Create one above to price and share a design with a client.
         </div>
       ) : (
         proposals.map((p) => {

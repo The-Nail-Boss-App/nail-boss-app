@@ -264,7 +264,7 @@ export function LogoMark({ size = 36, color = "#f5c8e8" }) {
       width={size} height={size}
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
-      aria-label="The Nail Boss"
+      aria-label="AnitaSet"
       style={{ color }}
     >
       {/* tip-down nail shape */}

@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// The Nail Boss — server.js  (Task 2: full backend logic)
+// AnitaSet — server.js
 // Node.js + Express  |  in-memory store  |  all routes implemented
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -22,10 +22,10 @@ app.use(cors({
   allowedHeaders: ["Content-Type"],
 }));
 
-app.use(express.json());
+app.use(express.json({ limit: "25kb" }));
 
 // Serve plain HTML for the client-facing proposal page (no React needed)
-app.use(express.urlencoded({ extended: false }));
+app.use(express.urlencoded({ extended: false, limit: "25kb" }));
 
 // ── In-Memory Store ───────────────────────────────────────────────────────────
 //
@@ -288,7 +288,7 @@ app.get("/proposal/:id", (req, res) => {
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Nail Design Proposal — ${proposal.clientName}</title>
+  <title>AnitaSet Proposal — ${escapeHtml(proposal.clientName)}</title>
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
     body{
@@ -364,9 +364,9 @@ app.get("/proposal/:id", (req, res) => {
 </head>
 <body>
 <div class="card">
-  <p class="brand">✦ The Nail Boss</p>
+  <p class="brand">✦ AnitaSet</p>
   <h1>Hey ${escapeHtml(proposal.clientName)} 👋</h1>
-  <p class="subtitle">Your nail tech sent you this design proposal.</p>
+  <p class="subtitle">Your nail tech sent you this AnitaSet design proposal.</p>
 
   <div class="detail-grid">
     <div class="detail">
@@ -406,7 +406,7 @@ app.get("/proposal/:id", (req, res) => {
   ${actionButtons}
   <div id="confirm-msg"></div>
 </div>
-<footer>Powered by The Nail Boss</footer>
+<footer>Powered by AnitaSet</footer>
 
 <script>
   var PROPOSAL_ID = "${proposal.id}";
@@ -508,7 +508,7 @@ if (fs.existsSync(clientBuild)) {
 app.listen(PORT, () => {
   console.log(`
 ╔══════════════════════════════════════════════════════╗
-║  🧨  The Nail Boss API                               ║
+║  ✦  AnitaSet API                                    ║
 ║      http://localhost:${PORT}                           ║
 ╠══════════════════════════════════════════════════════╣
 ║  GET  /api/health            health check            ║
