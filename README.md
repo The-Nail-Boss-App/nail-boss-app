@@ -1,155 +1,85 @@
-# AnitaSet
+# AnitaSet — Nail Proposal App
 
-**Design. Price. Sell. Grow.**
+**Tagline:** Design. Price. Sell. Grow.
 
-AnitaSet is a design-first operating system for independent nail businesses. The current MVP focuses on a simple flow: start with a nail design, save it, price it, and share a client proposal.
+AnitaSet is a design-first operating system foundation for independent nail businesses. The current app includes a React client, an Express API, public proposal pages, and a PostgreSQL persistence layer suitable for Render deployments.
 
-> The AI Shop Manager will be named **Anita** in future milestones. This MVP does not yet include AI assistant functionality.
+## Architecture
 
-## Repository audit
+- **Client:** React app in `client/`, built with the root `npm run build` script.
+- **Server:** Express app in `server.js`, serving API routes, public proposal HTML, and the production React build when present.
+- **Persistence:** PostgreSQL-backed store in `db/store.js`, selected with `DATABASE_URL`.
+- **Migrations:** SQL migrations in `migrations/`, applied by `scripts/migrate.js`.
+- **Test fallback:** A file-backed fallback is available only when `ANITASET_TEST_DB_FILE` is explicitly set. It is intended for smoke tests and never silently replaces PostgreSQL in production.
 
-### Current folder structure
+## PostgreSQL persistence
 
-```text
-.
-├── client/
-│   ├── public/
-│   │   └── index.html
-│   ├── src/
-│   │   ├── App.jsx
-│   │   ├── Dashboard.jsx
-│   │   ├── DesignStudio.jsx
-│   │   ├── Login.jsx
-│   │   ├── NailPreview.jsx
-│   │   ├── Proposals.jsx
-│   │   ├── index.jsx
-│   │   └── styles.js
-│   ├── package.json
-│   └── package-lock.json
-├── package.json
-├── package-lock.json
-├── render.yaml
-└── server.js
-```
+The store uses PostgreSQL whenever `DATABASE_URL` is present. It uses parameterized queries, maps database snake_case columns into camelCase API responses, and enables Render-friendly SSL for non-local database hosts without logging credentials.
 
-### Frameworks and dependencies
+If the app starts without `DATABASE_URL` and without the explicit `ANITASET_TEST_DB_FILE` test override, startup fails with a clear configuration error instead of falling back to volatile memory.
 
-Root server package:
+### Schema
 
-- Node.js / npm application
-- Express `^4.18.2`
-- CORS `^2.8.5`
-- UUID `^9.0.0`
-- Dev tooling: concurrently `^8.2.2`, nodemon `^3.0.2`
+`migrations/001_initial_schema.sql` creates these non-destructive tables if they do not already exist:
 
-Client package:
+- `schema_migrations` — tracks applied migration files and checksums.
+- `designs` — saved nail designs.
+- `proposals` — client proposals linked to designs.
+- `proposal_status_history` — status audit history for proposal lifecycle events.
 
-- React `^18.2.0`
-- React DOM `^18.2.0`
-- react-scripts `5.0.1`
+Allowed proposal statuses are preserved:
 
-### Existing frontend pages and components
+- `Sent`
+- `Viewed`
+- `Accepted`
+- `ChangesRequested`
+- `Declined`
 
-- `App.jsx` — single-page app shell, sidebar navigation, login/session state.
-- `Login.jsx` — lightweight local login screen; no real authentication yet.
-- `Dashboard.jsx` — overview cards for saved designs and proposals plus workflow guidance.
-- `DesignStudio.jsx` — form controls and SVG nail preview for designing and saving nail looks.
-- `Proposals.jsx` — proposal creation form and proposal list with client-view links.
-- `NailPreview.jsx` — reusable nail preview component.
-- `styles.js` — shared colors, layout styles, logo mark, nav item, and status badge.
+## API routes
 
-### Existing backend routes and APIs
+Health:
 
-JSON API:
+- `GET /api/health` — verifies storage and returns safe counts.
 
-- `GET /api/health` — service health and in-memory object counts.
+Designs:
+
 - `GET /api/designs` — list designs, newest first.
 - `GET /api/designs/:id` — fetch one design.
 - `POST /api/designs` — create a design.
-- `DELETE /api/designs/:id` — delete a design and cascade-delete linked proposals.
+- `DELETE /api/designs/:id` — delete a design and cascade related proposals/history.
+
+Proposals:
+
 - `GET /api/proposals` — list proposals, newest first, with embedded design data.
 - `GET /api/proposals/:id` — fetch one proposal with embedded design data.
 - `POST /api/proposals` — create a proposal linked to a design.
-- `PATCH /api/proposals/:id/status` — update proposal status.
+- `PATCH /api/proposals/:id/status` — transactionally update status.
+- `GET /api/proposals/:id/history` — list proposal status history.
 
-Client-facing HTML routes:
+Client-facing HTML:
 
 - `GET /proposal/:id` — public proposal page; marks `Sent` proposals as `Viewed`.
 - `POST /proposal/:id/action` — public proposal response endpoint for accept, request changes, or decline.
 
-Production/static route:
+The public proposal page keeps safe HTML escaping for user-supplied values.
 
-- Serves `client/build` when that directory exists.
-- Non-API/non-proposal routes fall back to `client/build/index.html`.
+## Health response
 
-### Current MVP capabilities that work
+A successful PostgreSQL health response is shaped like:
 
-- Build the React client from the root package.
-- Start the Express server from the root package.
-- Serve the React build from Express in production mode.
-- Create and list nail designs.
-- Create and list proposals tied to saved designs.
-- Open public proposal pages.
-- Accept, decline, or request changes from the proposal page.
-- Track proposal statuses in memory.
+```json
+{
+  "status": "ok",
+  "storage": "postgres",
+  "database": "connected",
+  "counts": {
+    "designs": 0,
+    "proposals": 0
+  }
+}
+```
 
-### Current storage method and limitations
-
-Data is stored in process memory in `server.js` arrays:
-
-- `designs`
-- `proposals`
-
-Limitations:
-
-- Data resets after every server restart, redeploy, crash, or scale event.
-- No user accounts or tenant separation.
-- No backups, migrations, relational constraints, or query history.
-- Public proposal IDs are UUIDs but are not protected by authentication.
-
-### Current Render deployment configuration
-
-`render.yaml` defines one Node web service:
-
-- Service name: `the-nail-boss` (intentionally not renamed yet)
-- Runtime: `node`
-- Build command: `npm install && npm run build`
-- Start command: `npm start`
-- Do not set a fixed `PORT` in the blueprint; Render provides the port value and the server binds to `process.env.PORT`.
-- Environment:
-  - `NODE_ENV=production`
-
-Render provides `$PORT` for the web service; the server reads `process.env.PORT || 4000`.
-
-### Incomplete, fragile, duplicated, or broken areas
-
-- Persistent storage is not implemented; all data is volatile.
-- Login is local UI state only and does not authenticate users.
-- Authorization is not implemented for design/proposal management.
-- Proposal links were previously hard-coded to `:4000`, which works locally but is wrong on Render.
-- Dashboard navigation props were mismatched, which could break the dashboard CTA buttons at runtime.
-- The Design Studio and `NailPreview.jsx` contain overlapping nail-rendering logic.
-- Validation is basic and should be strengthened before production use.
-- No automated test suite is currently configured.
-
-### Security and deployment risks
-
-- No exposed secrets were found in tracked source files.
-- CORS allows local origins by default; production should set `ALLOWED_ORIGIN` explicitly when a separate frontend origin exists.
-- Public proposal pages are accessible to anyone with the UUID link.
-- JSON and URL-encoded request bodies are limited to 25 KB for this MVP.
-- No rate limiting, request logging, CSRF strategy, or authentication middleware is currently present.
-- In-memory state can cause data loss on Render restarts and cannot support multiple instances safely.
-
-### Why Render may return HTTP 503
-
-The local build and startup path now succeeds. If Render is returning HTTP 503, likely causes are:
-
-1. The deployed service is running an older commit that did not contain the current root-level `package.json`, `server.js`, and `render.yaml` structure.
-2. The service root/build command does not match the app directory in Render settings.
-3. The server failed to start during deploy because dependencies or the client build were missing in the deployed environment.
-4. The service is sleeping/cold-starting or crashing after boot due to volatile runtime assumptions.
-5. A proxy/network layer may be blocking health checks from some environments.
+If PostgreSQL is unavailable, the health route returns a non-200 response with a safe message such as `database unavailable` and does not expose SQL internals or credentials.
 
 ## Local installation
 
@@ -163,9 +93,19 @@ The root build script installs client dependencies as part of the build:
 npm run build
 ```
 
-## Start locally
+## Local PostgreSQL setup
+
+1. Create a local database.
+2. Export `DATABASE_URL` with a local PostgreSQL URL.
+3. Run migrations.
+4. Start the server.
+
+Example:
 
 ```bash
+createdb anitaset_dev
+export DATABASE_URL=postgres://localhost:5432/anitaset_dev
+npm run db:migrate
 npm start
 ```
 
@@ -175,67 +115,79 @@ By default, the API runs on:
 http://localhost:4000
 ```
 
-## Development mode
+## Migration flow
 
-Run server and client development processes together:
-
-```bash
-npm run dev
-```
-
-Or separately:
+Run all unapplied migrations with:
 
 ```bash
-npm run dev:server
-npm run dev:client
+npm run db:migrate
 ```
 
-## Tests
+The migration runner:
 
-Run the smoke test suite, which starts the server on a temporary local port and verifies the core design/proposal flow:
+- Reads `DATABASE_URL` only from environment variables.
+- Creates `schema_migrations` if needed.
+- Applies `migrations/*.sql` in sorted order.
+- Skips already-applied migrations with matching checksums.
+- Fails on checksum mismatches.
+- Logs a safe database label without credentials.
+
+## Render deployment notes
+
+`render.yaml` defines one Node web service:
+
+- Service name: `the-nail-boss`.
+- Runtime: `node`.
+- Build command: `npm install && npm run build`.
+- Pre-deploy migration command: `npm run db:migrate`.
+- Start command: `npm start`.
+- No fixed `PORT`; Render provides `$PORT` and the server binds to `process.env.PORT || 4000`.
+- Environment:
+  - `NODE_ENV=production`
+  - `DATABASE_URL` as a non-synced environment variable.
+
+### Render DATABASE_URL setup
+
+1. Provision a Render PostgreSQL database or use an existing managed PostgreSQL database.
+2. Add the app service environment variable `DATABASE_URL` as a secret/non-synced value.
+3. Ensure the value is available to both the pre-deploy migration command and runtime service.
+4. Deploy the branch.
+5. Confirm `/api/health` returns `200 OK` with `storage: "postgres"` and `database: "connected"`.
+
+## Tests and smoke checks
+
+Run the smoke test suite with:
 
 ```bash
 npm test
 ```
 
-## API quick test examples
+The test script intentionally sets `ANITASET_TEST_DB_FILE=.tmp/smoke-test-db.json` so it can verify API behavior without requiring a local PostgreSQL server. The smoke test verifies:
 
-```bash
-curl http://localhost:4000/api/health
-curl http://localhost:4000/api/designs
-curl http://localhost:4000/api/proposals
-```
+- Health check.
+- Create/read design.
+- Create/read proposal.
+- Public proposal HTML.
+- Malicious client name escaping.
+- Accept proposal.
+- Status history.
+- Persistence across restart using the explicit test-only file fallback.
 
-Create a design:
+## Rollback guidance
 
-```bash
-curl -X POST http://localhost:4000/api/designs \
-  -H 'Content-Type: application/json' \
-  -d '{"name":"Sunset Glam","shape":"Almond","length":0.5,"width":0.5,"baseColorHex":"#E8A0BF","effect":"Solid","effectColorHex":"#FFFFFF","tags":["summer"]}'
-```
+If a deploy fails after introducing PostgreSQL persistence:
 
-Create a proposal:
+1. Roll back the Render service to the previous known-good commit.
+2. Leave the database intact; the initial migration is non-destructive and uses `CREATE TABLE IF NOT EXISTS`.
+3. Investigate migration logs and `/api/health` output.
+4. Fix forward with a new migration rather than editing an already-applied migration.
+5. If the service cannot connect, verify `DATABASE_URL`, network access, and Render PostgreSQL status before redeploying.
 
-```bash
-curl -X POST http://localhost:4000/api/proposals \
-  -H 'Content-Type: application/json' \
-  -d '{"designId":"<design-id>","clientName":"Client Name","price":85,"notes":"Optional note"}'
-```
+## Known limitations
 
-## Render deployment notes
-
-- Keep the existing Render service name and URL until the infrastructure rebrand is intentionally scheduled.
-- Use the root `render.yaml` for the current service.
-- Build command: `npm install && npm run build`
-- Start command: `npm start`
-- Do not set a fixed `PORT` in the blueprint; Render provides the port value and the server binds to `process.env.PORT`.
-- Ensure the deployed branch contains the root app files and `client/` directory.
-- Confirm `/api/health` returns `200 OK` after deploy.
-
-## Known limitation
-
-Data is currently stored in memory and resets after server restart.
-
-## Recommended next milestone
-
-Replace in-memory storage with PostgreSQL or another persistent database, then add real user accounts/authorization around shop data and proposals.
+- No user accounts or tenant separation yet.
+- Authorization is not implemented for design/proposal management.
+- Public proposal IDs are UUIDs but are accessible to anyone with the link.
+- No rate limiting, request logging, CSRF strategy, or authentication middleware is currently present.
+- Validation is basic and should be strengthened before production use.
+- The test-only file fallback is not a production database and should never be configured in Render production.

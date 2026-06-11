@@ -1,16 +1,26 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // AnitaSet — server.js
-// Node.js + Express  |  in-memory store  |  all routes implemented
+// Node.js + Express  |  PostgreSQL-backed persistence  |  all routes implemented
 // ─────────────────────────────────────────────────────────────────────────────
 
 "use strict";
 
+const path = require("path");
+const fs = require("fs");
 const express = require("express");
-const cors    = require("cors");
+const cors = require("cors");
 const { v4: uuidv4 } = require("uuid");
+const { createStore, VALID_STATUSES } = require("./db/store");
 
-const app  = express();
+const app = express();
 const PORT = process.env.PORT || 4000;
+let store;
+try {
+  store = createStore();
+} catch (error) {
+  console.error(`AnitaSet startup failed: ${error.message}`);
+  process.exit(1);
+}
 
 // ── Middleware ────────────────────────────────────────────────────────────────
 
@@ -27,66 +37,35 @@ app.use(express.json({ limit: "25kb" }));
 // Serve plain HTML for the client-facing proposal page (no React needed)
 app.use(express.urlencoded({ extended: false, limit: "25kb" }));
 
-// ── In-Memory Store ───────────────────────────────────────────────────────────
-//
-//  Design shape
-//  ─────────────────────────────────────────────────────────────────────────────
-//  {
-//    id:           string   — uuid
-//    name:         string   — e.g. "Sunset Glam"
-//    shape:        string   — "Almond" | "Coffin" | "Square" | "Stiletto" | "Oval"
-//    length:       number   — 0..1 (0 = shortest, 1 = longest)
-//    width:        number   — 0..1 (0 = narrowest, 1 = widest)
-//    baseColorHex: string   — "#RRGGBB"
-//    effect:       string   — "Solid" | "Gradient" | "Chrome" | "CatEye" | "Marble"
-//    effectColorHex: string — secondary color used by gradient / chrome / cat eye / marble
-//    tags:         string[] — e.g. ["bridal", "summer"]
-//    createdAt:    number   — Date.now()
-//  }
-//
-//  Proposal shape
-//  ─────────────────────────────────────────────────────────────────────────────
-//  {
-//    id:         string  — uuid
-//    designId:   string  — references a design.id
-//    clientName: string
-//    price:      number
-//    status:     string  — "Sent" | "Viewed" | "Accepted" | "ChangesRequested" | "Declined"
-//    notes:      string  — optional message from client (Ask for Changes flow)
-//    createdAt:  number
-//  }
-
-let designs   = [];
-let proposals = [];
-
 // ── Validation helpers ────────────────────────────────────────────────────────
 
-const VALID_SHAPES  = ["Almond", "Coffin", "Square", "Stiletto", "Oval"];
+const VALID_SHAPES = ["Almond", "Coffin", "Square", "Stiletto", "Oval"];
 const VALID_EFFECTS = ["Solid", "Gradient", "Chrome", "CatEye", "Marble"];
-const VALID_STATUSES = ["Sent", "Viewed", "Accepted", "ChangesRequested", "Declined"];
 const HEX_RE = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
+const TERMINAL_STATUSES = ["Accepted", "ChangesRequested", "Declined"];
 
 function err(res, code, message) {
   return res.status(code).json({ error: message });
 }
 
-function findDesign(id)   { return designs.find(d => d.id === id)   ?? null; }
-function findProposal(id) { return proposals.find(p => p.id === id) ?? null; }
-
-// Attach design object to a proposal (for GET responses)
-function populateProposal(p) {
-  return { ...p, design: findDesign(p.designId) ?? null };
+function asyncRoute(handler) {
+  return (req, res, next) => Promise.resolve(handler(req, res, next)).catch(next);
 }
 
 // ── Health check ──────────────────────────────────────────────────────────────
 
-app.get("/api/health", (_req, res) => {
-  res.json({
-    status:    "ok",
-    timestamp: new Date().toISOString(),
-    counts:    { designs: designs.length, proposals: proposals.length },
-  });
-});
+app.get("/api/health", asyncRoute(async (_req, res) => {
+  try {
+    res.json(await store.health());
+  } catch (_error) {
+    res.status(503).json({
+      status: "error",
+      storage: "postgres",
+      database: "unavailable",
+      message: "database unavailable",
+    });
+  }
+}));
 
 // ─────────────────────────────────────────────────────────────────────────────
 // DESIGN ROUTES
@@ -94,85 +73,87 @@ app.get("/api/health", (_req, res) => {
 
 // GET /api/designs
 // Returns all designs, newest first.
-app.get("/api/designs", (_req, res) => {
-  const sorted = [...designs].sort((a, b) => b.createdAt - a.createdAt);
-  res.json(sorted);
-});
+app.get("/api/designs", asyncRoute(async (_req, res) => {
+  res.json(await store.listDesigns());
+}));
 
 // GET /api/designs/:id
 // Returns a single design by id.
-app.get("/api/designs/:id", (req, res) => {
-  const design = findDesign(req.params.id);
+app.get("/api/designs/:id", asyncRoute(async (req, res) => {
+  const design = await store.getDesign(req.params.id);
   if (!design) return err(res, 404, "Design not found");
-  res.json(design);
-});
+  return res.json(design);
+}));
 
 // POST /api/designs
 // Creates a new design. Returns 201 + the created object.
-app.post("/api/designs", (req, res) => {
+app.post("/api/designs", asyncRoute(async (req, res) => {
   const {
     name,
-    shape         = "Almond",
-    length        = 0.5,
-    width         = 0.5,
-    baseColorHex  = "#E8A0BF",
-    effect        = "Solid",
+    shape = "Almond",
+    length = 0.5,
+    width = 0.5,
+    baseColorHex = "#E8A0BF",
+    effect = "Solid",
     effectColorHex = "#FFFFFF",
-    tags          = [],
+    tags = [],
   } = req.body;
 
-  // ── Validate ──
-  if (!name || typeof name !== "string" || !name.trim())
+  if (!name || typeof name !== "string" || !name.trim()) {
     return err(res, 400, "name is required and must be a non-empty string");
+  }
 
-  if (!VALID_SHAPES.includes(shape))
+  if (!VALID_SHAPES.includes(shape)) {
     return err(res, 400, `shape must be one of: ${VALID_SHAPES.join(", ")}`);
+  }
 
-  if (typeof length !== "number" || length < 0 || length > 1)
+  if (typeof length !== "number" || length < 0 || length > 1) {
     return err(res, 400, "length must be a number between 0 and 1");
+  }
 
-  if (typeof width !== "number" || width < 0 || width > 1)
+  if (typeof width !== "number" || width < 0 || width > 1) {
     return err(res, 400, "width must be a number between 0 and 1");
+  }
 
-  if (!HEX_RE.test(baseColorHex))
+  if (!HEX_RE.test(baseColorHex)) {
     return err(res, 400, "baseColorHex must be a valid hex color (e.g. #FF00AA)");
+  }
 
-  if (!VALID_EFFECTS.includes(effect))
+  if (!VALID_EFFECTS.includes(effect)) {
     return err(res, 400, `effect must be one of: ${VALID_EFFECTS.join(", ")}`);
+  }
 
-  if (!HEX_RE.test(effectColorHex))
+  if (!HEX_RE.test(effectColorHex)) {
     return err(res, 400, "effectColorHex must be a valid hex color");
+  }
 
-  if (!Array.isArray(tags) || tags.some(t => typeof t !== "string"))
+  if (!Array.isArray(tags) || tags.some((tag) => typeof tag !== "string")) {
     return err(res, 400, "tags must be an array of strings");
+  }
 
-  const design = {
-    id:            uuidv4(),
-    name:          name.trim(),
+  const design = await store.createDesign({
+    id: uuidv4(),
+    name: name.trim(),
     shape,
-    length:        Number(length),
-    width:         Number(width),
+    length: Number(length),
+    width: Number(width),
     baseColorHex,
     effect,
     effectColorHex,
-    tags:          tags.map(t => t.trim().toLowerCase()).filter(Boolean),
-    createdAt:     Date.now(),
-  };
+    tags: tags.map((tag) => tag.trim().toLowerCase()).filter(Boolean),
+    createdAt: Date.now(),
+  });
 
-  designs.push(design);
-  res.status(201).json(design);
-});
+  return res.status(201).json(design);
+}));
 
 // DELETE /api/designs/:id
-// Removes a design (also cascades to proposals that reference it).
-app.delete("/api/designs/:id", (req, res) => {
-  const idx = designs.findIndex(d => d.id === req.params.id);
-  if (idx === -1) return err(res, 404, "Design not found");
-  designs.splice(idx, 1);
-  // Cascade: remove orphaned proposals
-  proposals = proposals.filter(p => p.designId !== req.params.id);
-  res.status(204).send();
-});
+// Removes a design (database cascades to proposals and status history that reference it).
+app.delete("/api/designs/:id", asyncRoute(async (req, res) => {
+  const deleted = await store.deleteDesign(req.params.id);
+  if (!deleted) return err(res, 404, "Design not found");
+  return res.status(204).send();
+}));
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PROPOSAL ROUTES (JSON API)
@@ -180,66 +161,73 @@ app.delete("/api/designs/:id", (req, res) => {
 
 // GET /api/proposals
 // Returns all proposals, newest first, with design info embedded.
-app.get("/api/proposals", (_req, res) => {
-  const sorted = [...proposals]
-    .sort((a, b) => b.createdAt - a.createdAt)
-    .map(populateProposal);
-  res.json(sorted);
-});
+app.get("/api/proposals", asyncRoute(async (_req, res) => {
+  res.json(await store.listProposals());
+}));
+
+// GET /api/proposals/:id/history
+// Returns proposal status changes, oldest first.
+app.get("/api/proposals/:id/history", asyncRoute(async (req, res) => {
+  const proposal = await store.getProposal(req.params.id);
+  if (!proposal) return err(res, 404, "Proposal not found");
+  return res.json(await store.listProposalHistory(req.params.id));
+}));
 
 // GET /api/proposals/:id
 // Returns a single proposal with embedded design.
-app.get("/api/proposals/:id", (req, res) => {
-  const proposal = findProposal(req.params.id);
+app.get("/api/proposals/:id", asyncRoute(async (req, res) => {
+  const proposal = await store.getProposal(req.params.id);
   if (!proposal) return err(res, 404, "Proposal not found");
-  res.json(populateProposal(proposal));
-});
+  return res.json(proposal);
+}));
 
 // POST /api/proposals
 // Creates a proposal linked to a design. Initial status is "Sent".
-app.post("/api/proposals", (req, res) => {
+app.post("/api/proposals", asyncRoute(async (req, res) => {
   const { designId, clientName, price, notes = "" } = req.body;
 
-  if (!designId || typeof designId !== "string")
+  if (!designId || typeof designId !== "string") {
     return err(res, 400, "designId is required");
+  }
 
-  if (!findDesign(designId))
+  if (!await store.getDesign(designId)) {
     return err(res, 400, `No design found with id "${designId}"`);
+  }
 
-  if (!clientName || typeof clientName !== "string" || !clientName.trim())
+  if (!clientName || typeof clientName !== "string" || !clientName.trim()) {
     return err(res, 400, "clientName is required");
+  }
 
   const parsedPrice = Number(price);
-  if (isNaN(parsedPrice) || parsedPrice <= 0)
+  if (Number.isNaN(parsedPrice) || parsedPrice <= 0) {
     return err(res, 400, "price must be a positive number");
+  }
 
-  const proposal = {
-    id:         uuidv4(),
+  const proposal = await store.createProposal({
+    id: uuidv4(),
     designId,
     clientName: clientName.trim(),
-    price:      parsedPrice,
-    status:     "Sent",
-    notes:      typeof notes === "string" ? notes.trim() : "",
-    createdAt:  Date.now(),
-  };
+    price: parsedPrice,
+    status: "Sent",
+    notes: typeof notes === "string" ? notes.trim() : "",
+    createdAt: Date.now(),
+  });
 
-  proposals.push(proposal);
-  res.status(201).json(populateProposal(proposal));
-});
+  return res.status(201).json(proposal);
+}));
 
 // PATCH /api/proposals/:id/status
 // Internal tech-side status override (any valid status).
-app.patch("/api/proposals/:id/status", (req, res) => {
-  const proposal = findProposal(req.params.id);
-  if (!proposal) return err(res, 404, "Proposal not found");
-
+app.patch("/api/proposals/:id/status", asyncRoute(async (req, res) => {
   const { status } = req.body;
-  if (!VALID_STATUSES.includes(status))
+  if (!VALID_STATUSES.includes(status)) {
     return err(res, 400, `status must be one of: ${VALID_STATUSES.join(", ")}`);
+  }
 
-  proposal.status = status;
-  res.json(populateProposal(proposal));
-});
+  const proposal = await store.updateProposalStatus(req.params.id, status);
+  if (!proposal) return err(res, 404, "Proposal not found");
+  return res.json(proposal);
+}));
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CLIENT-FACING PROPOSAL PAGE  (HTML, no React)
@@ -248,28 +236,26 @@ app.patch("/api/proposals/:id/status", (req, res) => {
 // GET /proposal/:id
 // Renders a standalone HTML page the tech sends to the client.
 // On first visit the status advances from "Sent" → "Viewed".
-app.get("/proposal/:id", (req, res) => {
-  const proposal = findProposal(req.params.id);
+app.get("/proposal/:id", asyncRoute(async (req, res) => {
+  let proposal = await store.getProposal(req.params.id);
   if (!proposal) {
     return res.status(404).send("<h2>Proposal not found.</h2>");
   }
 
-  // Mark as Viewed on first open
   if (proposal.status === "Sent") {
-    proposal.status = "Viewed";
+    proposal = await store.updateProposalStatus(proposal.id, "Viewed", "Proposal opened") || proposal;
   }
 
-  const design = findDesign(proposal.designId);
-
+  const design = proposal.design;
   const statusColor = {
-    Sent:             "#6b7280",
-    Viewed:           "#2563eb",
-    Accepted:         "#16a34a",
+    Sent: "#6b7280",
+    Viewed: "#2563eb",
+    Accepted: "#16a34a",
     ChangesRequested: "#d97706",
-    Declined:         "#dc2626",
+    Declined: "#dc2626",
   }[proposal.status] ?? "#6b7280";
 
-  const actionable = !["Accepted", "ChangesRequested", "Declined"].includes(proposal.status);
+  const actionable = !TERMINAL_STATUSES.includes(proposal.status);
 
   const actionButtons = actionable ? `
     <div class="actions">
@@ -448,52 +434,46 @@ app.get("/proposal/:id", (req, res) => {
 </body>
 </html>`;
 
-  res.send(html);
-});
+  return res.send(html);
+}));
 
 // POST /proposal/:id/action
 // Client submits a response: accept | changes | decline
-app.post("/proposal/:id/action", (req, res) => {
-  const proposal = findProposal(req.params.id);
+app.post("/proposal/:id/action", asyncRoute(async (req, res) => {
+  const proposal = await store.getProposal(req.params.id);
   if (!proposal) return err(res, 404, "Proposal not found");
 
   const { action, message } = req.body;
   const ACTION_MAP = {
-    accept:  "Accepted",
+    accept: "Accepted",
     changes: "ChangesRequested",
     decline: "Declined",
   };
 
-  if (!ACTION_MAP[action])
+  if (!ACTION_MAP[action]) {
     return err(res, 400, 'action must be one of: "accept", "changes", "decline"');
-
-  // Prevent re-submission once a terminal status is set
-  const terminal = ["Accepted", "ChangesRequested", "Declined"];
-  if (terminal.includes(proposal.status))
-    return err(res, 409, `Proposal already has a final status: ${proposal.status}`);
-
-  proposal.status = ACTION_MAP[action];
-  if (message && typeof message === "string") {
-    proposal.notes = message.trim();
   }
 
-  res.json(populateProposal(proposal));
-});
+  if (TERMINAL_STATUSES.includes(proposal.status)) {
+    return err(res, 409, `Proposal already has a final status: ${proposal.status}`);
+  }
+
+  const note = message && typeof message === "string" ? message.trim() : "";
+  return res.json(await store.updateProposalStatus(proposal.id, ACTION_MAP[action], note));
+}));
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function escapeHtml(str) {
   return String(str)
-    .replace(/&/g,  "&amp;")
-    .replace(/</g,  "&lt;")
-    .replace(/>/g,  "&gt;")
-    .replace(/"/g,  "&quot;")
-    .replace(/'/g,  "&#39;");
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
 // ── Serve React build (for sandbox / production use) ────────────────────────
-const path = require("path");
-const fs   = require("fs");
 const clientBuild = path.join(__dirname, "client", "build");
 if (fs.existsSync(clientBuild)) {
   app.use(express.static(clientBuild));
@@ -503,9 +483,14 @@ if (fs.existsSync(clientBuild)) {
   });
 }
 
+app.use((error, _req, res, _next) => {
+  console.error(`Request failed: ${error.message}`);
+  res.status(500).json({ error: "internal server error" });
+});
+
 // ── Start ─────────────────────────────────────────────────────────────────────
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`
 ╔══════════════════════════════════════════════════════╗
 ║  ✦  AnitaSet API                                    ║
@@ -521,3 +506,13 @@ app.listen(PORT, () => {
 ╚══════════════════════════════════════════════════════╝
 `);
 });
+
+async function shutdown() {
+  server.close(async () => {
+    await store.close();
+    process.exit(0);
+  });
+}
+
+process.on("SIGTERM", shutdown);
+process.on("SIGINT", shutdown);
