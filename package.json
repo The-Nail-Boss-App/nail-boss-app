@@ -1,20 +1,23 @@
 {
   "name": "nail-boss",
   "version": "1.0.0",
-  "description": "The Nail Boss — design studio & proposal tool for nail techs",
+  "description": "AnitaSet — design-first operating system for independent nail businesses",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
     "build": "npm install --prefix client && npm run build --prefix client",
+    "test": "node scripts/smoke-test.js",
     "dev:server": "nodemon server.js",
     "dev:client": "cd client && npm start",
     "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
-    "install:all": "npm install && cd client && npm install"
+    "install:all": "npm install && cd client && npm install",
+    "db:migrate": "node scripts/migrate.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
     "express": "^4.18.2",
-    "uuid": "^9.0.0"
+    "uuid": "^9.0.0",
+    "pg": "^8.13.1"
   },
   "devDependencies": {
     "concurrently": "^8.2.2",

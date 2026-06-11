@@ -7,5 +7,5 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
-      - key: PORT
-        value: 10000          # Render injects $PORT automatically; this is the default
+      - key: DATABASE_URL
+        sync: false

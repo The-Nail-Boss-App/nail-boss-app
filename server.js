@@ -1,6 +1,6 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// The Nail Boss — server.js  (Task 2: full backend logic)
-// Node.js + Express  |  in-memory store  |  all routes implemented
+// AnitaSet — server.js
+// Node.js + Express  |  PostgreSQL-backed store  |  all routes implemented
 // ─────────────────────────────────────────────────────────────────────────────
 
 "use strict";
@@ -8,9 +8,11 @@
 const express = require("express");
 const cors    = require("cors");
 const { v4: uuidv4 } = require("uuid");
+const { createStore } = require("./db/store");
 
 const app  = express();
 const PORT = process.env.PORT || 4000;
+const store = createStore();
 
 // ── Middleware ────────────────────────────────────────────────────────────────
 
@@ -22,42 +24,10 @@ app.use(cors({
   allowedHeaders: ["Content-Type"],
 }));
 
-app.use(express.json());
+app.use(express.json({ limit: "25kb" }));
 
 // Serve plain HTML for the client-facing proposal page (no React needed)
-app.use(express.urlencoded({ extended: false }));
-
-// ── In-Memory Store ───────────────────────────────────────────────────────────
-//
-//  Design shape
-//  ─────────────────────────────────────────────────────────────────────────────
-//  {
-//    id:           string   — uuid
-//    name:         string   — e.g. "Sunset Glam"
-//    shape:        string   — "Almond" | "Coffin" | "Square" | "Stiletto" | "Oval"
-//    length:       number   — 0..1 (0 = shortest, 1 = longest)
-//    width:        number   — 0..1 (0 = narrowest, 1 = widest)
-//    baseColorHex: string   — "#RRGGBB"
-//    effect:       string   — "Solid" | "Gradient" | "Chrome" | "CatEye" | "Marble"
-//    effectColorHex: string — secondary color used by gradient / chrome / cat eye / marble
-//    tags:         string[] — e.g. ["bridal", "summer"]
-//    createdAt:    number   — Date.now()
-//  }
-//
-//  Proposal shape
-//  ─────────────────────────────────────────────────────────────────────────────
-//  {
-//    id:         string  — uuid
-//    designId:   string  — references a design.id
-//    clientName: string
-//    price:      number
-//    status:     string  — "Sent" | "Viewed" | "Accepted" | "ChangesRequested" | "Declined"
-//    notes:      string  — optional message from client (Ask for Changes flow)
-//    createdAt:  number
-//  }
-
-let designs   = [];
-let proposals = [];
+app.use(express.urlencoded({ extended: false, limit: "25kb" }));
 
 // ── Validation helpers ────────────────────────────────────────────────────────
 
@@ -70,23 +40,22 @@ function err(res, code, message) {
   return res.status(code).json({ error: message });
 }
 
-function findDesign(id)   { return designs.find(d => d.id === id)   ?? null; }
-function findProposal(id) { return proposals.find(p => p.id === id) ?? null; }
-
-// Attach design object to a proposal (for GET responses)
-function populateProposal(p) {
-  return { ...p, design: findDesign(p.designId) ?? null };
+function asyncHandler(fn) {
+  return (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 }
 
 // ── Health check ──────────────────────────────────────────────────────────────
 
-app.get("/api/health", (_req, res) => {
+app.get("/api/health", asyncHandler(async (_req, res) => {
+  await store.assertReady();
+  const counts = await store.getCounts();
   res.json({
     status:    "ok",
+    storage:   store.kind,
     timestamp: new Date().toISOString(),
-    counts:    { designs: designs.length, proposals: proposals.length },
+    counts,
   });
-});
+}));
 
 // ─────────────────────────────────────────────────────────────────────────────
 // DESIGN ROUTES
@@ -94,22 +63,21 @@ app.get("/api/health", (_req, res) => {
 
 // GET /api/designs
 // Returns all designs, newest first.
-app.get("/api/designs", (_req, res) => {
-  const sorted = [...designs].sort((a, b) => b.createdAt - a.createdAt);
-  res.json(sorted);
-});
+app.get("/api/designs", asyncHandler(async (_req, res) => {
+  res.json(await store.listDesigns());
+}));
 
 // GET /api/designs/:id
 // Returns a single design by id.
-app.get("/api/designs/:id", (req, res) => {
-  const design = findDesign(req.params.id);
+app.get("/api/designs/:id", asyncHandler(async (req, res) => {
+  const design = await store.getDesign(req.params.id);
   if (!design) return err(res, 404, "Design not found");
   res.json(design);
-});
+}));
 
 // POST /api/designs
 // Creates a new design. Returns 201 + the created object.
-app.post("/api/designs", (req, res) => {
+app.post("/api/designs", asyncHandler(async (req, res) => {
   const {
     name,
     shape         = "Almond",
@@ -146,7 +114,7 @@ app.post("/api/designs", (req, res) => {
   if (!Array.isArray(tags) || tags.some(t => typeof t !== "string"))
     return err(res, 400, "tags must be an array of strings");
 
-  const design = {
+  const design = await store.createDesign({
     id:            uuidv4(),
     name:          name.trim(),
     shape,
@@ -156,23 +124,18 @@ app.post("/api/designs", (req, res) => {
     effect,
     effectColorHex,
     tags:          tags.map(t => t.trim().toLowerCase()).filter(Boolean),
-    createdAt:     Date.now(),
-  };
+  });
 
-  designs.push(design);
   res.status(201).json(design);
-});
+}));
 
 // DELETE /api/designs/:id
 // Removes a design (also cascades to proposals that reference it).
-app.delete("/api/designs/:id", (req, res) => {
-  const idx = designs.findIndex(d => d.id === req.params.id);
-  if (idx === -1) return err(res, 404, "Design not found");
-  designs.splice(idx, 1);
-  // Cascade: remove orphaned proposals
-  proposals = proposals.filter(p => p.designId !== req.params.id);
+app.delete("/api/designs/:id", asyncHandler(async (req, res) => {
+  const deleted = await store.deleteDesign(req.params.id);
+  if (!deleted) return err(res, 404, "Design not found");
   res.status(204).send();
-});
+}));
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PROPOSAL ROUTES (JSON API)
@@ -180,30 +143,35 @@ app.delete("/api/designs/:id", (req, res) => {
 
 // GET /api/proposals
 // Returns all proposals, newest first, with design info embedded.
-app.get("/api/proposals", (_req, res) => {
-  const sorted = [...proposals]
-    .sort((a, b) => b.createdAt - a.createdAt)
-    .map(populateProposal);
-  res.json(sorted);
-});
+app.get("/api/proposals", asyncHandler(async (_req, res) => {
+  res.json(await store.listProposals());
+}));
 
 // GET /api/proposals/:id
 // Returns a single proposal with embedded design.
-app.get("/api/proposals/:id", (req, res) => {
-  const proposal = findProposal(req.params.id);
+app.get("/api/proposals/:id", asyncHandler(async (req, res) => {
+  const proposal = await store.getProposal(req.params.id);
   if (!proposal) return err(res, 404, "Proposal not found");
-  res.json(populateProposal(proposal));
-});
+  res.json(proposal);
+}));
+
+// GET /api/proposals/:id/history
+// Returns status changes for a proposal.
+app.get("/api/proposals/:id/history", asyncHandler(async (req, res) => {
+  const proposal = await store.getProposal(req.params.id);
+  if (!proposal) return err(res, 404, "Proposal not found");
+  res.json(await store.listProposalHistory(req.params.id));
+}));
 
 // POST /api/proposals
 // Creates a proposal linked to a design. Initial status is "Sent".
-app.post("/api/proposals", (req, res) => {
+app.post("/api/proposals", asyncHandler(async (req, res) => {
   const { designId, clientName, price, notes = "" } = req.body;
 
   if (!designId || typeof designId !== "string")
     return err(res, 400, "designId is required");
 
-  if (!findDesign(designId))
+  if (!await store.getDesign(designId))
     return err(res, 400, `No design found with id "${designId}"`);
 
   if (!clientName || typeof clientName !== "string" || !clientName.trim())
@@ -213,33 +181,30 @@ app.post("/api/proposals", (req, res) => {
   if (isNaN(parsedPrice) || parsedPrice <= 0)
     return err(res, 400, "price must be a positive number");
 
-  const proposal = {
+  const proposal = await store.createProposal({
     id:         uuidv4(),
     designId,
     clientName: clientName.trim(),
     price:      parsedPrice,
     status:     "Sent",
     notes:      typeof notes === "string" ? notes.trim() : "",
-    createdAt:  Date.now(),
-  };
+  });
 
-  proposals.push(proposal);
-  res.status(201).json(populateProposal(proposal));
-});
+  res.status(201).json(proposal);
+}));
 
 // PATCH /api/proposals/:id/status
 // Internal tech-side status override (any valid status).
-app.patch("/api/proposals/:id/status", (req, res) => {
-  const proposal = findProposal(req.params.id);
+app.patch("/api/proposals/:id/status", asyncHandler(async (req, res) => {
+  const proposal = await store.getProposal(req.params.id);
   if (!proposal) return err(res, 404, "Proposal not found");
 
   const { status } = req.body;
   if (!VALID_STATUSES.includes(status))
     return err(res, 400, `status must be one of: ${VALID_STATUSES.join(", ")}`);
 
-  proposal.status = status;
-  res.json(populateProposal(proposal));
-});
+  res.json(await store.updateProposalStatus(req.params.id, status));
+}));
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CLIENT-FACING PROPOSAL PAGE  (HTML, no React)
@@ -248,19 +213,18 @@ app.patch("/api/proposals/:id/status", (req, res) => {
 // GET /proposal/:id
 // Renders a standalone HTML page the tech sends to the client.
 // On first visit the status advances from "Sent" → "Viewed".
-app.get("/proposal/:id", (req, res) => {
-  const proposal = findProposal(req.params.id);
+app.get("/proposal/:id", asyncHandler(async (req, res) => {
+  let proposal = await store.getProposal(req.params.id);
   if (!proposal) {
     return res.status(404).send("<h2>Proposal not found.</h2>");
   }
 
   // Mark as Viewed on first open
   if (proposal.status === "Sent") {
-    proposal.status = "Viewed";
+    proposal = await store.updateProposalStatus(proposal.id, "Viewed");
   }
 
-  const design = findDesign(proposal.designId);
-
+  const design = proposal.design;
   const statusColor = {
     Sent:             "#6b7280",
     Viewed:           "#2563eb",
@@ -273,13 +237,13 @@ app.get("/proposal/:id", (req, res) => {
 
   const actionButtons = actionable ? `
     <div class="actions">
-      <button class="btn btn-accept"   onclick="sendAction('accept')">✓ Accept</button>
-      <button class="btn btn-changes"  onclick="showChanges()">✎ Ask for Changes</button>
-      <button class="btn btn-decline"  onclick="sendAction('decline')">✕ Decline</button>
+      <button class="btn btn-accept"  onclick="sendAction('accept')">Accept Proposal</button>
+      <button class="btn btn-changes" onclick="showChanges()">Ask for Changes</button>
+      <button class="btn btn-decline" onclick="sendAction('decline')">Decline</button>
     </div>
-    <div id="changes-box" style="display:none; margin-top:16px;">
-      <textarea id="changes-msg" placeholder="Describe what you'd like changed…" rows="4"></textarea>
-      <button class="btn btn-changes" style="margin-top:8px;" onclick="sendChanges()">Send Change Request</button>
+    <div id="changes-box" style="display:none;margin-top:16px;">
+      <textarea id="changes-msg" rows="4" placeholder="What would you like changed?"></textarea>
+      <button class="btn btn-changes" style="margin-top:10px" onclick="sendChanges()">Send Change Request</button>
     </div>
   ` : `<p class="status-note">You already responded to this proposal.</p>`;
 
@@ -288,7 +252,7 @@ app.get("/proposal/:id", (req, res) => {
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Nail Design Proposal — ${proposal.clientName}</title>
+  <title>AnitaSet Proposal — ${escapeHtml(proposal.clientName)}</title>
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
     body{
@@ -298,21 +262,20 @@ app.get("/proposal/:id", (req, res) => {
       padding:24px;
     }
     .card{
-      background:#fff;border-radius:20px;
-      box-shadow:0 4px 32px rgba(60,20,50,.10);
-      max-width:480px;width:100%;padding:36px 32px;
+      width:100%;max-width:420px;background:#fff;border:1px solid #ede8eb;
+      border-radius:24px;box-shadow:0 12px 50px rgba(60,20,50,.10);
+      padding:32px 28px;
     }
     .brand{font-size:12px;font-weight:700;letter-spacing:.08em;
-           color:#9c8a96;text-transform:uppercase;margin-bottom:20px}
+      text-transform:uppercase;color:#3b1f35;margin-bottom:18px}
     h1{font-size:22px;font-weight:700;color:#1a1018;margin-bottom:4px}
-    .subtitle{font-size:14px;color:#9c8a96;margin-bottom:24px}
+    .subtitle{font-size:14px;color:#9c8a96;margin-bottom:28px;line-height:1.5}
     .detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:24px}
-    .detail{background:#faf8f7;border-radius:12px;padding:14px 16px}
-    .detail-label{font-size:11px;font-weight:600;text-transform:uppercase;
-                  letter-spacing:.06em;color:#9c8a96;margin-bottom:4px}
-    .detail-value{font-size:15px;font-weight:600;color:#1a1018}
-    .color-swatch{
-      display:inline-block;width:18px;height:18px;border-radius:50%;
+    .detail{background:#faf8f7;border-radius:12px;padding:14px}
+    .detail-label{font-size:10px;font-weight:700;text-transform:uppercase;
+      letter-spacing:.06em;color:#9c8a96;margin-bottom:4px}
+    .detail-value{font-size:14px;font-weight:600;color:#3b1f35;word-break:break-word}
+    .color-swatch{display:inline-block;width:18px;height:18px;border-radius:50%;
       border:2px solid #ede8eb;vertical-align:middle;margin-right:6px;
     }
     .status-row{
@@ -364,9 +327,9 @@ app.get("/proposal/:id", (req, res) => {
 </head>
 <body>
 <div class="card">
-  <p class="brand">✦ The Nail Boss</p>
+  <p class="brand">✦ AnitaSet</p>
   <h1>Hey ${escapeHtml(proposal.clientName)} 👋</h1>
-  <p class="subtitle">Your nail tech sent you this design proposal.</p>
+  <p class="subtitle">Your nail tech sent you this AnitaSet design proposal.</p>
 
   <div class="detail-grid">
     <div class="detail">
@@ -406,7 +369,7 @@ app.get("/proposal/:id", (req, res) => {
   ${actionButtons}
   <div id="confirm-msg"></div>
 </div>
-<footer>Powered by The Nail Boss</footer>
+<footer>Powered by AnitaSet</footer>
 
 <script>
   var PROPOSAL_ID = "${proposal.id}";
@@ -449,12 +412,12 @@ app.get("/proposal/:id", (req, res) => {
 </html>`;
 
   res.send(html);
-});
+}));
 
 // POST /proposal/:id/action
 // Client submits a response: accept | changes | decline
-app.post("/proposal/:id/action", (req, res) => {
-  const proposal = findProposal(req.params.id);
+app.post("/proposal/:id/action", asyncHandler(async (req, res) => {
+  const proposal = await store.getProposal(req.params.id);
   if (!proposal) return err(res, 404, "Proposal not found");
 
   const { action, message } = req.body;
@@ -472,13 +435,8 @@ app.post("/proposal/:id/action", (req, res) => {
   if (terminal.includes(proposal.status))
     return err(res, 409, `Proposal already has a final status: ${proposal.status}`);
 
-  proposal.status = ACTION_MAP[action];
-  if (message && typeof message === "string") {
-    proposal.notes = message.trim();
-  }
-
-  res.json(populateProposal(proposal));
-});
+  res.json(await store.updateProposalStatus(req.params.id, ACTION_MAP[action], message));
+}));
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -490,6 +448,16 @@ function escapeHtml(str) {
     .replace(/"/g,  "&quot;")
     .replace(/'/g,  "&#39;");
 }
+
+// ── Error handler ─────────────────────────────────────────────────────────────
+
+app.use((error, req, res, _next) => {
+  console.error(error);
+  if (req.path.startsWith("/api") || req.path.startsWith("/proposal/")) {
+    return res.status(500).json({ error: "Internal server error" });
+  }
+  return res.status(500).send("Internal server error");
+});
 
 // ── Serve React build (for sandbox / production use) ────────────────────────
 const path = require("path");
@@ -508,8 +476,9 @@ if (fs.existsSync(clientBuild)) {
 app.listen(PORT, () => {
   console.log(`
 ╔══════════════════════════════════════════════════════╗
-║  🧨  The Nail Boss API                               ║
+║  ✦  AnitaSet API                                    ║
 ║      http://localhost:${PORT}                           ║
+║      storage: ${store.kind}                              ║
 ╠══════════════════════════════════════════════════════╣
 ║  GET  /api/health            health check            ║
 ║  GET  /api/designs           list designs            ║

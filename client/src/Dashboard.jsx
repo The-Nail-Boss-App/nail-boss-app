@@ -5,7 +5,7 @@
 import React, { useEffect, useState } from "react";
 import { COLORS, S, LogoMark } from "./styles.js";
 
-export default function Dashboard({ techName, onNavigate }) {
+export default function Dashboard({ techName, onStartLook, onViewProposals }) {
   const [counts, setCounts] = useState({ designs: "–", proposals: "–" });
 
   useEffect(() => {
@@ -34,7 +34,7 @@ export default function Dashboard({ techName, onNavigate }) {
           {greeting}, {techName} 👋
         </h1>
         <p style={{ fontSize: 14, color: COLORS.textMuted }}>
-          Here's your studio overview.
+          Design. Price. Sell. Grow.
         </p>
       </div>
 
@@ -65,14 +65,14 @@ export default function Dashboard({ techName, onNavigate }) {
       <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
         <button
           style={{ ...S.btnPrimary, fontSize: 15, padding: "15px 30px", borderRadius: 14 }}
-          onClick={() => onNavigate("studio")}
+          onClick={onStartLook}
           data-testid="button-start-look"
         >
-          ✦ Start a look
+          ✦ Start a design
         </button>
         <button
           style={{ ...S.btnSecondary, fontSize: 14, padding: "15px 24px", borderRadius: 14 }}
-          onClick={() => onNavigate("proposals")}
+          onClick={onViewProposals}
           data-testid="button-view-proposals"
         >
           ◻ View proposals
@@ -93,6 +93,7 @@ export default function Dashboard({ techName, onNavigate }) {
         </p>
         <ol style={{ paddingLeft: 18, color: COLORS.plumLight, fontSize: 13, lineHeight: 2.1 }}>
           <li>Open <strong>Design Studio</strong> → design a look → Save</li>
+          <li>Use AnitaSet to turn that design into a priced client proposal</li>
           <li>Open <strong>Proposals</strong> → pick design → enter client + price → Create</li>
           <li>Copy the proposal link and send it to your client</li>
           <li>Watch the status update when they Accept or request changes</li>
