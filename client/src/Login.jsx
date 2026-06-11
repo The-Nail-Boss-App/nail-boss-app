@@ -37,10 +37,10 @@ export default function Login({ onLogin }) {
             </div>
             <div>
               <p style={{ fontSize: 18, fontWeight: 800, color: COLORS.plum, lineHeight: 1.1 }}>
-                The Nail Boss
+                AnitaSet
               </p>
               <p style={{ fontSize: 12, color: COLORS.textMuted, marginTop: 2 }}>
-                Design Studio for Nail Techs
+                Design. Price. Sell. Grow.
               </p>
             </div>
           </div>
@@ -49,7 +49,7 @@ export default function Login({ onLogin }) {
             Welcome back 💅
           </h1>
           <p style={{ fontSize: 14, color: COLORS.textMuted, marginBottom: 28, lineHeight: 1.5 }}>
-            Enter your name to access your studio.
+            Start with a nail design. Turn that design into money.
           </p>
 
           <form onSubmit={handleSubmit} noValidate>
@@ -82,7 +82,7 @@ export default function Login({ onLogin }) {
               style={{ ...S.btnPrimary, width: "100%", justifyContent: "center", padding: "13px 0", fontSize: 15 }}
               data-testid="button-login"
             >
-              Enter studio →
+              Enter AnitaSet →
             </button>
           </form>
         </div>

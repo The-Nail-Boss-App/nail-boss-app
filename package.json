@@ -1,7 +1,7 @@
 {
   "name": "nail-boss",
   "version": "1.0.0",
-  "description": "The Nail Boss — design studio & proposal tool for nail techs",
+  "description": "AnitaSet — design-first operating system for independent nail businesses",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
