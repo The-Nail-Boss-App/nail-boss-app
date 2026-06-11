@@ -22,10 +22,10 @@ app.use(cors({
   allowedHeaders: ["Content-Type"],
 }));
 
-app.use(express.json());
+app.use(express.json({ limit: "25kb" }));
 
 // Serve plain HTML for the client-facing proposal page (no React needed)
-app.use(express.urlencoded({ extended: false }));
+app.use(express.urlencoded({ extended: false, limit: "25kb" }));
 
 // ── In-Memory Store ───────────────────────────────────────────────────────────
 //
@@ -288,7 +288,7 @@ app.get("/proposal/:id", (req, res) => {
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>AnitaSet Proposal — ${proposal.clientName}</title>
+  <title>AnitaSet Proposal — ${escapeHtml(proposal.clientName)}</title>
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
     body{

@@ -115,11 +115,11 @@ Limitations:
 - Runtime: `node`
 - Build command: `npm install && npm run build`
 - Start command: `npm start`
+- Do not set a fixed `PORT` in the blueprint; Render provides the port value and the server binds to `process.env.PORT`.
 - Environment:
   - `NODE_ENV=production`
-  - `PORT=10000`
 
-Render normally injects its own `$PORT`; the server reads `process.env.PORT || 4000`.
+Render provides `$PORT` for the web service; the server reads `process.env.PORT || 4000`.
 
 ### Incomplete, fragile, duplicated, or broken areas
 
@@ -137,7 +137,7 @@ Render normally injects its own `$PORT`; the server reads `process.env.PORT || 4
 - No exposed secrets were found in tracked source files.
 - CORS allows local origins by default; production should set `ALLOWED_ORIGIN` explicitly when a separate frontend origin exists.
 - Public proposal pages are accessible to anyone with the UUID link.
-- `express.json()` uses the default body size limit; explicit limits should be considered.
+- JSON and URL-encoded request bodies are limited to 25 KB for this MVP.
 - No rate limiting, request logging, CSRF strategy, or authentication middleware is currently present.
 - In-memory state can cause data loss on Render restarts and cannot support multiple instances safely.
 
@@ -190,6 +190,14 @@ npm run dev:server
 npm run dev:client
 ```
 
+## Tests
+
+Run the smoke test suite, which starts the server on a temporary local port and verifies the core design/proposal flow:
+
+```bash
+npm test
+```
+
 ## API quick test examples
 
 ```bash
@@ -220,6 +228,7 @@ curl -X POST http://localhost:4000/api/proposals \
 - Use the root `render.yaml` for the current service.
 - Build command: `npm install && npm run build`
 - Start command: `npm start`
+- Do not set a fixed `PORT` in the blueprint; Render provides the port value and the server binds to `process.env.PORT`.
 - Ensure the deployed branch contains the root app files and `client/` directory.
 - Confirm `/api/health` returns `200 OK` after deploy.
 

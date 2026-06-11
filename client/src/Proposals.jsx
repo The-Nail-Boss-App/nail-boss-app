@@ -80,7 +80,13 @@ export default function Proposals() {
     }
   };
 
-  const clientUrl = (id) => `${window.location.origin}/proposal/${id}`;
+  const clientUrl = (id) => {
+    const isLocalReactDev = ["3000", "5173"].includes(window.location.port);
+    const origin = isLocalReactDev
+      ? `${window.location.protocol}//${window.location.hostname}:4000`
+      : window.location.origin;
+    return `${origin}/proposal/${id}`;
+  };
 
   // ── Styles ──────────────────────────────────────────────
   const styles = {
