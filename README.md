@@ -196,7 +196,7 @@ npm run dev:client
 
 ## Tests
 
-Run the smoke test suite, which starts the server on a temporary local port using the documented test-only file-backed fallback, verifies the core design/proposal flow, checks proposal status history and HTML escaping, then confirms data survives a server restart:
+Run the smoke test suite, which explicitly sets `ANITASET_TEST_DB_FILE`, starts the server on a temporary local port using the documented test-only file-backed fallback, verifies the core design/proposal flow, checks proposal status history and HTML escaping, then confirms data survives a server restart:
 
 ```bash
 npm test
@@ -260,7 +260,7 @@ curl -X POST http://localhost:4000/api/proposals \
 - Use the root `render.yaml` for the current web service.
 - Build command: `npm install && npm run build`
 - Start command: `npm start`
-- Migration command after provisioning or deploy: `npm run db:migrate`
+- Migration command after provisioning or deploy: `npm run db:migrate` (also configured as `preDeployCommand` in `render.yaml`)
 - Do not set a fixed `PORT` in the blueprint; Render provides the port value and the server binds to `process.env.PORT`.
 - Ensure the deployed branch contains the root app files and `client/` directory.
 - Confirm `/api/health` returns `200 OK` and includes `storage: "postgres"` after deploy.

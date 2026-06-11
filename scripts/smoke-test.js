@@ -3,13 +3,11 @@
 
 const fs = require("fs");
 const http = require("http");
-const os = require("os");
-const path = require("path");
 const { spawn } = require("child_process");
 
 const PORT = Number(process.env.SMOKE_TEST_PORT || 4100);
 const BASE_URL = `http://127.0.0.1:${PORT}`;
-const DB_FILE = process.env.ANITASET_TEST_DB_FILE || path.join(os.tmpdir(), `anitaset-smoke-${process.pid}.json`);
+const DB_FILE = process.env.ANITASET_TEST_DB_FILE;
 
 function request(method, pathName, body) {
   const payload = body ? JSON.stringify(body) : null;
@@ -105,7 +103,11 @@ function startServer() {
 }
 
 async function main() {
-  if (!process.env.ANITASET_TEST_DB_FILE && fs.existsSync(DB_FILE)) fs.unlinkSync(DB_FILE);
+  if (!DB_FILE) {
+    throw new Error("ANITASET_TEST_DB_FILE must be explicitly set for the smoke-test file-backed fallback.");
+  }
+
+  if (fs.existsSync(DB_FILE)) fs.unlinkSync(DB_FILE);
   let running = startServer();
 
   try {
@@ -185,7 +187,7 @@ async function main() {
     process.exitCode = 1;
   } finally {
     await running.stop();
-    if (!process.env.ANITASET_TEST_DB_FILE && fs.existsSync(DB_FILE)) fs.unlinkSync(DB_FILE);
+    if (fs.existsSync(DB_FILE)) fs.unlinkSync(DB_FILE);
   }
 }
 
