@@ -7,6 +7,16 @@ const { v4: uuidv4 } = require("uuid");
 
 const LOCAL_DB_HOSTS = new Set(["localhost", "127.0.0.1", "::1"]);
 const VALID_STATUSES = ["Sent", "Viewed", "Accepted", "ChangesRequested", "Declined"];
+const TERMINAL_STATUSES = ["Accepted", "ChangesRequested", "Declined"];
+const SELF_SIGNED_TLS_ENV = "ANITASET_ALLOW_SELF_SIGNED_DB_TLS";
+
+class ProposalStatusConflictError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "ProposalStatusConflictError";
+    this.statusCode = 409;
+  }
+}
 
 function isTestFileFallbackEnabled() {
   return Boolean(process.env.ANITASET_TEST_DB_FILE);
@@ -20,6 +30,12 @@ function parseDatabaseUrl(databaseUrl) {
   }
 }
 
+function getPostgresSslConfig(parsed) {
+  if (LOCAL_DB_HOSTS.has(parsed.hostname)) return false;
+  if (process.env[SELF_SIGNED_TLS_ENV] === "true") return { rejectUnauthorized: false };
+  return { rejectUnauthorized: true };
+}
+
 function createPgPool() {
   const databaseUrl = process.env.DATABASE_URL;
 
@@ -29,8 +45,7 @@ function createPgPool() {
   }
 
   const parsed = parseDatabaseUrl(databaseUrl);
-  const host = parsed.hostname;
-  const ssl = LOCAL_DB_HOSTS.has(host) ? false : { rejectUnauthorized: false };
+  const ssl = getPostgresSslConfig(parsed);
 
   const { Pool } = require("pg");
   return new Pool({ connectionString: databaseUrl, ssl });
@@ -177,7 +192,7 @@ class PostgresStore {
     }
   }
 
-  async updateProposalStatus(id, status, note = "") {
+  async updateProposalStatus(id, status, note = "", options = {}) {
     if (!VALID_STATUSES.includes(status)) throw new Error("Invalid proposal status");
 
     const client = await this.pool.connect();
@@ -188,6 +203,14 @@ class PostgresStore {
       if (!current) {
         await client.query("ROLLBACK");
         return null;
+      }
+
+      if (options.rejectIfCurrentTerminal && TERMINAL_STATUSES.includes(current.status)) {
+        throw new ProposalStatusConflictError(`Proposal already has a final status: ${current.status}`);
+      }
+
+      if (TERMINAL_STATUSES.includes(current.status) && current.status !== status) {
+        throw new ProposalStatusConflictError(`Proposal already has a final status: ${current.status}`);
       }
 
       let updated = current;
@@ -322,11 +345,19 @@ class FileStore {
     return this.populateProposal(proposal);
   }
 
-  async updateProposalStatus(id, status, note = "") {
+  async updateProposalStatus(id, status, note = "", options = {}) {
     if (!VALID_STATUSES.includes(status)) throw new Error("Invalid proposal status");
 
     const proposal = this.data.proposals.find((item) => item.id === id);
     if (!proposal) return null;
+
+    if (options.rejectIfCurrentTerminal && TERMINAL_STATUSES.includes(proposal.status)) {
+      throw new ProposalStatusConflictError(`Proposal already has a final status: ${proposal.status}`);
+    }
+
+    if (TERMINAL_STATUSES.includes(proposal.status) && proposal.status !== status) {
+      throw new ProposalStatusConflictError(`Proposal already has a final status: ${proposal.status}`);
+    }
 
     if (proposal.status !== status || note) {
       const oldStatus = proposal.status;
@@ -372,4 +403,6 @@ function createStore() {
 module.exports = {
   createStore,
   VALID_STATUSES,
+  TERMINAL_STATUSES,
+  ProposalStatusConflictError,
 };

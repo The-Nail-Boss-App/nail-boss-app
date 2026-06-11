@@ -153,6 +153,14 @@ async function runFlow() {
   assert(res.status === 200, "POST /proposal/:id/action should return 200");
   assert(res.body.status === "Accepted", "POST /proposal/:id/action should accept the proposal");
 
+  res = await request("POST", `/proposal/${proposalId}/action`, { action: "decline" });
+  assert(res.status === 409, "repeated terminal proposal actions should return 409");
+  assert(res.body.error.includes("final status"), "terminal overwrite response should explain final status conflict");
+
+  res = await request("GET", `/api/proposals/${proposalId}`);
+  assert(res.status === 200, "GET /api/proposals/:id should still return 200 after terminal conflict");
+  assert(res.body.status === "Accepted", "terminal conflict should not overwrite the accepted status");
+
   res = await request("GET", `/api/proposals/${proposalId}/history`);
   assert(res.status === 200, "GET /api/proposals/:id/history should return 200");
   assert(Array.isArray(res.body), "GET /api/proposals/:id/history should return an array");

@@ -10,7 +10,7 @@ const fs = require("fs");
 const express = require("express");
 const cors = require("cors");
 const { v4: uuidv4 } = require("uuid");
-const { createStore, VALID_STATUSES } = require("./db/store");
+const { createStore, VALID_STATUSES, TERMINAL_STATUSES } = require("./db/store");
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -42,7 +42,6 @@ app.use(express.urlencoded({ extended: false, limit: "25kb" }));
 const VALID_SHAPES = ["Almond", "Coffin", "Square", "Stiletto", "Oval"];
 const VALID_EFFECTS = ["Solid", "Gradient", "Chrome", "CatEye", "Marble"];
 const HEX_RE = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
-const TERMINAL_STATUSES = ["Accepted", "ChangesRequested", "Declined"];
 
 function err(res, code, message) {
   return res.status(code).json({ error: message });
@@ -454,12 +453,10 @@ app.post("/proposal/:id/action", asyncRoute(async (req, res) => {
     return err(res, 400, 'action must be one of: "accept", "changes", "decline"');
   }
 
-  if (TERMINAL_STATUSES.includes(proposal.status)) {
-    return err(res, 409, `Proposal already has a final status: ${proposal.status}`);
-  }
-
   const note = message && typeof message === "string" ? message.trim() : "";
-  return res.json(await store.updateProposalStatus(proposal.id, ACTION_MAP[action], note));
+  return res.json(await store.updateProposalStatus(proposal.id, ACTION_MAP[action], note, {
+    rejectIfCurrentTerminal: true,
+  }));
 }));
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -484,8 +481,12 @@ if (fs.existsSync(clientBuild)) {
 }
 
 app.use((error, _req, res, _next) => {
+  if (error.statusCode === 409) {
+    return res.status(409).json({ error: error.message });
+  }
+
   console.error(`Request failed: ${error.message}`);
-  res.status(500).json({ error: "internal server error" });
+  return res.status(500).json({ error: "internal server error" });
 });
 
 // ── Start ─────────────────────────────────────────────────────────────────────

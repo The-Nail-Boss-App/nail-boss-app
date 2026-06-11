@@ -8,6 +8,13 @@ const { URL } = require("url");
 const { Pool } = require("pg");
 
 const LOCAL_DB_HOSTS = new Set(["localhost", "127.0.0.1", "::1"]);
+const SELF_SIGNED_TLS_ENV = "ANITASET_ALLOW_SELF_SIGNED_DB_TLS";
+
+function getPostgresSslConfig(parsed) {
+  if (LOCAL_DB_HOSTS.has(parsed.hostname)) return false;
+  if (process.env[SELF_SIGNED_TLS_ENV] === "true") return { rejectUnauthorized: false };
+  return { rejectUnauthorized: true };
+}
 
 function getDatabaseConfig() {
   const databaseUrl = process.env.DATABASE_URL;
@@ -22,7 +29,7 @@ function getDatabaseConfig() {
 
   return {
     connectionString: databaseUrl,
-    ssl: LOCAL_DB_HOSTS.has(parsed.hostname) ? false : { rejectUnauthorized: false },
+    ssl: getPostgresSslConfig(parsed),
     safeLabel: `${parsed.protocol}//${parsed.hostname}${parsed.port ? `:${parsed.port}` : ""}${parsed.pathname}`,
   };
 }

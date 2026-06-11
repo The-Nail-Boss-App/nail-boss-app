@@ -14,7 +14,14 @@ AnitaSet is a design-first operating system foundation for independent nail busi
 
 ## PostgreSQL persistence
 
-The store uses PostgreSQL whenever `DATABASE_URL` is present. It uses parameterized queries, maps database snake_case columns into camelCase API responses, and enables Render-friendly SSL for non-local database hosts without logging credentials.
+The store uses PostgreSQL whenever `DATABASE_URL` is present. It uses parameterized queries, maps database snake_case columns into camelCase API responses, and enables TLS for non-local database hosts without logging credentials.
+
+### PostgreSQL TLS behavior
+
+- Local hosts (`localhost`, `127.0.0.1`, and `::1`) connect without TLS so local development works with default PostgreSQL installs.
+- All non-local `DATABASE_URL` hosts use TLS with certificate verification enabled by default in both the app and migration runner.
+- If a known development database uses a self-signed certificate, set `ANITASET_ALLOW_SELF_SIGNED_DB_TLS=true` to opt in to unverified TLS for that environment only. Do not set this variable in production unless the database provider explicitly requires a private/self-signed CA workflow and the risk is accepted.
+- Logs include only a safe protocol/host/database label and never print credentials or full connection strings.
 
 If the app starts without `DATABASE_URL` and without the explicit `ANITASET_TEST_DB_FILE` test override, startup fails with a clear configuration error instead of falling back to volatile memory.
 
@@ -131,6 +138,7 @@ The migration runner:
 - Skips already-applied migrations with matching checksums.
 - Fails on checksum mismatches.
 - Logs a safe database label without credentials.
+- Uses the same PostgreSQL TLS rules documented above.
 
 ## Render deployment notes
 
