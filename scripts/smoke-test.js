@@ -102,6 +102,54 @@ function layeredBlueprint() {
   };
 }
 
+function whitespaceMultiNailBlueprint() {
+  return {
+    schemaVersion: 1,
+    canvas: { mode: "full-set", activeNailId: " active-nail " },
+    nails: [
+      {
+        id: " passive-nail ",
+        slot: "index",
+        shape: "Square",
+        length: 0.31,
+        width: 0.52,
+        baseColorHex: "#101010",
+        layers: [{
+          id: "passive-base",
+          type: "base",
+          name: "Passive Base",
+          visible: true,
+          locked: true,
+          opacity: 1,
+          order: 0,
+          transform: { x: 0.5, y: 0.5, scaleX: 1, scaleY: 1, rotation: 0 },
+          data: { colorHex: "#101010", effect: "Chrome", effectColorHex: "#202020" },
+        }],
+      },
+      {
+        id: " active-nail ",
+        slot: "accent",
+        shape: "Coffin",
+        length: 0.81,
+        width: 0.37,
+        baseColorHex: "#445566",
+        layers: [{
+          id: "active-base",
+          type: "base",
+          name: "Active Base",
+          visible: true,
+          locked: true,
+          opacity: 1,
+          order: 0,
+          transform: { x: 0.5, y: 0.5, scaleX: 1, scaleY: 1, rotation: 0 },
+          data: { colorHex: "#445566", effect: "CatEye", effectColorHex: "#FEDCBA" },
+        }],
+      },
+    ],
+    metadata: { tags: [" Active Tag ", "sync"] },
+  };
+}
+
 function startServer() {
   const server = spawn(process.execPath, ["server.js"], {
     env: {
@@ -164,6 +212,32 @@ async function runFlow() {
   assert(res.status === 200, "GET /api/designs/:id/blueprint should return 200");
   assert(res.body.document.schemaVersion === 1, "default blueprint should use schema version 1");
   assert(res.body.document.nails[0].layers[0].type === "base", "default blueprint should include a base layer");
+
+  const whitespaceBlueprint = whitespaceMultiNailBlueprint();
+  res = await request("PUT", `/api/designs/${designId}/blueprint`, whitespaceBlueprint);
+  assert(res.status === 200, "blueprints should accept nail ids and activeNailId with surrounding whitespace");
+  assert(res.body.document.canvas.activeNailId === "active-nail", "activeNailId should be trimmed before persistence");
+  assert(res.body.document.nails[0].id === "passive-nail", "nail ids should be trimmed before persistence");
+  assert(res.body.document.nails[1].id === "active-nail", "active nail id should be trimmed before persistence");
+
+  res = await request("GET", `/api/designs/${designId}`);
+  assert(res.status === 200, "GET /api/designs/:id should return 200 after whitespace blueprint update");
+  assert(res.body.shape === "Coffin", "legacy shape should sync from normalized active nail in multi-nail blueprints");
+  assert(res.body.baseColorHex === "#445566", "legacy baseColorHex should sync from normalized active nail base layer");
+  assert(res.body.effect === "CatEye", "legacy effect should sync from normalized active nail base layer");
+  assert(res.body.effectColorHex === "#FEDCBA", "legacy effectColorHex should sync from normalized active nail base layer");
+  assert(res.body.tags.includes("active tag"), "legacy tags should sync from normalized multi-nail blueprint metadata");
+
+  const duplicateTrimmedBlueprint = {
+    ...whitespaceBlueprint,
+    canvas: { ...whitespaceBlueprint.canvas, activeNailId: "nail-dup" },
+    nails: whitespaceBlueprint.nails.map((nail, index) => ({
+      ...nail,
+      id: index === 0 ? "nail-dup" : " nail-dup ",
+    })),
+  };
+  res = await request("PUT", `/api/designs/${designId}/blueprint`, duplicateTrimmedBlueprint);
+  assert(res.status === 400, "duplicate nail ids after trimming should be rejected");
 
   const blueprint = layeredBlueprint();
   res = await request("PUT", `/api/designs/${designId}/blueprint`, blueprint);

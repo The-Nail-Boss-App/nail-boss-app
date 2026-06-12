@@ -179,9 +179,11 @@ function validateAndNormalizeBlueprint(input) {
   const nails = input.nails.map((nail, nailIndex) => {
     const pathPrefix = `nails[${nailIndex}]`;
     if (!isPlainObject(nail)) throw new BlueprintValidationError(`${pathPrefix} must be an object`);
-    if (typeof nail.id !== "string" || !nail.id.trim()) throw new BlueprintValidationError(`${pathPrefix}.id must be a non-empty string`);
-    if (seenNailIds.has(nail.id)) throw new BlueprintValidationError("nail ids must be unique strings");
-    seenNailIds.add(nail.id);
+    if (typeof nail.id !== "string") throw new BlueprintValidationError(`${pathPrefix}.id must be a non-empty string`);
+    const normalizedNailId = nail.id.trim();
+    if (!normalizedNailId) throw new BlueprintValidationError(`${pathPrefix}.id must be a non-empty string`);
+    if (seenNailIds.has(normalizedNailId)) throw new BlueprintValidationError("nail ids must be unique strings");
+    seenNailIds.add(normalizedNailId);
     if (!VALID_SHAPES.includes(nail.shape)) throw new BlueprintValidationError(`${pathPrefix}.shape must be one of: ${VALID_SHAPES.join(", ")}`);
     if (!isFiniteNumber(nail.length) || nail.length < 0 || nail.length > 1) {
       throw new BlueprintValidationError(`${pathPrefix}.length must be a number between 0 and 1`);
@@ -196,7 +198,7 @@ function validateAndNormalizeBlueprint(input) {
     const seenLayerIds = new Set();
     const layers = nail.layers.map((layer, layerIndex) => normalizeLayer(layer, nailIndex, layerIndex, seenLayerIds));
     return {
-      id: nail.id.trim(),
+      id: normalizedNailId,
       slot: typeof nail.slot === "string" && nail.slot.trim() ? nail.slot.trim() : `nail-${nailIndex + 1}`,
       shape: nail.shape,
       length: Number(nail.length),
@@ -206,8 +208,11 @@ function validateAndNormalizeBlueprint(input) {
     };
   });
 
-  const activeNailId = input.canvas.activeNailId;
-  if (typeof activeNailId !== "string" || !seenNailIds.has(activeNailId)) {
+  if (typeof input.canvas.activeNailId !== "string") {
+    throw new BlueprintValidationError("canvas.activeNailId must reference an existing nail");
+  }
+  const activeNailId = input.canvas.activeNailId.trim();
+  if (!activeNailId || !seenNailIds.has(activeNailId)) {
     throw new BlueprintValidationError("canvas.activeNailId must reference an existing nail");
   }
 
