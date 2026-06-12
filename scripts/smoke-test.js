@@ -310,6 +310,42 @@ async function runFlow() {
   });
   assert(res.status === 201, "proposal creation should remain compatible after atomic create");
 
+  const renamedBlueprint = layeredBlueprint();
+  renamedBlueprint.nails[0].shape = "Coffin";
+  renamedBlueprint.nails[0].baseColorHex = "#334455";
+  renamedBlueprint.nails[0].layers[0].data = { colorHex: "#334455", effect: "Chrome", effectColorHex: "#FFFFFF" };
+  renamedBlueprint.metadata.tags = ["renamed", "atomic update"];
+  res = await request("PUT", `/api/designs/${atomicDesignId}/with-blueprint`, { design: designPayload("Renamed Atomic Design"), blueprint: renamedBlueprint });
+  assert(res.status === 200, "PUT /api/designs/:id/with-blueprint should return 200 for existing design updates");
+  assert(res.body.design.name === "Renamed Atomic Design", "atomic existing updates should preserve the submitted design name");
+  assert(res.body.design.shape === "Coffin", "atomic existing updates should sync flat shape from the blueprint");
+  assert(res.body.blueprint.document.nails[0].shape === "Coffin", "atomic existing updates should return the saved blueprint");
+
+  res = await request("GET", `/api/designs/${atomicDesignId}`);
+  assert(res.status === 200, "renamed atomic design should remain readable");
+  assert(res.body.name === "Renamed Atomic Design", "existing design rename should survive reload through /api/designs/:id");
+
+  res = await request("GET", "/api/designs");
+  assert(res.status === 200, "GET /api/designs should return 200 after atomic rename");
+  assert(res.body.some((design) => design.id === atomicDesignId && design.name === "Renamed Atomic Design"), "renamed design should display correctly in saved-design selectors");
+
+  res = await request("GET", "/api/proposals");
+  assert(res.status === 200, "GET /api/proposals should return 200 after atomic rename");
+  assert(res.body.some((proposal) => proposal.designId === atomicDesignId && proposal.design && proposal.design.name === "Renamed Atomic Design"), "renamed design should display correctly in proposal selectors");
+
+  const beforeFailedUpdateDesign = res.body.find((proposal) => proposal.designId === atomicDesignId).design;
+  const failingUpdateBlueprint = layeredBlueprint();
+  failingUpdateBlueprint.metadata.simulatePersistenceFailure = "smoke-test";
+  res = await request("PUT", `/api/designs/${atomicDesignId}/with-blueprint`, { design: designPayload("Failed Rename Should Roll Back"), blueprint: failingUpdateBlueprint });
+  assert(res.status === 500, "simulated existing design persistence failure should return 500");
+  res = await request("GET", `/api/designs/${atomicDesignId}`);
+  assert(res.status === 200, "design should remain readable after failed atomic update");
+  assert(res.body.name === beforeFailedUpdateDesign.name, "failed atomic update should roll back the design rename");
+  assert(res.body.shape === beforeFailedUpdateDesign.shape, "failed atomic update should roll back flat field changes");
+  res = await request("GET", `/api/designs/${atomicDesignId}/blueprint`);
+  assert(res.status === 200, "blueprint should remain readable after failed atomic update");
+  assert(res.body.document.nails[0].shape === "Coffin", "failed atomic update should leave the previous blueprint intact");
+
   beforeCount = await designCount();
   res = await request("POST", "/api/designs/with-blueprint", { design: designPayload("Invalid Atomic Design"), blueprint: { ...layeredBlueprint(), nails: [] } });
   assert(res.status === 400, "invalid atomic blueprints should return 400");

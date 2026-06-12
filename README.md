@@ -118,7 +118,7 @@ Transforms use normalized coordinates (`x`, `y`, `scaleX`, `scaleY`, `rotation`)
 
 - Existing `designs` rows are preserved and backfilled into `design_blueprints`.
 - Creating a normal flat design creates a default version-1 blueprint transactionally.
-- Updating a blueprint synchronizes legacy flat fields from the active nail/base layer where practical: `shape`, `length`, `width`, `baseColorHex`, `effect`, `effectColorHex`, and `tags`.
+- Updating a blueprint synchronizes legacy flat fields from the active nail/base layer where practical: `shape`, `length`, `width`, `baseColorHex`, `effect`, `effectColorHex`, and `tags`. The atomic existing-design update route also persists editable flat fields such as the submitted design `name`.
 - Proposal APIs and public proposal HTML continue reading the flat design fields, so current workflows are not forced to understand layered documents yet.
 - Deleting a design cascades to its blueprint and existing proposal/history relationships.
 
@@ -126,7 +126,7 @@ Transforms use normalized coordinates (`x`, `y`, `scaleX`, `scaleY`, `rotation`)
 
 Server-side validation rejects malformed or oversized blueprint payloads safely. Current limits are:
 
-- Request JSON body limit: `128kb` for API JSON requests, leaving wrapper overhead for atomic create-with-blueprint saves.
+- Request JSON body limit: `128kb` for API JSON requests, leaving wrapper overhead for atomic create/update-with-blueprint saves.
 - Blueprint JSON document limit: `100kb` after serialization.
 - Supported schema versions: `1`.
 - Nails per blueprint: `1` to `10`.
@@ -195,7 +195,9 @@ All starter assets are generic inline SVG shapes stored in the repository. No ex
 
 - New layered design: enter a name, create layered art, click Save, and the frontend sends one atomic `POST /api/designs/with-blueprint` request containing both the flat compatibility payload and the complete Nail Blueprint v1 document. The editor does not mark the design selected or saved until the atomic response succeeds, so a failed create leaves the unsaved blueprint in memory for retry.
 - Atomic create validates the flat design payload, validates and normalizes the blueprint, derives synchronized legacy flat fields from the active nail/base layer, then inserts the design row and blueprint row in one persistence operation. PostgreSQL uses a single transaction; the file-backed smoke-test store snapshots and restores state to match rollback behavior. Invalid blueprints, oversized blueprints, and blueprint persistence failures leave no orphan default design row behind.
-- Edit saved design: select an existing design, fetch its blueprint with `GET /api/designs/:id/blueprint`, edit layers, then save the full version-1 document with `PUT /api/designs/:id/blueprint`. The legacy `POST /api/designs` route remains available for flat-design compatibility, and the blueprint PUT route remains the update path for already-saved designs.
+- Edit saved design: select an existing design, fetch its blueprint with `GET /api/designs/:id/blueprint`, edit layers or rename the design, then save with atomic `PUT /api/designs/:id/with-blueprint`. The request includes `{ design, blueprint }`; the backend validates both payloads, preserves the submitted design name, synchronizes legacy flat fields from the normalized active nail/base layer, and updates the design row plus blueprint row in one transaction. The successful response returns both the updated design and saved blueprint so local saved-design and proposal selectors can show the new name immediately.
+- Existing compatibility routes are preserved: legacy `POST /api/designs` still creates a flat design plus default blueprint, and `PUT /api/designs/:id/blueprint` still saves blueprint-only edits for older clients. New Design Studio saves use the atomic create/update routes so dirty state is cleared only after the combined persistence operation commits.
+- Rollback guarantee: if flat design validation, blueprint validation/normalization, the design update, or blueprint persistence fails, the PostgreSQL transaction rolls back the entire operation. The explicit file-backed smoke-test store snapshots state before mutation and restores it on failure, so there is no partial rename, partial flat-field sync, or half-saved blueprint.
 - Before saving, the frontend serializes the blueprint and rejects clearly oversized documents above the server's `100kb` blueprint limit without sending a create request. It warns after successful saves when a blueprint is approaching the limit so users can simplify before adding many more strokes or layers. The server remains the source of truth for final validation.
 - The editor shows loading, saving, saved, unsaved-change, and safe error states. It confirms before replacing unsaved work when loading another design or starting a new one.
 

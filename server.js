@@ -207,6 +207,26 @@ app.put("/api/designs/:id/blueprint", asyncRoute(async (req, res) => {
   }
 }));
 
+// PUT /api/designs/:id/with-blueprint
+// Atomically updates editable flat design fields and the complete Blueprint document.
+app.put("/api/designs/:id/with-blueprint", asyncRoute(async (req, res) => {
+  const body = req.body || {};
+  const validation = validateDesignPayload(body.design);
+  if (validation.error) return err(res, 400, validation.error);
+  if (!body.blueprint) return err(res, 400, "blueprint is required");
+
+  try {
+    const saved = await store.updateDesignWithBlueprint(req.params.id, validation.design, body.blueprint);
+    if (!saved) return err(res, 404, "Design not found");
+    return res.json(saved);
+  } catch (error) {
+    if (error instanceof BlueprintValidationError || error.statusCode === 400) {
+      return err(res, 400, error.message);
+    }
+    throw error;
+  }
+}));
+
 // DELETE /api/designs/:id
 // Removes a design (database cascades to proposals and status history that reference it).
 app.delete("/api/designs/:id", asyncRoute(async (req, res) => {
@@ -575,6 +595,7 @@ const server = app.listen(PORT, () => {
 ║  POST /api/designs           create design           ║
 ║  GET  /api/designs/:id/blueprint get blueprint        ║
 ║  PUT  /api/designs/:id/blueprint save blueprint       ║
+║  PUT  /api/designs/:id/with-blueprint save design+bp   ║
 ║  GET  /api/proposals         list proposals          ║
 ║  POST /api/proposals         create proposal         ║
 ║  GET  /proposal/:id          client HTML page        ║

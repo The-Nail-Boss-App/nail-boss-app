@@ -126,6 +126,14 @@ export default function DesignStudio() {
     setStatus({ type: "idle", message });
   }
 
+  function mergeSavedDesign(savedDesign) {
+    if (!savedDesign?.id) return;
+    setDesigns((prev) => {
+      const withoutSaved = prev.filter((design) => design.id !== savedDesign.id);
+      return [savedDesign, ...withoutSaved].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+    });
+  }
+
   function newDesign() {
     if (dirty && !window.confirm("Replace unsaved work with a new design?")) return;
     setSelectedDesignId("");
@@ -329,11 +337,15 @@ export default function DesignStudio() {
         if (!designId || !savedBlueprint?.document) throw new Error("Saved design response was incomplete.");
         setSelectedDesignId(designId);
       } else {
-        const put = await fetch(`/api/designs/${designId}/blueprint`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(blueprint) });
-        savedBlueprint = await put.json().catch(() => ({}));
-        if (!put.ok) throw new Error(savedBlueprint.error || "Unable to save blueprint.");
+        const put = await fetch(`/api/designs/${designId}/with-blueprint`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ design: flat, blueprint }) });
+        const data = await put.json().catch(() => ({}));
+        if (!put.ok) throw new Error(data.error || "Unable to save design and blueprint.");
+        savedDesign = data.design;
+        savedBlueprint = data.blueprint;
+        if (!savedDesign?.id || !savedBlueprint?.document) throw new Error("Saved design response was incomplete.");
       }
-      await loadDesigns();
+      mergeSavedDesign(savedDesign);
+      setDesignName(savedDesign?.name || flat.name);
       setBlueprint(ensureBlueprint(savedBlueprint.document, savedDesign));
       setDirty(false);
       setHistory({ past: [], future: [] });
