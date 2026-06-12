@@ -10,7 +10,15 @@ const fs = require("fs");
 const express = require("express");
 const cors = require("cors");
 const { v4: uuidv4 } = require("uuid");
-const { createStore, VALID_STATUSES, TERMINAL_STATUSES } = require("./db/store");
+const {
+  createStore,
+  VALID_STATUSES,
+  TERMINAL_STATUSES,
+  VALID_SHAPES,
+  VALID_EFFECTS,
+  MAX_BLUEPRINT_JSON_BYTES,
+  BlueprintValidationError,
+} = require("./db/store");
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -28,19 +36,17 @@ app.use(cors({
   origin: process.env.ALLOWED_ORIGIN
     ? process.env.ALLOWED_ORIGIN.split(",")
     : ["http://localhost:3000", "http://localhost:5173"],
-  methods: ["GET", "POST", "PATCH", "DELETE"],
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
   allowedHeaders: ["Content-Type"],
 }));
 
-app.use(express.json({ limit: "25kb" }));
+app.use(express.json({ limit: "100kb" }));
 
 // Serve plain HTML for the client-facing proposal page (no React needed)
 app.use(express.urlencoded({ extended: false, limit: "25kb" }));
 
 // ── Validation helpers ────────────────────────────────────────────────────────
 
-const VALID_SHAPES = ["Almond", "Coffin", "Square", "Stiletto", "Oval"];
-const VALID_EFFECTS = ["Solid", "Gradient", "Chrome", "CatEye", "Marble"];
 const HEX_RE = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
 
 function err(res, code, message) {
@@ -96,7 +102,7 @@ app.post("/api/designs", asyncRoute(async (req, res) => {
     effect = "Solid",
     effectColorHex = "#FFFFFF",
     tags = [],
-  } = req.body;
+  } = req.body || {};
 
   if (!name || typeof name !== "string" || !name.trim()) {
     return err(res, 400, "name is required and must be a non-empty string");
@@ -144,6 +150,32 @@ app.post("/api/designs", asyncRoute(async (req, res) => {
   });
 
   return res.status(201).json(design);
+}));
+
+
+// GET /api/designs/:id/blueprint
+// Returns the editable Nail Blueprint document for a saved design.
+app.get("/api/designs/:id/blueprint", asyncRoute(async (req, res) => {
+  const blueprint = await store.getDesignBlueprint(req.params.id);
+  if (!blueprint) return err(res, 404, "Design not found");
+  return res.json(blueprint);
+}));
+
+// PUT /api/designs/:id/blueprint
+// Replaces the complete editable Nail Blueprint document and synchronizes flat fields.
+app.put("/api/designs/:id/blueprint", asyncRoute(async (req, res) => {
+  const blueprint = req.body && req.body.blueprint ? req.body.blueprint : req.body;
+
+  try {
+    const saved = await store.upsertDesignBlueprint(req.params.id, blueprint);
+    if (!saved) return err(res, 404, "Design not found");
+    return res.json(saved);
+  } catch (error) {
+    if (error instanceof BlueprintValidationError || error.statusCode === 400) {
+      return err(res, 400, error.message);
+    }
+    throw error;
+  }
 }));
 
 // DELETE /api/designs/:id
@@ -481,6 +513,18 @@ if (fs.existsSync(clientBuild)) {
 }
 
 app.use((error, _req, res, _next) => {
+  if (error instanceof SyntaxError && error.status === 400 && "body" in error) {
+    return res.status(400).json({ error: "Malformed JSON request body" });
+  }
+
+  if (error.type === "entity.too.large") {
+    return res.status(413).json({ error: `Request body must be ${MAX_BLUEPRINT_JSON_BYTES} bytes or less` });
+  }
+
+  if (error.statusCode === 400) {
+    return res.status(400).json({ error: error.message });
+  }
+
   if (error.statusCode === 409) {
     return res.status(409).json({ error: error.message });
   }
@@ -500,6 +544,8 @@ const server = app.listen(PORT, () => {
 ║  GET  /api/health            health check            ║
 ║  GET  /api/designs           list designs            ║
 ║  POST /api/designs           create design           ║
+║  GET  /api/designs/:id/blueprint get blueprint        ║
+║  PUT  /api/designs/:id/blueprint save blueprint       ║
 ║  GET  /api/proposals         list proposals          ║
 ║  POST /api/proposals         create proposal         ║
 ║  GET  /proposal/:id          client HTML page        ║

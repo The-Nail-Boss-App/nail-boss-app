@@ -72,6 +72,36 @@ function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
 
+function layeredBlueprint() {
+  const layerTypes = ["base", "gradient", "pattern", "drawing", "charm", "decal", "jewel"];
+  return {
+    schemaVersion: 1,
+    canvas: { mode: "single-nail", activeNailId: "nail-1" },
+    nails: [{
+      id: "nail-1",
+      slot: "accent",
+      shape: "Oval",
+      length: 0.72,
+      width: 0.44,
+      baseColorHex: "#112233",
+      layers: layerTypes.map((type, index) => ({
+        id: `${type}-layer`,
+        type,
+        name: `${type} example`,
+        visible: true,
+        locked: type === "base",
+        opacity: index === 0 ? 1 : 0.8,
+        order: index,
+        transform: { x: 0.5, y: 0.5, scaleX: 1, scaleY: 1, rotation: index * 5 },
+        data: type === "base"
+          ? { colorHex: "#112233", effect: "Gradient", effectColorHex: "#ABCDEF" }
+          : { colorHex: "#ABCDEF", effectColorHex: "#FFFFFF", label: `${type} payload` },
+      })),
+    }],
+    metadata: { tags: ["layered", "smoke"] },
+  };
+}
+
 function startServer() {
   const server = spawn(process.execPath, ["server.js"], {
     env: {
@@ -128,6 +158,30 @@ async function runFlow() {
   res = await request("GET", `/api/designs/${designId}`);
   assert(res.status === 200, "GET /api/designs/:id should return 200");
   assert(res.body.name === "Smoke Test Design", "GET /api/designs/:id should return the created design");
+  assert(res.body.updatedAt >= res.body.createdAt, "created design should include updatedAt");
+
+  res = await request("GET", `/api/designs/${designId}/blueprint`);
+  assert(res.status === 200, "GET /api/designs/:id/blueprint should return 200");
+  assert(res.body.document.schemaVersion === 1, "default blueprint should use schema version 1");
+  assert(res.body.document.nails[0].layers[0].type === "base", "default blueprint should include a base layer");
+
+  const blueprint = layeredBlueprint();
+  res = await request("PUT", `/api/designs/${designId}/blueprint`, blueprint);
+  assert(res.status === 200, "PUT /api/designs/:id/blueprint should return 200");
+  assert(res.body.document.nails[0].layers.length === 7, "layered blueprint should round-trip all layer examples");
+  assert(res.body.document.nails[0].layers.some((layer) => layer.type === "jewel"), "layered blueprint should include jewel layer");
+
+  res = await request("GET", `/api/designs/${designId}`);
+  assert(res.status === 200, "GET /api/designs/:id should return 200 after blueprint update");
+  assert(res.body.shape === "Oval", "legacy shape should sync from active nail");
+  assert(res.body.baseColorHex === "#112233", "legacy baseColorHex should sync from active base layer");
+  assert(res.body.effect === "Gradient", "legacy effect should sync from active base layer");
+  assert(res.body.effectColorHex === "#ABCDEF", "legacy effectColorHex should sync from active base layer");
+  assert(res.body.tags.includes("layered"), "legacy tags should sync from blueprint metadata");
+
+  res = await request("PUT", `/api/designs/${designId}/blueprint`, { ...blueprint, nails: [] });
+  assert(res.status === 400, "invalid blueprints should return safe 400 responses");
+  assert(res.body.error && !res.body.error.includes("SELECT"), "invalid blueprint error should not expose SQL internals");
 
   res = await request("POST", "/api/proposals", {
     designId,
@@ -186,6 +240,11 @@ async function main() {
 
     let res = await request("GET", `/api/designs/${ids.designId}`);
     assert(res.status === 200, "design should persist across restart with explicit test DB file");
+    assert(res.body.shape === "Oval", "synced legacy fields should persist across restart");
+
+    res = await request("GET", `/api/designs/${ids.designId}/blueprint`);
+    assert(res.status === 200, "blueprint should persist across restart with explicit test DB file");
+    assert(res.body.document.nails[0].layers.length === 7, "layered blueprint should survive restart");
 
     res = await request("GET", `/api/proposals/${ids.proposalId}`);
     assert(res.status === 200, "proposal should persist across restart with explicit test DB file");
@@ -194,6 +253,15 @@ async function main() {
     res = await request("GET", `/api/proposals/${ids.proposalId}/history`);
     assert(res.status === 200, "history should persist across restart with explicit test DB file");
     assert(res.body.some((entry) => entry.newStatus === "Accepted"), "accepted history should persist across restart");
+
+    res = await request("DELETE", `/api/designs/${ids.designId}`);
+    assert(res.status === 204, "DELETE /api/designs/:id should delete the design");
+
+    res = await request("GET", `/api/designs/${ids.designId}/blueprint`);
+    assert(res.status === 404, "deleted design blueprint should return 404");
+
+    res = await request("GET", `/api/proposals/${ids.proposalId}`);
+    assert(res.status === 404, "deleting a design should remove related proposals safely");
 
     console.log("Smoke test passed");
   } catch (error) {
