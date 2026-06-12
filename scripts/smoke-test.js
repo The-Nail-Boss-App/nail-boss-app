@@ -102,6 +102,22 @@ function layeredBlueprint() {
   };
 }
 
+
+function whitespaceLayerBlueprint() {
+  const blueprint = layeredBlueprint();
+  blueprint.nails[0].layers = blueprint.nails[0].layers.slice(0, 2).map((layer, index) => ({
+    ...layer,
+    id: index === 0 ? " base-layer " : " accent-layer ",
+    type: index === 0 ? "base" : "decal",
+    name: index === 0 ? "Padded Base" : "Padded Accent",
+    order: index,
+    data: index === 0
+      ? { colorHex: "#112233", effect: "Gradient", effectColorHex: "#ABCDEF" }
+      : { colorHex: "#ABCDEF", effectColorHex: "#FFFFFF", label: "accent payload" },
+  }));
+  return blueprint;
+}
+
 function whitespaceMultiNailBlueprint() {
   return {
     schemaVersion: 1,
@@ -238,6 +254,29 @@ async function runFlow() {
   };
   res = await request("PUT", `/api/designs/${designId}/blueprint`, duplicateTrimmedBlueprint);
   assert(res.status === 400, "duplicate nail ids after trimming should be rejected");
+
+  const whitespaceLayersBlueprint = whitespaceLayerBlueprint();
+  res = await request("PUT", `/api/designs/${designId}/blueprint`, whitespaceLayersBlueprint);
+  assert(res.status === 200, "blueprints should accept unique layer ids with surrounding whitespace");
+  assert(res.body.document.nails[0].layers[0].id === "base-layer", "layer ids should be trimmed before persistence");
+  assert(res.body.document.nails[0].layers[1].id === "accent-layer", "unique padded layer ids should persist in normalized form");
+  assert(new Set(res.body.document.nails[0].layers.map((layer) => layer.id)).size === res.body.document.nails[0].layers.length, "persisted layer ids should stay unique within a nail");
+
+  res = await request("GET", `/api/designs/${designId}/blueprint`);
+  assert(res.status === 200, "GET /api/designs/:id/blueprint should return 200 after layer whitespace update");
+  assert(res.body.document.nails[0].layers[0].id === "base-layer", "normalized layer ids should survive round-trip persistence");
+  assert(res.body.document.nails[0].layers[1].id === "accent-layer", "normalized unique layer ids should round-trip after persistence");
+
+  const duplicateTrimmedLayerBlueprint = whitespaceLayerBlueprint();
+  duplicateTrimmedLayerBlueprint.nails[0].layers[0].id = "base";
+  duplicateTrimmedLayerBlueprint.nails[0].layers[1].id = " base ";
+  res = await request("PUT", `/api/designs/${designId}/blueprint`, duplicateTrimmedLayerBlueprint);
+  assert(res.status === 400, "duplicate layer ids after trimming should be rejected");
+
+  const emptyTrimmedLayerBlueprint = whitespaceLayerBlueprint();
+  emptyTrimmedLayerBlueprint.nails[0].layers[0].id = "   ";
+  res = await request("PUT", `/api/designs/${designId}/blueprint`, emptyTrimmedLayerBlueprint);
+  assert(res.status === 400, "empty layer ids after trimming should be rejected");
 
   const blueprint = layeredBlueprint();
   res = await request("PUT", `/api/designs/${designId}/blueprint`, blueprint);

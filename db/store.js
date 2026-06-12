@@ -108,9 +108,11 @@ function getBaseLayer(nail) {
 function normalizeLayer(layer, nailIndex, layerIndex, seenLayerIds) {
   const pathPrefix = `nails[${nailIndex}].layers[${layerIndex}]`;
   if (!isPlainObject(layer)) throw new BlueprintValidationError(`${pathPrefix} must be an object`);
-  if (typeof layer.id !== "string" || !layer.id.trim()) throw new BlueprintValidationError(`${pathPrefix}.id must be a non-empty string`);
-  if (seenLayerIds.has(layer.id)) throw new BlueprintValidationError(`layer ids must be unique within each nail`);
-  seenLayerIds.add(layer.id);
+  if (typeof layer.id !== "string") throw new BlueprintValidationError(`${pathPrefix}.id must be a non-empty string`);
+  const normalizedLayerId = layer.id.trim();
+  if (!normalizedLayerId) throw new BlueprintValidationError(`${pathPrefix}.id must be a non-empty string`);
+  if (seenLayerIds.has(normalizedLayerId)) throw new BlueprintValidationError(`layer ids must be unique within each nail`);
+  seenLayerIds.add(normalizedLayerId);
   if (!SUPPORTED_LAYER_TYPES.includes(layer.type)) {
     throw new BlueprintValidationError(`${pathPrefix}.type must be one of: ${SUPPORTED_LAYER_TYPES.join(", ")}`);
   }
@@ -142,7 +144,7 @@ function normalizeLayer(layer, nailIndex, layerIndex, seenLayerIds) {
   }
 
   return {
-    id: layer.id.trim(),
+    id: normalizedLayerId,
     type: layer.type,
     name: typeof layer.name === "string" && layer.name.trim() ? layer.name.trim() : layer.type,
     visible: layer.visible,
