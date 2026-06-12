@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
 const source = await readFile(new URL('../client/src/design-studio/blueprint.js', import.meta.url), 'utf8');
+const nailCanvasSource = await readFile(new URL('../client/src/design-studio/NailCanvas.jsx', import.meta.url), 'utf8');
 const blueprint = await import(`data:text/javascript;charset=utf-8,${encodeURIComponent(source)}`);
 
 const {
@@ -58,9 +59,20 @@ function multiNailBlueprint(count) {
           visible: true,
           locked: false,
           opacity: 1,
-          order: 1,
+          order: 2,
           transform: { x: 0.5, y: 0.5, scaleX: 1, scaleY: 1, rotation: 0 },
           data: { tool: 'solid', strokes: [{ id: `stroke-${index + 1}`, points: [{ x: 0.5, y: 0.5 }], colorHex: '#FFFFFF', width: 0.05, opacity: 1 }] },
+        },
+        {
+          id: `inactive-decal-${index + 1}`,
+          type: 'decal',
+          name: `Inactive Decal ${index + 1}`,
+          visible: index % 2 === 0,
+          locked: index % 3 === 0,
+          opacity: 0.73,
+          order: 1,
+          transform: { x: 1.12, y: -0.08, scaleX: 0.41, scaleY: 0.19, rotation: 127 },
+          data: { assetId: 'decal-flower', colorHex: '#ABCDEF', custom: { preserve: true } },
         },
       ],
     })),
@@ -76,6 +88,8 @@ for (const count of [5, 10]) {
   assert.equal(normalized.canvas.activeNailId, 'nail-3', `${count}-nail blueprint keeps a valid activeNailId`);
   assert.equal(normalized.nails[4].layers[1].id, 'drawing-5', `${count}-nail blueprint preserves inactive nail layer ids`);
   assert.deepEqual(normalized.nails[4].layers[1].data.strokes, original.nails[4].layers[1].data.strokes, `${count}-nail blueprint preserves inactive drawing strokes`);
+  assert.deepEqual(normalized.nails[4].layers[2].transform, original.nails[4].layers[2].transform, `${count}-nail blueprint preserves inactive non-uniform and unusual transforms verbatim`);
+  assert.deepEqual(normalized.nails[4].layers.map((layer) => layer.id), original.nails[4].layers.map((layer) => layer.id), `${count}-nail blueprint preserves inactive layer order without renumbering`);
   assert.equal(normalized.nails[4].metadata.originalIndex, 4, `${count}-nail blueprint preserves nail metadata`);
 
   const edited = synchronizeBase(normalized, { baseColorHex: '#AABBCC' });
@@ -88,6 +102,12 @@ for (const count of [5, 10]) {
 
 const invalidActive = ensureBlueprint({ ...multiNailBlueprint(5), canvas: { mode: 'full-set', activeNailId: 'missing' } });
 assert.equal(invalidActive.canvas.activeNailId, 'nail-1', 'normalization repairs invalid activeNailId to a preserved nail');
+assert.deepEqual(invalidActive.nails[4], multiNailBlueprint(5).nails[4], 'inactive backend-valid nails remain byte-equivalent when activeNailId is repaired');
+
+assert(nailCanvasSource.includes('setDrag({ kind: "asset"'), 'NailCanvas uses an explicit asset drag-state variant');
+assert(nailCanvasSource.includes('setDrag({ kind: "drawing"'), 'NailCanvas uses an explicit drawing drag-state variant');
+assert(nailCanvasSource.includes('if (mode === "draw" || mode === "eraser") return;'), 'asset transform pointerMove is guarded during draw and eraser modes');
+assert(nailCanvasSource.includes('pointerEvents={drawingMode ? "none" : "auto"}'), 'full-canvas overlays pass pointer events through in draw and eraser modes');
 
 const drawingDeletedBlueprint = updateActiveNail(createDefaultBlueprint(), (activeNail) => ({
   ...activeNail,

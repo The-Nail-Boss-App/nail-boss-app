@@ -315,6 +315,112 @@ export function getActiveNail(blueprint) {
   return blueprint?.nails?.find((nail) => nail.id === activeId) || blueprint?.nails?.[0];
 }
 
+
+function isFiniteNumber(value) {
+  return typeof value === "number" && Number.isFinite(value);
+}
+
+function isFiniteInteger(value) {
+  return Number.isInteger(value) && Number.isFinite(value);
+}
+
+function isPlainObject(value) {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function isBackendValidInactiveLayer(layer, seenLayerIds) {
+  if (!isPlainObject(layer)) return false;
+  const id = typeof layer.id === "string" ? layer.id.trim() : "";
+  if (!id || seenLayerIds.has(id)) return false;
+  seenLayerIds.add(id);
+  if (!["base", "gradient", "pattern", "drawing", "charm", "decal", "jewel"].includes(layer.type)) return false;
+  if (typeof layer.visible !== "boolean" || typeof layer.locked !== "boolean") return false;
+  if (!isFiniteNumber(layer.opacity) || layer.opacity < 0 || layer.opacity > 1) return false;
+  if (!isFiniteInteger(layer.order)) return false;
+  if (!isPlainObject(layer.transform)) return false;
+  for (const key of ["x", "y", "scaleX", "scaleY", "rotation"]) {
+    if (!isFiniteNumber(layer.transform[key])) return false;
+  }
+  if (!isPlainObject(layer.data)) return false;
+  if (Object.prototype.hasOwnProperty.call(layer.data, "colorHex") && !/^#[0-9a-fA-F]{6}$/.test(layer.data.colorHex || "")) return false;
+  if (Object.prototype.hasOwnProperty.call(layer.data, "effectColorHex") && !/^#[0-9a-fA-F]{6}$/.test(layer.data.effectColorHex || "")) return false;
+  if (layer.type === "base") {
+    if (!/^#[0-9a-fA-F]{6}$/.test(layer.data.colorHex || "")) return false;
+    if (!EFFECTS.includes(layer.data.effect)) return false;
+    if (!/^#[0-9a-fA-F]{6}$/.test(layer.data.effectColorHex || "")) return false;
+  }
+  return true;
+}
+
+function isBackendValidInactiveNail(nail) {
+  if (!isPlainObject(nail)) return false;
+  if (typeof nail.id !== "string" || !nail.id.trim()) return false;
+  if (!SHAPES.includes(nail.shape)) return false;
+  if (!isFiniteNumber(nail.length) || nail.length < 0 || nail.length > 1) return false;
+  if (!isFiniteNumber(nail.width) || nail.width < 0 || nail.width > 1) return false;
+  if (!/^#[0-9a-fA-F]{6}$/.test(nail.baseColorHex || "")) return false;
+  if (!Array.isArray(nail.layers)) return false;
+  const seenLayerIds = new Set();
+  return nail.layers.every((layer) => isBackendValidInactiveLayer(layer, seenLayerIds));
+}
+
+function cloneInactiveNailVerbatim(nail) {
+  return {
+    ...nail,
+    layers: nail.layers.map((layer) => ({
+      ...layer,
+      transform: { ...layer.transform },
+      data: { ...layer.data },
+    })),
+    ...(isPlainObject(nail.metadata) ? { metadata: { ...nail.metadata } } : {}),
+  };
+}
+
+function normalizeEditableNail(raw, fallback, index) {
+  const nail = {
+    id: String(raw.id || `nail-${index + 1}`).trim() || `nail-${index + 1}`,
+    slot: raw.slot || "accent",
+    shape: SHAPES.includes(raw.shape) ? raw.shape : fallback.shape,
+    length: clamp(raw.length ?? fallback.length, 0, 1),
+    width: clamp(raw.width ?? fallback.width, 0, 1),
+    baseColorHex: normalizeHex(raw.baseColorHex, fallback.baseColorHex),
+    layers: Array.isArray(raw.layers) ? raw.layers : [],
+    metadata: raw.metadata && typeof raw.metadata === "object" ? { ...raw.metadata } : undefined,
+  };
+  const hasBase = nail.layers.some((layer) => layer.type === "base");
+  const layers = (hasBase ? nail.layers : [createBaseLayer(nail), ...nail.layers]).map((layer, layerIndex) => {
+    const normalized = {
+      id: String(layer.id || uid(layer.type || "layer")).trim() || uid(layer.type || "layer"),
+      type: layer.type || "decal",
+      name: String(layer.name || layer.type || "Layer").trim(),
+      visible: layer.visible !== false,
+      locked: layer.type === "base" ? true : Boolean(layer.locked),
+      opacity: clamp(layer.opacity ?? 1, 0, 1),
+      order: Number.isFinite(layer.order) ? layer.order : layerIndex,
+      transform: safeTransform(layer.transform || {}, nail, layer.type),
+      data: { ...(layer.data || {}) },
+    };
+    if (normalized.type === "drawing") {
+      normalized.data.strokes = (normalized.data.strokes || []).map((stroke) => ({ ...stroke, points: constrainStrokePoints(stroke.points || [], nail) }));
+    }
+    if (normalized.type === "base") {
+      normalized.id = "base-layer";
+      normalized.name = "Base Color";
+      normalized.locked = true;
+      normalized.order = 0;
+      normalized.data = {
+        colorHex: normalizeHex(normalized.data.colorHex, nail.baseColorHex),
+        effect: EFFECTS.includes(normalized.data.effect) ? normalized.data.effect : "Solid",
+        effectColorHex: normalizeHex(normalized.data.effectColorHex, "#FFFFFF"),
+      };
+      nail.baseColorHex = normalized.data.colorHex;
+    }
+    return normalized;
+  });
+  nail.layers = renumberLayers(layers);
+  return nail;
+}
+
 export function ensureBlueprint(input, design = {}) {
   const fallback = createDefaultBlueprint(design);
   const source = input && typeof input === "object" ? input : fallback;
@@ -322,48 +428,10 @@ export function ensureBlueprint(input, design = {}) {
   const nails = Array.isArray(source.nails) && source.nails.length ? source.nails : fallback.nails;
   const normalizedNails = nails.slice(0, 10).map((raw, index) => {
     const base = fallback.nails[0];
-    const nail = {
-      id: String(raw.id || `nail-${index + 1}`).trim() || `nail-${index + 1}`,
-      slot: raw.slot || "accent",
-      shape: SHAPES.includes(raw.shape) ? raw.shape : base.shape,
-      length: clamp(raw.length ?? base.length, 0, 1),
-      width: clamp(raw.width ?? base.width, 0, 1),
-      baseColorHex: normalizeHex(raw.baseColorHex, base.baseColorHex),
-      layers: Array.isArray(raw.layers) ? raw.layers : [],
-      metadata: raw.metadata && typeof raw.metadata === "object" ? { ...raw.metadata } : undefined,
-    };
-    const hasBase = nail.layers.some((layer) => layer.type === "base");
-    const layers = (hasBase ? nail.layers : [createBaseLayer(nail), ...nail.layers]).map((layer, layerIndex) => {
-      const normalized = {
-        id: String(layer.id || uid(layer.type || "layer")).trim() || uid(layer.type || "layer"),
-        type: layer.type || "decal",
-        name: String(layer.name || layer.type || "Layer").trim(),
-        visible: layer.visible !== false,
-        locked: layer.type === "base" ? true : Boolean(layer.locked),
-        opacity: clamp(layer.opacity ?? 1, 0, 1),
-        order: Number.isFinite(layer.order) ? layer.order : layerIndex,
-        transform: safeTransform(layer.transform || {}, nail, layer.type),
-        data: { ...(layer.data || {}) },
-      };
-      if (normalized.type === "drawing") {
-        normalized.data.strokes = (normalized.data.strokes || []).map((stroke) => ({ ...stroke, points: constrainStrokePoints(stroke.points || [], nail) }));
-      }
-      if (normalized.type === "base") {
-        normalized.id = "base-layer";
-        normalized.name = "Base Color";
-        normalized.locked = true;
-        normalized.order = 0;
-        normalized.data = {
-          colorHex: normalizeHex(normalized.data.colorHex, nail.baseColorHex),
-          effect: EFFECTS.includes(normalized.data.effect) ? normalized.data.effect : "Solid",
-          effectColorHex: normalizeHex(normalized.data.effectColorHex, "#FFFFFF"),
-        };
-        nail.baseColorHex = normalized.data.colorHex;
-      }
-      return normalized;
-    });
-    nail.layers = renumberLayers(layers);
-    return nail;
+    const rawId = typeof raw?.id === "string" ? raw.id.trim() : "";
+    const isActive = rawId && rawId === activeId;
+    if (!isActive && isBackendValidInactiveNail(raw)) return cloneInactiveNailVerbatim(raw);
+    return normalizeEditableNail(raw || {}, base, index);
   });
   return {
     schemaVersion: 1,
