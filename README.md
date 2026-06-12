@@ -138,9 +138,82 @@ Server-side validation rejects malformed or oversized blueprint payloads safely.
 
 Safe `400` responses are returned for invalid blueprints, malformed JSON, and validation failures without exposing SQL internals or stack traces.
 
-#### Milestone 4 note
+#### Milestone 4 visual Design Studio
 
-Advanced visual editing tools are intentionally not part of this milestone. Milestone 4 should build the interactive editor on top of this persisted blueprint document: nail selector/full-set mode, layer panel, drag/scale/rotate controls, drawing tools, reusable asset palettes, and preview rendering for the supported layer types.
+Milestone 4 turns the single-nail React studio into a Canva-style layered visual editor backed by the Nail Blueprint API. It remains a **single-nail** workflow; five-nail and ten-nail full-set editing is intentionally deferred to Milestone 5.
+
+**Audit findings before implementation:**
+
+- The previous `client/src/DesignStudio.jsx` was a self-contained component with inline constants, inline `NailSVG`, local form state, validation, and a `POST /api/designs` save handler.
+- `NailSVG` built an SVG path from shape, length, and width sliders, then filled the path with base polish/effect definitions. It did not render persisted blueprint layers.
+- Saving created only a compatible flat design using `POST /api/designs`; it reset the form after success and did not call `PUT /api/designs/:id/blueprint`.
+- The existing blueprint API already returned and replaced version-1 documents through `GET /api/designs/:id/blueprint` and `PUT /api/designs/:id/blueprint`, with server-side validation and legacy flat-field synchronization.
+- Compatibility risks were preserving flat cards/proposals, preventing non-base art from overwriting `baseColorHex`, keeping existing shape/effect names valid, and ensuring older flat designs still receive default blueprints.
+- The old studio was large enough to split; Milestone 4 now separates state, canvas rendering, panels, assets, drawing controls, and styles.
+
+**Component structure:**
+
+- `client/src/DesignStudio.jsx` is a compatibility re-export for the app shell.
+- `client/src/design-studio/DesignStudio.jsx` owns save/load workflow, blueprint state, undo/redo history, and panel orchestration.
+- `client/src/design-studio/NailCanvas.jsx` renders the responsive SVG canvas, strict nail clipping, selected-layer outline, dragging, and freehand pointer input.
+- `client/src/design-studio/LayersPanel.jsx` manages layer selection, visibility, lock state, ordering, and deletion.
+- `client/src/design-studio/AssetLibrary.jsx` exposes original inline starter SVG assets.
+- `client/src/design-studio/PropertiesPanel.jsx` edits selected-layer metadata, opacity, color, position, size, rotation, gradient settings, and pattern settings.
+- `client/src/design-studio/DrawingToolbar.jsx` controls pen type, brush size, brush color, opacity, and eraser mode.
+- `client/src/design-studio/blueprint.js` contains pure blueprint helpers, normalized transforms, default documents, flat-field synchronization helpers, strict-fit clamping, and future product-use quantity summaries.
+- `client/src/design-studio/assets.js` contains original generic SVG asset definitions for charms, jewels, and decals.
+- `client/src/design-studio/studioStyles.js` contains editor-specific inline style helpers that reuse the existing AnitaSet tokens.
+
+**Supported visual layer types:**
+
+- `base` — locked base polish layer synchronized with nail shape, length, width, base color, base effect, effect color, and tags.
+- `charm`, `jewel`, and `decal` — original reusable SVG assets with selection, strict-fit drag, resize, rotation, opacity, color, duplicate, delete, visibility, lock, and reorder controls.
+- `drawing` — editable vector strokes with normalized point data, solid/glitter/soft brush options, brush size, brush color, opacity, and a simple nearest-stroke eraser workflow.
+- `gradient` — lightweight SVG-native overlay with two colors, direction, opacity, visibility, lock, reorder, and delete controls.
+- `pattern` — dots, stripes, checker, french-tip guide, glitter overlay, and marble accent patterns rendered as SVG patterns.
+
+**Starter asset categories:**
+
+- Charms: bow, heart, star, flower, butterfly, moon, crown, and chain link.
+- Jewels: round rhinestone, oval rhinestone, teardrop rhinestone, square gem, pearl, and crystal cluster.
+- Decals: smiley face, flame, lightning bolt, lips, checker accent, abstract swirl, tiny flower, and sparkle.
+
+All starter assets are generic inline SVG shapes stored in the repository. No external URLs, branded icons, licensed marketplace assets, or bitmap screenshots are required for persistence.
+
+**Realistic nail-surface boundaries:**
+
+- The active nail silhouette is treated as a hard physical design boundary. Every visual art layer is rendered through an SVG clipping path.
+- Asset transforms are normalized and clamped in strict-fit mode so x/y positions and scale stay within safe ranges as the canvas responsively scales.
+- Shape, length, and width changes rebuild the nail path and re-clamp existing transforms. When an item needs adjustment after a geometry change, the editor shows a non-blocking notice.
+- Freehand strokes stop visually at the nail edge because drawing layers are clipped to the same active nail path.
+- Pattern and gradient layers fill only the nail surface. Selected-layer outlines are bounded to the clipped canvas context and do not persist as artwork.
+
+**Save/load workflow:**
+
+- New design: enter a name, create layered art, click Save, create the legacy flat design with `POST /api/designs`, then immediately save the editable blueprint with `PUT /api/designs/:id/blueprint`. The new design remains loaded in edit mode.
+- Edit saved design: select an existing design, fetch its blueprint with `GET /api/designs/:id/blueprint`, edit layers, then save the full version-1 document with `PUT /api/designs/:id/blueprint`.
+- The editor shows loading, saving, saved, unsaved-change, and safe error states. It confirms before replacing unsaved work when loading another design or starting a new one.
+
+**Undo/redo scope:**
+
+Undo and redo are local only, capped to a small in-memory history, and are reset when another saved design is loaded. History covers meaningful blueprint edits such as layer add/delete/duplicate/reorder, property edits, visibility, lock state, drawing strokes, pattern/gradient edits, and base geometry changes. Undo history is not persisted to PostgreSQL.
+
+**Product-use planning hooks:**
+
+Milestone 4 does not build a full cost estimator. It preserves the data needed for a later estimator: nail shape, length, width, normalized surface-aware transforms, asset IDs, charm/jewel/decal quantities, vector strokes, and pattern/gradient settings. A future milestone can approximate polish coverage by nail surface area and drawing/pattern coverage while counting placed supplies. An advanced controlled-overhang mode may be added later for experienced artists, but it should include warnings, limits, and explicit opt-in because the Milestone 4 MVP uses strict-fit mode.
+
+**Known limitations:**
+
+- This milestone edits one active nail (`canvas.activeNailId`) only. Multi-nail set editing arrives in Milestone 5.
+- Existing saved design names are not renamed by blueprint saves because the current API exposes create/delete plus blueprint update, not a flat design rename endpoint.
+- The eraser workflow removes the nearest stroke in the selected drawing layer rather than doing partial path boolean erasure.
+- Strict-fit clamping uses conservative normalized bounds instead of exact point-in-path collision for every rotated asset vertex.
+- The project does not include a dedicated frontend unit-test harness beyond Create React App build validation; deterministic blueprint helpers are kept isolated for future tests without adding dependencies.
+
+**Accessibility notes:**
+
+- Controls use native buttons, inputs, ranges, color pickers, and selects where practical.
+- The editable nail canvas has an accessible image label, while layer editing remains primarily pointer-driven in this MVP. Keyboard nudging and richer ARIA canvas semantics should be considered in a future accessibility pass.
 
 ## API routes
 
