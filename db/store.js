@@ -203,6 +203,7 @@ function validateAndNormalizeBlueprint(input) {
     }
     const seenLayerIds = new Set();
     const layers = nail.layers.map((layer, layerIndex) => normalizeLayer(layer, nailIndex, layerIndex, seenLayerIds));
+    const nailMetadata = isPlainObject(nail.metadata) ? { ...nail.metadata } : undefined;
     return {
       id: normalizedNailId,
       slot: typeof nail.slot === "string" && nail.slot.trim() ? nail.slot.trim() : `nail-${nailIndex + 1}`,
@@ -211,6 +212,7 @@ function validateAndNormalizeBlueprint(input) {
       width: Number(nail.width),
       baseColorHex: nail.baseColorHex,
       layers,
+      ...(nailMetadata ? { metadata: nailMetadata } : {}),
     };
   });
 

@@ -320,7 +320,7 @@ export function ensureBlueprint(input, design = {}) {
   const source = input && typeof input === "object" ? input : fallback;
   const activeId = source.canvas?.activeNailId || source.nails?.[0]?.id || "nail-1";
   const nails = Array.isArray(source.nails) && source.nails.length ? source.nails : fallback.nails;
-  const normalizedNails = nails.slice(0, 1).map((raw, index) => {
+  const normalizedNails = nails.slice(0, 10).map((raw, index) => {
     const base = fallback.nails[0];
     const nail = {
       id: String(raw.id || `nail-${index + 1}`).trim() || `nail-${index + 1}`,
@@ -330,6 +330,7 @@ export function ensureBlueprint(input, design = {}) {
       width: clamp(raw.width ?? base.width, 0, 1),
       baseColorHex: normalizeHex(raw.baseColorHex, base.baseColorHex),
       layers: Array.isArray(raw.layers) ? raw.layers : [],
+      metadata: raw.metadata && typeof raw.metadata === "object" ? { ...raw.metadata } : undefined,
     };
     const hasBase = nail.layers.some((layer) => layer.type === "base");
     const layers = (hasBase ? nail.layers : [createBaseLayer(nail), ...nail.layers]).map((layer, layerIndex) => {
@@ -471,6 +472,37 @@ export function drawingLayer(nail, tool = "solid") {
 
 export function addLayerToBlueprint(blueprint, layer) {
   return updateActiveNail(blueprint, (nail) => ({ ...nail, layers: renumberLayers([...nail.layers, { ...layer, order: nail.layers.length }]) }));
+}
+
+export function addStrokeToDrawingLayer(blueprint, stroke, tool = "solid", preferredLayerId = "") {
+  let drawingId = preferredLayerId || "";
+  let created = false;
+  const next = updateActiveNail(blueprint, (nail) => {
+    const preferred = drawingId
+      ? nail.layers.find((layer) => layer.id === drawingId && layer.type === "drawing" && !layer.locked)
+      : null;
+    const drawing = preferred || nail.layers.find((layer) => layer.type === "drawing" && !layer.locked);
+    if (drawing) {
+      drawingId = drawing.id;
+      return {
+        ...nail,
+        layers: nail.layers.map((layer) => (layer.id === drawing.id
+          ? { ...layer, data: { ...layer.data, tool, strokes: [...(layer.data?.strokes || []), stroke] } }
+          : layer)),
+      };
+    }
+    const layer = drawingLayer(nail, tool);
+    drawingId = layer.id;
+    created = true;
+    return {
+      ...nail,
+      layers: renumberLayers([
+        ...nail.layers,
+        { ...layer, data: { ...layer.data, tool, strokes: [stroke] }, order: nail.layers.length },
+      ]),
+    };
+  });
+  return { blueprint: next, layerId: drawingId, created };
 }
 
 export function quantitySummary(blueprint) {

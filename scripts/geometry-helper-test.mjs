@@ -6,6 +6,7 @@ const blueprint = await import(`data:text/javascript;charset=utf-8,${encodeURICo
 
 const {
   SHAPES,
+  addStrokeToDrawingLayer,
   assetFitsNailSilhouette,
   assetLayer,
   buildNailPath,
@@ -20,7 +21,90 @@ const {
   quantitySummary,
   revalidateLayersAfterNailResize,
   safeTransform,
+  flatDesignFromBlueprint,
+  synchronizeBase,
+  updateActiveNail,
 } = blueprint;
+
+
+function multiNailBlueprint(count) {
+  return {
+    schemaVersion: 1,
+    canvas: { mode: 'full-set', activeNailId: 'nail-3' },
+    nails: Array.from({ length: count }, (_, index) => ({
+      id: `nail-${index + 1}`,
+      slot: `slot-${index + 1}`,
+      shape: SHAPES[index % SHAPES.length],
+      length: Number((0.2 + index * 0.03).toFixed(2)),
+      width: Number((0.3 + index * 0.02).toFixed(2)),
+      baseColorHex: `#${String(index + 1).repeat(6).slice(0, 6)}`,
+      metadata: { originalIndex: index },
+      layers: [
+        {
+          id: 'base-layer',
+          type: 'base',
+          name: 'Base Color',
+          visible: true,
+          locked: true,
+          opacity: 1,
+          order: 0,
+          transform: { x: 0.5, y: 0.5, scaleX: 1, scaleY: 1, rotation: 0 },
+          data: { colorHex: `#${String(index + 1).repeat(6).slice(0, 6)}`, effect: 'Solid', effectColorHex: '#FFFFFF' },
+        },
+        {
+          id: `drawing-${index + 1}`,
+          type: 'drawing',
+          name: `Drawing ${index + 1}`,
+          visible: true,
+          locked: false,
+          opacity: 1,
+          order: 1,
+          transform: { x: 0.5, y: 0.5, scaleX: 1, scaleY: 1, rotation: 0 },
+          data: { tool: 'solid', strokes: [{ id: `stroke-${index + 1}`, points: [{ x: 0.5, y: 0.5 }], colorHex: '#FFFFFF', width: 0.05, opacity: 1 }] },
+        },
+      ],
+    })),
+    metadata: { tags: ['multi-nail'] },
+  };
+}
+
+for (const count of [5, 10]) {
+  const original = multiNailBlueprint(count);
+  const normalized = ensureBlueprint(original);
+  assert.equal(normalized.nails.length, count, `${count}-nail blueprint preserves all nails during normalization`);
+  assert.deepEqual(normalized.nails.map((item) => item.id), original.nails.map((item) => item.id), `${count}-nail blueprint preserves nail order and ids`);
+  assert.equal(normalized.canvas.activeNailId, 'nail-3', `${count}-nail blueprint keeps a valid activeNailId`);
+  assert.equal(normalized.nails[4].layers[1].id, 'drawing-5', `${count}-nail blueprint preserves inactive nail layer ids`);
+  assert.deepEqual(normalized.nails[4].layers[1].data.strokes, original.nails[4].layers[1].data.strokes, `${count}-nail blueprint preserves inactive drawing strokes`);
+  assert.equal(normalized.nails[4].metadata.originalIndex, 4, `${count}-nail blueprint preserves nail metadata`);
+
+  const edited = synchronizeBase(normalized, { baseColorHex: '#AABBCC' });
+  assert.equal(edited.nails.length, count, `${count}-nail active edit keeps all nails`);
+  assert.equal(edited.nails[2].baseColorHex, '#AABBCC', `${count}-nail active edit changes active nail only`);
+  assert.equal(edited.nails[4].baseColorHex, original.nails[4].baseColorHex, `${count}-nail active edit leaves inactive nail flat fields unchanged`);
+  assert.deepEqual(edited.nails[4].layers, normalized.nails[4].layers, `${count}-nail active edit leaves inactive nail layers unchanged`);
+  assert.equal(flatDesignFromBlueprint(edited).baseColorHex, '#AABBCC', `${count}-nail legacy flat fields sync from active nail only`);
+}
+
+const invalidActive = ensureBlueprint({ ...multiNailBlueprint(5), canvas: { mode: 'full-set', activeNailId: 'missing' } });
+assert.equal(invalidActive.canvas.activeNailId, 'nail-1', 'normalization repairs invalid activeNailId to a preserved nail');
+
+const drawingDeletedBlueprint = updateActiveNail(createDefaultBlueprint(), (activeNail) => ({
+  ...activeNail,
+  layers: activeNail.layers.filter((layer) => layer.type !== 'drawing'),
+}));
+const firstStroke = { id: 'first-stroke', points: [{ x: 0.5, y: 0.5 }], colorHex: '#FFFFFF', width: 0.05, opacity: 1, tool: 'solid' };
+const recreated = addStrokeToDrawingLayer(drawingDeletedBlueprint, firstStroke, 'solid', 'deleted-layer-id');
+const recreatedNail = getActiveNail(recreated.blueprint);
+const drawingLayers = recreatedNail.layers.filter((layer) => layer.type === 'drawing');
+assert.equal(recreated.created, true, 'first stroke creates a replacement drawing layer when the prior layer was deleted');
+assert.equal(drawingLayers.length, 1, 'first stroke recreation does not leave duplicate empty drawing layers');
+assert.equal(drawingLayers[0].data.strokes.length, 1, 'first stroke is inserted into the recreated drawing layer atomically');
+assert.equal(drawingLayers[0].data.strokes[0].id, 'first-stroke', 'first stroke survives the drawing-layer recreation transition');
+const secondStroke = { ...firstStroke, id: 'second-stroke' };
+const appended = addStrokeToDrawingLayer(recreated.blueprint, secondStroke, 'solid', recreated.layerId);
+assert.equal(getActiveNail(appended.blueprint).layers.filter((layer) => layer.type === 'drawing').length, 1, 'subsequent strokes reuse the editable drawing layer');
+assert.equal(getActiveNail(appended.blueprint).layers.find((layer) => layer.type === 'drawing').data.strokes.length, 2, 'subsequent strokes append without creating duplicate layers');
 
 const nail = { id: 'nail-1', shape: 'Almond', length: 0.55, width: 0.5, layers: [] };
 const pathPoint = normalizedToSvg({ x: 0.5, y: 0.5 }, nail);

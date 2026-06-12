@@ -140,7 +140,7 @@ Safe `400` responses are returned for invalid blueprints, malformed JSON, and va
 
 #### Milestone 4 visual Design Studio
 
-Milestone 4 turns the single-nail React studio into a Canva-style layered visual editor backed by the Nail Blueprint API. It remains a **single-nail** workflow; five-nail and ten-nail full-set editing is intentionally deferred to Milestone 5.
+Milestone 4 turns the React studio into a Canva-style layered visual editor backed by the Nail Blueprint API. It remains a **single-active-nail** workflow; five-nail and ten-nail full-set selection/editing is intentionally deferred to Milestone 5, but Milestone 4 loads, normalizes, saves, and round-trips the full multi-nail Nail Blueprint document without deleting inactive nails.
 
 **Audit findings before implementation:**
 
@@ -188,8 +188,14 @@ All starter assets are generic inline SVG shapes stored in the repository. No ex
 - The browser-visible nail path and the testable helper model use the same supported shape family (Almond, Coffin, Square, Stiletto, and Oval). The helper model approximates each path with a normalized half-width curve instead of browser-only SVG path APIs; this keeps placement deterministic in Node tests and future backend/product-use calculations.
 - Charms, jewels, and decals are checked with multiple transformed boundary samples around the rotated asset box, not only the center point. If a layer would overhang a curved sidewall, coffin edge, narrow stiletto tip, resized oval, or shortened nail, strict-fit mode repositions it and, when needed, reduces scale until the sampled boundary fits.
 - Shape, length, and width changes rebuild the nail path and revalidate existing asset transforms plus drawing strokes. When artwork is adjusted after a geometry change, the editor shows a non-blocking notice that AnitaSet kept the artwork inside the updated boundary.
-- Freehand drawing input is projected into the active silhouette before stroke points are persisted. Drawing layers are still clipped to the SVG path as a second safety layer, but saved/reloaded stroke data contains only valid visible nail-surface points.
+- Freehand drawing input is projected into the active silhouette before stroke points are persisted. Drawing layers are still clipped to the SVG path as a second safety layer, but saved/reloaded stroke data contains only valid visible nail-surface points. If draw mode is active after the previous drawing layer was deleted, the first completed stroke creates the replacement drawing layer and inserts that stroke in the same blueprint/history transition, so the user does not need to draw twice and undo/redo treats it as one meaningful edit.
 - Pattern and gradient layers fill only the clipped nail surface. Selected-layer outlines and editor handles may appear outside the nail as controls, but they do not persist as artwork.
+
+**Single-active-nail editing and full-document preservation:**
+
+- The current canvas renders and edits only `canvas.activeNailId`; legacy flat fields are synchronized from that active nail/base layer only. This keeps the Milestone 4 UI focused while preparing the state model for Milestone 5 full-set nail selection.
+- Blueprint normalization preserves nail order and up to the backend limit of 10 nails. Inactive nails keep their `id`, `slot`, `shape`, `length`, `width`, `baseColorHex`, `layers`, transforms, and nail-level metadata unless strict-fit validation must adjust invalid geometry for server-safe persistence.
+- Loading a five- or ten-nail blueprint, editing only the active nail, saving, and reloading should keep every inactive nail intact. A no-op load/save should not delete inactive nails or convert a full-set document into a single-nail document. If `activeNailId` is missing or invalid, normalization repairs it to a preserved nail rather than dropping nails.
 
 **Save/load workflow:**
 
@@ -211,8 +217,7 @@ Milestone 4 does not build a full cost estimator. It preserves the data needed f
 
 **Known limitations:**
 
-- This milestone edits one active nail (`canvas.activeNailId`) only. Multi-nail set editing arrives in Milestone 5.
-- Existing saved design names are not renamed by blueprint saves because the current API exposes create/delete plus blueprint update, not a flat design rename endpoint.
+- This milestone edits one active nail (`canvas.activeNailId`) only while preserving all nails in the loaded blueprint. Multi-nail set selection, per-finger navigation, and simultaneous full-set editing arrive in Milestone 5.
 - The eraser workflow removes the nearest stroke in the selected drawing layer rather than doing partial path boolean erasure.
 - Strict-fit collision uses deterministic shape-specific half-width curves and sampled transformed asset boundaries rather than exact SVG path boolean operations; it is intentionally conservative near curved edges and narrow tips.
 - The project does not introduce a large frontend unit-test framework. A lightweight deterministic geometry helper test runs in Node without browser APIs.
@@ -241,6 +246,7 @@ Designs:
 - `GET /api/designs/:id` — fetch one design.
 - `POST /api/designs` — create a flat-compatible design and default blueprint for legacy callers.
 - `POST /api/designs/with-blueprint` — atomically create a design with a complete validated Nail Blueprint document; rolls back the design if validation or blueprint persistence fails.
+- `PUT /api/designs/:id/with-blueprint` — atomically update editable flat design fields and the complete Nail Blueprint document; rolls back both writes if either side fails.
 - `DELETE /api/designs/:id` — delete a design and cascade related proposals/history.
 - `GET /api/designs/:id/blueprint` — fetch the versioned Nail Blueprint document for one design.
 - `PUT /api/designs/:id/blueprint` — validate and replace the complete Nail Blueprint document, then synchronize legacy flat design fields.
@@ -371,7 +377,7 @@ The test script intentionally sets `ANITASET_TEST_DB_FILE=.tmp/smoke-test-db.jso
 - Status history.
 - Persistence across restart using the explicit test-only file fallback.
 - Automatic default blueprint creation for flat saved designs.
-- Blueprint GET/PUT round-trips with all supported future layer types.
+- Blueprint GET/PUT round-trips with all supported future layer types, including five- and ten-nail preservation, active-nail-only edits, active `activeNailId` validity, and no-op multi-nail load/save preservation.
 - Atomic create-with-blueprint success, invalid-blueprint rollback, oversized-blueprint rollback, simulated blueprint-persistence rollback, and no orphan default designs after failed atomic creates.
 - Legacy flat-field synchronization from the active nail base layer.
 - Safe 400 responses for invalid blueprints.

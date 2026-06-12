@@ -10,10 +10,10 @@ import {
   EFFECTS,
   SHAPES,
   addLayerToBlueprint,
+  addStrokeToDrawingLayer,
   assetLayer,
   clamp,
   createDefaultBlueprint,
-  drawingLayer,
   ensureBlueprint,
   flatDesignFromBlueprint,
   getActiveNail,
@@ -218,21 +218,10 @@ export default function DesignStudio() {
     setTab("properties");
   }
 
-  function ensureDrawingLayer() {
-    const existing = activeNail.layers.find((layer) => layer.type === "drawing" && !layer.locked);
-    if (existing) return existing;
-    const layer = drawingLayer(activeNail, brush.tool);
-    const next = addLayerToBlueprint(blueprint, layer);
-    setBlueprint(ensureBlueprint(next));
-    setSelectedLayerId(layer.id);
-    setDirty(true);
-    return layer;
-  }
-
   function addStroke(stroke) {
-    const drawing = selectedLayer?.type === "drawing" && !selectedLayer.locked ? selectedLayer : ensureDrawingLayer();
-    const next = updateActiveNail(blueprint, (nail) => ({ ...nail, layers: nail.layers.map((layer) => layer.id === drawing.id ? { ...layer, data: { ...layer.data, tool: brush.tool, strokes: [...(layer.data.strokes || []), stroke] } } : layer) }));
-    commit(next, { selectLayerId: drawing.id });
+    const preferredLayerId = selectedLayer?.type === "drawing" && !selectedLayer.locked ? selectedLayer.id : selectedLayerId;
+    const result = addStrokeToDrawingLayer(blueprint, stroke, brush.tool, preferredLayerId);
+    commit(result.blueprint, { selectLayerId: result.layerId });
   }
 
   function eraseStroke(point) {
@@ -370,7 +359,7 @@ export default function DesignStudio() {
       <button type="button" onClick={undo} disabled={!canUndo} style={UI.iconButton(false, !canUndo)}>Undo</button>
       <button type="button" onClick={redo} disabled={!canRedo} style={UI.iconButton(false, !canRedo)}>Redo</button>
       <button type="button" onClick={() => setMode("select")} style={UI.iconButton(mode === "select")}>Select</button>
-      <button type="button" onClick={() => { setMode("draw"); ensureDrawingLayer(); }} style={UI.iconButton(mode === "draw")}>Draw</button>
+      <button type="button" onClick={() => setMode("draw")} style={UI.iconButton(mode === "draw")}>Draw</button>
       <button type="button" onClick={() => setMode("eraser")} style={UI.iconButton(mode === "eraser")}>Eraser</button>
       <button type="button" onClick={addGradient} style={UI.iconButton(false)}>Add gradient</button>
       <button type="button" onClick={addPattern} style={UI.iconButton(false)}>Add pattern</button>

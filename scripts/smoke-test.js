@@ -105,6 +105,51 @@ function layeredBlueprint() {
 }
 
 
+function multiNailBlueprint(count, activeIndex = 2) {
+  const shapes = ["Almond", "Coffin", "Square", "Stiletto", "Oval"];
+  return {
+    schemaVersion: 1,
+    canvas: { mode: "full-set", activeNailId: `multi-nail-${activeIndex + 1}` },
+    nails: Array.from({ length: count }, (_value, index) => {
+      const hex = `#${String(index + 1).repeat(6).slice(0, 6)}`;
+      return {
+        id: `multi-nail-${index + 1}`,
+        slot: `slot-${index + 1}`,
+        shape: shapes[index % shapes.length],
+        length: Number((0.25 + index * 0.04).toFixed(2)),
+        width: Number((0.3 + index * 0.03).toFixed(2)),
+        baseColorHex: hex,
+        metadata: { originalIndex: index, label: `Nail ${index + 1}` },
+        layers: [
+          {
+            id: "base-layer",
+            type: "base",
+            name: "Base Color",
+            visible: true,
+            locked: true,
+            opacity: 1,
+            order: 0,
+            transform: { x: 0.5, y: 0.5, scaleX: 1, scaleY: 1, rotation: 0 },
+            data: { colorHex: hex, effect: index === activeIndex ? "CatEye" : "Solid", effectColorHex: "#FFFFFF" },
+          },
+          {
+            id: `inactive-art-${index + 1}`,
+            type: "decal",
+            name: `Decal ${index + 1}`,
+            visible: true,
+            locked: false,
+            opacity: 0.85,
+            order: 1,
+            transform: { x: 0.5, y: 0.5, scaleX: 0.08, scaleY: 0.08, rotation: index * 7 },
+            data: { assetId: "sparkle", colorHex: "#ABCDEF", label: `payload-${index + 1}` },
+          },
+        ],
+      };
+    }),
+    metadata: { tags: ["multi-nail", `${count}-nails`] },
+  };
+}
+
 function whitespaceLayerBlueprint() {
   const blueprint = layeredBlueprint();
   blueprint.nails[0].layers = blueprint.nails[0].layers.slice(0, 2).map((layer, index) => ({
@@ -482,9 +527,44 @@ async function runFlow() {
   assert(res.body.effectColorHex === "#ABCDEF", "legacy effectColorHex should sync from active base layer");
   assert(res.body.tags.includes("layered"), "legacy tags should sync from blueprint metadata");
 
+
+  for (const count of [5, 10]) {
+    const multi = multiNailBlueprint(count);
+    res = await request("PUT", `/api/designs/${designId}/blueprint`, multi);
+    assert(res.status === 200, `${count}-nail blueprint should save successfully`);
+    assert(res.body.document.nails.length === count, `${count}-nail blueprint should preserve all nails on save`);
+    assert(res.body.document.canvas.activeNailId === "multi-nail-3", `${count}-nail blueprint should keep activeNailId valid`);
+    assert(res.body.document.nails.map((nail) => nail.id).join(",") === multi.nails.map((nail) => nail.id).join(","), `${count}-nail blueprint should preserve nail ordering`);
+    assert(res.body.document.nails[count - 1].layers[1].id === `inactive-art-${count}`, `${count}-nail blueprint should preserve inactive nail layer ids`);
+    assert(res.body.document.nails[count - 1].layers[1].transform.rotation === (count - 1) * 7, `${count}-nail blueprint should preserve inactive transforms`);
+    assert(res.body.document.nails[count - 1].metadata.originalIndex === count - 1, `${count}-nail blueprint should preserve nail metadata`);
+
+    const noOpRoundTrip = res.body.document;
+    res = await request("PUT", `/api/designs/${designId}/blueprint`, noOpRoundTrip);
+    assert(res.status === 200, `${count}-nail no-op blueprint save should succeed`);
+    assert(JSON.stringify(res.body.document.nails) === JSON.stringify(noOpRoundTrip.nails), `${count}-nail no-op save should not modify or delete inactive nails`);
+
+    const activeOnlyEdit = JSON.parse(JSON.stringify(noOpRoundTrip));
+    activeOnlyEdit.nails[2].shape = "Oval";
+    activeOnlyEdit.nails[2].baseColorHex = "#AABBCC";
+    activeOnlyEdit.nails[2].layers[0].data.colorHex = "#AABBCC";
+    res = await request("PUT", `/api/designs/${designId}/blueprint`, activeOnlyEdit);
+    assert(res.status === 200, `${count}-nail active-only edit should save successfully`);
+    assert(res.body.document.nails.length === count, `${count}-nail active-only edit should keep all nails`);
+    assert(res.body.document.nails[2].baseColorHex === "#AABBCC", `${count}-nail active-only edit should update the active nail`);
+    assert(JSON.stringify(res.body.document.nails[count - 1]) === JSON.stringify(noOpRoundTrip.nails[count - 1]), `${count}-nail active-only edit should preserve inactive nail data exactly`);
+
+    res = await request("GET", `/api/designs/${designId}`);
+    assert(res.status === 200, `${count}-nail active-only edit should keep design readable`);
+    assert(res.body.baseColorHex === "#AABBCC", `${count}-nail flat base color should sync from active nail only`);
+  }
+
   res = await request("PUT", `/api/designs/${designId}/blueprint`, { ...blueprint, nails: [] });
   assert(res.status === 400, "invalid blueprints should return safe 400 responses");
   assert(res.body.error && !res.body.error.includes("SELECT"), "invalid blueprint error should not expose SQL internals");
+
+  res = await request("PUT", `/api/designs/${designId}/blueprint`, blueprint);
+  assert(res.status === 200, "single-nail layered blueprint should be restorable after multi-nail preservation checks");
 
   res = await request("POST", "/api/proposals", {
     designId,
