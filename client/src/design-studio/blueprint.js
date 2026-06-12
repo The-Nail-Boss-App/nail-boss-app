@@ -121,15 +121,153 @@ export function svgToNormalized(point, nail) {
   return { x: clamp((point.x - g.left) / g.width, 0, 1), y: clamp((point.y - g.topY) / g.height, 0, 1) };
 }
 
-export function safeTransform(transform = {}, nail, layerType = "asset") {
-  const size = Math.max(Math.abs(transform.scaleX ?? 0.18), Math.abs(transform.scaleY ?? 0.18));
+const ASSET_LAYER_TYPES = new Set(["charm", "jewel", "decal"]);
+const ASSET_MIN_SCALE = 0.06;
+
+function roundPoint(point) {
+  return { x: Number(point.x.toFixed(6)), y: Number(point.y.toFixed(6)) };
+}
+
+function normalizedHalfWidthAtY(shape = "Almond", yValue = 0.5) {
+  const y = clamp(yValue, 0, 1);
+  switch (shape) {
+    case "Square": {
+      const corner = 0.055;
+      if (y < corner) return 0.5 - corner + Math.sqrt(Math.max(0, corner * corner - (corner - y) ** 2));
+      if (y > 1 - corner) return 0.5 - corner + Math.sqrt(Math.max(0, corner * corner - (y - (1 - corner)) ** 2));
+      return 0.5;
+    }
+    case "Coffin":
+      return y < 0.89 ? 0.5 - y * 0.08 : 0.428 - ((y - 0.89) / 0.11) * 0.218;
+    case "Stiletto":
+      return 0.5 * (1 - y ** 1.72) * Math.sin(Math.PI * (0.08 + y * 0.84)) ** 0.24;
+    case "Oval":
+      return 0.5 * Math.sin(Math.PI * y) ** 0.36;
+    case "Almond":
+    default:
+      return 0.5 * Math.sin(Math.PI * y) ** 0.48 * (1 - 0.28 * y ** 1.7);
+  }
+}
+
+/**
+ * Lightweight silhouette model used for strict-fit validation.
+ *
+ * The renderer still uses buildNailPath() and SVG clipping for visual safety, while the
+ * helpers below use a deterministic normalized half-width curve per supported shape. The
+ * curves intentionally approximate the same silhouettes without browser path APIs so
+ * save/load, tests, and future product-use estimators can reason about valid nail-surface
+ * geometry in Node as well as the browser. Editor handles may sit outside this model; saved
+ * artwork and drawing points may not.
+ */
+export function isPointInsideNailSilhouette(point, nail) {
+  const x = Number(point?.x);
+  const y = Number(point?.y);
+  if (!Number.isFinite(x) || !Number.isFinite(y) || x < 0 || x > 1 || y < 0 || y > 1) return false;
+  const half = Math.max(0, normalizedHalfWidthAtY(nail?.shape, y));
+  return Math.abs(x - 0.5) <= half + 0.000001;
+}
+
+export function projectPointInsideNailSilhouette(point, nail) {
+  const y = clamp(point?.y ?? 0.5, 0, 1);
+  const half = Math.max(0.000001, normalizedHalfWidthAtY(nail?.shape, y));
+  return roundPoint({ x: clamp(point?.x ?? 0.5, 0.5 - half, 0.5 + half), y });
+}
+
+function assetBoundaryPoints(transform = {}, nail) {
+  const g = getNailGeometry(nail);
+  const rotation = ((transform.rotation ?? 0) * Math.PI) / 180;
+  const renderedSize = Math.min(g.width, g.height) * Math.abs(transform.scaleX ?? 0.18);
+  const halfX = (renderedSize / g.width) / 2;
+  const halfY = (renderedSize / g.height) / 2;
+  const cos = Math.cos(rotation);
+  const sin = Math.sin(rotation);
+  const samples = [
+    [-1, -1], [0, -1], [1, -1], [1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [0, 0],
+  ];
+  return samples.map(([sx, sy]) => {
+    const dx = sx * halfX;
+    const dy = sy * halfY;
+    return { x: (transform.x ?? 0.5) + dx * cos - dy * sin, y: (transform.y ?? 0.5) + dx * sin + dy * cos };
+  });
+}
+
+export function assetFitsNailSilhouette(transform = {}, nail, layer = {}) {
+  if (!ASSET_LAYER_TYPES.has(layer.type || layer)) return true;
+  return assetBoundaryPoints(transform, nail).every((point) => isPointInsideNailSilhouette(point, nail));
+}
+
+function fitSearch(transform, nail, layer) {
+  if (assetFitsNailSilhouette(transform, nail, layer)) return transform;
+  const center = projectPointInsideNailSilhouette(transform, nail);
+  const offsets = [0, 0.01, -0.01, 0.025, -0.025, 0.05, -0.05, 0.08, -0.08, 0.12, -0.12, 0.16, -0.16, 0.22, -0.22];
+  let best = null;
+  let bestDistance = Infinity;
+  for (const dy of offsets) {
+    for (const dx of offsets) {
+      const candidateCenter = projectPointInsideNailSilhouette({ x: center.x + dx, y: center.y + dy }, nail);
+      const candidate = { ...transform, ...candidateCenter };
+      if (!assetFitsNailSilhouette(candidate, nail, layer)) continue;
+      const distance = Math.hypot(candidate.x - center.x, candidate.y - center.y);
+      if (distance < bestDistance) {
+        best = candidate;
+        bestDistance = distance;
+      }
+    }
+  }
+  return best;
+}
+
+export function constrainAssetTransform(transform = {}, nail, layer = {}) {
+  const layerType = layer.type || layer;
   const maxScale = layerType === "jewel" ? 0.24 : 0.34;
-  const minScale = layerType === "drawing" || layerType === "pattern" || layerType === "gradient" ? 1 : 0.06;
-  const scale = layerType === "drawing" || layerType === "pattern" || layerType === "gradient" ? 1 : clamp(size, minScale, maxScale);
-  const margin = layerType === "jewel" || layerType === "charm" || layerType === "decal" ? Math.max(0.07, scale * 0.42) : 0;
+  let scale = clamp(Math.max(Math.abs(transform.scaleX ?? 0.18), Math.abs(transform.scaleY ?? 0.18)), ASSET_MIN_SCALE, maxScale);
+  let candidate = {
+    x: clamp(transform.x ?? 0.5, 0, 1),
+    y: clamp(transform.y ?? 0.5, 0, 1),
+    scaleX: scale,
+    scaleY: scale,
+    rotation: clamp(transform.rotation ?? 0, -180, 180),
+  };
+  candidate = { ...candidate, ...projectPointInsideNailSilhouette(candidate, nail) };
+  while (scale >= ASSET_MIN_SCALE) {
+    const found = fitSearch(candidate, nail, layerType);
+    if (found) return { ...found, scaleX: Number(scale.toFixed(6)), scaleY: Number(scale.toFixed(6)) };
+    scale *= 0.92;
+    candidate = { ...candidate, scaleX: scale, scaleY: scale };
+  }
+  const safeCenter = projectPointInsideNailSilhouette({ x: 0.5, y: 0.5 }, nail);
+  return { ...candidate, ...safeCenter, scaleX: ASSET_MIN_SCALE, scaleY: ASSET_MIN_SCALE };
+}
+
+export function constrainStrokePoints(points = [], nail) {
+  return points.map((point) => projectPointInsideNailSilhouette(point, nail));
+}
+
+export function revalidateLayersAfterNailResize(blueprint) {
+  return updateActiveNail(blueprint, (nail) => ({
+    ...nail,
+    layers: nail.layers.map((layer) => {
+      if (ASSET_LAYER_TYPES.has(layer.type)) return { ...layer, transform: constrainAssetTransform(layer.transform, nail, layer) };
+      if (layer.type === "drawing") {
+        return {
+          ...layer,
+          data: {
+            ...layer.data,
+            strokes: (layer.data?.strokes || []).map((stroke) => ({ ...stroke, points: constrainStrokePoints(stroke.points || [], nail) })),
+          },
+        };
+      }
+      return { ...layer, transform: safeTransform(layer.transform, nail, layer.type) };
+    }),
+  }));
+}
+
+export function safeTransform(transform = {}, nail, layerType = "asset") {
+  if (ASSET_LAYER_TYPES.has(layerType)) return constrainAssetTransform(transform, nail, layerType);
+  const scale = layerType === "drawing" || layerType === "pattern" || layerType === "gradient" ? 1 : clamp(Math.max(Math.abs(transform.scaleX ?? 0.18), Math.abs(transform.scaleY ?? 0.18)), ASSET_MIN_SCALE, 0.34);
   return {
-    x: clamp(transform.x ?? 0.5, margin, 1 - margin),
-    y: clamp(transform.y ?? 0.5, margin, 1 - margin),
+    x: clamp(transform.x ?? 0.5, 0, 1),
+    y: clamp(transform.y ?? 0.5, 0, 1),
     scaleX: scale,
     scaleY: scale,
     rotation: clamp(transform.rotation ?? 0, -180, 180),
@@ -206,6 +344,9 @@ export function ensureBlueprint(input, design = {}) {
         transform: safeTransform(layer.transform || {}, nail, layer.type),
         data: { ...(layer.data || {}) },
       };
+      if (normalized.type === "drawing") {
+        normalized.data.strokes = (normalized.data.strokes || []).map((stroke) => ({ ...stroke, points: constrainStrokePoints(stroke.points || [], nail) }));
+      }
       if (normalized.type === "base") {
         normalized.id = "base-layer";
         normalized.name = "Base Color";
@@ -244,6 +385,9 @@ export function synchronizeBase(blueprint, patch) {
   return updateActiveNail(blueprint, (nail) => {
     const nextNail = { ...nail, ...patch };
     const layers = nail.layers.map((layer) => {
+      if (layer.type === "drawing") {
+        return { ...layer, data: { ...layer.data, strokes: (layer.data?.strokes || []).map((stroke) => ({ ...stroke, points: constrainStrokePoints(stroke.points || [], nextNail) })) }, transform: safeTransform(layer.transform, nextNail, layer.type) };
+      }
       if (layer.type !== "base") return { ...layer, transform: safeTransform(layer.transform, nextNail, layer.type) };
       const data = {
         ...layer.data,
@@ -332,6 +476,8 @@ export function addLayerToBlueprint(blueprint, layer) {
 export function quantitySummary(blueprint) {
   const nail = getActiveNail(blueprint);
   const counts = { charm: 0, jewel: 0, decal: 0 };
-  for (const layer of nail.layers) if (counts[layer.type] !== undefined) counts[layer.type] += 1;
+  for (const layer of nail.layers) {
+    if (counts[layer.type] !== undefined && layer.visible !== false && assetFitsNailSilhouette(layer.transform, nail, layer)) counts[layer.type] += 1;
+  }
   return counts;
 }

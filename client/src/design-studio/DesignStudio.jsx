@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { COLORS, S } from "../styles.js";
 import NailCanvas from "./NailCanvas.jsx";
 import AssetLibrary from "./AssetLibrary.jsx";
@@ -25,6 +25,7 @@ import {
   renumberLayers,
   restoreHistorySnapshot,
   safeTransform,
+  revalidateLayersAfterNailResize,
   synchronizeBase,
   uid,
   updateActiveNail,
@@ -57,6 +58,7 @@ export default function DesignStudio() {
   const [status, setStatus] = useState({ type: "idle", message: "Ready" });
   const [notice, setNotice] = useState("");
   const [tab, setTab] = useState("assets");
+  const dragStartBlueprintRef = useRef(null);
 
   const activeNail = getActiveNail(blueprint);
   const selectedLayer = useMemo(() => layerById(activeNail, selectedLayerId), [activeNail, selectedLayerId]);
@@ -132,6 +134,7 @@ export default function DesignStudio() {
 
   function updateBase(patch) {
     let next = synchronizeBase(blueprint, patch);
+    if (patch.shape !== undefined || patch.length !== undefined || patch.width !== undefined) next = revalidateLayersAfterNailResize(next);
     if (patch.tags !== undefined) next = { ...next, metadata: { ...next.metadata, tags: normalizeTags(patch.tags) } };
     const before = JSON.stringify(getActiveNail(blueprint).layers.map((layer) => layer.transform));
     const after = JSON.stringify(getActiveNail(next).layers.map((layer) => layer.transform));
@@ -158,9 +161,14 @@ export default function DesignStudio() {
   }
 
   function transformLayer(layerId, transform, final) {
-    if (transform) patchLayer(layerId, { transform }, false);
+    if (transform) {
+      if (!dragStartBlueprintRef.current) dragStartBlueprintRef.current = blueprint;
+      patchLayer(layerId, { transform }, false);
+    }
     if (final) {
-      setHistory((prev) => pushHistory(prev, blueprint));
+      const preDragBlueprint = dragStartBlueprintRef.current || blueprint;
+      dragStartBlueprintRef.current = null;
+      setHistory((prev) => pushHistory(prev, preDragBlueprint));
       setDirty(true);
       setStatus({ type: "dirty", message: "Unsaved changes" });
     }

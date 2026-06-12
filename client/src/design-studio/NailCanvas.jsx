@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import { COLORS } from "../styles.js";
 import { renderAssetShapes } from "./assets.js";
-import { VIEWBOX, buildNailPath, getNailGeometry, normalizedToSvg, svgToNormalized, layerSort } from "./blueprint.js";
+import { VIEWBOX, buildNailPath, constrainStrokePoints, getNailGeometry, normalizedToSvg, projectPointInsideNailSilhouette, svgToNormalized, layerSort } from "./blueprint.js";
 
 function EffectDefs({ baseLayer, uid }) {
   const data = baseLayer?.data || {};
@@ -47,9 +47,12 @@ function PatternDefs({ layer, id }) {
   }
 }
 
-function strokePath(points = []) {
+export function strokePath(points = [], nail) {
   if (!points.length) return "";
-  return points.map((point, index) => `${index === 0 ? "M" : "L"} ${point.x.toFixed(4)} ${point.y.toFixed(4)}`).join(" ");
+  return points.map((point, index) => {
+    const svgPoint = normalizedToSvg(point, nail);
+    return `${index === 0 ? "M" : "L"} ${svgPoint.x.toFixed(4)} ${svgPoint.y.toFixed(4)}`;
+  }).join(" ");
 }
 
 export default function NailCanvas({ nail, layers, selectedLayerId, mode, brush, notice, onSelectLayer, onTransformLayer, onDrawingStroke, onEraseStroke }) {
@@ -74,7 +77,7 @@ export default function NailCanvas({ nail, layers, selectedLayerId, mode, brush,
     onSelectLayer(layer.id);
     if (layer.locked) return;
     const start = svgToNormalized(svgPoint(event), nail);
-    setDrag({ layerId: layer.id, start, original: layer.transform });
+    setDrag({ layerId: layer.id, start, original: { ...layer.transform } });
     event.currentTarget.setPointerCapture?.(event.pointerId);
   }
 
@@ -86,7 +89,7 @@ export default function NailCanvas({ nail, layers, selectedLayerId, mode, brush,
 
   function pointerUp() {
     if (!drag) return;
-    onTransformLayer(drag.layerId, null, true);
+    onTransformLayer(drag.layerId, null, true, drag.original);
     setDrag(null);
   }
 
@@ -95,7 +98,7 @@ export default function NailCanvas({ nail, layers, selectedLayerId, mode, brush,
       onSelectLayer(null);
       return;
     }
-    const point = svgToNormalized(svgPoint(event), nail);
+    const point = projectPointInsideNailSilhouette(svgToNormalized(svgPoint(event), nail), nail);
     if (mode === "eraser") {
       onEraseStroke(point);
       return;
@@ -106,13 +109,15 @@ export default function NailCanvas({ nail, layers, selectedLayerId, mode, brush,
 
   function canvasMove(event) {
     if (!drag?.drawing) return;
-    const point = svgToNormalized(svgPoint(event), nail);
-    const stroke = { ...drag.stroke, points: [...drag.stroke.points, point] };
+    const point = projectPointInsideNailSilhouette(svgToNormalized(svgPoint(event), nail), nail);
+    const previous = drag.stroke.points[drag.stroke.points.length - 1];
+    if (previous && Math.hypot(previous.x - point.x, previous.y - point.y) < 0.001) return;
+    const stroke = { ...drag.stroke, points: constrainStrokePoints([...drag.stroke.points, point], nail) };
     setDrag({ drawing: true, stroke });
   }
 
   function canvasUp() {
-    if (drag?.drawing) onDrawingStroke(drag.stroke);
+    if (drag?.drawing) onDrawingStroke({ ...drag.stroke, points: constrainStrokePoints(drag.stroke.points, nail) });
     setDrag(null);
   }
 
@@ -127,7 +132,7 @@ export default function NailCanvas({ nail, layers, selectedLayerId, mode, brush,
     }
     if (layer.type === "drawing") {
       return <g key={layer.id} clipPath={`url(#${clipId})`} opacity={layer.opacity} onPointerDown={(e) => { e.stopPropagation(); onSelectLayer(layer.id); }}>
-        {(layer.data?.strokes || []).map((stroke) => <path key={stroke.id} d={strokePath(stroke.points)} fill="none" stroke={stroke.tool === "eraser" ? baseLayer?.data?.colorHex : stroke.colorHex} strokeWidth={(stroke.width || 0.04) * 100} strokeOpacity={stroke.opacity} strokeLinecap="round" strokeLinejoin="round" filter={stroke.tool === "soft" ? `url(#${uid}-soft)` : undefined} strokeDasharray={stroke.tool === "glitter" ? "1 9" : undefined}/>) }
+        {(layer.data?.strokes || []).map((stroke) => <path key={stroke.id} d={strokePath(stroke.points, nail)} fill="none" stroke={stroke.tool === "eraser" ? baseLayer?.data?.colorHex : stroke.colorHex} strokeWidth={(stroke.width || 0.04) * 100} strokeOpacity={stroke.opacity} strokeLinecap="round" strokeLinejoin="round" filter={stroke.tool === "soft" ? `url(#${uid}-soft)` : undefined} strokeDasharray={stroke.tool === "glitter" ? "1 9" : undefined}/>) }
       </g>;
     }
     const p = normalizedToSvg(layer.transform, nail);
@@ -153,7 +158,7 @@ export default function NailCanvas({ nail, layers, selectedLayerId, mode, brush,
         <path d={path} fill={baseLayer?.data?.effect === "Solid" ? baseLayer.data.colorHex : `url(#${uid}-base)`} stroke="rgba(59,31,53,.24)" strokeWidth="2"/>
         <g clipPath={`url(#${clipId})`}><ellipse cx="88" cy="105" rx="16" ry="70" fill="#fff" opacity=".28" transform="rotate(12 88 105)"/></g>
         {artLayers.map(layerNode)}
-        {drag?.drawing && <g clipPath={`url(#${clipId})`}><path d={strokePath(drag.stroke.points)} fill="none" stroke={drag.stroke.colorHex} strokeWidth={(drag.stroke.width || 0.04) * 100} strokeOpacity={drag.stroke.opacity} strokeLinecap="round" strokeLinejoin="round"/></g>}
+        {drag?.drawing && <g clipPath={`url(#${clipId})`}><path d={strokePath(drag.stroke.points, nail)} fill="none" stroke={drag.stroke.colorHex} strokeWidth={(drag.stroke.width || 0.04) * 100} strokeOpacity={drag.stroke.opacity} strokeLinecap="round" strokeLinejoin="round"/></g>}
         <path d={path} fill="none" stroke="rgba(59,31,53,.45)" strokeWidth="2.5" pointerEvents="none"/>
       </svg>
     </div>

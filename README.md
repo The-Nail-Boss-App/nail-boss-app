@@ -180,13 +180,16 @@ Milestone 4 turns the single-nail React studio into a Canva-style layered visual
 
 All starter assets are generic inline SVG shapes stored in the repository. No external URLs, branded icons, licensed marketplace assets, or bitmap screenshots are required for persistence.
 
-**Realistic nail-surface boundaries:**
+**Silhouette-based strict-fit architecture:**
 
-- The active nail silhouette is treated as a hard physical design boundary. Every visual art layer is rendered through an SVG clipping path.
-- Asset transforms are normalized and clamped in strict-fit mode so x/y positions and scale stay within safe ranges as the canvas responsively scales.
-- Shape, length, and width changes rebuild the nail path and re-clamp existing transforms. When an item needs adjustment after a geometry change, the editor shows a non-blocking notice.
-- Freehand strokes stop visually at the nail edge because drawing layers are clipped to the same active nail path.
-- Pattern and gradient layers fill only the nail surface. Selected-layer outlines are bounded to the clipped canvas context and do not persist as artwork.
+- The active nail silhouette is treated as a hard physical design boundary. SVG clip paths remain in place as a rendering safety layer, but persisted artwork is also validated before it is saved or displayed.
+- `blueprint.js` exposes deterministic geometry helpers for point-in-silhouette checks, point projection, asset-boundary sampling, asset transform constraints, stroke-point constraints, and layer revalidation after nail geometry changes.
+- The strict-fit model stores all transforms and drawing points in normalized 0–1 nail coordinates. Rendering converts those normalized values back through the active nail geometry, so responsive scaling does not change persisted data.
+- The browser-visible nail path and the testable helper model use the same supported shape family (Almond, Coffin, Square, Stiletto, and Oval). The helper model approximates each path with a normalized half-width curve instead of browser-only SVG path APIs; this keeps placement deterministic in Node tests and future backend/product-use calculations.
+- Charms, jewels, and decals are checked with multiple transformed boundary samples around the rotated asset box, not only the center point. If a layer would overhang a curved sidewall, coffin edge, narrow stiletto tip, resized oval, or shortened nail, strict-fit mode repositions it and, when needed, reduces scale until the sampled boundary fits.
+- Shape, length, and width changes rebuild the nail path and revalidate existing asset transforms plus drawing strokes. When artwork is adjusted after a geometry change, the editor shows a non-blocking notice that AnitaSet kept the artwork inside the updated boundary.
+- Freehand drawing input is projected into the active silhouette before stroke points are persisted. Drawing layers are still clipped to the SVG path as a second safety layer, but saved/reloaded stroke data contains only valid visible nail-surface points.
+- Pattern and gradient layers fill only the clipped nail surface. Selected-layer outlines and editor handles may appear outside the nail as controls, but they do not persist as artwork.
 
 **Save/load workflow:**
 
@@ -196,19 +199,19 @@ All starter assets are generic inline SVG shapes stored in the repository. No ex
 
 **Undo/redo scope:**
 
-Undo and redo are local only, capped to a small in-memory history, and are reset when another saved design is loaded. History covers meaningful blueprint edits such as layer add/delete/duplicate/reorder, property edits, visibility, lock state, drawing strokes, pattern/gradient edits, and base geometry changes. Undo history is not persisted to PostgreSQL.
+Undo and redo are local only, capped to a small in-memory history, and are reset when another saved design is loaded. History covers meaningful blueprint edits such as layer add/delete/duplicate/reorder, property edits, visibility, lock state, drawing strokes, pattern/gradient edits, base geometry changes, and drag gestures. Dragging captures the pre-drag blueprint before transient pointer-move updates and records one undo step at pointer-up, so Undo returns to the exact pre-drag position and Redo restores the completed drag. Resize and rotation edits continue to use normalized strict-fit transforms so undo/redo restores safe persisted geometry. Undo history is not persisted to PostgreSQL.
 
 **Product-use planning hooks:**
 
-Milestone 4 does not build a full cost estimator. It preserves the data needed for a later estimator: nail shape, length, width, normalized surface-aware transforms, asset IDs, charm/jewel/decal quantities, vector strokes, and pattern/gradient settings. A future milestone can approximate polish coverage by nail surface area and drawing/pattern coverage while counting placed supplies. An advanced controlled-overhang mode may be added later for experienced artists, but it should include warnings, limits, and explicit opt-in because the Milestone 4 MVP uses strict-fit mode.
+Milestone 4 does not build a full cost estimator. It preserves the data needed for a later estimator: nail shape, length, width, normalized silhouette-valid transforms, stable asset IDs, charm/jewel/decal quantities, vector strokes, and pattern/gradient settings. Quantity summaries count visible charms, jewels, and decals only when the transformed asset boundary is valid inside the active silhouette. Hidden off-silhouette drawing geometry is excluded because drawing points are projected before persistence, while future polish-coverage estimates can use the same clipped nail surface for gradients, patterns, and brush coverage. An advanced controlled-overhang mode may be added later for experienced artists, but it should include warnings, limits, and explicit opt-in because the Milestone 4 MVP uses strict-fit mode.
 
 **Known limitations:**
 
 - This milestone edits one active nail (`canvas.activeNailId`) only. Multi-nail set editing arrives in Milestone 5.
 - Existing saved design names are not renamed by blueprint saves because the current API exposes create/delete plus blueprint update, not a flat design rename endpoint.
 - The eraser workflow removes the nearest stroke in the selected drawing layer rather than doing partial path boolean erasure.
-- Strict-fit clamping uses conservative normalized bounds instead of exact point-in-path collision for every rotated asset vertex.
-- The project does not include a dedicated frontend unit-test harness beyond Create React App build validation; deterministic blueprint helpers are kept isolated for future tests without adding dependencies.
+- Strict-fit collision uses deterministic shape-specific half-width curves and sampled transformed asset boundaries rather than exact SVG path boolean operations; it is intentionally conservative near curved edges and narrow tips.
+- The project does not introduce a large frontend unit-test framework. A lightweight deterministic geometry helper test runs in Node without browser APIs.
 
 **Accessibility notes:**
 
