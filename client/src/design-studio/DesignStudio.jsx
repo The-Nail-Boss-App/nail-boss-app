@@ -43,6 +43,24 @@ function layerById(nail, id) {
   return nail?.layers?.find((layer) => layer.id === id) || null;
 }
 
+const MAX_BLUEPRINT_JSON_BYTES = 100 * 1024;
+const BLUEPRINT_WARNING_BYTES = Math.floor(MAX_BLUEPRINT_JSON_BYTES * 0.85);
+
+function utf8ByteLength(value) {
+  if (typeof TextEncoder !== "undefined") return new TextEncoder().encode(value).length;
+  return unescape(encodeURIComponent(value)).length;
+}
+
+function serializedBlueprintSize(blueprint) {
+  return utf8ByteLength(JSON.stringify(blueprint));
+}
+
+function blueprintSizeMessage(bytes) {
+  const kb = Math.round(bytes / 1024);
+  const maxKb = Math.round(MAX_BLUEPRINT_JSON_BYTES / 1024);
+  return `Blueprint is ${kb}KB; AnitaSet supports up to ${maxKb}KB per editable design.`;
+}
+
 export default function DesignStudio() {
   const [designs, setDesigns] = useState([]);
   const [selectedDesignId, setSelectedDesignId] = useState("");
@@ -287,28 +305,46 @@ export default function DesignStudio() {
     const flat = flatDesignFromBlueprint(blueprint, designName);
     if (!flat.name) return setStatus({ type: "error", message: "Enter a design name before saving." });
     if (!/^#[0-9a-fA-F]{6}$/.test(flat.baseColorHex)) return setStatus({ type: "error", message: "Choose a valid base polish color." });
+
+    const blueprintBytes = serializedBlueprintSize(blueprint);
+    if (blueprintBytes > MAX_BLUEPRINT_JSON_BYTES) {
+      return setStatus({ type: "error", message: `${blueprintSizeMessage(blueprintBytes)} Remove a few strokes or layers before saving.` });
+    }
+    if (blueprintBytes >= BLUEPRINT_WARNING_BYTES) {
+      setStatus({ type: "dirty", message: `${blueprintSizeMessage(blueprintBytes)} Saving, but consider simplifying before adding more details.` });
+    }
+
     setSaving(true);
     try {
       let designId = selectedDesignId;
       let savedDesign = designs.find((design) => design.id === designId);
+      let savedBlueprint;
       if (!designId) {
-        const res = await fetch("/api/designs", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(flat) });
+        const res = await fetch("/api/designs/with-blueprint", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ design: flat, blueprint }) });
         const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data.error || "Unable to create design.");
-        designId = data.id;
-        savedDesign = data;
+        if (!res.ok) throw new Error(data.error || "Unable to create design with blueprint.");
+        designId = data.design?.id;
+        savedDesign = data.design;
+        savedBlueprint = data.blueprint;
+        if (!designId || !savedBlueprint?.document) throw new Error("Saved design response was incomplete.");
         setSelectedDesignId(designId);
+      } else {
+        const put = await fetch(`/api/designs/${designId}/blueprint`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(blueprint) });
+        savedBlueprint = await put.json().catch(() => ({}));
+        if (!put.ok) throw new Error(savedBlueprint.error || "Unable to save blueprint.");
       }
-      const put = await fetch(`/api/designs/${designId}/blueprint`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(blueprint) });
-      const savedBlueprint = await put.json().catch(() => ({}));
-      if (!put.ok) throw new Error(savedBlueprint.error || "Unable to save blueprint.");
       await loadDesigns();
       setBlueprint(ensureBlueprint(savedBlueprint.document, savedDesign));
       setDirty(false);
       setHistory({ past: [], future: [] });
-      setStatus({ type: "saved", message: "Saved editable blueprint" });
+      setStatus({
+        type: "saved",
+        message: blueprintBytes >= BLUEPRINT_WARNING_BYTES
+          ? `${blueprintSizeMessage(blueprintBytes)} Saved, but consider simplifying before adding more details.`
+          : "Saved editable blueprint",
+      });
     } catch (error) {
-      setStatus({ type: "error", message: error.message });
+      setStatus({ type: "error", message: error.message || "Save failed. Your unsaved editor work is still open." });
     } finally {
       setSaving(false);
     }
@@ -347,7 +383,7 @@ export default function DesignStudio() {
       <main style={UI.panel}><NailCanvas nail={activeNail} layers={activeNail.layers} selectedLayerId={selectedLayerId} mode={mode} brush={brush} notice={notice} onSelectLayer={(id) => setSelectedLayerId(id || "")} onTransformLayer={transformLayer} onDrawingStroke={addStroke} onEraseStroke={eraseStroke}/></main>
 
       <aside style={UI.panel}><div style={UI.panelPad}>
-        <div style={{ display: "flex", gap: 6, marginBottom: 16 }}><button type="button" onClick={() => setTab("assets")} style={UI.miniButton(tab === "assets")}>Assets</button><button type="button" onClick={() => setTab("layers")} style={UI.miniButton(tab === "layers")}>Layers</button><button type="button" onClick={() => setTab("properties")} style={UI.miniButton(tab === "properties")}>Properties</button></div>
+        <div style={{ display: "flex", gap: 6, marginBottom: 16 }}><button type="button" aria-pressed={tab === "assets"} aria-label="Show asset library" onClick={() => setTab("assets")} style={UI.miniButton(tab === "assets")}>Assets</button><button type="button" aria-pressed={tab === "layers"} aria-label="Show layers panel" onClick={() => setTab("layers")} style={UI.miniButton(tab === "layers")}>Layers</button><button type="button" aria-pressed={tab === "properties"} aria-label="Show properties panel" onClick={() => setTab("properties")} style={UI.miniButton(tab === "properties")}>Properties</button></div>
         {tab === "assets" && <><AssetLibrary onAddAsset={addAsset}/><DrawingToolbar brush={brush} mode={mode} onBrushChange={(patch) => setBrush((prev) => ({ ...prev, ...patch }))}/></>}
         {tab === "layers" && <LayersPanel layers={activeNail.layers} selectedLayerId={selectedLayerId} onSelect={setSelectedLayerId} onToggleVisible={toggleVisible} onToggleLock={toggleLock} onMove={moveLayer} onDelete={deleteLayer}/>} 
         {tab === "properties" && <PropertiesPanel layer={selectedLayer} onPatch={(patch) => selectedLayer && patchLayer(selectedLayer.id, patch)} onDuplicate={() => duplicateLayer()} onDelete={() => deleteLayer()}/>} 

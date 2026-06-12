@@ -9,6 +9,8 @@ const { spawn } = require("child_process");
 const PORT = Number(process.env.SMOKE_TEST_PORT || 4100);
 const BASE_URL = `http://127.0.0.1:${PORT}`;
 const TEST_DB_FILE = process.env.ANITASET_TEST_DB_FILE || path.join(".tmp", "smoke-test-db.json");
+const MAX_BLUEPRINT_JSON_BYTES = 100 * 1024;
+
 
 function request(method, requestPath, body) {
   const payload = body ? JSON.stringify(body) : null;
@@ -199,6 +201,31 @@ function taggedBlueprint(tags) {
   return blueprint;
 }
 
+function designPayload(name = "Atomic Layered Smoke") {
+  return {
+    name,
+    shape: "Almond",
+    length: 0.5,
+    width: 0.5,
+    baseColorHex: "#E8A0BF",
+    effect: "Solid",
+    effectColorHex: "#FFFFFF",
+    tags: ["smoke"],
+  };
+}
+
+function oversizedBlueprint() {
+  const blueprint = layeredBlueprint();
+  blueprint.metadata.notes = "x".repeat(MAX_BLUEPRINT_JSON_BYTES + 1);
+  return blueprint;
+}
+
+async function designCount() {
+  const res = await request("GET", "/api/designs");
+  assert(res.status === 200, "GET /api/designs should return 200 for count checks");
+  return res.body.length;
+}
+
 function startServer() {
   const server = spawn(process.execPath, ["server.js"], {
     env: {
@@ -261,6 +288,44 @@ async function runFlow() {
   assert(res.status === 200, "GET /api/designs/:id/blueprint should return 200");
   assert(res.body.document.schemaVersion === 1, "default blueprint should use schema version 1");
   assert(res.body.document.nails[0].layers[0].type === "base", "default blueprint should include a base layer");
+
+  let beforeCount = await designCount();
+  const atomicBlueprint = layeredBlueprint();
+  res = await request("POST", "/api/designs/with-blueprint", { design: designPayload("Atomic Layered Design"), blueprint: atomicBlueprint });
+  assert(res.status === 201, "POST /api/designs/with-blueprint should return 201 for a valid layered design");
+  assert(res.body.design && res.body.design.id, "atomic create should return the created design");
+  assert(res.body.blueprint && res.body.blueprint.document.nails[0].layers.length === atomicBlueprint.nails[0].layers.length, "atomic create should return the full saved blueprint");
+  const atomicDesignId = res.body.design.id;
+  assert(await designCount() === beforeCount + 1, "atomic create success should add exactly one design");
+
+  res = await request("GET", `/api/designs/${atomicDesignId}/blueprint`);
+  assert(res.status === 200, "atomic-created blueprint should be readable");
+  assert(res.body.document.nails[0].layers.some((layer) => layer.type === "jewel"), "atomic-created blueprint should persist layered artwork, not a default blueprint");
+
+  res = await request("POST", "/api/proposals", {
+    designId: atomicDesignId,
+    clientName: "Atomic Proposal Client",
+    price: 70,
+    notes: "Proposal compatibility after atomic create",
+  });
+  assert(res.status === 201, "proposal creation should remain compatible after atomic create");
+
+  beforeCount = await designCount();
+  res = await request("POST", "/api/designs/with-blueprint", { design: designPayload("Invalid Atomic Design"), blueprint: { ...layeredBlueprint(), nails: [] } });
+  assert(res.status === 400, "invalid atomic blueprints should return 400");
+  assert(await designCount() === beforeCount, "invalid atomic blueprints should not create orphan design rows");
+
+  beforeCount = await designCount();
+  res = await request("POST", "/api/designs/with-blueprint", { design: designPayload("Oversized Atomic Design"), blueprint: oversizedBlueprint() });
+  assert(res.status === 400 || res.status === 413, "oversized atomic blueprints should return 400 or 413");
+  assert(await designCount() === beforeCount, "oversized atomic blueprints should not create orphan design rows");
+
+  beforeCount = await designCount();
+  const failingBlueprint = layeredBlueprint();
+  failingBlueprint.metadata.simulatePersistenceFailure = "smoke-test";
+  res = await request("POST", "/api/designs/with-blueprint", { design: designPayload("Rollback Atomic Design"), blueprint: failingBlueprint });
+  assert(res.status === 500, "simulated atomic blueprint persistence failure should return 500");
+  assert(await designCount() === beforeCount, "simulated atomic blueprint persistence failure should roll back the flat design row");
 
   const whitespaceBlueprint = whitespaceMultiNailBlueprint();
   res = await request("PUT", `/api/designs/${designId}/blueprint`, whitespaceBlueprint);

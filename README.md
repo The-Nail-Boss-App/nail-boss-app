@@ -126,7 +126,7 @@ Transforms use normalized coordinates (`x`, `y`, `scaleX`, `scaleY`, `rotation`)
 
 Server-side validation rejects malformed or oversized blueprint payloads safely. Current limits are:
 
-- Request JSON body limit: `100kb` for API JSON requests.
+- Request JSON body limit: `128kb` for API JSON requests, leaving wrapper overhead for atomic create-with-blueprint saves.
 - Blueprint JSON document limit: `100kb` after serialization.
 - Supported schema versions: `1`.
 - Nails per blueprint: `1` to `10`.
@@ -193,8 +193,10 @@ All starter assets are generic inline SVG shapes stored in the repository. No ex
 
 **Save/load workflow:**
 
-- New design: enter a name, create layered art, click Save, create the legacy flat design with `POST /api/designs`, then immediately save the editable blueprint with `PUT /api/designs/:id/blueprint`. The new design remains loaded in edit mode.
-- Edit saved design: select an existing design, fetch its blueprint with `GET /api/designs/:id/blueprint`, edit layers, then save the full version-1 document with `PUT /api/designs/:id/blueprint`.
+- New layered design: enter a name, create layered art, click Save, and the frontend sends one atomic `POST /api/designs/with-blueprint` request containing both the flat compatibility payload and the complete Nail Blueprint v1 document. The editor does not mark the design selected or saved until the atomic response succeeds, so a failed create leaves the unsaved blueprint in memory for retry.
+- Atomic create validates the flat design payload, validates and normalizes the blueprint, derives synchronized legacy flat fields from the active nail/base layer, then inserts the design row and blueprint row in one persistence operation. PostgreSQL uses a single transaction; the file-backed smoke-test store snapshots and restores state to match rollback behavior. Invalid blueprints, oversized blueprints, and blueprint persistence failures leave no orphan default design row behind.
+- Edit saved design: select an existing design, fetch its blueprint with `GET /api/designs/:id/blueprint`, edit layers, then save the full version-1 document with `PUT /api/designs/:id/blueprint`. The legacy `POST /api/designs` route remains available for flat-design compatibility, and the blueprint PUT route remains the update path for already-saved designs.
+- Before saving, the frontend serializes the blueprint and rejects clearly oversized documents above the server's `100kb` blueprint limit without sending a create request. It warns after successful saves when a blueprint is approaching the limit so users can simplify before adding many more strokes or layers. The server remains the source of truth for final validation.
 - The editor shows loading, saving, saved, unsaved-change, and safe error states. It confirms before replacing unsaved work when loading another design or starting a new one.
 
 **Undo/redo scope:**
@@ -213,6 +215,13 @@ Milestone 4 does not build a full cost estimator. It preserves the data needed f
 - Strict-fit collision uses deterministic shape-specific half-width curves and sampled transformed asset boundaries rather than exact SVG path boolean operations; it is intentionally conservative near curved edges and narrow tips.
 - The project does not introduce a large frontend unit-test framework. A lightweight deterministic geometry helper test runs in Node without browser APIs.
 
+**Laptop responsive layout:**
+
+- The studio remains a desktop-first three-panel editor, but the grid now uses flexible `minmax()` columns instead of fixed 300/420/330 pixel minimums. The left controls, center canvas, and right Assets/Layers/Properties panel can fit within common laptop content widths around 1024px and 1100px after the app sidebar is present.
+- Panel minimums were reduced while keeping readable labels and usable native controls. The center canvas keeps the largest flexible share, and the right panel remains reachable rather than being clipped by `overflow: hidden`.
+- Horizontal scrolling is not the primary layout strategy; panel contents scroll vertically when needed, while the outer studio allows safe overflow instead of hiding essential controls. Manual viewport checks should cover 1280x720, 1366x768, 1440x900, and 1920x1080.
+- Full mobile optimization is not part of Milestone 4. Very narrow phone-width layouts may still be cramped and should receive a dedicated drawer or single-column mobile workflow in a later milestone.
+
 **Accessibility notes:**
 
 - Controls use native buttons, inputs, ranges, color pickers, and selects where practical.
@@ -228,7 +237,8 @@ Designs:
 
 - `GET /api/designs` — list designs, newest first.
 - `GET /api/designs/:id` — fetch one design.
-- `POST /api/designs` — create a design.
+- `POST /api/designs` — create a flat-compatible design and default blueprint for legacy callers.
+- `POST /api/designs/with-blueprint` — atomically create a design with a complete validated Nail Blueprint document; rolls back the design if validation or blueprint persistence fails.
 - `DELETE /api/designs/:id` — delete a design and cascade related proposals/history.
 - `GET /api/designs/:id/blueprint` — fetch the versioned Nail Blueprint document for one design.
 - `PUT /api/designs/:id/blueprint` — validate and replace the complete Nail Blueprint document, then synchronize legacy flat design fields.
@@ -360,6 +370,7 @@ The test script intentionally sets `ANITASET_TEST_DB_FILE=.tmp/smoke-test-db.jso
 - Persistence across restart using the explicit test-only file fallback.
 - Automatic default blueprint creation for flat saved designs.
 - Blueprint GET/PUT round-trips with all supported future layer types.
+- Atomic create-with-blueprint success, invalid-blueprint rollback, oversized-blueprint rollback, simulated blueprint-persistence rollback, and no orphan default designs after failed atomic creates.
 - Legacy flat-field synchronization from the active nail base layer.
 - Safe 400 responses for invalid blueprints.
 - Cascade cleanup of design blueprints and related proposals after design deletion.
@@ -380,5 +391,5 @@ If a deploy fails after introducing PostgreSQL persistence:
 - Authorization is not implemented for design/proposal management.
 - Public proposal IDs are UUIDs but are accessible to anyone with the link.
 - No rate limiting, request logging, CSRF strategy, or authentication middleware is currently present.
-- Nail Blueprint validation is structural and persistence-focused; advanced visual editing constraints arrive with the Milestone 4 editor.
+- Nail Blueprint validation is structural and persistence-focused; advanced visual editing constraints are enforced in the Milestone 4 editor helpers and covered by deterministic geometry tests.
 - The test-only file fallback is not a production database and should never be configured in Render production.
