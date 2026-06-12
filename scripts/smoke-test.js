@@ -166,6 +166,39 @@ function whitespaceMultiNailBlueprint() {
   };
 }
 
+function artOnlyBlueprint(type) {
+  return {
+    schemaVersion: 1,
+    canvas: { mode: "single-nail", activeNailId: "art-only" },
+    nails: [{
+      id: "art-only",
+      slot: "accent",
+      shape: "Stiletto",
+      length: 0.63,
+      width: 0.42,
+      baseColorHex: "#A1B2C3",
+      layers: [{
+        id: `${type}-only`,
+        type,
+        name: `${type} without base`,
+        visible: true,
+        locked: false,
+        opacity: 0.7,
+        order: 0,
+        transform: { x: 0.5, y: 0.5, scaleX: 1, scaleY: 1, rotation: 0 },
+        data: { colorHex: "#000000", effect: "Chrome", effectColorHex: "#111111", label: "non-base art" },
+      }],
+    }],
+    metadata: { tags: ["art-only", type] },
+  };
+}
+
+function taggedBlueprint(tags) {
+  const blueprint = layeredBlueprint();
+  blueprint.metadata.tags = tags;
+  return blueprint;
+}
+
 function startServer() {
   const server = spawn(process.execPath, ["server.js"], {
     env: {
@@ -277,6 +310,62 @@ async function runFlow() {
   emptyTrimmedLayerBlueprint.nails[0].layers[0].id = "   ";
   res = await request("PUT", `/api/designs/${designId}/blueprint`, emptyTrimmedLayerBlueprint);
   assert(res.status === 400, "empty layer ids after trimming should be rejected");
+
+  for (const type of ["charm", "drawing", "decal", "jewel"]) {
+    res = await request("PUT", `/api/designs/${designId}/blueprint`, artOnlyBlueprint(type));
+    assert(res.status === 200, `${type}-only blueprints without a base layer should save successfully`);
+
+    res = await request("GET", `/api/designs/${designId}`);
+    assert(res.status === 200, `GET /api/designs/:id should return 200 after ${type}-only blueprint update`);
+    assert(res.body.shape === "Stiletto", `${type}-only blueprints should sync shape from the active nail`);
+    assert(res.body.length === 0.63, `${type}-only blueprints should sync length from the active nail`);
+    assert(res.body.width === 0.42, `${type}-only blueprints should sync width from the active nail`);
+    assert(res.body.baseColorHex === "#A1B2C3", `${type}-only blueprints should preserve activeNail.baseColorHex as the legacy base color`);
+    assert(res.body.effect === "Solid", `${type}-only blueprints should keep a safe default legacy effect`);
+    assert(res.body.effectColorHex === "#FFFFFF", `${type}-only blueprints should keep a safe default legacy effect color`);
+  }
+
+  res = await request("POST", "/api/proposals", {
+    designId,
+    clientName: "Art Only Client",
+    price: 65,
+    notes: "Art-only base color smoke proposal",
+  });
+  assert(res.status === 201, "POST /api/proposals should return 201 for art-only designs");
+  const artOnlyProposalId = res.body.id;
+
+  res = await request("GET", `/api/proposals/${artOnlyProposalId}`);
+  assert(res.status === 200, "GET /api/proposals/:id should return 200 for art-only proposals");
+  assert(res.body.design.baseColorHex === "#A1B2C3", "proposal APIs should use activeNail.baseColorHex when no base layer exists");
+
+  res = await request("GET", `/proposal/${artOnlyProposalId}`);
+  assert(res.status === 200, "GET /proposal/:id should return 200 for art-only proposals");
+  assert(res.rawBody.includes("#A1B2C3"), "proposal HTML should render the intended active nail base color without a base layer");
+  assert(!res.rawBody.includes("#000000"), "proposal HTML should not render non-base art layer colors as the base color");
+
+  const exactlyFiftyTags = Array.from({ length: 50 }, (_value, index) => ` Tag-${index + 1} `);
+  res = await request("PUT", `/api/designs/${designId}/blueprint`, taggedBlueprint(exactlyFiftyTags));
+  assert(res.status === 200, "blueprints with exactly 50 normalized tags should save successfully");
+  assert(res.body.document.metadata.tags.length === 50, "exactly 50 tags should remain after normalization");
+  assert(res.body.document.metadata.tags[0] === "tag-1", "successful tag saves should trim and lowercase tags");
+
+  res = await request("GET", `/api/designs/${designId}/blueprint`);
+  assert(res.status === 200, "GET /api/designs/:id/blueprint should return 200 after exactly 50 tags save");
+  assert(res.body.document.metadata.tags.length === 50, "exactly 50 normalized tags should round-trip through persistence");
+
+  const tooManyNormalizedTags = ["   ", ...Array.from({ length: 51 }, (_value, index) => `tag-${index + 1}`)];
+  res = await request("PUT", `/api/designs/${designId}/blueprint`, taggedBlueprint(tooManyNormalizedTags));
+  assert(res.status === 400, "blueprints with more than 50 normalized tags should return a safe 400 response");
+  assert(res.body.error && res.body.error.includes("no more than 50 tags"), "oversized tag list errors should be safe and descriptive");
+
+  const whitespaceTagsBlueprint = taggedBlueprint(["  Glossy  ", "   ", "NEON", "", " chrome "]);
+  res = await request("PUT", `/api/designs/${designId}/blueprint`, whitespaceTagsBlueprint);
+  assert(res.status === 200, "tag arrays with whitespace-only values should normalize safely");
+  assert(JSON.stringify(res.body.document.metadata.tags) === JSON.stringify(["glossy", "neon", "chrome"]), "tags should trim, lowercase, and filter empty values");
+
+  res = await request("GET", `/api/designs/${designId}/blueprint`);
+  assert(res.status === 200, "GET /api/designs/:id/blueprint should return 200 after normalized tag save");
+  assert(JSON.stringify(res.body.document.metadata.tags) === JSON.stringify(["glossy", "neon", "chrome"]), "normalized tags should persist on successful round-trip saves");
 
   const blueprint = layeredBlueprint();
   res = await request("PUT", `/api/designs/${designId}/blueprint`, blueprint);

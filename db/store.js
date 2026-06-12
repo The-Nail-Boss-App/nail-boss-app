@@ -93,7 +93,11 @@ function normalizeTags(tags, pathLabel = "metadata.tags") {
   if (!Array.isArray(tags) || tags.some((tag) => typeof tag !== "string")) {
     throw new BlueprintValidationError(`${pathLabel} must be an array of strings`);
   }
-  return tags.map((tag) => tag.trim().toLowerCase()).filter(Boolean).slice(0, 50);
+  const normalizedTags = tags.map((tag) => tag.trim().toLowerCase()).filter(Boolean);
+  if (normalizedTags.length > 50) {
+    throw new BlueprintValidationError(`${pathLabel} must contain no more than 50 tags`);
+  }
+  return normalizedTags;
 }
 
 function getActiveNail(blueprint) {
@@ -102,7 +106,7 @@ function getActiveNail(blueprint) {
 }
 
 function getBaseLayer(nail) {
-  return nail.layers.find((layer) => layer.type === "base") || nail.layers[0];
+  return nail.layers.find((layer) => layer.type === "base");
 }
 
 function normalizeLayer(layer, nailIndex, layerIndex, seenLayerIds) {
@@ -265,15 +269,15 @@ function createDefaultBlueprintForDesign(design) {
 
 function flatFieldsFromBlueprint(blueprint) {
   const activeNail = getActiveNail(blueprint);
-  const baseLayer = getBaseLayer(activeNail) || { data: {} };
-  const data = isPlainObject(baseLayer.data) ? baseLayer.data : {};
+  const baseLayer = getBaseLayer(activeNail);
+  const data = baseLayer && isPlainObject(baseLayer.data) ? baseLayer.data : {};
   return {
     shape: activeNail.shape,
     length: activeNail.length,
     width: activeNail.width,
-    baseColorHex: data.colorHex || activeNail.baseColorHex,
-    effect: VALID_EFFECTS.includes(data.effect) ? data.effect : "Solid",
-    effectColorHex: data.effectColorHex || "#FFFFFF",
+    baseColorHex: baseLayer ? data.colorHex : activeNail.baseColorHex,
+    effect: baseLayer && VALID_EFFECTS.includes(data.effect) ? data.effect : "Solid",
+    effectColorHex: baseLayer ? data.effectColorHex || "#FFFFFF" : "#FFFFFF",
     tags: normalizeTags((blueprint.metadata && blueprint.metadata.tags) || []),
   };
 }
