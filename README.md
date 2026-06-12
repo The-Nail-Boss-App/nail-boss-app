@@ -42,6 +42,106 @@ Allowed proposal statuses are preserved:
 - `ChangesRequested`
 - `Declined`
 
+### Nail Blueprint foundation
+
+Milestone 3 adds a structured Nail Blueprint alongside the existing flat design fields. The blueprint is the durable editing document for future Canva-style single-nail and full-set tools, while the legacy fields remain the compatibility layer for saved-design cards, proposal creation, and public proposal rendering.
+
+`migrations/002_nail_blueprint_foundation.sql` adds:
+
+- `design_blueprints` with one row per design (`design_id` is the primary key and cascades on design delete).
+- `schema_version`, JSONB `document`, `created_at`, and `updated_at` columns.
+- A JSONB GIN index for future blueprint queries.
+- `updated_at` on `designs`.
+- A safe backfill that creates a version-1 blueprint for every existing design without modifying `migrations/001_initial_schema.sql`.
+
+The version-1 document shape is:
+
+```json
+{
+  "schemaVersion": 1,
+  "canvas": {
+    "mode": "single-nail",
+    "activeNailId": "nail-1"
+  },
+  "nails": [
+    {
+      "id": "nail-1",
+      "slot": "accent",
+      "shape": "Almond",
+      "length": 0.5,
+      "width": 0.5,
+      "baseColorHex": "#E8A0BF",
+      "layers": [
+        {
+          "id": "base-layer",
+          "type": "base",
+          "name": "Base Color",
+          "visible": true,
+          "locked": true,
+          "opacity": 1,
+          "order": 0,
+          "transform": {
+            "x": 0.5,
+            "y": 0.5,
+            "scaleX": 1,
+            "scaleY": 1,
+            "rotation": 0
+          },
+          "data": {
+            "colorHex": "#E8A0BF",
+            "effect": "Solid",
+            "effectColorHex": "#FFFFFF"
+          }
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "tags": []
+  }
+}
+```
+
+Supported layer types are prepared for future editing tools:
+
+- `base`
+- `gradient`
+- `pattern`
+- `drawing`
+- `charm`
+- `decal`
+- `jewel`
+
+Transforms use normalized coordinates (`x`, `y`, `scaleX`, `scaleY`, `rotation`) so artwork can scale across nail shapes and screen sizes in Milestone 4.
+
+#### Blueprint compatibility strategy
+
+- Existing `designs` rows are preserved and backfilled into `design_blueprints`.
+- Creating a normal flat design creates a default version-1 blueprint transactionally.
+- Updating a blueprint synchronizes legacy flat fields from the active nail/base layer where practical: `shape`, `length`, `width`, `baseColorHex`, `effect`, `effectColorHex`, and `tags`.
+- Proposal APIs and public proposal HTML continue reading the flat design fields, so current workflows are not forced to understand layered documents yet.
+- Deleting a design cascades to its blueprint and existing proposal/history relationships.
+
+#### Blueprint validation limits
+
+Server-side validation rejects malformed or oversized blueprint payloads safely. Current limits are:
+
+- Request JSON body limit: `100kb` for API JSON requests.
+- Blueprint JSON document limit: `100kb` after serialization.
+- Supported schema versions: `1`.
+- Nails per blueprint: `1` to `10`.
+- Layers per nail: up to `200`.
+- Nail shapes: existing allowed shapes (`Almond`, `Coffin`, `Square`, `Stiletto`, `Oval`).
+- Layer types: `base`, `gradient`, `pattern`, `drawing`, `charm`, `decal`, `jewel`.
+- Length, width, and opacity must stay between `0` and `1`.
+- Layer orders must be finite integers, transforms must be finite numbers, required colors must be valid HEX values, and `metadata.tags` must be an array of strings.
+
+Safe `400` responses are returned for invalid blueprints, malformed JSON, and validation failures without exposing SQL internals or stack traces.
+
+#### Milestone 4 note
+
+Advanced visual editing tools are intentionally not part of this milestone. Milestone 4 should build the interactive editor on top of this persisted blueprint document: nail selector/full-set mode, layer panel, drag/scale/rotate controls, drawing tools, reusable asset palettes, and preview rendering for the supported layer types.
+
 ## API routes
 
 Health:
@@ -54,6 +154,8 @@ Designs:
 - `GET /api/designs/:id` — fetch one design.
 - `POST /api/designs` — create a design.
 - `DELETE /api/designs/:id` — delete a design and cascade related proposals/history.
+- `GET /api/designs/:id/blueprint` — fetch the versioned Nail Blueprint document for one design.
+- `PUT /api/designs/:id/blueprint` — validate and replace the complete Nail Blueprint document, then synchronize legacy flat design fields.
 
 Proposals:
 
@@ -180,6 +282,11 @@ The test script intentionally sets `ANITASET_TEST_DB_FILE=.tmp/smoke-test-db.jso
 - Accept proposal.
 - Status history.
 - Persistence across restart using the explicit test-only file fallback.
+- Automatic default blueprint creation for flat saved designs.
+- Blueprint GET/PUT round-trips with all supported future layer types.
+- Legacy flat-field synchronization from the active nail base layer.
+- Safe 400 responses for invalid blueprints.
+- Cascade cleanup of design blueprints and related proposals after design deletion.
 
 ## Rollback guidance
 
@@ -197,5 +304,5 @@ If a deploy fails after introducing PostgreSQL persistence:
 - Authorization is not implemented for design/proposal management.
 - Public proposal IDs are UUIDs but are accessible to anyone with the link.
 - No rate limiting, request logging, CSRF strategy, or authentication middleware is currently present.
-- Validation is basic and should be strengthened before production use.
+- Nail Blueprint validation is structural and persistence-focused; advanced visual editing constraints arrive with the Milestone 4 editor.
 - The test-only file fallback is not a production database and should never be configured in Render production.
