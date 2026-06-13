@@ -55,9 +55,10 @@ export function strokePath(points = [], nail) {
   }).join(" ");
 }
 
-export default function NailCanvas({ nail, layers, selectedLayerId, mode, brush, notice, onSelectLayer, onTransformLayer, onDrawingStroke, onEraseStroke }) {
+export default function NailCanvas({ nail, layers, selectedLayerId, mode, brush, notice, onSelectLayer, onTransformLayer, onDrawingStroke, onStageEraseStroke, onEraseStroke }) {
   const svgRef = useRef(null);
   const [drag, setDrag] = useState(null);
+  const dragRef = useRef(null);
   const clipId = useMemo(() => `nail-clip-${Math.random().toString(36).slice(2)}`, []);
   const uid = useMemo(() => `defs-${Math.random().toString(36).slice(2)}`, []);
   const path = buildNailPath(nail.shape, nail);
@@ -71,6 +72,11 @@ export default function NailCanvas({ nail, layers, selectedLayerId, mode, brush,
     return { x: ((event.clientX - rect.left) / rect.width) * VIEWBOX.width, y: ((event.clientY - rect.top) / rect.height) * VIEWBOX.height };
   }
 
+  function setActiveDrag(nextDrag) {
+    dragRef.current = nextDrag;
+    setDrag(nextDrag);
+  }
+
   function releaseCapture(target, pointerId) {
     if (!target?.releasePointerCapture || pointerId === undefined || pointerId === null) return;
     try {
@@ -81,71 +87,82 @@ export default function NailCanvas({ nail, layers, selectedLayerId, mode, brush,
   }
 
   function pointerDown(event, layer) {
-    if (mode === "draw" || mode === "eraser") return;
+    if (dragRef.current || mode === "draw" || mode === "eraser") return;
     event.stopPropagation();
     onSelectLayer(layer.id);
     if (layer.locked) return;
     const start = svgToNormalized(svgPoint(event), nail);
     event.currentTarget.setPointerCapture?.(event.pointerId);
-    setDrag({ kind: "asset", layerId: layer.id, start, original: { ...layer.transform }, pointerId: event.pointerId, captureTarget: event.currentTarget });
+    setActiveDrag({ kind: "asset", layerId: layer.id, start, original: { ...layer.transform }, pointerId: event.pointerId, captureTarget: event.currentTarget });
   }
 
   function pointerMove(event) {
     if (mode === "draw" || mode === "eraser") return;
-    if (drag?.kind !== "asset") return;
+    const activeDrag = dragRef.current;
+    if (activeDrag?.kind !== "asset" || activeDrag.pointerId !== event.pointerId) return;
     const now = svgToNormalized(svgPoint(event), nail);
-    onTransformLayer(drag.layerId, { ...drag.original, x: drag.original.x + now.x - drag.start.x, y: drag.original.y + now.y - drag.start.y }, false);
+    onTransformLayer(activeDrag.layerId, { ...activeDrag.original, x: activeDrag.original.x + now.x - activeDrag.start.x, y: activeDrag.original.y + now.y - activeDrag.start.y }, false);
   }
 
-  function finishPointerGesture() {
-    if (drag?.kind === "asset") {
-      onTransformLayer(drag.layerId, null, true, drag.original);
-      releaseCapture(drag.captureTarget, drag.pointerId);
-      setDrag(null);
+  function finishPointerGesture(event) {
+    const activeDrag = dragRef.current;
+    if (!activeDrag || activeDrag.pointerId !== event.pointerId) return;
+    if (activeDrag.kind === "asset") {
+      onTransformLayer(activeDrag.layerId, null, true, activeDrag.original);
+      releaseCapture(activeDrag.captureTarget, activeDrag.pointerId);
+      setActiveDrag(null);
       return;
     }
-    if (drag?.kind === "drawing") {
-      onDrawingStroke({ ...drag.stroke, points: constrainStrokePoints(drag.stroke.points, nail) });
-      releaseCapture(drag.captureTarget, drag.pointerId);
-      setDrag(null);
+    if (activeDrag.kind === "drawing") {
+      onDrawingStroke({ ...activeDrag.stroke, points: constrainStrokePoints(activeDrag.stroke.points, nail) });
+      releaseCapture(activeDrag.captureTarget, activeDrag.pointerId);
+      setActiveDrag(null);
+      return;
+    }
+    if (activeDrag.kind === "eraser") {
+      onEraseStroke(activeDrag.pendingEraseTarget);
+      releaseCapture(activeDrag.captureTarget, activeDrag.pointerId);
+      setActiveDrag(null);
     }
   }
 
-  function cancelPointerGesture() {
-    if (drag?.kind === "asset") {
-      onTransformLayer(drag.layerId, drag.original, false, { cancel: true });
-      releaseCapture(drag.captureTarget, drag.pointerId);
-      setDrag(null);
-      return;
+  function cancelPointerGesture(event) {
+    const activeDrag = dragRef.current;
+    if (!activeDrag || activeDrag.pointerId !== event.pointerId) return;
+    if (activeDrag.kind === "asset") {
+      onTransformLayer(activeDrag.layerId, activeDrag.original, false, { cancel: true });
     }
-    if (drag?.kind === "drawing") {
-      releaseCapture(drag.captureTarget, drag.pointerId);
-      setDrag(null);
-    }
+    releaseCapture(activeDrag.captureTarget, activeDrag.pointerId);
+    setActiveDrag(null);
   }
 
   function canvasDown(event) {
+    if (dragRef.current) return;
     if (mode !== "draw" && mode !== "eraser") {
       onSelectLayer(null);
       return;
     }
     const point = projectPointInsideNailSilhouette(svgToNormalized(svgPoint(event), nail), nail);
     if (mode === "eraser") {
-      onEraseStroke(point);
+      const pendingEraseTarget = onStageEraseStroke(point);
+      if (!pendingEraseTarget) return;
+      event.currentTarget.setPointerCapture?.(event.pointerId);
+      setActiveDrag({ kind: "eraser", point, pendingEraseTarget, pointerId: event.pointerId, captureTarget: event.currentTarget });
       return;
     }
     const stroke = { id: `stroke-${Date.now().toString(36)}`, points: [point], colorHex: brush.colorHex, width: brush.size / 100, opacity: brush.opacity, tool: brush.tool };
     event.currentTarget.setPointerCapture?.(event.pointerId);
-    setDrag({ kind: "drawing", stroke, pointerId: event.pointerId, captureTarget: event.currentTarget });
+    setActiveDrag({ kind: "drawing", stroke, pointerId: event.pointerId, captureTarget: event.currentTarget });
   }
 
   function canvasMove(event) {
-    if (drag?.kind !== "drawing") return;
+    const activeDrag = dragRef.current;
+    if (activeDrag?.kind !== "drawing" || activeDrag.pointerId !== event.pointerId) return;
     const point = projectPointInsideNailSilhouette(svgToNormalized(svgPoint(event), nail), nail);
-    const previous = drag.stroke.points[drag.stroke.points.length - 1];
+    const previous = activeDrag.stroke.points[activeDrag.stroke.points.length - 1];
     if (previous && Math.hypot(previous.x - point.x, previous.y - point.y) < 0.001) return;
-    const stroke = { ...drag.stroke, points: constrainStrokePoints([...drag.stroke.points, point], nail) };
-    setDrag({ ...drag, stroke });
+    const stroke = { ...activeDrag.stroke, points: constrainStrokePoints([...activeDrag.stroke.points, point], nail) };
+    setActiveDrag({ ...activeDrag, stroke });
   }
 
 

@@ -106,19 +106,24 @@ const invalidActive = ensureBlueprint({ ...multiNailBlueprint(5), canvas: { mode
 assert.equal(invalidActive.canvas.activeNailId, 'nail-1', 'normalization repairs invalid activeNailId to a preserved nail');
 assert.deepEqual(invalidActive.nails[4], multiNailBlueprint(5).nails[4], 'inactive backend-valid nails remain byte-equivalent when activeNailId is repaired');
 
-assert(nailCanvasSource.includes('setDrag({ kind: "asset"'), 'NailCanvas uses an explicit asset drag-state variant');
-assert(nailCanvasSource.includes('setDrag({ kind: "drawing"'), 'NailCanvas uses an explicit drawing drag-state variant');
-assert(nailCanvasSource.includes('event.currentTarget.setPointerCapture?.(event.pointerId);\n    setDrag({ kind: "drawing"'), 'drawing gestures capture the root SVG pointer before stroke tracking');
-assert(nailCanvasSource.includes('releaseCapture(drag.captureTarget, drag.pointerId);'), 'drawing and asset gestures release pointer capture safely on completion or cancel');
-assert(nailCanvasSource.includes('function finishPointerGesture()'), 'pointerup uses an explicit successful gesture finalization path');
-assert(nailCanvasSource.includes('function cancelPointerGesture()'), 'pointercancel uses an explicit cancellation path');
+assert(nailCanvasSource.includes('setActiveDrag({ kind: "asset"'), 'NailCanvas uses an explicit asset drag-state variant');
+assert(nailCanvasSource.includes('setActiveDrag({ kind: "drawing"'), 'NailCanvas uses an explicit drawing drag-state variant');
+assert(nailCanvasSource.includes('event.currentTarget.setPointerCapture?.(event.pointerId);\n    setActiveDrag({ kind: "drawing"'), 'drawing gestures capture the root SVG pointer before stroke tracking');
+assert(nailCanvasSource.includes('releaseCapture(activeDrag.captureTarget, activeDrag.pointerId);'), 'drawing, asset, and eraser gestures release pointer capture safely on completion or cancel');
+assert(nailCanvasSource.includes('function finishPointerGesture(event)') && nailCanvasSource.includes('activeDrag.pointerId !== event.pointerId'), 'pointerup uses an explicit matching-pointer gesture finalization path');
+assert(nailCanvasSource.includes('function cancelPointerGesture(event)') && nailCanvasSource.includes('activeDrag.pointerId !== event.pointerId'), 'pointercancel uses an explicit matching-pointer cancellation path');
 assert(nailCanvasSource.includes('onPointerUp={finishPointerGesture} onPointerCancel={cancelPointerGesture}'), 'pointerup and pointercancel are wired to separate handlers');
-assert(nailCanvasSource.includes('onTransformLayer(drag.layerId, drag.original, false, { cancel: true });'), 'canceled asset drags restore their original transform without finalizing history');
+assert(nailCanvasSource.includes('onTransformLayer(activeDrag.layerId, activeDrag.original, false, { cancel: true });'), 'canceled asset drags restore their original transform without finalizing history');
 assert(!nailCanvasSource.includes('onPointerCancel={() => { pointerUp(); canvasUp(); }}'), 'pointercancel does not reuse the pointerup commit path');
 assert(designStudioSource.includes('if (options.cancel)'), 'canceled asset drags clear pre-drag history bookkeeping without marking dirty');
-const cancelBlock = nailCanvasSource.match(/function cancelPointerGesture\(\) \{[\s\S]*?\n  \}/)?.[0] || '';
+const cancelBlock = nailCanvasSource.match(/function cancelPointerGesture\(event\) \{[\s\S]*?\n  \}/)?.[0] || '';
 assert(!cancelBlock.includes('onDrawingStroke'), 'canceled drawing gestures discard in-progress strokes instead of committing them');
-assert(cancelBlock.includes('setDrag(null)'), 'pointercancel cleanup clears drag state');
+assert(!cancelBlock.includes('onEraseStroke'), 'canceled eraser gestures discard pending erases instead of committing them');
+assert(cancelBlock.includes('setActiveDrag(null)'), 'pointercancel cleanup clears drag state');
+assert(nailCanvasSource.includes('if (dragRef.current) return;'), 'additional pointerdown events are ignored while a pointer gesture is already active');
+assert(nailCanvasSource.includes('setActiveDrag({ kind: "eraser"') && nailCanvasSource.includes('pendingEraseTarget'), 'eraser gestures store pending erase targets without mutating on pointerdown');
+assert(nailCanvasSource.includes('onStageEraseStroke(point)') && !nailCanvasSource.includes('if (mode === "eraser") {\n      onEraseStroke(point);'), 'eraser pointerdown stages a target instead of deleting immediately');
+assert(nailCanvasSource.includes('if (activeDrag.kind === "eraser")') && nailCanvasSource.includes('onEraseStroke(activeDrag.pendingEraseTarget)'), 'matching eraser pointerup commits the staged erase exactly once');
 assert(nailCanvasSource.includes('if (mode === "draw" || mode === "eraser") return;'), 'asset transform pointerMove is guarded during draw and eraser modes');
 assert(nailCanvasSource.includes('pointerEvents="none"><defs><LayerGradient'), 'gradient overlays are canvas-nonblocking in every mode');
 assert(nailCanvasSource.includes('pointerEvents="none"><defs><PatternDefs'), 'pattern overlays are canvas-nonblocking in every mode');
@@ -170,7 +175,7 @@ assert(getActiveNail(visibleFromLocked.blueprint).layers.some((layer) => layer.t
 assert.equal(isReusableDrawingLayer({ type: 'drawing', locked: false, visible: true }), true, 'visible unlocked drawing layers are reusable for new strokes and erasing');
 assert.equal(isReusableDrawingLayer({ type: 'drawing', locked: false, visible: false }), false, 'hidden drawing layers are not reusable for new strokes or erasing');
 assert.equal(isReusableDrawingLayer({ type: 'drawing', locked: true, visible: true }), false, 'locked drawing layers are not reusable for new strokes or erasing');
-assert(designStudioSource.includes('activeNail.layers.find(isReusableDrawingLayer)'), 'eraser searches only visible unlocked drawing layers when the selected layer is not reusable');
+assert(designStudioSource.includes('function stageEraseStroke(point)') && designStudioSource.includes('activeNail.layers.find(isReusableDrawingLayer)'), 'eraser stages targets only from visible unlocked drawing layers when the selected layer is not reusable');
 assert(designStudioSource.includes('Select a visible unlocked drawing layer to erase strokes.'), 'eraser shows a non-blocking notice when no visible unlocked drawing layer exists');
 
 const nail = { id: 'nail-1', shape: 'Almond', length: 0.55, width: 0.5, layers: [] };

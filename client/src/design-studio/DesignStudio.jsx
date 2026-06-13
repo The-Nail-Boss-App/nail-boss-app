@@ -230,18 +230,34 @@ export default function DesignStudio() {
     commit(result.blueprint, { selectLayerId: result.layerId });
   }
 
-  function eraseStroke(point) {
+  function stageEraseStroke(point) {
     const drawing = isReusableDrawingLayer(selectedLayer) ? selectedLayer : activeNail.layers.find(isReusableDrawingLayer);
-    if (!drawing) return showNotice("Select a visible unlocked drawing layer to erase strokes.");
+    if (!drawing) {
+      showNotice("Select a visible unlocked drawing layer to erase strokes.");
+      return null;
+    }
     const strokes = drawing.data.strokes || [];
-    if (!strokes.length) return;
+    if (!strokes.length) {
+      showNotice("No visible strokes to erase on this layer.");
+      return null;
+    }
     let nearest = 0;
     let best = Infinity;
     strokes.forEach((stroke, i) => stroke.points.forEach((p) => {
       const distance = Math.hypot(p.x - point.x, p.y - point.y);
       if (distance < best) { best = distance; nearest = i; }
     }));
-    const nextStrokes = strokes.filter((_, i) => i !== nearest);
+    return { layerId: drawing.id, strokeId: strokes[nearest]?.id || "", strokeIndex: nearest };
+  }
+
+  function eraseStroke(target) {
+    if (!target?.layerId) return;
+    const drawing = activeNail.layers.find((layer) => layer.id === target.layerId && isReusableDrawingLayer(layer));
+    if (!drawing) return;
+    const strokes = drawing.data.strokes || [];
+    const strokeIndex = strokes.findIndex((stroke, index) => (target.strokeId ? stroke.id === target.strokeId : index === target.strokeIndex));
+    if (strokeIndex < 0) return;
+    const nextStrokes = strokes.filter((_, index) => index !== strokeIndex);
     patchLayer(drawing.id, { data: { ...drawing.data, strokes: nextStrokes } });
   }
 
@@ -387,7 +403,7 @@ export default function DesignStudio() {
         <p style={UI.smallText}>Strict-fit mode keeps all editable vectors clipped and clamped inside the active nail surface for realistic product-use planning.</p>
       </div></aside>
 
-      <main style={UI.panel}><NailCanvas nail={activeNail} layers={activeNail.layers} selectedLayerId={selectedLayerId} mode={mode} brush={brush} notice={notice} onSelectLayer={(id) => setSelectedLayerId(id || "")} onTransformLayer={transformLayer} onDrawingStroke={addStroke} onEraseStroke={eraseStroke}/></main>
+      <main style={UI.panel}><NailCanvas nail={activeNail} layers={activeNail.layers} selectedLayerId={selectedLayerId} mode={mode} brush={brush} notice={notice} onSelectLayer={(id) => setSelectedLayerId(id || "")} onTransformLayer={transformLayer} onDrawingStroke={addStroke} onStageEraseStroke={stageEraseStroke} onEraseStroke={eraseStroke}/></main>
 
       <aside style={UI.panel}><div style={UI.panelPad}>
         <div style={{ display: "flex", gap: 6, marginBottom: 16 }}><button type="button" aria-pressed={tab === "assets"} aria-label="Show asset library" onClick={() => setTab("assets")} style={UI.miniButton(tab === "assets")}>Assets</button><button type="button" aria-pressed={tab === "layers"} aria-label="Show layers panel" onClick={() => setTab("layers")} style={UI.miniButton(tab === "layers")}>Layers</button><button type="button" aria-pressed={tab === "properties"} aria-label="Show properties panel" onClick={() => setTab("properties")} style={UI.miniButton(tab === "properties")}>Properties</button></div>
