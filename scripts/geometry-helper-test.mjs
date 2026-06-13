@@ -107,7 +107,9 @@ assert.deepEqual(invalidActive.nails[4], multiNailBlueprint(5).nails[4], 'inacti
 assert(nailCanvasSource.includes('setDrag({ kind: "asset"'), 'NailCanvas uses an explicit asset drag-state variant');
 assert(nailCanvasSource.includes('setDrag({ kind: "drawing"'), 'NailCanvas uses an explicit drawing drag-state variant');
 assert(nailCanvasSource.includes('if (mode === "draw" || mode === "eraser") return;'), 'asset transform pointerMove is guarded during draw and eraser modes');
-assert(nailCanvasSource.includes('pointerEvents={drawingMode ? "none" : "auto"}'), 'full-canvas overlays pass pointer events through in draw and eraser modes');
+assert(nailCanvasSource.includes('pointerEvents="none"><defs><LayerGradient'), 'gradient overlays are canvas-nonblocking in every mode');
+assert(nailCanvasSource.includes('pointerEvents="none"><defs><PatternDefs'), 'pattern overlays are canvas-nonblocking in every mode');
+assert(!nailCanvasSource.includes('LayerGradient layer={layer} id={id}/></defs><rect') || !nailCanvasSource.includes('onPointerDown={selectOverlay}><defs><LayerGradient'), 'gradient overlay selection is not captured by a full-surface canvas handler');
 
 const drawingDeletedBlueprint = updateActiveNail(createDefaultBlueprint(), (activeNail) => ({
   ...activeNail,
@@ -125,6 +127,33 @@ const secondStroke = { ...firstStroke, id: 'second-stroke' };
 const appended = addStrokeToDrawingLayer(recreated.blueprint, secondStroke, 'solid', recreated.layerId);
 assert.equal(getActiveNail(appended.blueprint).layers.filter((layer) => layer.type === 'drawing').length, 1, 'subsequent strokes reuse the editable drawing layer');
 assert.equal(getActiveNail(appended.blueprint).layers.find((layer) => layer.type === 'drawing').data.strokes.length, 2, 'subsequent strokes append without creating duplicate layers');
+
+const hiddenDrawingBlueprint = updateActiveNail(createDefaultBlueprint(), (activeNail) => ({
+  ...activeNail,
+  layers: [
+    ...activeNail.layers,
+    { ...drawingLayers[0], id: 'hidden-drawing', visible: false, locked: false, data: { ...drawingLayers[0].data, strokes: [{ id: 'hidden-existing', points: [{ x: 0.45, y: 0.45 }], colorHex: '#000000', width: 0.04, opacity: 1 }] } },
+  ],
+}));
+const visibleFromHidden = addStrokeToDrawingLayer(hiddenDrawingBlueprint, { ...firstStroke, id: 'visible-after-hidden' }, 'glitter', 'hidden-drawing');
+const visibleFromHiddenNail = getActiveNail(visibleFromHidden.blueprint);
+const hiddenLayer = visibleFromHiddenNail.layers.find((layer) => layer.id === 'hidden-drawing');
+const newVisibleLayers = visibleFromHiddenNail.layers.filter((layer) => layer.type === 'drawing' && layer.visible !== false && !layer.locked);
+assert.equal(visibleFromHidden.created, true, 'hidden drawing layer is not reused for a new stroke');
+assert.equal(hiddenLayer.visible, false, 'hidden drawing layer remains hidden');
+assert.equal(hiddenLayer.data.strokes.length, 1, 'hidden drawing layer strokes remain unchanged');
+assert(newVisibleLayers.some((layer) => layer.data.strokes.some((stroke) => stroke.id === 'visible-after-hidden')), 'new visible drawing layer receives the first stroke immediately');
+
+const lockedDrawingBlueprint = updateActiveNail(createDefaultBlueprint(), (activeNail) => ({
+  ...activeNail,
+  layers: [
+    ...activeNail.layers,
+    { ...drawingLayers[0], id: 'locked-drawing', visible: true, locked: true, data: { ...drawingLayers[0].data, strokes: [] } },
+  ],
+}));
+const visibleFromLocked = addStrokeToDrawingLayer(lockedDrawingBlueprint, { ...firstStroke, id: 'visible-after-locked' }, 'soft', 'locked-drawing');
+assert.equal(visibleFromLocked.created, true, 'locked drawing layer is not reused for a new stroke');
+assert(getActiveNail(visibleFromLocked.blueprint).layers.some((layer) => layer.type === 'drawing' && layer.visible !== false && !layer.locked && layer.data.strokes.some((stroke) => stroke.id === 'visible-after-locked')), 'new visible unlocked drawing layer receives strokes when preferred layer is locked');
 
 const nail = { id: 'nail-1', shape: 'Almond', length: 0.55, width: 0.5, layers: [] };
 const pathPoint = normalizedToSvg({ x: 0.5, y: 0.5 }, nail);

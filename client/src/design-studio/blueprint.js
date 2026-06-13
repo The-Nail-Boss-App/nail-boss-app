@@ -547,9 +547,9 @@ export function addStrokeToDrawingLayer(blueprint, stroke, tool = "solid", prefe
   let created = false;
   const next = updateActiveNail(blueprint, (nail) => {
     const preferred = drawingId
-      ? nail.layers.find((layer) => layer.id === drawingId && layer.type === "drawing" && !layer.locked)
+      ? nail.layers.find((layer) => layer.id === drawingId && layer.type === "drawing" && !layer.locked && layer.visible !== false)
       : null;
-    const drawing = preferred || nail.layers.find((layer) => layer.type === "drawing" && !layer.locked);
+    const drawing = preferred || nail.layers.find((layer) => layer.type === "drawing" && !layer.locked && layer.visible !== false);
     if (drawing) {
       drawingId = drawing.id;
       return {

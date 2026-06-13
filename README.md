@@ -218,7 +218,8 @@ Milestone 4 does not build a full cost estimator. It preserves the data needed f
 
 **Known limitations:**
 
-- This milestone edits one active nail (`canvas.activeNailId`) only while preserving all nails in the loaded blueprint. Multi-nail set selection, per-finger navigation, and simultaneous full-set editing arrive in Milestone 5.
+- This milestone edits one active nail (`canvas.activeNailId`) only while preserving all nails in the loaded blueprint. Full-surface gradient and pattern overlays are visually stacked and clipped with the rest of the art, but their SVG canvas rendering is non-interactive so they cannot block charms, jewels, decals, drawing strokes, or eraser input below them; select and edit those overlay layers from the Layers panel and Properties panel. Multi-nail set selection, per-finger navigation, and simultaneous full-set editing arrive in Milestone 5.
+- Hidden drawing layers are preserved exactly as hidden historical artwork, but new strokes never append to layers with `visible === false`; if no visible unlocked drawing layer exists, the first completed stroke creates a new visible unlocked drawing layer and inserts that stroke in one undoable transition.
 - The eraser workflow removes the nearest stroke in the selected drawing layer rather than doing partial path boolean erasure.
 - Strict-fit collision uses deterministic shape-specific half-width curves and sampled transformed asset boundaries rather than exact SVG path boolean operations; it is intentionally conservative near curved edges and narrow tips.
 - The project does not introduce a large frontend unit-test framework. A lightweight deterministic geometry helper test runs in Node without browser APIs.
