@@ -40,7 +40,7 @@ app.use(cors({
   allowedHeaders: ["Content-Type"],
 }));
 
-app.use(express.json({ limit: "100kb" }));
+app.use(express.json({ limit: "128kb" }));
 
 // Serve plain HTML for the client-facing proposal page (no React needed)
 app.use(express.urlencoded({ extended: false, limit: "25kb" }));
@@ -55,6 +55,66 @@ function err(res, code, message) {
 
 function asyncRoute(handler) {
   return (req, res, next) => Promise.resolve(handler(req, res, next)).catch(next);
+}
+
+function validateDesignPayload(payload) {
+  const {
+    name,
+    shape = "Almond",
+    length = 0.5,
+    width = 0.5,
+    baseColorHex = "#E8A0BF",
+    effect = "Solid",
+    effectColorHex = "#FFFFFF",
+    tags = [],
+  } = payload || {};
+
+  if (!name || typeof name !== "string" || !name.trim()) {
+    return { error: "name is required and must be a non-empty string" };
+  }
+
+  if (!VALID_SHAPES.includes(shape)) {
+    return { error: `shape must be one of: ${VALID_SHAPES.join(", ")}` };
+  }
+
+  if (typeof length !== "number" || length < 0 || length > 1) {
+    return { error: "length must be a number between 0 and 1" };
+  }
+
+  if (typeof width !== "number" || width < 0 || width > 1) {
+    return { error: "width must be a number between 0 and 1" };
+  }
+
+  if (!HEX_RE.test(baseColorHex)) {
+    return { error: "baseColorHex must be a valid hex color (e.g. #FF00AA)" };
+  }
+
+  if (!VALID_EFFECTS.includes(effect)) {
+    return { error: `effect must be one of: ${VALID_EFFECTS.join(", ")}` };
+  }
+
+  if (!HEX_RE.test(effectColorHex)) {
+    return { error: "effectColorHex must be a valid hex color" };
+  }
+
+  if (!Array.isArray(tags) || tags.some((tag) => typeof tag !== "string")) {
+    return { error: "tags must be an array of strings" };
+  }
+
+  return {
+    design: {
+      id: uuidv4(),
+      name: name.trim(),
+      shape,
+      length: Number(length),
+      width: Number(width),
+      baseColorHex,
+      effect,
+      effectColorHex,
+      tags: tags.map((tag) => tag.trim().toLowerCase()).filter(Boolean),
+      createdAt: Date.now(),
+    },
+  };
 }
 
 // ── Health check ──────────────────────────────────────────────────────────────
@@ -93,64 +153,33 @@ app.get("/api/designs/:id", asyncRoute(async (req, res) => {
 // POST /api/designs
 // Creates a new design. Returns 201 + the created object.
 app.post("/api/designs", asyncRoute(async (req, res) => {
-  const {
-    name,
-    shape = "Almond",
-    length = 0.5,
-    width = 0.5,
-    baseColorHex = "#E8A0BF",
-    effect = "Solid",
-    effectColorHex = "#FFFFFF",
-    tags = [],
-  } = req.body || {};
+  const validation = validateDesignPayload(req.body);
+  if (validation.error) return err(res, 400, validation.error);
 
-  if (!name || typeof name !== "string" || !name.trim()) {
-    return err(res, 400, "name is required and must be a non-empty string");
-  }
-
-  if (!VALID_SHAPES.includes(shape)) {
-    return err(res, 400, `shape must be one of: ${VALID_SHAPES.join(", ")}`);
-  }
-
-  if (typeof length !== "number" || length < 0 || length > 1) {
-    return err(res, 400, "length must be a number between 0 and 1");
-  }
-
-  if (typeof width !== "number" || width < 0 || width > 1) {
-    return err(res, 400, "width must be a number between 0 and 1");
-  }
-
-  if (!HEX_RE.test(baseColorHex)) {
-    return err(res, 400, "baseColorHex must be a valid hex color (e.g. #FF00AA)");
-  }
-
-  if (!VALID_EFFECTS.includes(effect)) {
-    return err(res, 400, `effect must be one of: ${VALID_EFFECTS.join(", ")}`);
-  }
-
-  if (!HEX_RE.test(effectColorHex)) {
-    return err(res, 400, "effectColorHex must be a valid hex color");
-  }
-
-  if (!Array.isArray(tags) || tags.some((tag) => typeof tag !== "string")) {
-    return err(res, 400, "tags must be an array of strings");
-  }
-
-  const design = await store.createDesign({
-    id: uuidv4(),
-    name: name.trim(),
-    shape,
-    length: Number(length),
-    width: Number(width),
-    baseColorHex,
-    effect,
-    effectColorHex,
-    tags: tags.map((tag) => tag.trim().toLowerCase()).filter(Boolean),
-    createdAt: Date.now(),
-  });
+  const design = await store.createDesign(validation.design);
 
   return res.status(201).json(design);
 }));
+
+// POST /api/designs/with-blueprint
+// Atomically creates a design and its complete editable Nail Blueprint document.
+app.post("/api/designs/with-blueprint", asyncRoute(async (req, res) => {
+  const body = req.body || {};
+  const validation = validateDesignPayload(body.design);
+  if (validation.error) return err(res, 400, validation.error);
+  if (!body.blueprint) return err(res, 400, "blueprint is required");
+
+  try {
+    const saved = await store.createDesignWithBlueprint(validation.design, body.blueprint);
+    return res.status(201).json(saved);
+  } catch (error) {
+    if (error instanceof BlueprintValidationError || error.statusCode === 400) {
+      return err(res, 400, error.message);
+    }
+    throw error;
+  }
+}));
+
 
 
 // GET /api/designs/:id/blueprint
@@ -168,6 +197,26 @@ app.put("/api/designs/:id/blueprint", asyncRoute(async (req, res) => {
 
   try {
     const saved = await store.upsertDesignBlueprint(req.params.id, blueprint);
+    if (!saved) return err(res, 404, "Design not found");
+    return res.json(saved);
+  } catch (error) {
+    if (error instanceof BlueprintValidationError || error.statusCode === 400) {
+      return err(res, 400, error.message);
+    }
+    throw error;
+  }
+}));
+
+// PUT /api/designs/:id/with-blueprint
+// Atomically updates editable flat design fields and the complete Blueprint document.
+app.put("/api/designs/:id/with-blueprint", asyncRoute(async (req, res) => {
+  const body = req.body || {};
+  const validation = validateDesignPayload(body.design);
+  if (validation.error) return err(res, 400, validation.error);
+  if (!body.blueprint) return err(res, 400, "blueprint is required");
+
+  try {
+    const saved = await store.updateDesignWithBlueprint(req.params.id, validation.design, body.blueprint);
     if (!saved) return err(res, 404, "Design not found");
     return res.json(saved);
   } catch (error) {
@@ -546,6 +595,7 @@ const server = app.listen(PORT, () => {
 ║  POST /api/designs           create design           ║
 ║  GET  /api/designs/:id/blueprint get blueprint        ║
 ║  PUT  /api/designs/:id/blueprint save blueprint       ║
+║  PUT  /api/designs/:id/with-blueprint save design+bp   ║
 ║  GET  /api/proposals         list proposals          ║
 ║  POST /api/proposals         create proposal         ║
 ║  GET  /proposal/:id          client HTML page        ║

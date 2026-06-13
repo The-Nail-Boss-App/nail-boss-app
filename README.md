@@ -118,7 +118,7 @@ Transforms use normalized coordinates (`x`, `y`, `scaleX`, `scaleY`, `rotation`)
 
 - Existing `designs` rows are preserved and backfilled into `design_blueprints`.
 - Creating a normal flat design creates a default version-1 blueprint transactionally.
-- Updating a blueprint synchronizes legacy flat fields from the active nail/base layer where practical: `shape`, `length`, `width`, `baseColorHex`, `effect`, `effectColorHex`, and `tags`.
+- Updating a blueprint synchronizes legacy flat fields from the active nail/base layer where practical: `shape`, `length`, `width`, `baseColorHex`, `effect`, `effectColorHex`, and `tags`. The atomic existing-design update route also persists editable flat fields such as the submitted design `name`.
 - Proposal APIs and public proposal HTML continue reading the flat design fields, so current workflows are not forced to understand layered documents yet.
 - Deleting a design cascades to its blueprint and existing proposal/history relationships.
 
@@ -126,7 +126,7 @@ Transforms use normalized coordinates (`x`, `y`, `scaleX`, `scaleY`, `rotation`)
 
 Server-side validation rejects malformed or oversized blueprint payloads safely. Current limits are:
 
-- Request JSON body limit: `100kb` for API JSON requests.
+- Request JSON body limit: `128kb` for API JSON requests, leaving wrapper overhead for atomic create/update-with-blueprint saves.
 - Blueprint JSON document limit: `100kb` after serialization.
 - Supported schema versions: `1`.
 - Nails per blueprint: `1` to `10`.
@@ -138,9 +138,105 @@ Server-side validation rejects malformed or oversized blueprint payloads safely.
 
 Safe `400` responses are returned for invalid blueprints, malformed JSON, and validation failures without exposing SQL internals or stack traces.
 
-#### Milestone 4 note
+#### Milestone 4 visual Design Studio
 
-Advanced visual editing tools are intentionally not part of this milestone. Milestone 4 should build the interactive editor on top of this persisted blueprint document: nail selector/full-set mode, layer panel, drag/scale/rotate controls, drawing tools, reusable asset palettes, and preview rendering for the supported layer types.
+Milestone 4 turns the React studio into a Canva-style layered visual editor backed by the Nail Blueprint API. It remains a **single-active-nail** workflow; five-nail and ten-nail full-set selection/editing is intentionally deferred to Milestone 5, but Milestone 4 loads, normalizes, saves, and round-trips the full multi-nail Nail Blueprint document without deleting inactive nails.
+
+**Audit findings before implementation:**
+
+- The previous `client/src/DesignStudio.jsx` was a self-contained component with inline constants, inline `NailSVG`, local form state, validation, and a `POST /api/designs` save handler.
+- `NailSVG` built an SVG path from shape, length, and width sliders, then filled the path with base polish/effect definitions. It did not render persisted blueprint layers.
+- Saving created only a compatible flat design using `POST /api/designs`; it reset the form after success and did not call `PUT /api/designs/:id/blueprint`.
+- The existing blueprint API already returned and replaced version-1 documents through `GET /api/designs/:id/blueprint` and `PUT /api/designs/:id/blueprint`, with server-side validation and legacy flat-field synchronization.
+- Compatibility risks were preserving flat cards/proposals, preventing non-base art from overwriting `baseColorHex`, keeping existing shape/effect names valid, and ensuring older flat designs still receive default blueprints.
+- The old studio was large enough to split; Milestone 4 now separates state, canvas rendering, panels, assets, drawing controls, and styles.
+
+**Component structure:**
+
+- `client/src/DesignStudio.jsx` is a compatibility re-export for the app shell.
+- `client/src/design-studio/DesignStudio.jsx` owns save/load workflow, blueprint state, undo/redo history, and panel orchestration.
+- `client/src/design-studio/NailCanvas.jsx` renders the responsive SVG canvas, strict nail clipping, selected-layer outline, dragging, and freehand pointer input.
+- `client/src/design-studio/LayersPanel.jsx` manages layer selection, visibility, lock state, ordering, and deletion.
+- `client/src/design-studio/AssetLibrary.jsx` exposes original inline starter SVG assets.
+- `client/src/design-studio/PropertiesPanel.jsx` edits selected-layer metadata, opacity, color, position, size, rotation, gradient settings, and pattern settings.
+- `client/src/design-studio/DrawingToolbar.jsx` controls pen type, brush size, brush color, opacity, and eraser mode.
+- `client/src/design-studio/blueprint.js` contains pure blueprint helpers, normalized transforms, default documents, flat-field synchronization helpers, strict-fit clamping, and future product-use quantity summaries.
+- `client/src/design-studio/assets.js` contains original generic SVG asset definitions for charms, jewels, and decals.
+- `client/src/design-studio/studioStyles.js` contains editor-specific inline style helpers that reuse the existing AnitaSet tokens.
+
+**Supported visual layer types:**
+
+- `base` — locked base polish layer synchronized with nail shape, length, width, base color, base effect, effect color, and tags.
+- `charm`, `jewel`, and `decal` — original reusable SVG assets with selection, strict-fit drag, resize, rotation, opacity, color, duplicate, delete, visibility, lock, and reorder controls.
+- `drawing` — editable vector strokes with normalized point data, solid/glitter/soft brush options, brush size, brush color, opacity, and a simple nearest-stroke eraser workflow.
+- `gradient` — lightweight SVG-native overlay with two colors, direction, opacity, visibility, lock, reorder, and delete controls.
+- `pattern` — dots, stripes, checker, french-tip guide, glitter overlay, and marble accent patterns rendered as SVG patterns.
+
+**Starter asset categories:**
+
+- Charms: bow, heart, star, flower, butterfly, moon, crown, and chain link.
+- Jewels: round rhinestone, oval rhinestone, teardrop rhinestone, square gem, pearl, and crystal cluster.
+- Decals: smiley face, flame, lightning bolt, lips, checker accent, abstract swirl, tiny flower, and sparkle.
+
+All starter assets are generic inline SVG shapes stored in the repository. No external URLs, branded icons, licensed marketplace assets, or bitmap screenshots are required for persistence.
+
+**Silhouette-based strict-fit architecture:**
+
+- The active nail silhouette is treated as a hard physical design boundary. SVG clip paths remain in place as a rendering safety layer, but persisted artwork is also validated before it is saved or displayed.
+- `blueprint.js` exposes deterministic geometry helpers for point-in-silhouette checks, point projection, asset-boundary sampling, asset transform constraints, stroke-point constraints, and layer revalidation after nail geometry changes.
+- The strict-fit model stores all transforms and drawing points in normalized 0–1 nail coordinates. Rendering converts those normalized values back through the active nail geometry, so responsive scaling does not change persisted data.
+- The browser-visible nail path and the testable helper model use the same supported shape family (Almond, Coffin, Square, Stiletto, and Oval). The helper model approximates each path with a normalized half-width curve instead of browser-only SVG path APIs; this keeps placement deterministic in Node tests and future backend/product-use calculations.
+- Charms, jewels, and decals are checked with multiple transformed boundary samples around the rotated asset box, not only the center point. If a layer would overhang a curved sidewall, coffin edge, narrow stiletto tip, resized oval, or shortened nail, strict-fit mode repositions it and, when needed, reduces scale until the sampled boundary fits.
+- Shape, length, and width changes rebuild the nail path and revalidate existing asset transforms plus drawing strokes. When artwork is adjusted after a geometry change, the editor shows a non-blocking notice that AnitaSet kept the artwork inside the updated boundary.
+- Freehand drawing input is projected into the active silhouette before stroke points are persisted. Drawing layers are still clipped to the SVG path as a second safety layer, but saved/reloaded stroke data contains only valid visible nail-surface points. If draw mode is active after the previous drawing layer was deleted, the first completed stroke creates the replacement drawing layer and inserts that stroke in the same blueprint/history transition, so the user does not need to draw twice and undo/redo treats it as one meaningful edit.
+- Canvas drag state uses explicit gesture variants: asset gestures store `{ kind: "asset", layerId, start, original }`, while brush gestures store `{ kind: "drawing", stroke }`. Asset transform code is skipped in Draw and Eraser modes, so normal multi-point strokes accumulate through the canvas drawing handler and create one history entry when the completed stroke is committed.
+- Pattern and gradient layers fill only the clipped nail surface. In Select mode they remain selectable and editable as layers, but in Draw and Eraser modes their full-canvas SVG overlays opt out of pointer events so brush input reaches the root canvas handler. Selected-layer outlines and editor handles may appear outside the nail as controls, but they do not persist as artwork.
+
+**Single-active-nail editing and full-document preservation:**
+
+- The current canvas renders and edits only `canvas.activeNailId`; legacy flat fields are synchronized from that active nail/base layer only. This keeps the Milestone 4 UI focused while preparing the state model for Milestone 5 full-set nail selection.
+- Blueprint normalization preserves nail order and up to the backend limit of 10 nails. Backend-valid inactive nails are cloned without destructive frontend normalization: their `id`, `slot`, `shape`, `length`, `width`, `baseColorHex`, layer IDs, layer order, non-uniform `scaleX`/`scaleY`, rotation, opacity, visibility, lock state, data, transforms, and nail-level metadata survive no-op load/save round trips exactly. Invalid inactive nails are the boundary case: the editor repairs malformed data only when needed to produce a server-safe Nail Blueprint v1 document.
+- Loading a five- or ten-nail blueprint, editing only the active nail, saving, and reloading should keep every inactive nail intact. A no-op load/save should not delete inactive nails, clamp their valid transforms, or convert a full-set document into a single-nail document. If `activeNailId` is missing or invalid, normalization repairs it to a preserved nail rather than dropping nails, preparing Milestone 5 to activate and strictly revalidate one nail at a time.
+
+**Save/load workflow:**
+
+- New layered design: enter a name, create layered art, click Save, and the frontend sends one atomic `POST /api/designs/with-blueprint` request containing both the flat compatibility payload and the complete Nail Blueprint v1 document. The editor does not mark the design selected or saved until the atomic response succeeds, so a failed create leaves the unsaved blueprint in memory for retry.
+- Atomic create validates the flat design payload, validates and normalizes the blueprint, derives synchronized legacy flat fields from the active nail/base layer, then inserts the design row and blueprint row in one persistence operation. PostgreSQL uses a single transaction; the file-backed smoke-test store snapshots and restores state to match rollback behavior. Invalid blueprints, oversized blueprints, and blueprint persistence failures leave no orphan default design row behind.
+- Edit saved design: select an existing design, fetch its blueprint with `GET /api/designs/:id/blueprint`, edit layers or rename the design, then save with atomic `PUT /api/designs/:id/with-blueprint`. The request includes `{ design, blueprint }`; the backend validates both payloads, preserves the submitted design name, synchronizes legacy flat fields from the normalized active nail/base layer, and updates the design row plus blueprint row in one transaction. The successful response returns both the updated design and saved blueprint so local saved-design and proposal selectors can show the new name immediately.
+- Existing compatibility routes are preserved: legacy `POST /api/designs` still creates a flat design plus default blueprint, and `PUT /api/designs/:id/blueprint` still saves blueprint-only edits for older clients. New Design Studio saves use the atomic create/update routes so dirty state is cleared only after the combined persistence operation commits.
+- Rollback guarantee: if flat design validation, blueprint validation/normalization, the design update, or blueprint persistence fails, the PostgreSQL transaction rolls back the entire operation. The explicit file-backed smoke-test store snapshots state before mutation and restores it on failure, so there is no partial rename, partial flat-field sync, or half-saved blueprint.
+- Before saving, the frontend serializes the blueprint and rejects clearly oversized documents above the server's `100kb` blueprint limit without sending a create request. It warns after successful saves when a blueprint is approaching the limit so users can simplify before adding many more strokes or layers. The server remains the source of truth for final validation.
+- The editor shows loading, saving, saved, unsaved-change, and safe error states. It confirms before replacing unsaved work when loading another design or starting a new one.
+
+**Undo/redo scope:**
+
+Undo and redo are local only, capped to a small in-memory history, and are reset when another saved design is loaded. History covers meaningful blueprint edits such as layer add/delete/duplicate/reorder, property edits, visibility, lock state, drawing strokes, pattern/gradient edits, base geometry changes, and drag gestures. Dragging captures the pre-drag blueprint before transient pointer-move updates and records one undo step at pointer-up, so Undo returns to the exact pre-drag position and Redo restores the completed drag. Resize and rotation edits continue to use normalized strict-fit transforms so undo/redo restores safe persisted geometry. Undo history is not persisted to PostgreSQL.
+
+**Product-use planning hooks:**
+
+Milestone 4 does not build a full cost estimator. It preserves the data needed for a later estimator: nail shape, length, width, normalized silhouette-valid transforms, stable asset IDs, charm/jewel/decal quantities, vector strokes, and pattern/gradient settings. Quantity summaries count visible charms, jewels, and decals only when the transformed asset boundary is valid inside the active silhouette. Hidden off-silhouette drawing geometry is excluded because drawing points are projected before persistence, while future polish-coverage estimates can use the same clipped nail surface for gradients, patterns, and brush coverage. An advanced controlled-overhang mode may be added later for experienced artists, but it should include warnings, limits, and explicit opt-in because the Milestone 4 MVP uses strict-fit mode.
+
+**Known limitations:**
+
+- This milestone edits one active nail (`canvas.activeNailId`) only while preserving all nails in the loaded blueprint. Full-surface gradient and pattern overlays are visually stacked and clipped with the rest of the art, but their SVG canvas rendering is non-interactive so they cannot block charms, jewels, decals, drawing strokes, or eraser input below them; select and edit those overlay layers from the Layers panel and Properties panel. Multi-nail set selection, per-finger navigation, and simultaneous full-set editing arrive in Milestone 5.
+- Drawing, asset-drag, and eraser gestures store explicit drag-state variants with the starting `pointerId`; only the matching captured pointer may finish, cancel, release capture, clear drag state, create history, or mark the blueprint dirty. Unrelated `pointerup` and `pointercancel` events from other fingers, pens, or mice are ignored.
+- Drawing gestures capture the root SVG pointer for the full stroke, so moving or releasing outside the SVG still delivers the terminal pointer event and commits the constrained stroke once on matching `pointerup`. `pointercancel` is intentionally separate from `pointerup`: AnitaSet releases capture, discards the interrupted in-progress drawing stroke, restores any interrupted asset drag to its original transform, and clears drag state without committing history, marking the blueprint dirty, creating a drawing layer, or saving partial geometry.
+- Hidden drawing layers are preserved exactly as hidden historical artwork, but new strokes never append to layers with `visible === false`; if no visible unlocked drawing layer exists, the first completed stroke creates a new visible unlocked drawing layer and inserts that stroke in one undoable transition.
+- The eraser workflow stages a single nearest-stroke target on pointerdown without mutating the blueprint. A matching `pointerup` commits one erase, creates one history entry, and marks the design dirty; a matching `pointercancel` releases capture and discards the pending erase without modifying hidden, locked, or visible layers. Hidden or locked drawing layers are ignored and left unchanged; if no visible unlocked drawing layer exists, the studio shows a non-blocking notice and does not create a layer merely for erasing.
+- Strict-fit collision uses deterministic shape-specific half-width curves and sampled transformed asset boundaries rather than exact SVG path boolean operations; it is intentionally conservative near curved edges and narrow tips.
+- The project does not introduce a large frontend unit-test framework. A lightweight deterministic geometry helper test runs in Node without browser APIs.
+
+**Laptop responsive layout:**
+
+- The studio remains a desktop-first three-panel editor, but the grid now uses flexible `minmax()` columns instead of fixed 300/420/330 pixel minimums. The left controls, center canvas, and right Assets/Layers/Properties panel can fit within common laptop content widths around 1024px and 1100px after the app sidebar is present.
+- Panel minimums were reduced while keeping readable labels and usable native controls. The center canvas keeps the largest flexible share, and the right panel remains reachable rather than being clipped by `overflow: hidden`.
+- Horizontal scrolling is not the primary layout strategy; panel contents scroll vertically when needed, while the outer studio allows safe overflow instead of hiding essential controls. Manual viewport checks should cover 1280x720, 1366x768, 1440x900, and 1920x1080.
+- Full mobile optimization is not part of Milestone 4. Very narrow phone-width layouts may still be cramped and should receive a dedicated drawer or single-column mobile workflow in a later milestone.
+
+**Accessibility notes:**
+
+- Controls use native buttons, inputs, ranges, color pickers, and selects where practical.
+- The editable nail canvas has an accessible image label, while layer editing remains primarily pointer-driven in this MVP. Keyboard nudging and richer ARIA canvas semantics should be considered in a future accessibility pass.
 
 ## API routes
 
@@ -152,7 +248,9 @@ Designs:
 
 - `GET /api/designs` — list designs, newest first.
 - `GET /api/designs/:id` — fetch one design.
-- `POST /api/designs` — create a design.
+- `POST /api/designs` — create a flat-compatible design and default blueprint for legacy callers.
+- `POST /api/designs/with-blueprint` — atomically create a design with a complete validated Nail Blueprint document; rolls back the design if validation or blueprint persistence fails.
+- `PUT /api/designs/:id/with-blueprint` — atomically update editable flat design fields and the complete Nail Blueprint document; rolls back both writes if either side fails.
 - `DELETE /api/designs/:id` — delete a design and cascade related proposals/history.
 - `GET /api/designs/:id/blueprint` — fetch the versioned Nail Blueprint document for one design.
 - `PUT /api/designs/:id/blueprint` — validate and replace the complete Nail Blueprint document, then synchronize legacy flat design fields.
@@ -283,7 +381,8 @@ The test script intentionally sets `ANITASET_TEST_DB_FILE=.tmp/smoke-test-db.jso
 - Status history.
 - Persistence across restart using the explicit test-only file fallback.
 - Automatic default blueprint creation for flat saved designs.
-- Blueprint GET/PUT round-trips with all supported future layer types.
+- Blueprint GET/PUT round-trips with all supported future layer types, including five- and ten-nail preservation, active-nail-only edits, active `activeNailId` validity, and no-op multi-nail load/save preservation.
+- Atomic create-with-blueprint success, invalid-blueprint rollback, oversized-blueprint rollback, simulated blueprint-persistence rollback, and no orphan default designs after failed atomic creates.
 - Legacy flat-field synchronization from the active nail base layer.
 - Safe 400 responses for invalid blueprints.
 - Cascade cleanup of design blueprints and related proposals after design deletion.
@@ -304,5 +403,5 @@ If a deploy fails after introducing PostgreSQL persistence:
 - Authorization is not implemented for design/proposal management.
 - Public proposal IDs are UUIDs but are accessible to anyone with the link.
 - No rate limiting, request logging, CSRF strategy, or authentication middleware is currently present.
-- Nail Blueprint validation is structural and persistence-focused; advanced visual editing constraints arrive with the Milestone 4 editor.
+- Nail Blueprint validation is structural and persistence-focused; advanced visual editing constraints are enforced in the Milestone 4 editor helpers and covered by deterministic geometry tests.
 - The test-only file fallback is not a production database and should never be configured in Render production.

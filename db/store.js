@@ -203,6 +203,7 @@ function validateAndNormalizeBlueprint(input) {
     }
     const seenLayerIds = new Set();
     const layers = nail.layers.map((layer, layerIndex) => normalizeLayer(layer, nailIndex, layerIndex, seenLayerIds));
+    const nailMetadata = isPlainObject(nail.metadata) ? { ...nail.metadata } : undefined;
     return {
       id: normalizedNailId,
       slot: typeof nail.slot === "string" && nail.slot.trim() ? nail.slot.trim() : `nail-${nailIndex + 1}`,
@@ -211,6 +212,7 @@ function validateAndNormalizeBlueprint(input) {
       width: Number(nail.width),
       baseColorHex: nail.baseColorHex,
       layers,
+      ...(nailMetadata ? { metadata: nailMetadata } : {}),
     };
   });
 
@@ -280,6 +282,13 @@ function flatFieldsFromBlueprint(blueprint) {
     effectColorHex: baseLayer ? data.effectColorHex || "#FFFFFF" : "#FFFFFF",
     tags: normalizeTags((blueprint.metadata && blueprint.metadata.tags) || []),
   };
+}
+
+function shouldSimulateBlueprintPersistenceFailure(blueprint) {
+  return process.env.NODE_ENV === "test"
+    && blueprint
+    && blueprint.metadata
+    && blueprint.metadata.simulatePersistenceFailure === "smoke-test";
 }
 
 function mapDesign(row) {
@@ -406,6 +415,119 @@ class PostgresStore {
       );
       await client.query("COMMIT");
       return mapDesign(result.rows[0]);
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  async createDesignWithBlueprint(input, blueprintInput) {
+    const blueprint = validateAndNormalizeBlueprint(blueprintInput);
+    const flat = flatFieldsFromBlueprint(blueprint);
+    const createdAt = input.createdAt || nowMs();
+    const designInput = {
+      ...input,
+      ...flat,
+      createdAt,
+      updatedAt: input.updatedAt || createdAt,
+    };
+    const client = await this.pool.connect();
+    try {
+      await client.query("BEGIN");
+      const designResult = await client.query(
+        `INSERT INTO designs
+          (id, name, shape, length, width, base_color_hex, effect, effect_color_hex, tags, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+         RETURNING *`,
+        [
+          designInput.id,
+          designInput.name,
+          designInput.shape,
+          designInput.length,
+          designInput.width,
+          designInput.baseColorHex,
+          designInput.effect,
+          designInput.effectColorHex,
+          designInput.tags,
+          designInput.createdAt,
+          designInput.updatedAt,
+        ],
+      );
+      if (shouldSimulateBlueprintPersistenceFailure(blueprint)) {
+        throw new Error("Simulated blueprint persistence failure");
+      }
+      const blueprintResult = await client.query(
+        `INSERT INTO design_blueprints (design_id, schema_version, document, created_at, updated_at)
+         VALUES ($1, $2, $3::jsonb, $4, $5)
+         RETURNING *`,
+        [designInput.id, blueprint.schemaVersion, JSON.stringify(blueprint), designInput.createdAt, designInput.updatedAt],
+      );
+      await client.query("COMMIT");
+      return { design: mapDesign(designResult.rows[0]), blueprint: mapBlueprint(blueprintResult.rows[0]) };
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  async updateDesignWithBlueprint(designId, input, blueprintInput) {
+    const blueprint = validateAndNormalizeBlueprint(blueprintInput);
+    const flat = flatFieldsFromBlueprint(blueprint);
+    const updatedAt = nowMs();
+    const client = await this.pool.connect();
+    try {
+      await client.query("BEGIN");
+      const currentResult = await client.query("SELECT * FROM designs WHERE id = $1 FOR UPDATE", [designId]);
+      if (!currentResult.rows[0]) {
+        await client.query("ROLLBACK");
+        return null;
+      }
+      const current = mapDesign(currentResult.rows[0]);
+      const designResult = await client.query(
+        `UPDATE designs
+         SET name = $2,
+             shape = $3,
+             length = $4,
+             width = $5,
+             base_color_hex = $6,
+             effect = $7,
+             effect_color_hex = $8,
+             tags = $9,
+             updated_at = $10
+         WHERE id = $1
+         RETURNING *`,
+        [
+          designId,
+          input.name,
+          flat.shape,
+          flat.length,
+          flat.width,
+          flat.baseColorHex,
+          flat.effect,
+          flat.effectColorHex,
+          flat.tags,
+          updatedAt,
+        ],
+      );
+      if (shouldSimulateBlueprintPersistenceFailure(blueprint)) {
+        throw new Error("Simulated blueprint persistence failure");
+      }
+      const blueprintResult = await client.query(
+        `INSERT INTO design_blueprints (design_id, schema_version, document, created_at, updated_at)
+         VALUES ($1, $2, $3::jsonb, $4, $5)
+         ON CONFLICT (design_id) DO UPDATE
+         SET schema_version = EXCLUDED.schema_version,
+             document = EXCLUDED.document,
+             updated_at = EXCLUDED.updated_at
+         RETURNING *`,
+        [designId, blueprint.schemaVersion, JSON.stringify(blueprint), current.createdAt, updatedAt],
+      );
+      await client.query("COMMIT");
+      return { design: mapDesign(designResult.rows[0]), blueprint: mapBlueprint(blueprintResult.rows[0]) };
     } catch (error) {
       await client.query("ROLLBACK");
       throw error;
@@ -650,6 +772,79 @@ class FileStore {
     });
     this.persist();
     return { ...design };
+  }
+
+  async createDesignWithBlueprint(input, blueprintInput) {
+    const document = validateAndNormalizeBlueprint(blueprintInput);
+    const flat = flatFieldsFromBlueprint(document);
+    const createdAt = input.createdAt || nowMs();
+    const design = { ...input, ...flat, createdAt, updatedAt: input.updatedAt || createdAt };
+    const snapshot = {
+      designs: this.data.designs.map((item) => ({ ...item })),
+      designBlueprints: this.data.designBlueprints.map((item) => ({ ...item, document: item.document })),
+      proposals: this.data.proposals.map((item) => ({ ...item })),
+      proposalStatusHistory: this.data.proposalStatusHistory.map((item) => ({ ...item })),
+    };
+    try {
+      this.data.designs.push(design);
+      if (shouldSimulateBlueprintPersistenceFailure(document)) {
+        throw new Error("Simulated blueprint persistence failure");
+      }
+      const blueprint = {
+        designId: design.id,
+        schemaVersion: document.schemaVersion,
+        document,
+        createdAt: design.createdAt,
+        updatedAt: design.updatedAt,
+      };
+      this.data.designBlueprints.push(blueprint);
+      this.persist();
+      return { design: { ...design }, blueprint: { ...blueprint, document } };
+    } catch (error) {
+      this.data = snapshot;
+      this.persist();
+      throw error;
+    }
+  }
+
+  async updateDesignWithBlueprint(designId, input, blueprintInput) {
+    const design = this.data.designs.find((item) => item.id === designId);
+    if (!design) return null;
+    const document = validateAndNormalizeBlueprint(blueprintInput);
+    const flat = flatFieldsFromBlueprint(document);
+    const updatedAt = nowMs();
+    const snapshot = {
+      designs: this.data.designs.map((item) => ({ ...item })),
+      designBlueprints: this.data.designBlueprints.map((item) => ({ ...item, document: item.document })),
+      proposals: this.data.proposals.map((item) => ({ ...item })),
+      proposalStatusHistory: this.data.proposalStatusHistory.map((item) => ({ ...item })),
+    };
+    try {
+      Object.assign(design, {
+        name: input.name,
+        ...flat,
+        updatedAt,
+      });
+      if (shouldSimulateBlueprintPersistenceFailure(document)) {
+        throw new Error("Simulated blueprint persistence failure");
+      }
+      const existing = this.data.designBlueprints.find((item) => item.designId === designId);
+      const blueprint = {
+        designId,
+        schemaVersion: document.schemaVersion,
+        document,
+        createdAt: existing ? existing.createdAt : design.createdAt,
+        updatedAt,
+      };
+      if (existing) Object.assign(existing, blueprint);
+      else this.data.designBlueprints.push(blueprint);
+      this.persist();
+      return { design: { ...design }, blueprint: { ...blueprint, document } };
+    } catch (error) {
+      this.data = snapshot;
+      this.persist();
+      throw error;
+    }
   }
 
   async getDesignBlueprint(designId) {

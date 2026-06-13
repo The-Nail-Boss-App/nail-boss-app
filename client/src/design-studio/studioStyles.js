@@ -1,0 +1,24 @@
+import { COLORS, S } from "../styles.js";
+
+export const UI = {
+  shell: { height: "100%", minHeight: 0, display: "flex", flexDirection: "column", background: COLORS.bg },
+  toolbar: { display: "flex", alignItems: "center", gap: 8, padding: "12px 18px", borderBottom: `1px solid ${COLORS.border}`, background: COLORS.surface, flexWrap: "wrap" },
+  layout: {
+    flex: 1,
+    minHeight: 0,
+    display: "grid",
+    gridTemplateColumns: "minmax(220px, 0.78fr) minmax(360px, 1.4fr) minmax(240px, 0.9fr)",
+    gap: 10,
+    padding: 10,
+    overflow: "auto",
+    alignItems: "stretch",
+  },
+  panel: { background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 18, boxShadow: "0 10px 30px rgba(60,20,50,.06)", minHeight: 0, minWidth: 0, overflow: "auto" },
+  panelPad: { padding: 14 },
+  sectionTitle: { fontSize: 12, letterSpacing: ".08em", textTransform: "uppercase", color: COLORS.textMuted, fontWeight: 800, marginBottom: 10 },
+  miniButton: (active = false) => ({ ...(active ? S.btnSecondary : S.btnGhost), padding: "8px 10px", fontSize: 12, borderColor: active ? COLORS.plum : COLORS.border, color: active ? COLORS.plum : COLORS.textMuted, whiteSpace: "nowrap" }),
+  iconButton: (active = false, disabled = false) => ({ border: `1px solid ${active ? COLORS.plum : COLORS.border}`, background: active ? COLORS.roseDim : "#fff", color: disabled ? COLORS.textFaint : active ? COLORS.plum : COLORS.text, borderRadius: 10, padding: "8px 10px", fontSize: 12, fontWeight: 700, cursor: disabled ? "not-allowed" : "pointer", opacity: disabled ? 0.55 : 1 }),
+  field: { marginBottom: 14 },
+  row: { display: "flex", gap: 8, alignItems: "center" },
+  smallText: { fontSize: 12, color: COLORS.textMuted, lineHeight: 1.35 },
+};
