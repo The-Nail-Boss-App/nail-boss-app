@@ -525,7 +525,7 @@ Save responses are also scoped to the editor session that submitted them. Each s
 
 Undo and Redo are treated as editor mutations. Each operation updates the blueprint ref, marks the design dirty, restores the "Unsaved changes" save label, and schedules the standard 20-second debounced autosave while preserving undo/redo history.
 
-Generated names for unnamed autosaved drafts are stable for the lifetime of that draft. The first generated or server-returned `Untitled Set N` name is reused by stale-response handling, queued follow-up saves, and later autosaves until the user starts a truly new design, loads another design, or enters an authoritative manual name.
+Generated names for unnamed autosaved drafts are stable for the lifetime of that draft. The first generated or server-returned `Untitled Set N` name is reused by stale-response handling, queued follow-up saves, and later autosaves until the user starts a truly new design, loads another design, or enters an authoritative manual name. Existing saved designs do not generate `Untitled Set` names during autosave: if the visible name input is blank, autosave preserves the last persisted design name instead of renaming the row. Manual Save follows the same preserve-and-restore behavior for existing designs with a blank name, and user-entered valid renames remain authoritative on the next successful save.
 
 Known limitation: browser unload protection depends on native browser confirmation UI and cannot show the richer in-app discard confirmation or guarantee network persistence during page shutdown.
 

@@ -107,6 +107,7 @@ function DesignStudio(_, ref) {
   const activeSavePromiseRef = useRef(null);
   const generatedNameCounterRef = useRef(1);
   const generatedDraftNameRef = useRef("");
+  const persistedDesignNameRef = useRef("");
   const dirtyRef = useRef(false);
   const blueprintRef = useRef(null);
   const selectedDesignIdRef = useRef("");
@@ -193,6 +194,7 @@ function DesignStudio(_, ref) {
     editorSessionRef.current += 1;
     clearAutosaveTimer();
     generatedDraftNameRef.current = "";
+    persistedDesignNameRef.current = design?.name || "";
     const normalized = ensureFullSetBlueprint(nextBlueprint, design);
     blueprintRef.current = normalized;
     dirtyRef.current = false;
@@ -473,7 +475,20 @@ function DesignStudio(_, ref) {
       mode: options.autosave ? "autosave" : "manual",
       target: existingDesignId ? "existing-design-update" : "new-draft-create",
     };
-    const workingName = designNameRef.current || (options.autosave ? generatedUntitledName() : designName);
+    const visibleName = designNameRef.current.trim();
+    let workingName = visibleName;
+    if (!workingName && existingDesignId) {
+      workingName = persistedDesignNameRef.current.trim();
+      if (!workingName) {
+        setStatus({ type: "error", message: "Enter a design name before saving this existing design." });
+        setSaveStatus("Unsaved changes");
+        return { ok: false, reason: "validation" };
+      }
+    } else if (!workingName && options.autosave) {
+      workingName = generatedUntitledName();
+    } else if (!workingName) {
+      workingName = designName.trim();
+    }
     const flat = flatDesignFromBlueprint(workingBlueprint, workingName);
     if (!flat.name) {
       setStatus({ type: "error", message: "Enter a design name before saving." });
@@ -540,12 +555,14 @@ function DesignStudio(_, ref) {
             generatedDraftNameRef.current = savedDesign.name;
           }
         }
+        if (savedDesign?.name) persistedDesignNameRef.current = savedDesign.name;
         const unchangedSinceSubmit = editGenerationRef.current === submittedRevision && selectionRevisionRef.current === submittedSelectionRevision;
         if (unchangedSinceSubmit) {
           const normalizedSaved = ensureFullSetBlueprint(savedBlueprint.document, savedDesign);
           blueprintRef.current = normalizedSaved;
           designNameRef.current = savedDesign?.name || flat.name;
           generatedDraftNameRef.current = "";
+          persistedDesignNameRef.current = savedDesign?.name || flat.name;
           setDesignName(savedDesign?.name || flat.name);
           setBlueprint(normalizedSaved);
           dirtyRef.current = false;
