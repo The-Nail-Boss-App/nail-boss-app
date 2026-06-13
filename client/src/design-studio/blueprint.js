@@ -244,6 +244,10 @@ export function constrainStrokePoints(points = [], nail) {
 }
 
 export function revalidateLayersAfterNailResize(blueprint) {
+  return updateActiveNail(blueprint, (nail) => revalidateNailLayers(nail));
+}
+
+function legacyRevalidateLayersAfterNailResize(blueprint) {
   return updateActiveNail(blueprint, (nail) => ({
     ...nail,
     layers: nail.layers.map((layer) => {
@@ -293,6 +297,7 @@ export function createBaseLayer(design = {}) {
 }
 
 export function createDefaultBlueprint(design = {}) {
+  if (design.fullSet !== false) return createFullSetBlueprint(design);
   const nail = {
     id: "nail-1",
     slot: "accent",
@@ -576,6 +581,170 @@ export function addStrokeToDrawingLayer(blueprint, stroke, tool = "solid", prefe
   });
   return { blueprint: next, layerId: drawingId, created };
 }
+
+
+export const LEFT_HAND_SLOTS = ["left-thumb", "left-index", "left-middle", "left-ring", "left-pinky"];
+export const RIGHT_HAND_SLOTS = ["right-thumb", "right-index", "right-middle", "right-ring", "right-pinky"];
+export const FULL_SET_SLOTS = [...LEFT_HAND_SLOTS, ...RIGHT_HAND_SLOTS];
+export const DEFAULT_ACTIVE_SLOT = "right-index";
+export const STYLE_CATEGORIES = ["Minimal", "French", "Glam", "Abstract", "Bridal", "Seasonal", "Custom"];
+
+export function slotLabel(slot = "") {
+  const finger = String(slot).split("-").pop() || slot;
+  return finger.charAt(0).toUpperCase() + finger.slice(1);
+}
+
+function defaultNailForSlot(slot, design = {}) {
+  return {
+    id: `nail-${slot}`,
+    slot,
+    shape: SHAPES.includes(design.shape) ? design.shape : "Almond",
+    length: clamp(design.length ?? 0.5, 0, 1),
+    width: clamp(design.width ?? 0.5, 0, 1),
+    baseColorHex: normalizeHex(design.baseColorHex),
+    layers: [createBaseLayer(design)],
+    metadata: {},
+  };
+}
+
+export function createFullSetBlueprint(design = {}) {
+  const nails = FULL_SET_SLOTS.map((slot) => defaultNailForSlot(slot, design));
+  const active = nails.find((nail) => nail.slot === DEFAULT_ACTIVE_SLOT) || nails[0];
+  return {
+    schemaVersion: 1,
+    canvas: { mode: "full-set", activeNailId: active.id },
+    nails,
+    metadata: {
+      tags: normalizeTags(design.tags || []),
+      internalNotes: String(design.internalNotes || ""),
+      estimatedServicePrice: design.estimatedServicePrice ?? "",
+      styleCategory: STYLE_CATEGORIES.includes(design.styleCategory) ? design.styleCategory : "Custom",
+    },
+  };
+}
+
+function revalidateNailLayers(nail) {
+  return {
+    ...nail,
+    layers: renumberLayers((nail.layers || []).map((layer) => {
+      if (ASSET_LAYER_TYPES.has(layer.type)) return { ...layer, transform: constrainAssetTransform(layer.transform, nail, layer) };
+      if (layer.type === "drawing") return { ...layer, transform: safeTransform(layer.transform, nail, layer.type), data: { ...layer.data, strokes: (layer.data?.strokes || []).map((stroke) => ({ ...stroke, points: constrainStrokePoints(stroke.points || [], nail) })) } };
+      return { ...layer, transform: safeTransform(layer.transform, nail, layer.type) };
+    })),
+  };
+}
+
+export function revalidateAllNails(blueprint) {
+  return { ...blueprint, nails: (blueprint.nails || []).map(revalidateNailLayers) };
+}
+
+export function ensureFullSetBlueprint(input, design = {}) {
+  const normalized = ensureBlueprint(input, design);
+  const existingBySlot = new Map();
+  const usedIds = new Set();
+  normalized.nails.forEach((nail, index) => {
+    const slot = FULL_SET_SLOTS.includes(nail.slot) ? nail.slot : (index === 0 ? DEFAULT_ACTIVE_SLOT : FULL_SET_SLOTS[index]);
+    if (!existingBySlot.has(slot)) existingBySlot.set(slot, { ...nail, slot });
+  });
+  const nails = FULL_SET_SLOTS.map((slot) => {
+    const nail = existingBySlot.get(slot) || defaultNailForSlot(slot, design);
+    let id = String(nail.id || `nail-${slot}`).trim() || `nail-${slot}`;
+    if (usedIds.has(id)) id = `nail-${slot}`;
+    let suffix = 2;
+    while (usedIds.has(id)) id = `nail-${slot}-${suffix++}`;
+    usedIds.add(id);
+    return revalidateNailLayers({ ...nail, id, slot, metadata: nail.metadata && typeof nail.metadata === "object" ? { ...nail.metadata } : {} });
+  });
+  const previousActive = normalized.canvas?.activeNailId;
+  const active = nails.find((nail) => nail.id === previousActive) || nails.find((nail) => nail.slot === DEFAULT_ACTIVE_SLOT) || nails[0];
+  return {
+    schemaVersion: 1,
+    canvas: { ...(normalized.canvas || {}), mode: "full-set", activeNailId: active.id },
+    nails,
+    metadata: {
+      ...normalized.metadata,
+      tags: normalizeTags(normalized.metadata?.tags || design.tags || []),
+      internalNotes: String(normalized.metadata?.internalNotes || ""),
+      estimatedServicePrice: normalized.metadata?.estimatedServicePrice ?? "",
+      styleCategory: STYLE_CATEGORIES.includes(normalized.metadata?.styleCategory) ? normalized.metadata.styleCategory : "Custom",
+    },
+  };
+}
+
+export function getNailBySlot(blueprint, slot) {
+  return blueprint?.nails?.find((nail) => nail.slot === slot) || null;
+}
+
+export function setActiveNailBySlot(blueprint, slot) {
+  const nail = getNailBySlot(blueprint, slot);
+  return nail ? { ...blueprint, canvas: { ...blueprint.canvas, activeNailId: nail.id } } : blueprint;
+}
+
+function cloneLayerForNail(layer, destinationNail) {
+  const cloned = { ...layer, id: layer.type === "base" ? "base-layer" : uid(layer.type), locked: layer.type === "base" ? true : Boolean(layer.locked), data: { ...(layer.data || {}) }, transform: { ...(layer.transform || {}) } };
+  if (cloned.type === "drawing") cloned.data.strokes = (cloned.data.strokes || []).map((stroke) => ({ ...stroke, id: uid("stroke"), points: constrainStrokePoints(stroke.points || [], destinationNail) }));
+  if (ASSET_LAYER_TYPES.has(cloned.type)) cloned.transform = constrainAssetTransform(cloned.transform, destinationNail, cloned);
+  else cloned.transform = safeTransform(cloned.transform, destinationNail, cloned.type);
+  return cloned;
+}
+
+export function cloneNailDesign(sourceNail, destinationNail) {
+  const base = sourceNail.layers?.find((layer) => layer.type === "base") || createBaseLayer(sourceNail);
+  const next = {
+    ...destinationNail,
+    shape: sourceNail.shape,
+    length: sourceNail.length,
+    width: sourceNail.width,
+    baseColorHex: normalizeHex(sourceNail.baseColorHex, destinationNail.baseColorHex),
+    metadata: { ...(destinationNail.metadata || {}), copiedFromSlot: sourceNail.slot },
+  };
+  next.layers = renumberLayers((sourceNail.layers || [base]).map((layer) => cloneLayerForNail(layer, next)));
+  return revalidateNailLayers(next);
+}
+
+export function copyNailToSlots(blueprint, sourceSlot, destinationSlots = []) {
+  const source = getNailBySlot(blueprint, sourceSlot);
+  if (!source) return blueprint;
+  const destinations = new Set(destinationSlots.filter((slot) => slot !== sourceSlot));
+  return { ...blueprint, nails: blueprint.nails.map((nail) => destinations.has(nail.slot) ? cloneNailDesign(source, nail) : nail) };
+}
+
+export function mirrorHandDesign(blueprint, fromHand = "left") {
+  const fromSlots = fromHand === "left" ? LEFT_HAND_SLOTS : RIGHT_HAND_SLOTS;
+  const toSlots = fromHand === "left" ? RIGHT_HAND_SLOTS : LEFT_HAND_SLOTS;
+  let next = blueprint;
+  fromSlots.forEach((slot, index) => { next = copyNailToSlots(next, slot, [toSlots[index]]); });
+  return next;
+}
+
+export function applyBaseToSlots(blueprint, patch = {}, slots = []) {
+  const targets = new Set(slots);
+  return { ...blueprint, nails: blueprint.nails.map((nail) => targets.has(nail.slot) ? revalidateNailLayers({ ...nail, ...patch, baseColorHex: normalizeHex(patch.baseColorHex ?? patch.colorHex ?? nail.baseColorHex, nail.baseColorHex), layers: nail.layers.map((layer) => layer.type === "base" ? { ...layer, data: { ...layer.data, colorHex: normalizeHex(patch.baseColorHex ?? patch.colorHex ?? layer.data.colorHex, layer.data.colorHex), effect: EFFECTS.includes(patch.effect) ? patch.effect : layer.data.effect, effectColorHex: normalizeHex(patch.effectColorHex ?? layer.data.effectColorHex, layer.data.effectColorHex) } } : layer) }) : nail) };
+}
+
+export function resetNailDesign(blueprint, slot) {
+  return { ...blueprint, nails: blueprint.nails.map((nail) => nail.slot === slot ? { ...nail, baseColorHex: normalizeHex(nail.baseColorHex), layers: [createBaseLayer(nail)] } : nail) };
+}
+
+export function summarizeFullSetAssets(blueprint) {
+  const summary = { nailCount: 0, charmsByAssetId: {}, jewelsByAssetId: {}, decalsByAssetId: {}, visibleDrawingLayerCount: 0, visibleGradientLayerCount: 0, visiblePatternLayerCount: 0 };
+  for (const nail of blueprint?.nails || []) {
+    summary.nailCount += 1;
+    for (const layer of nail.layers || []) {
+      if (layer.visible === false) continue;
+      if (ASSET_LAYER_TYPES.has(layer.type) && assetFitsNailSilhouette(layer.transform, nail, layer)) {
+        const key = layer.data?.assetId || "unknown";
+        const bucket = layer.type === "charm" ? summary.charmsByAssetId : layer.type === "jewel" ? summary.jewelsByAssetId : summary.decalsByAssetId;
+        bucket[key] = (bucket[key] || 0) + 1;
+      }
+      if (layer.type === "drawing") summary.visibleDrawingLayerCount += 1;
+      if (layer.type === "gradient") summary.visibleGradientLayerCount += 1;
+      if (layer.type === "pattern") summary.visiblePatternLayerCount += 1;
+    }
+  }
+  return summary;
+}
+
 
 export function quantitySummary(blueprint) {
   const nail = getActiveNail(blueprint);

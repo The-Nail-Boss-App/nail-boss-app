@@ -405,3 +405,98 @@ If a deploy fails after introducing PostgreSQL persistence:
 - No rate limiting, request logging, CSRF strategy, or authentication middleware is currently present.
 - Nail Blueprint validation is structural and persistence-focused; advanced visual editing constraints are enforced in the Milestone 4 editor helpers and covered by deterministic geometry tests.
 - The test-only file fallback is not a production database and should never be configured in Render production.
+
+## Milestone 5 — Full Nail Set Studio
+
+Milestone 5 expands AnitaSet's Design Studio from a single-active-nail editor into a full 10-nail set workflow while preserving the Nail Blueprint v1 document and Milestone 4 safety rules.
+
+### Audit findings before implementation
+
+- **Active-nail state flow:** `canvas.activeNailId` selects one editable nail. Left controls, the main `NailCanvas`, `LayersPanel`, and `PropertiesPanel` all read from `getActiveNail()`, while `updateActiveNail()` and `synchronizeBase()` mutate only that nail.
+- **Blueprint structure:** Nail Blueprint v1 stores `schemaVersion`, `canvas`, ordered `nails`, and `metadata`. Each nail owns `id`, `slot`, `shape`, `length`, `width`, `baseColorHex`, `layers`, and optional nail `metadata`; legacy flat design fields are derived from the active nail only.
+- **Inactive-nail preservation:** `ensureBlueprint()`, `cloneInactiveNailVerbatim()`, `updateActiveNail()`, `synchronizeBase()`, `addLayerToBlueprint()`, and `addStrokeToDrawingLayer()` keep inactive nails unchanged unless an explicit full-set helper targets them.
+- **Strict-fit geometry:** asset transforms are constrained with deterministic silhouette checks, drawing points are projected into the nail surface, SVG clipping remains a rendering backstop, and resize/shape edits re-run validation against the current active nail.
+- **Atomic persistence:** layered designs continue to save through `POST /api/designs/with-blueprint` and update through `PUT /api/designs/:id/with-blueprint`, preserving rollback guarantees and avoiding orphan blueprint rows.
+- **Compatibility risks:** proposal cards and legacy endpoints still expect active-nail flat fields; therefore Milestone 5 keeps those fields synchronized from `canvas.activeNailId` and leaves public proposal previews on the legacy active-nail preview for now.
+- **Recommended additions:** reusable `FullSetPreview`, `HandPreview`, `NailThumbnail`, and `BulkActionsPanel` components provide full-set navigation, realistic thumbnails, and explicit bulk tools without rebuilding the editor.
+
+### 10-nail slot model and active editing
+
+Full-set blueprints use stable normalized slots in this order:
+
+1. `left-thumb`
+2. `left-index`
+3. `left-middle`
+4. `left-ring`
+5. `left-pinky`
+6. `right-thumb`
+7. `right-index`
+8. `right-middle`
+9. `right-ring`
+10. `right-pinky`
+
+New designs initialize all 10 nails by default with a unique stable nail ID, slot, default shape, default length, default width, base color, and locked base layer. The documented default active slot is `right-index`. Legacy one-nail blueprints are upgraded safely by preserving the original nail and filling missing slots with default nails; existing multi-nail blueprints are never reset during load.
+
+The full-size `NailCanvas` still edits one nail at a time. Clicking a full-set thumbnail changes `canvas.activeNailId`, updates left-side shape/length/width/base controls, updates Layers and Properties for the active nail, and preserves unsaved edits on every inactive nail. Undo/redo uses a single blueprint-level history capped by the existing history limit, so bulk changes and nail switches remain predictable across the whole set.
+
+### New full-set components
+
+- `FullSetPreview.jsx` renders Full Set, Left Hand, and Right Hand preview tabs and routes thumbnail clicks to active-nail switching.
+- `HandPreview.jsx` renders five thumbnails for one hand in thumb-to-pinky order.
+- `NailThumbnail.jsx` renders a read-only clipped SVG thumbnail using each nail's shape, length, width, base color, visible layers, drawing strokes, overlays, and asset stacking order.
+- `BulkActionsPanel.jsx` exposes copy, paste, duplicate, mirror, apply, and reset actions with explicit selected-slot targeting.
+
+### Bulk action behavior
+
+Milestone 5 supports copying the active nail, pasting to selected slots, duplicating to the current hand, duplicating to all nails, copying to the matching finger on the opposite hand, mirroring one hand to the opposite hand, applying base color to the active hand or all nails, applying shape/width/length to the active hand or all nails, and resetting a selected nail to its base layer only.
+
+Destructive overwrite actions ask for confirmation. Destination nails keep their own nail IDs and slots. Copied layers receive fresh layer IDs, copied drawing strokes receive fresh stroke IDs, and destination artwork is revalidated against that nail's current geometry. AnitaSet shows a lightweight notice when copied or mirrored artwork is adjusted to fit.
+
+### Autosave and draft recovery preparation
+
+Layered Nail Blueprint designs now have a debounced autosave path. Meaningful edits mark the design dirty, show **Unsaved changes**, and schedule an autosave approximately 20 seconds after the latest meaningful edit. Pointermove updates during drag gestures do not create save requests; only completed actions such as asset drag completion, drawing stroke completion, eraser completion, layer mutations, base/shape/width/length changes, bulk actions, and paused metadata edits schedule autosave.
+
+Autosave uses the same atomic routes as manual save:
+
+- New valid drafts use `POST /api/designs/with-blueprint`.
+- Existing saved drafts use `PUT /api/designs/:id/with-blueprint`.
+
+Repeated autosaves update the same draft row after the first successful create. New unnamed autosaved drafts receive an editable generated name such as `Untitled Set 1`. The status label reports **Unsaved changes**, **Saving…**, **Autosaved**, or **Save failed — changes kept locally**. Dirty state is not cleared until the atomic request succeeds, failed autosaves preserve the dirty blueprint in frontend memory, overlapping requests are prevented, and a follow-up autosave is queued when edits occur while a save is in progress. A later enhancement should add safe local browser draft recovery; Milestone 5 intentionally avoids localStorage recovery to keep persistence atomic and low risk.
+
+### Repeated strict-fit revalidation
+
+Every active geometry change (`shape`, `width`, or `length`) re-runs strict-fit validation using the current nail geometry and current layer transforms. This is not a one-time migration: Almond → Square → Coffin → Stiletto → Oval → Almond sequences continue to re-fit artwork deterministically. Assets preserve relative placement and rotation where possible, only repositioning or reducing scale when needed. Drawing points are re-projected into the current silhouette so hidden off-silhouette stroke points are not persisted. SVG clipping remains a visual safety layer, but persisted transforms and stroke points are physically valid.
+
+Revalidation is idempotent. Running the same validation twice without another geometry change produces identical output, avoids cumulative center drift, and avoids repeated shrinking once artwork already fits. Bulk copy, paste, duplicate, mirror, and apply-shape actions revalidate every affected destination nail independently.
+
+### Set-level metadata and product-use hooks
+
+Blueprint metadata can now store tags, optional internal artist notes, an estimated service price placeholder, and a style category: Minimal, French, Glam, Abstract, Bridal, Seasonal, or Custom. No schema migration is required because the data lives inside the existing blueprint metadata object.
+
+`summarizeFullSetAssets()` provides deterministic product-use hooks for later pricing and inventory work. It counts nails, visible valid charms by asset ID, visible valid jewels by asset ID, visible valid decals by asset ID, visible drawing-layer count, visible gradient-layer count, and visible pattern-layer count. Invalid off-silhouette asset geometry is excluded.
+
+### Save, load, and proposal compatibility
+
+New full-set designs and upgraded legacy designs save atomically through the existing blueprint routes. Existing single-nail designs upgrade to 10 slots without discarding the original nail. Existing full-set designs reload with all nails intact and continue editing from the persisted active nail when valid. Design rename persistence, failed-save frontend state preservation, rollback guarantees, and no-orphan-design behavior remain tied to the existing atomic server workflow.
+
+Proposal compatibility is preserved by keeping legacy flat fields synchronized from the active nail only. Public proposal cards may continue using the active-nail preview in Milestone 5; richer full-set proposal previews are intentionally deferred.
+
+### Known limitations and Milestone 5.1 French-tip backlog
+
+Known limitations:
+
+- Public proposal previews remain active-nail based rather than full-set thumbnails.
+- Autosave recovery is memory-only after a failed save; safe local browser draft recovery is deferred.
+- The product-use summary is a counting hook, not a complete product estimator or pricing engine.
+- Bulk action UI uses browser confirmations for destructive operations.
+
+Milestone 5.1 French-tip refinement backlog:
+
+- adjustable French-tip height
+- adjustable smile-line curve
+- soft, medium, and deep smile-line presets
+- angled French tip
+- V-French tip
+- reverse French tip
+- per-nail French-tip controls
+- bulk-apply French-tip settings across selected nails

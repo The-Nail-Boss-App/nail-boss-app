@@ -5,16 +5,31 @@ import AssetLibrary from "./AssetLibrary.jsx";
 import LayersPanel from "./LayersPanel.jsx";
 import PropertiesPanel from "./PropertiesPanel.jsx";
 import DrawingToolbar from "./DrawingToolbar.jsx";
+import FullSetPreview from "./FullSetPreview.jsx";
+import BulkActionsPanel from "./BulkActionsPanel.jsx";
 import { UI } from "./studioStyles.js";
 import {
+  DEFAULT_ACTIVE_SLOT,
   EFFECTS,
+  FULL_SET_SLOTS,
+  LEFT_HAND_SLOTS,
+  RIGHT_HAND_SLOTS,
   SHAPES,
+  STYLE_CATEGORIES,
   addLayerToBlueprint,
   addStrokeToDrawingLayer,
+  summarizeFullSetAssets,
+  setActiveNailBySlot,
+  resetNailDesign,
+  mirrorHandDesign,
+  ensureFullSetBlueprint,
+  createFullSetBlueprint,
+  copyNailToSlots,
+  cloneNailDesign,
+  applyBaseToSlots,
   assetLayer,
   clamp,
-  createDefaultBlueprint,
-  ensureBlueprint,
+
   flatDesignFromBlueprint,
   getActiveNail,
   gradientLayer,
@@ -77,6 +92,18 @@ export default function DesignStudio() {
   const [status, setStatus] = useState({ type: "idle", message: "Ready" });
   const [notice, setNotice] = useState("");
   const [tab, setTab] = useState("assets");
+  const [clipboardNail, setClipboardNail] = useState(null);
+  const [selectedSlots, setSelectedSlots] = useState([]);
+  const [saveStatus, setSaveStatus] = useState("Ready");
+  const autosaveTimerRef = useRef(null);
+  const savingRef = useRef(false);
+  const queuedAutosaveRef = useRef(false);
+  const saveSequenceRef = useRef(0);
+  const generatedNameRef = useRef(1);
+  const dirtyRef = useRef(false);
+  const blueprintRef = useRef(null);
+  const selectedDesignIdRef = useRef("");
+  const designNameRef = useRef("");
   const dragStartBlueprintRef = useRef(null);
 
   const activeNail = getActiveNail(blueprint);
@@ -84,8 +111,17 @@ export default function DesignStudio() {
   const baseLayer = activeNail.layers.find((layer) => layer.type === "base");
   const canUndo = history.past.length > 0;
   const canRedo = history.future.length > 0;
+  const activeSlot = activeNail.slot || DEFAULT_ACTIVE_SLOT;
+  const productSummary = useMemo(() => summarizeFullSetAssets(blueprint), [blueprint]);
 
   useEffect(() => { loadDesigns(); }, []);
+  useEffect(() => { dirtyRef.current = dirty; blueprintRef.current = blueprint; selectedDesignIdRef.current = selectedDesignId; designNameRef.current = designName; }, [dirty, blueprint, selectedDesignId, designName]);
+  useEffect(() => () => { if (autosaveTimerRef.current) window.clearTimeout(autosaveTimerRef.current); }, []);
+  useEffect(() => {
+    function onVisibilityChange() { if (document.visibilityState === "hidden" && dirtyRef.current) void save({ autosave: true, immediate: true }); }
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", onVisibilityChange);
+  }, []);
 
   function showNotice(message) {
     setNotice(message);
@@ -108,23 +144,26 @@ export default function DesignStudio() {
   }
 
   function commit(nextBlueprint, { selectLayerId = selectedLayerId, noticeMessage = "" } = {}) {
-    const normalized = ensureBlueprint(nextBlueprint);
+    const normalized = ensureFullSetBlueprint(nextBlueprint);
     setHistory((prev) => pushHistory(prev, blueprint));
     setBlueprint(normalized);
     setSelectedLayerId(selectLayerId);
     setDirty(true);
     setStatus({ type: "dirty", message: "Unsaved changes" });
+    setSaveStatus("Unsaved changes");
+    scheduleAutosave();
     if (noticeMessage) showNotice(noticeMessage);
   }
 
   function replaceLoaded(nextBlueprint, design, message = "Blueprint loaded") {
-    const normalized = ensureBlueprint(nextBlueprint, design);
+    const normalized = ensureFullSetBlueprint(nextBlueprint, design);
     setBlueprint(normalized);
     setDesignName(design?.name || "");
     setSelectedLayerId("base-layer");
     setHistory({ past: [], future: [] });
     setDirty(false);
     setStatus({ type: "idle", message });
+    setSaveStatus("Ready");
   }
 
   function mergeSavedDesign(savedDesign) {
@@ -138,12 +177,12 @@ export default function DesignStudio() {
   function newDesign() {
     if (dirty && !window.confirm("Replace unsaved work with a new design?")) return;
     setSelectedDesignId("");
-    replaceLoaded(createDefaultBlueprint(), { name: "" }, "New design started");
+    replaceLoaded(createFullSetBlueprint(), { name: "" }, "New full-set design started");
   }
 
   async function loadDesign(designId) {
     if (!designId) return;
-    if (dirty && !window.confirm("Load this saved design and discard unsaved changes?")) return;
+    if (dirty) await save({ autosave: true, immediate: true });
     const design = designs.find((item) => item.id === designId);
     setLoading(true);
     try {
@@ -184,7 +223,7 @@ export default function DesignStudio() {
       }),
     }));
     if (record) commit(next, { selectLayerId: layerId });
-    else setBlueprint(ensureBlueprint(next));
+    else setBlueprint(ensureFullSetBlueprint(next));
   }
 
   function transformLayer(layerId, transform, final, options = {}) {
@@ -203,6 +242,8 @@ export default function DesignStudio() {
       setHistory((prev) => pushHistory(prev, preDragBlueprint));
       setDirty(true);
       setStatus({ type: "dirty", message: "Unsaved changes" });
+      setSaveStatus("Unsaved changes");
+      scheduleAutosave();
     }
   }
 
@@ -320,12 +361,26 @@ export default function DesignStudio() {
     setStatus({ type: "dirty", message: "Redo applied" });
   }
 
-  async function save() {
-    const flat = flatDesignFromBlueprint(blueprint, designName);
+  function scheduleAutosave() {
+    if (autosaveTimerRef.current) window.clearTimeout(autosaveTimerRef.current);
+    autosaveTimerRef.current = window.setTimeout(() => { void save({ autosave: true }); }, 20000);
+  }
+
+  function generatedUntitledName() {
+    const existing = new Set(designs.map((design) => design.name));
+    let name = `Untitled Set ${generatedNameRef.current}`;
+    while (existing.has(name)) name = `Untitled Set ${++generatedNameRef.current}`;
+    return name;
+  }
+
+  async function save(options = {}) {
+    const workingBlueprint = ensureFullSetBlueprint(blueprintRef.current || blueprint);
+    const workingName = designNameRef.current || (options.autosave ? generatedUntitledName() : designName);
+    const flat = flatDesignFromBlueprint(workingBlueprint, workingName);
     if (!flat.name) return setStatus({ type: "error", message: "Enter a design name before saving." });
     if (!/^#[0-9a-fA-F]{6}$/.test(flat.baseColorHex)) return setStatus({ type: "error", message: "Choose a valid base polish color." });
 
-    const blueprintBytes = serializedBlueprintSize(blueprint);
+    const blueprintBytes = serializedBlueprintSize(workingBlueprint);
     if (blueprintBytes > MAX_BLUEPRINT_JSON_BYTES) {
       return setStatus({ type: "error", message: `${blueprintSizeMessage(blueprintBytes)} Remove a few strokes or layers before saving.` });
     }
@@ -333,13 +388,17 @@ export default function DesignStudio() {
       setStatus({ type: "dirty", message: `${blueprintSizeMessage(blueprintBytes)} Saving, but consider simplifying before adding more details.` });
     }
 
+    if (savingRef.current) { queuedAutosaveRef.current = Boolean(options.autosave); return; }
+    savingRef.current = true;
+    const sequence = ++saveSequenceRef.current;
     setSaving(true);
+    setSaveStatus(options.autosave ? "Saving…" : "Saving…");
     try {
-      let designId = selectedDesignId;
+      let designId = selectedDesignIdRef.current;
       let savedDesign = designs.find((design) => design.id === designId);
       let savedBlueprint;
       if (!designId) {
-        const res = await fetch("/api/designs/with-blueprint", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ design: flat, blueprint }) });
+        const res = await fetch("/api/designs/with-blueprint", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ design: flat, blueprint: workingBlueprint }) });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.error || "Unable to create design with blueprint.");
         designId = data.design?.id;
@@ -348,17 +407,19 @@ export default function DesignStudio() {
         if (!designId || !savedBlueprint?.document) throw new Error("Saved design response was incomplete.");
         setSelectedDesignId(designId);
       } else {
-        const put = await fetch(`/api/designs/${designId}/with-blueprint`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ design: flat, blueprint }) });
+        const put = await fetch(`/api/designs/${designId}/with-blueprint`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ design: flat, blueprint: workingBlueprint }) });
         const data = await put.json().catch(() => ({}));
         if (!put.ok) throw new Error(data.error || "Unable to save design and blueprint.");
         savedDesign = data.design;
         savedBlueprint = data.blueprint;
         if (!savedDesign?.id || !savedBlueprint?.document) throw new Error("Saved design response was incomplete.");
       }
+      if (sequence !== saveSequenceRef.current) return;
       mergeSavedDesign(savedDesign);
       setDesignName(savedDesign?.name || flat.name);
-      setBlueprint(ensureBlueprint(savedBlueprint.document, savedDesign));
+      setBlueprint(ensureFullSetBlueprint(savedBlueprint.document, savedDesign));
       setDirty(false);
+      setSaveStatus(options.autosave ? "Autosaved" : "Saved");
       setHistory({ past: [], future: [] });
       setStatus({
         type: "saved",
@@ -367,11 +428,39 @@ export default function DesignStudio() {
           : "Saved editable blueprint",
       });
     } catch (error) {
+      setSaveStatus("Save failed — changes kept locally");
       setStatus({ type: "error", message: error.message || "Save failed. Your unsaved editor work is still open." });
     } finally {
       setSaving(false);
+      savingRef.current = false;
+      if (queuedAutosaveRef.current || (dirtyRef.current && options.autosave)) { queuedAutosaveRef.current = false; scheduleAutosave(); }
     }
   }
+
+  function selectSlot(slot) {
+    if (dirtyRef.current) void save({ autosave: true, immediate: true });
+    const next = setActiveNailBySlot(blueprint, slot);
+    setBlueprint(next);
+    setSelectedLayerId("base-layer");
+    setStatus({ type: "idle", message: `Editing ${slot}` });
+  }
+
+  function slotsFor(scope) {
+    if (scope === "all") return FULL_SET_SLOTS;
+    const handSlots = activeSlot.startsWith("left") ? LEFT_HAND_SLOTS : RIGHT_HAND_SLOTS;
+    if (scope === "hand") return handSlots;
+    if (scope === "opposite") { const source = activeSlot.startsWith("left") ? LEFT_HAND_SLOTS : RIGHT_HAND_SLOTS; const dest = activeSlot.startsWith("left") ? RIGHT_HAND_SLOTS : LEFT_HAND_SLOTS; return [dest[source.indexOf(activeSlot)]].filter(Boolean); }
+    return selectedSlots;
+  }
+
+  function confirmBulk(message) { return window.confirm(message); }
+  function copyActiveNail() { setClipboardNail(JSON.parse(JSON.stringify(activeNail))); showNotice("Active nail copied."); }
+  function pasteToSelected() { if (!clipboardNail || !selectedSlots.length || !confirmBulk("Overwrite selected nail designs?")) return; commit({ ...blueprint, nails: blueprint.nails.map((nail) => selectedSlots.includes(nail.slot) ? cloneNailDesign(clipboardNail, nail) : nail) }, { noticeMessage: "Copied artwork was re-fit where needed." }); }
+  function duplicateActive(scope) { const targets = slotsFor(scope); if (!targets.length || !confirmBulk("Overwrite destination nail designs?")) return; commit(copyNailToSlots(blueprint, activeSlot, targets), { noticeMessage: "Copied artwork was re-fit where needed." }); }
+  function mirrorHand(hand) { if (!confirmBulk("Mirror this hand to the opposite hand?")) return; commit(mirrorHandDesign(blueprint, hand), { noticeMessage: "Mirrored nails were re-fit where needed." }); }
+  function applyBase(scope) { const targets = slotsFor(scope); if (!confirmBulk("Apply active base color to these nails?")) return; commit(applyBaseToSlots(blueprint, { baseColorHex: activeNail.baseColorHex }, targets)); }
+  function applyShape(scope) { const targets = slotsFor(scope); if (!confirmBulk("Apply active shape, width, and length to these nails?")) return; commit(applyBaseToSlots(blueprint, { shape: activeNail.shape, width: activeNail.width, length: activeNail.length }, targets), { noticeMessage: "Artwork was revalidated after shape changes." }); }
+  function resetActive() { if (!confirmBulk("Reset this nail to its base layer only?")) return; commit(resetNailDesign(blueprint, activeSlot), { selectLayerId: "base-layer" }); }
 
   const tagsString = (blueprint.metadata?.tags || []).join(", ");
   const statusColor = status.type === "error" ? "#b91c1c" : status.type === "saved" ? COLORS.statusAccepted : status.type === "dirty" ? COLORS.statusChangesRequested : COLORS.textMuted;
@@ -385,12 +474,12 @@ export default function DesignStudio() {
       <button type="button" onClick={() => setMode("eraser")} style={UI.iconButton(mode === "eraser")}>Eraser</button>
       <button type="button" onClick={addGradient} style={UI.iconButton(false)}>Add gradient</button>
       <button type="button" onClick={addPattern} style={UI.iconButton(false)}>Add pattern</button>
-      <span style={{ marginLeft: "auto", color: statusColor, fontSize: 13, fontWeight: 800 }}>{saving ? "Saving…" : loading ? "Loading…" : dirty ? `● ${status.message}` : status.message}</span>
+      <span style={{ marginLeft: "auto", color: statusColor, fontSize: 13, fontWeight: 800 }}>{saving ? "Saving…" : loading ? "Loading…" : dirty ? `● ${saveStatus}` : saveStatus || status.message}</span>
     </div>
 
     <div style={UI.layout}>
       <aside style={UI.panel}><div style={UI.panelPad}>
-        <Field label="Design name"><input style={S.input} value={designName} onChange={(e) => { setDesignName(e.target.value); setDirty(true); }} placeholder="Milky bow accent" /></Field>
+        <Field label="Design name"><input style={S.input} value={designName} onChange={(e) => { setDesignName(e.target.value); setDirty(true); setSaveStatus("Unsaved changes"); scheduleAutosave(); }} placeholder="Milky bow accent" /></Field>
         <div style={{ display: "flex", gap: 8, marginBottom: 14 }}><button type="button" onClick={newDesign} style={{ ...S.btnSecondary, padding: "10px 12px" }}>New Design</button><button type="button" onClick={save} disabled={saving} style={{ ...S.btnPrimary, padding: "10px 12px", opacity: saving ? .65 : 1 }}>Save</button></div>
         <Field label="Saved Designs"><select style={S.input} value={selectedDesignId} onChange={(e) => loadDesign(e.target.value)}><option value="">Choose saved design…</option>{designs.map((design) => <option key={design.id} value={design.id}>{design.name}</option>)}</select></Field>
         <Field label="Nail shape"><select style={S.input} value={activeNail.shape} onChange={(e) => updateBase({ shape: e.target.value })}>{SHAPES.map((shape) => <option key={shape}>{shape}</option>)}</select></Field>
@@ -400,17 +489,21 @@ export default function DesignStudio() {
         <Field label="Base effect"><select style={S.input} value={baseLayer?.data?.effect || "Solid"} onChange={(e) => updateBase({ effect: e.target.value })}>{EFFECTS.map((effect) => <option key={effect} value={effect}>{effect}</option>)}</select></Field>
         {(baseLayer?.data?.effect || "Solid") !== "Solid" && <Field label="Effect color"><ColorInput value={baseLayer?.data?.effectColorHex || "#FFFFFF"} onChange={(value) => updateBase({ effectColorHex: normalizeHex(value, "#FFFFFF") })}/></Field>}
         <Field label="Tags"><input style={S.input} value={tagsString} onChange={(e) => updateBase({ tags: e.target.value })} placeholder="bridal, chrome, accent" /></Field>
+        <Field label="Style category"><select style={S.input} value={blueprint.metadata?.styleCategory || "Custom"} onChange={(e) => commit({ ...blueprint, metadata: { ...blueprint.metadata, styleCategory: e.target.value } })}>{STYLE_CATEGORIES.map((category) => <option key={category}>{category}</option>)}</select></Field>
+        <Field label="Internal notes"><textarea style={{ ...S.input, minHeight: 70 }} value={blueprint.metadata?.internalNotes || ""} onChange={(e) => commit({ ...blueprint, metadata: { ...blueprint.metadata, internalNotes: e.target.value } })} placeholder="Optional artist-only notes" /></Field>
+        <Field label="Estimated service price"><input style={S.input} value={blueprint.metadata?.estimatedServicePrice || ""} onChange={(e) => commit({ ...blueprint, metadata: { ...blueprint.metadata, estimatedServicePrice: e.target.value } })} placeholder="Placeholder for later pricing" /></Field>
+        <BulkActionsPanel activeSlot={activeSlot} clipboard={clipboardNail} selectedSlots={selectedSlots} onToggleSlot={(slot) => setSelectedSlots((prev) => prev.includes(slot) ? prev.filter((item) => item !== slot) : [...prev, slot])} onCopy={copyActiveNail} onPaste={pasteToSelected} onDuplicate={duplicateActive} onMirror={mirrorHand} onApplyBase={applyBase} onApplyShape={applyShape} onReset={resetActive}/>
         <p style={UI.smallText}>Strict-fit mode keeps all editable vectors clipped and clamped inside the active nail surface for realistic product-use planning.</p>
       </div></aside>
 
-      <main style={UI.panel}><NailCanvas nail={activeNail} layers={activeNail.layers} selectedLayerId={selectedLayerId} mode={mode} brush={brush} notice={notice} onSelectLayer={(id) => setSelectedLayerId(id || "")} onTransformLayer={transformLayer} onDrawingStroke={addStroke} onStageEraseStroke={stageEraseStroke} onEraseStroke={eraseStroke}/></main>
+      <main style={{ ...UI.panel, display: "flex", flexDirection: "column" }}><NailCanvas nail={activeNail} layers={activeNail.layers} selectedLayerId={selectedLayerId} mode={mode} brush={brush} notice={notice} onSelectLayer={(id) => setSelectedLayerId(id || "")} onTransformLayer={transformLayer} onDrawingStroke={addStroke} onStageEraseStroke={stageEraseStroke} onEraseStroke={eraseStroke}/><FullSetPreview blueprint={blueprint} activeNailId={activeNail.id} onSelectSlot={selectSlot} onViewChange={() => dirtyRef.current && void save({ autosave: true, immediate: true })}/></main>
 
       <aside style={UI.panel}><div style={UI.panelPad}>
         <div style={{ display: "flex", gap: 6, marginBottom: 16 }}><button type="button" aria-pressed={tab === "assets"} aria-label="Show asset library" onClick={() => setTab("assets")} style={UI.miniButton(tab === "assets")}>Assets</button><button type="button" aria-pressed={tab === "layers"} aria-label="Show layers panel" onClick={() => setTab("layers")} style={UI.miniButton(tab === "layers")}>Layers</button><button type="button" aria-pressed={tab === "properties"} aria-label="Show properties panel" onClick={() => setTab("properties")} style={UI.miniButton(tab === "properties")}>Properties</button></div>
         {tab === "assets" && <><AssetLibrary onAddAsset={addAsset}/><DrawingToolbar brush={brush} mode={mode} onBrushChange={(patch) => setBrush((prev) => ({ ...prev, ...patch }))}/></>}
         {tab === "layers" && <LayersPanel layers={activeNail.layers} selectedLayerId={selectedLayerId} onSelect={setSelectedLayerId} onToggleVisible={toggleVisible} onToggleLock={toggleLock} onMove={moveLayer} onDelete={deleteLayer}/>} 
         {tab === "properties" && <PropertiesPanel layer={selectedLayer} onPatch={(patch) => selectedLayer && patchLayer(selectedLayer.id, patch)} onDuplicate={() => duplicateLayer()} onDelete={() => deleteLayer()}/>} 
-      </div></aside>
+      <div style={{ marginTop: 12, ...UI.smallText }}>Product-use hook: {productSummary.nailCount} nails, {productSummary.visibleDrawingLayerCount} drawing layers, {productSummary.visibleGradientLayerCount} gradients, {productSummary.visiblePatternLayerCount} patterns.</div></div></aside>
     </div>
   </div>;
 }
