@@ -71,14 +71,23 @@ export default function NailCanvas({ nail, layers, selectedLayerId, mode, brush,
     return { x: ((event.clientX - rect.left) / rect.width) * VIEWBOX.width, y: ((event.clientY - rect.top) / rect.height) * VIEWBOX.height };
   }
 
+  function releaseCapture(target, pointerId) {
+    if (!target?.releasePointerCapture || pointerId === undefined || pointerId === null) return;
+    try {
+      if (!target.hasPointerCapture || target.hasPointerCapture(pointerId)) target.releasePointerCapture(pointerId);
+    } catch {
+      // Pointer capture may already be released by the browser after pointerup/cancel.
+    }
+  }
+
   function pointerDown(event, layer) {
     if (mode === "draw" || mode === "eraser") return;
     event.stopPropagation();
     onSelectLayer(layer.id);
     if (layer.locked) return;
     const start = svgToNormalized(svgPoint(event), nail);
-    setDrag({ kind: "asset", layerId: layer.id, start, original: { ...layer.transform } });
     event.currentTarget.setPointerCapture?.(event.pointerId);
+    setDrag({ kind: "asset", layerId: layer.id, start, original: { ...layer.transform }, pointerId: event.pointerId, captureTarget: event.currentTarget });
   }
 
   function pointerMove(event) {
@@ -91,6 +100,7 @@ export default function NailCanvas({ nail, layers, selectedLayerId, mode, brush,
   function pointerUp() {
     if (drag?.kind !== "asset") return;
     onTransformLayer(drag.layerId, null, true, drag.original);
+    releaseCapture(drag.captureTarget, drag.pointerId);
     setDrag(null);
   }
 
@@ -105,7 +115,8 @@ export default function NailCanvas({ nail, layers, selectedLayerId, mode, brush,
       return;
     }
     const stroke = { id: `stroke-${Date.now().toString(36)}`, points: [point], colorHex: brush.colorHex, width: brush.size / 100, opacity: brush.opacity, tool: brush.tool };
-    setDrag({ kind: "drawing", drawing: true, stroke });
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+    setDrag({ kind: "drawing", stroke, pointerId: event.pointerId, captureTarget: event.currentTarget });
   }
 
   function canvasMove(event) {
@@ -114,11 +125,13 @@ export default function NailCanvas({ nail, layers, selectedLayerId, mode, brush,
     const previous = drag.stroke.points[drag.stroke.points.length - 1];
     if (previous && Math.hypot(previous.x - point.x, previous.y - point.y) < 0.001) return;
     const stroke = { ...drag.stroke, points: constrainStrokePoints([...drag.stroke.points, point], nail) };
-    setDrag({ kind: "drawing", drawing: true, stroke });
+    setDrag({ ...drag, stroke });
   }
 
-  function canvasUp() {
-    if (drag?.kind === "drawing") onDrawingStroke({ ...drag.stroke, points: constrainStrokePoints(drag.stroke.points, nail) });
+  function canvasUp({ commit = true } = {}) {
+    if (drag?.kind !== "drawing") return;
+    if (commit) onDrawingStroke({ ...drag.stroke, points: constrainStrokePoints(drag.stroke.points, nail) });
+    releaseCapture(drag.captureTarget, drag.pointerId);
     setDrag(null);
   }
 

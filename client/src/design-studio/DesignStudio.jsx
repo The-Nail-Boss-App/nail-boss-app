@@ -18,6 +18,7 @@ import {
   flatDesignFromBlueprint,
   getActiveNail,
   gradientLayer,
+  isReusableDrawingLayer,
   normalizeHex,
   normalizeTags,
   patternLayer,
@@ -219,14 +220,14 @@ export default function DesignStudio() {
   }
 
   function addStroke(stroke) {
-    const preferredLayerId = selectedLayer?.type === "drawing" && !selectedLayer.locked ? selectedLayer.id : selectedLayerId;
+    const preferredLayerId = isReusableDrawingLayer(selectedLayer) ? selectedLayer.id : selectedLayerId;
     const result = addStrokeToDrawingLayer(blueprint, stroke, brush.tool, preferredLayerId);
     commit(result.blueprint, { selectLayerId: result.layerId });
   }
 
   function eraseStroke(point) {
-    const drawing = selectedLayer?.type === "drawing" ? selectedLayer : activeNail.layers.find((layer) => layer.type === "drawing");
-    if (!drawing || drawing.locked) return showNotice("Select an unlocked drawing layer to erase strokes.");
+    const drawing = isReusableDrawingLayer(selectedLayer) ? selectedLayer : activeNail.layers.find(isReusableDrawingLayer);
+    if (!drawing) return showNotice("Select a visible unlocked drawing layer to erase strokes.");
     const strokes = drawing.data.strokes || [];
     if (!strokes.length) return;
     let nearest = 0;

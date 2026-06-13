@@ -530,6 +530,10 @@ export function patternLayer(nail, pattern = "dots") {
   };
 }
 
+export function isReusableDrawingLayer(layer) {
+  return layer?.type === "drawing" && layer.locked !== true && layer.visible !== false;
+}
+
 export function drawingLayer(nail, tool = "solid") {
   return {
     id: uid("drawing"), type: "drawing", name: "Drawing Layer", visible: true, locked: false, opacity: 1, order: 99,
@@ -547,9 +551,9 @@ export function addStrokeToDrawingLayer(blueprint, stroke, tool = "solid", prefe
   let created = false;
   const next = updateActiveNail(blueprint, (nail) => {
     const preferred = drawingId
-      ? nail.layers.find((layer) => layer.id === drawingId && layer.type === "drawing" && !layer.locked && layer.visible !== false)
+      ? nail.layers.find((layer) => layer.id === drawingId && isReusableDrawingLayer(layer))
       : null;
-    const drawing = preferred || nail.layers.find((layer) => layer.type === "drawing" && !layer.locked && layer.visible !== false);
+    const drawing = preferred || nail.layers.find(isReusableDrawingLayer);
     if (drawing) {
       drawingId = drawing.id;
       return {

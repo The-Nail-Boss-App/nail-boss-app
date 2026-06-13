@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 
 const source = await readFile(new URL('../client/src/design-studio/blueprint.js', import.meta.url), 'utf8');
 const nailCanvasSource = await readFile(new URL('../client/src/design-studio/NailCanvas.jsx', import.meta.url), 'utf8');
+const designStudioSource = await readFile(new URL('../client/src/design-studio/DesignStudio.jsx', import.meta.url), 'utf8');
 const blueprint = await import(`data:text/javascript;charset=utf-8,${encodeURIComponent(source)}`);
 
 const {
@@ -19,6 +20,7 @@ const {
   normalizedToSvg,
   projectPointInsideNailSilhouette,
   isPointInsideNailSilhouette,
+  isReusableDrawingLayer,
   quantitySummary,
   revalidateLayersAfterNailResize,
   safeTransform,
@@ -106,6 +108,8 @@ assert.deepEqual(invalidActive.nails[4], multiNailBlueprint(5).nails[4], 'inacti
 
 assert(nailCanvasSource.includes('setDrag({ kind: "asset"'), 'NailCanvas uses an explicit asset drag-state variant');
 assert(nailCanvasSource.includes('setDrag({ kind: "drawing"'), 'NailCanvas uses an explicit drawing drag-state variant');
+assert(nailCanvasSource.includes('event.currentTarget.setPointerCapture?.(event.pointerId);\n    setDrag({ kind: "drawing"'), 'drawing gestures capture the root SVG pointer before stroke tracking');
+assert(nailCanvasSource.includes('releaseCapture(drag.captureTarget, drag.pointerId);'), 'drawing and asset gestures release pointer capture safely on completion or cancel');
 assert(nailCanvasSource.includes('if (mode === "draw" || mode === "eraser") return;'), 'asset transform pointerMove is guarded during draw and eraser modes');
 assert(nailCanvasSource.includes('pointerEvents="none"><defs><LayerGradient'), 'gradient overlays are canvas-nonblocking in every mode');
 assert(nailCanvasSource.includes('pointerEvents="none"><defs><PatternDefs'), 'pattern overlays are canvas-nonblocking in every mode');
@@ -154,6 +158,11 @@ const lockedDrawingBlueprint = updateActiveNail(createDefaultBlueprint(), (activ
 const visibleFromLocked = addStrokeToDrawingLayer(lockedDrawingBlueprint, { ...firstStroke, id: 'visible-after-locked' }, 'soft', 'locked-drawing');
 assert.equal(visibleFromLocked.created, true, 'locked drawing layer is not reused for a new stroke');
 assert(getActiveNail(visibleFromLocked.blueprint).layers.some((layer) => layer.type === 'drawing' && layer.visible !== false && !layer.locked && layer.data.strokes.some((stroke) => stroke.id === 'visible-after-locked')), 'new visible unlocked drawing layer receives strokes when preferred layer is locked');
+assert.equal(isReusableDrawingLayer({ type: 'drawing', locked: false, visible: true }), true, 'visible unlocked drawing layers are reusable for new strokes and erasing');
+assert.equal(isReusableDrawingLayer({ type: 'drawing', locked: false, visible: false }), false, 'hidden drawing layers are not reusable for new strokes or erasing');
+assert.equal(isReusableDrawingLayer({ type: 'drawing', locked: true, visible: true }), false, 'locked drawing layers are not reusable for new strokes or erasing');
+assert(designStudioSource.includes('activeNail.layers.find(isReusableDrawingLayer)'), 'eraser searches only visible unlocked drawing layers when the selected layer is not reusable');
+assert(designStudioSource.includes('Select a visible unlocked drawing layer to erase strokes.'), 'eraser shows a non-blocking notice when no visible unlocked drawing layer exists');
 
 const nail = { id: 'nail-1', shape: 'Almond', length: 0.55, width: 0.5, layers: [] };
 const pathPoint = normalizedToSvg({ x: 0.5, y: 0.5 }, nail);
