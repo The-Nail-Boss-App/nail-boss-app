@@ -187,7 +187,12 @@ export default function DesignStudio() {
     else setBlueprint(ensureBlueprint(next));
   }
 
-  function transformLayer(layerId, transform, final) {
+  function transformLayer(layerId, transform, final, options = {}) {
+    if (options.cancel) {
+      dragStartBlueprintRef.current = null;
+      if (transform) patchLayer(layerId, { transform }, false);
+      return;
+    }
     if (transform) {
       if (!dragStartBlueprintRef.current) dragStartBlueprintRef.current = blueprint;
       patchLayer(layerId, { transform }, false);

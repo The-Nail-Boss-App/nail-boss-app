@@ -97,11 +97,31 @@ export default function NailCanvas({ nail, layers, selectedLayerId, mode, brush,
     onTransformLayer(drag.layerId, { ...drag.original, x: drag.original.x + now.x - drag.start.x, y: drag.original.y + now.y - drag.start.y }, false);
   }
 
-  function pointerUp() {
-    if (drag?.kind !== "asset") return;
-    onTransformLayer(drag.layerId, null, true, drag.original);
-    releaseCapture(drag.captureTarget, drag.pointerId);
-    setDrag(null);
+  function finishPointerGesture() {
+    if (drag?.kind === "asset") {
+      onTransformLayer(drag.layerId, null, true, drag.original);
+      releaseCapture(drag.captureTarget, drag.pointerId);
+      setDrag(null);
+      return;
+    }
+    if (drag?.kind === "drawing") {
+      onDrawingStroke({ ...drag.stroke, points: constrainStrokePoints(drag.stroke.points, nail) });
+      releaseCapture(drag.captureTarget, drag.pointerId);
+      setDrag(null);
+    }
+  }
+
+  function cancelPointerGesture() {
+    if (drag?.kind === "asset") {
+      onTransformLayer(drag.layerId, drag.original, false, { cancel: true });
+      releaseCapture(drag.captureTarget, drag.pointerId);
+      setDrag(null);
+      return;
+    }
+    if (drag?.kind === "drawing") {
+      releaseCapture(drag.captureTarget, drag.pointerId);
+      setDrag(null);
+    }
   }
 
   function canvasDown(event) {
@@ -128,12 +148,6 @@ export default function NailCanvas({ nail, layers, selectedLayerId, mode, brush,
     setDrag({ ...drag, stroke });
   }
 
-  function canvasUp({ commit = true } = {}) {
-    if (drag?.kind !== "drawing") return;
-    if (commit) onDrawingStroke({ ...drag.stroke, points: constrainStrokePoints(drag.stroke.points, nail) });
-    releaseCapture(drag.captureTarget, drag.pointerId);
-    setDrag(null);
-  }
 
   function layerNode(layer) {
     const drawingMode = mode === "draw" || mode === "eraser";
@@ -168,7 +182,7 @@ export default function NailCanvas({ nail, layers, selectedLayerId, mode, brush,
 
   return <div style={{ height: "100%", minHeight: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", position: "relative" }}>
     <div style={{ width: "min(72vh, 96%)", maxWidth: 560, aspectRatio: "2 / 3", background: "linear-gradient(180deg,#fff,#fbf1f8)", border: `1px solid ${COLORS.border}`, borderRadius: 28, boxShadow: "inset 0 0 0 12px rgba(255,255,255,.55), 0 18px 50px rgba(60,20,50,.10)", padding: 18 }}>
-      <svg ref={svgRef} viewBox={`0 0 ${VIEWBOX.width} ${VIEWBOX.height}`} width="100%" height="100%" role="img" aria-label="Editable single nail canvas" onPointerDown={canvasDown} onPointerMove={(e) => { pointerMove(e); canvasMove(e); }} onPointerUp={() => { pointerUp(); canvasUp(); }} onPointerCancel={() => { pointerUp(); canvasUp(); }} style={{ touchAction: "none", userSelect: "none" }}>
+      <svg ref={svgRef} viewBox={`0 0 ${VIEWBOX.width} ${VIEWBOX.height}`} width="100%" height="100%" role="img" aria-label="Editable single nail canvas" onPointerDown={canvasDown} onPointerMove={(e) => { pointerMove(e); canvasMove(e); }} onPointerUp={finishPointerGesture} onPointerCancel={cancelPointerGesture} style={{ touchAction: "none", userSelect: "none" }}>
         <defs>
           <clipPath id={clipId}><path d={path}/></clipPath>
           <filter id={`${uid}-soft`}><feGaussianBlur stdDeviation="1.2"/></filter>

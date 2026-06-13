@@ -110,6 +110,15 @@ assert(nailCanvasSource.includes('setDrag({ kind: "asset"'), 'NailCanvas uses an
 assert(nailCanvasSource.includes('setDrag({ kind: "drawing"'), 'NailCanvas uses an explicit drawing drag-state variant');
 assert(nailCanvasSource.includes('event.currentTarget.setPointerCapture?.(event.pointerId);\n    setDrag({ kind: "drawing"'), 'drawing gestures capture the root SVG pointer before stroke tracking');
 assert(nailCanvasSource.includes('releaseCapture(drag.captureTarget, drag.pointerId);'), 'drawing and asset gestures release pointer capture safely on completion or cancel');
+assert(nailCanvasSource.includes('function finishPointerGesture()'), 'pointerup uses an explicit successful gesture finalization path');
+assert(nailCanvasSource.includes('function cancelPointerGesture()'), 'pointercancel uses an explicit cancellation path');
+assert(nailCanvasSource.includes('onPointerUp={finishPointerGesture} onPointerCancel={cancelPointerGesture}'), 'pointerup and pointercancel are wired to separate handlers');
+assert(nailCanvasSource.includes('onTransformLayer(drag.layerId, drag.original, false, { cancel: true });'), 'canceled asset drags restore their original transform without finalizing history');
+assert(!nailCanvasSource.includes('onPointerCancel={() => { pointerUp(); canvasUp(); }}'), 'pointercancel does not reuse the pointerup commit path');
+assert(designStudioSource.includes('if (options.cancel)'), 'canceled asset drags clear pre-drag history bookkeeping without marking dirty');
+const cancelBlock = nailCanvasSource.match(/function cancelPointerGesture\(\) \{[\s\S]*?\n  \}/)?.[0] || '';
+assert(!cancelBlock.includes('onDrawingStroke'), 'canceled drawing gestures discard in-progress strokes instead of committing them');
+assert(cancelBlock.includes('setDrag(null)'), 'pointercancel cleanup clears drag state');
 assert(nailCanvasSource.includes('if (mode === "draw" || mode === "eraser") return;'), 'asset transform pointerMove is guarded during draw and eraser modes');
 assert(nailCanvasSource.includes('pointerEvents="none"><defs><LayerGradient'), 'gradient overlays are canvas-nonblocking in every mode');
 assert(nailCanvasSource.includes('pointerEvents="none"><defs><PatternDefs'), 'pattern overlays are canvas-nonblocking in every mode');
