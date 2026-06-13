@@ -102,6 +102,7 @@ function DesignStudio(_, ref) {
   const queuedAutosaveRef = useRef(false);
   const saveSequenceRef = useRef(0);
   const editGenerationRef = useRef(0);
+  const selectionRevisionRef = useRef(0);
   const activeSavePromiseRef = useRef(null);
   const generatedNameCounterRef = useRef(1);
   const generatedDraftNameRef = useRef("");
@@ -462,6 +463,7 @@ function DesignStudio(_, ref) {
     }
 
     const submittedRevision = editGenerationRef.current;
+    const submittedSelectionRevision = selectionRevisionRef.current;
     const workingBlueprint = ensureFullSetBlueprint(blueprintRef.current || blueprint);
     const existingDesignId = selectedDesignIdRef.current;
     const workingName = designNameRef.current || (options.autosave ? generatedUntitledName() : designName);
@@ -524,7 +526,7 @@ function DesignStudio(_, ref) {
         }
         if (sequence !== saveSequenceRef.current) return { ok: false, reason: "superseded" };
         mergeSavedDesign(savedDesign);
-        const unchangedSinceSubmit = editGenerationRef.current === submittedRevision;
+        const unchangedSinceSubmit = editGenerationRef.current === submittedRevision && selectionRevisionRef.current === submittedSelectionRevision;
         if (unchangedSinceSubmit) {
           const normalizedSaved = ensureFullSetBlueprint(savedBlueprint.document, savedDesign);
           blueprintRef.current = normalizedSaved;
@@ -567,17 +569,16 @@ function DesignStudio(_, ref) {
   }
 
   function selectSlot(slot) {
-    if (dirtyRef.current) void save({ autosave: true, immediate: true });
-    const next = ensureFullSetBlueprint(setActiveNailBySlot(blueprintRef.current || blueprint, slot));
-    markEdited();
+    const current = blueprintRef.current || blueprint;
+    const currentActive = getActiveNail(current);
+    if (currentActive?.slot === slot) return;
+    const next = ensureFullSetBlueprint(setActiveNailBySlot(current, slot));
+    selectionRevisionRef.current += 1;
     blueprintRef.current = next;
-    dirtyRef.current = true;
     setBlueprint(next);
-    setDirty(true);
     setSelectedLayerId("base-layer");
-    setSaveStatus("Unsaved changes");
-    setStatus({ type: "dirty", message: `Editing ${slot}; active nail selection will be saved.` });
-    scheduleAutosave();
+    setStatus({ type: dirtyRef.current ? "dirty" : "idle", message: `Editing ${slot}` });
+    if (dirtyRef.current && savingRef.current) queuedAutosaveRef.current = true;
   }
 
   function slotsFor(scope) {

@@ -519,7 +519,7 @@ Design Studio dirty-work protection now extends beyond in-studio design replacem
 
 The studio also registers a browser `beforeunload` warning while dirty work exists. This warning is intentionally conservative: it alerts that unsaved work exists, but it does not promise that an async save can complete during tab close, refresh, or browser shutdown.
 
-Active nail selection is persisted as `canvas.activeNailId`. Selecting another thumbnail updates the blueprint ref and edit generation synchronously, marks that persisted selection dirty, and schedules the normal autosave. Older in-flight save responses are therefore not allowed to jump the UI back to the previously active nail.
+Active nail selection remains stored as `canvas.activeNailId` for blueprint compatibility, but thumbnail navigation is UI selection state rather than a content mutation. Clicking a thumbnail updates the local blueprint ref and visible active nail immediately, while clicking the already-active nail is a no-op. Clean thumbnail browsing does not mark the editor dirty, schedule autosave, create history entries, generate an `Untitled Set` name, or create a draft row. A separate selection revision prevents older in-flight save responses from jumping the UI back to a prior nail; the current `activeNailId` is persisted on the next meaningful content save or explicit manual save.
 
 Undo and Redo are treated as editor mutations. Each operation updates the blueprint ref, marks the design dirty, restores the "Unsaved changes" save label, and schedules the standard 20-second debounced autosave while preserving undo/redo history.
 
