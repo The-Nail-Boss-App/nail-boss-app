@@ -293,5 +293,12 @@ assert(designStudioSource.includes('Save failed — changes kept locally'), 'fai
 assert(designStudioSource.includes('Untitled Set'), 'new unnamed autosaved drafts get generated editable names');
 assert(designStudioSource.includes('<FullSetPreview'), 'Design Studio renders full-set preview navigation');
 assert(designStudioSource.includes('<BulkActionsPanel'), 'Design Studio renders bulk action controls');
+assert(designStudioSource.includes('useImperativeHandle(ref') && designStudioSource.includes('prepareToLeave()'), 'Design Studio exposes an app-level dirty-work leave guard');
+assert(designStudioSource.includes('beforeunload') && designStudioSource.includes('event.returnValue = ""'), 'Design Studio registers browser beforeunload protection for dirty work');
+assert(designStudioSource.includes('function markHistoryMutation') && designStudioSource.match(/function undo\(\)[\s\S]*scheduleAutosave\(\)/), 'Undo marks dirty and schedules the normal autosave debounce');
+assert(designStudioSource.match(/function redo\(\)[\s\S]*scheduleAutosave\(\)/), 'Redo marks dirty and schedules the normal autosave debounce');
+assert(designStudioSource.includes('generatedDraftNameRef') && designStudioSource.includes('if (generatedDraftNameRef.current) return generatedDraftNameRef.current'), 'generated draft names are stable across queued saves');
+assert(designStudioSource.match(/function selectSlot\(slot\)[\s\S]*blueprintRef.current = next;[\s\S]*markEdited\(\)/), 'active nail selection updates refs and edit generation synchronously before stale saves can apply');
+
 
 console.log('geometry-helper-test passed');

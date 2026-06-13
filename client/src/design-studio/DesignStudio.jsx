@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { COLORS, S } from "../styles.js";
 import NailCanvas from "./NailCanvas.jsx";
 import AssetLibrary from "./AssetLibrary.jsx";
@@ -77,7 +77,7 @@ function blueprintSizeMessage(bytes) {
   return `Blueprint is ${kb}KB; AnitaSet supports up to ${maxKb}KB per editable design.`;
 }
 
-export default function DesignStudio() {
+function DesignStudio(_, ref) {
   const [designs, setDesigns] = useState([]);
   const [selectedDesignId, setSelectedDesignId] = useState("");
   const [designName, setDesignName] = useState("");
@@ -101,7 +101,8 @@ export default function DesignStudio() {
   const saveSequenceRef = useRef(0);
   const editGenerationRef = useRef(0);
   const activeSavePromiseRef = useRef(null);
-  const generatedNameRef = useRef(1);
+  const generatedNameCounterRef = useRef(1);
+  const generatedDraftNameRef = useRef("");
   const dirtyRef = useRef(false);
   const blueprintRef = useRef(null);
   const selectedDesignIdRef = useRef("");
@@ -124,6 +125,24 @@ export default function DesignStudio() {
     document.addEventListener("visibilitychange", onVisibilityChange);
     return () => document.removeEventListener("visibilitychange", onVisibilityChange);
   }, []);
+
+  useEffect(() => {
+    function onBeforeUnload(event) {
+      if (!dirtyRef.current) return undefined;
+      event.preventDefault();
+      event.returnValue = "";
+      return "";
+    }
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, []);
+
+  useImperativeHandle(ref, () => ({
+    hasDirtyWork: () => dirtyRef.current,
+    async prepareToLeave() {
+      return guardReplacement();
+    },
+  }));
 
   function showNotice(message) {
     setNotice(message);
@@ -165,6 +184,7 @@ export default function DesignStudio() {
   }
 
   function replaceLoaded(nextBlueprint, design, message = "Blueprint loaded") {
+    generatedDraftNameRef.current = "";
     const normalized = ensureFullSetBlueprint(nextBlueprint, design);
     blueprintRef.current = normalized;
     dirtyRef.current = false;
@@ -372,6 +392,15 @@ export default function DesignStudio() {
     patchLayer(layerId, { locked: !layer.locked });
   }
 
+  function markHistoryMutation(message) {
+    markEdited();
+    dirtyRef.current = true;
+    setDirty(true);
+    setStatus({ type: "dirty", message });
+    setSaveStatus("Unsaved changes");
+    scheduleAutosave();
+  }
+
   function undo() {
     if (!canUndo) return;
     const current = JSON.stringify(blueprint);
@@ -381,9 +410,7 @@ export default function DesignStudio() {
     dirtyRef.current = true;
     setBlueprint(restored);
     setHistory({ past: history.past.slice(0, -1), future: [current, ...history.future].slice(0, 50) });
-    markEdited();
-    setDirty(true);
-    setStatus({ type: "dirty", message: "Undo applied" });
+    markHistoryMutation("Undo applied");
   }
 
   function redo() {
@@ -395,9 +422,7 @@ export default function DesignStudio() {
     dirtyRef.current = true;
     setBlueprint(restored);
     setHistory({ past: [...history.past, current].slice(-50), future: history.future.slice(1) });
-    markEdited();
-    setDirty(true);
-    setStatus({ type: "dirty", message: "Redo applied" });
+    markHistoryMutation("Redo applied");
   }
 
   function scheduleAutosave() {
@@ -406,9 +431,11 @@ export default function DesignStudio() {
   }
 
   function generatedUntitledName() {
+    if (generatedDraftNameRef.current) return generatedDraftNameRef.current;
     const existing = new Set(designs.map((design) => design.name));
-    let name = `Untitled Set ${generatedNameRef.current}`;
-    while (existing.has(name)) name = `Untitled Set ${++generatedNameRef.current}`;
+    let name = `Untitled Set ${generatedNameCounterRef.current}`;
+    while (existing.has(name)) name = `Untitled Set ${++generatedNameCounterRef.current}`;
+    generatedDraftNameRef.current = name;
     return name;
   }
 
@@ -465,6 +492,13 @@ export default function DesignStudio() {
           if (!designId || !savedBlueprint?.document) throw new Error("Saved design response was incomplete.");
           setSelectedDesignId(designId);
           selectedDesignIdRef.current = designId;
+          if (savedDesign?.name && !designNameRef.current) {
+            generatedDraftNameRef.current = savedDesign.name;
+            designNameRef.current = savedDesign.name;
+            setDesignName(savedDesign.name);
+          } else if (savedDesign?.name) {
+            generatedDraftNameRef.current = savedDesign.name;
+          }
         } else {
           const put = await fetch(`/api/designs/${designId}/with-blueprint`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ design: flat, blueprint: workingBlueprint }) });
           const data = await put.json().catch(() => ({}));
@@ -480,6 +514,7 @@ export default function DesignStudio() {
           const normalizedSaved = ensureFullSetBlueprint(savedBlueprint.document, savedDesign);
           blueprintRef.current = normalizedSaved;
           designNameRef.current = savedDesign?.name || flat.name;
+          generatedDraftNameRef.current = "";
           setDesignName(savedDesign?.name || flat.name);
           setBlueprint(normalizedSaved);
           dirtyRef.current = false;
@@ -516,10 +551,16 @@ export default function DesignStudio() {
 
   function selectSlot(slot) {
     if (dirtyRef.current) void save({ autosave: true, immediate: true });
-    const next = setActiveNailBySlot(blueprint, slot);
+    const next = ensureFullSetBlueprint(setActiveNailBySlot(blueprintRef.current || blueprint, slot));
+    markEdited();
+    blueprintRef.current = next;
+    dirtyRef.current = true;
     setBlueprint(next);
+    setDirty(true);
     setSelectedLayerId("base-layer");
-    setStatus({ type: "idle", message: `Editing ${slot}` });
+    setSaveStatus("Unsaved changes");
+    setStatus({ type: "dirty", message: `Editing ${slot}; active nail selection will be saved.` });
+    scheduleAutosave();
   }
 
   function slotsFor(scope) {
@@ -556,7 +597,7 @@ export default function DesignStudio() {
 
     <div style={UI.layout}>
       <aside style={UI.panel}><div style={UI.panelPad}>
-        <Field label="Design name"><input style={S.input} value={designName} onChange={(e) => { markEdited(); designNameRef.current = e.target.value; dirtyRef.current = true; setDesignName(e.target.value); setDirty(true); setSaveStatus("Unsaved changes"); scheduleAutosave(); }} placeholder="Milky bow accent" /></Field>
+        <Field label="Design name"><input style={S.input} value={designName} onChange={(e) => { markEdited(); generatedDraftNameRef.current = ""; designNameRef.current = e.target.value; dirtyRef.current = true; setDesignName(e.target.value); setDirty(true); setSaveStatus("Unsaved changes"); scheduleAutosave(); }} placeholder="Milky bow accent" /></Field>
         <div style={{ display: "flex", gap: 8, marginBottom: 14 }}><button type="button" onClick={newDesign} style={{ ...S.btnSecondary, padding: "10px 12px" }}>New Design</button><button type="button" onClick={save} disabled={saving} style={{ ...S.btnPrimary, padding: "10px 12px", opacity: saving ? .65 : 1 }}>Save</button></div>
         <Field label="Saved Designs"><select style={S.input} value={selectedDesignId} onChange={(e) => loadDesign(e.target.value)}><option value="">Choose saved design…</option>{designs.map((design) => <option key={design.id} value={design.id}>{design.name}</option>)}</select></Field>
         <Field label="Nail shape"><select style={S.input} value={activeNail.shape} onChange={(e) => updateBase({ shape: e.target.value })}>{SHAPES.map((shape) => <option key={shape}>{shape}</option>)}</select></Field>
@@ -584,3 +625,6 @@ export default function DesignStudio() {
     </div>
   </div>;
 }
+
+
+export default forwardRef(DesignStudio);

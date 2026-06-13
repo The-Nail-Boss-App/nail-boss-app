@@ -512,3 +512,17 @@ The PR #6 review follow-up tightened the full-set editor around autosave races, 
 - **Structural normalization versus destructive revalidation:** `ensureFullSetBlueprint()` now performs full-set structural repair (slot coverage, ID uniqueness, metadata defaults, and active-nail validity) without revalidating every nail. Destructive geometry revalidation stays scoped to active-nail geometry edits and explicit bulk destinations such as copy, mirror, apply-shape, and reset.
 - **Inactive nail no-op preservation guarantee:** backend-valid inactive nails remain byte-for-byte stable for IDs, slots, layers, stroke IDs, order, transforms including non-uniform scale, rotation, metadata, visibility, locked state, and drawing points during load and no-op save normalization. Invalid nails may still be repaired to keep the Nail Blueprint v1 document server-safe.
 - **Known limitations:** this is still a frontend deterministic smoke layer rather than a browser automation suite. The autosave race and navigation protections are covered by helper-source assertions and pure helper tests; a future Playwright/Vitest harness should simulate delayed network responses in a mounted React environment.
+
+### App-level dirty-work leave protection
+
+Design Studio dirty-work protection now extends beyond in-studio design replacement. The app shell gates sidebar navigation and logout through the studio's imperative leave guard before unmounting the editor. When dirty work exists, the studio first attempts an immediate save and waits for the result. Successful saves allow the requested navigation or logout; failed saves keep the user in Design Studio with the local blueprint still open and require an explicit discard confirmation before leaving.
+
+The studio also registers a browser `beforeunload` warning while dirty work exists. This warning is intentionally conservative: it alerts that unsaved work exists, but it does not promise that an async save can complete during tab close, refresh, or browser shutdown.
+
+Active nail selection is persisted as `canvas.activeNailId`. Selecting another thumbnail updates the blueprint ref and edit generation synchronously, marks that persisted selection dirty, and schedules the normal autosave. Older in-flight save responses are therefore not allowed to jump the UI back to the previously active nail.
+
+Undo and Redo are treated as editor mutations. Each operation updates the blueprint ref, marks the design dirty, restores the "Unsaved changes" save label, and schedules the standard 20-second debounced autosave while preserving undo/redo history.
+
+Generated names for unnamed autosaved drafts are stable for the lifetime of that draft. The first generated or server-returned `Untitled Set N` name is reused by stale-response handling, queued follow-up saves, and later autosaves until the user starts a truly new design, loads another design, or enters an authoritative manual name.
+
+Known limitation: browser unload protection depends on native browser confirmation UI and cannot show the richer in-app discard confirmation or guarantee network persistence during page shutdown.
