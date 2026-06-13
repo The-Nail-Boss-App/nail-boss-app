@@ -97,6 +97,7 @@ function DesignStudio(_, ref) {
   const [saveStatus, setSaveStatus] = useState("Ready");
   const autosaveTimerRef = useRef(null);
   const autosaveSessionRef = useRef(0);
+  const editorSessionRef = useRef(0);
   const mountedRef = useRef(true);
   const savingRef = useRef(false);
   const queuedAutosaveRef = useRef(false);
@@ -123,7 +124,7 @@ function DesignStudio(_, ref) {
   useEffect(() => { loadDesigns(); }, []);
   useEffect(() => { dirtyRef.current = dirty; blueprintRef.current = blueprint; selectedDesignIdRef.current = selectedDesignId; designNameRef.current = designName; }, [dirty, blueprint, selectedDesignId, designName]);
   useEffect(() => { if (!dirty) clearAutosaveTimer(); }, [dirty]);
-  useEffect(() => () => { mountedRef.current = false; clearAutosaveTimer(); autosaveSessionRef.current += 1; }, []);
+  useEffect(() => () => { mountedRef.current = false; clearAutosaveTimer(); autosaveSessionRef.current += 1; editorSessionRef.current += 1; }, []);
   useEffect(() => {
     function onVisibilityChange() { if (document.visibilityState === "hidden" && dirtyRef.current) void save({ autosave: true, immediate: true }); }
     document.addEventListener("visibilitychange", onVisibilityChange);
@@ -189,6 +190,7 @@ function DesignStudio(_, ref) {
 
   function replaceLoaded(nextBlueprint, design, message = "Blueprint loaded") {
     autosaveSessionRef.current += 1;
+    editorSessionRef.current += 1;
     clearAutosaveTimer();
     generatedDraftNameRef.current = "";
     const normalized = ensureFullSetBlueprint(nextBlueprint, design);
@@ -464,8 +466,13 @@ function DesignStudio(_, ref) {
 
     const submittedRevision = editGenerationRef.current;
     const submittedSelectionRevision = selectionRevisionRef.current;
+    const submittedEditorSession = editorSessionRef.current;
     const workingBlueprint = ensureFullSetBlueprint(blueprintRef.current || blueprint);
     const existingDesignId = selectedDesignIdRef.current;
+    const saveKind = {
+      mode: options.autosave ? "autosave" : "manual",
+      target: existingDesignId ? "existing-design-update" : "new-draft-create",
+    };
     const workingName = designNameRef.current || (options.autosave ? generatedUntitledName() : designName);
     const flat = flatDesignFromBlueprint(workingBlueprint, workingName);
     if (!flat.name) {
@@ -495,6 +502,7 @@ function DesignStudio(_, ref) {
     setSaveStatus("Saving…");
 
     const savePromise = (async () => {
+      let responseFromStaleEditorSession = false;
       try {
         let designId = existingDesignId;
         let savedDesign = designs.find((design) => design.id === designId);
@@ -507,15 +515,6 @@ function DesignStudio(_, ref) {
           savedDesign = data.design;
           savedBlueprint = data.blueprint;
           if (!designId || !savedBlueprint?.document) throw new Error("Saved design response was incomplete.");
-          setSelectedDesignId(designId);
-          selectedDesignIdRef.current = designId;
-          if (savedDesign?.name && !designNameRef.current) {
-            generatedDraftNameRef.current = savedDesign.name;
-            designNameRef.current = savedDesign.name;
-            setDesignName(savedDesign.name);
-          } else if (savedDesign?.name) {
-            generatedDraftNameRef.current = savedDesign.name;
-          }
         } else {
           const put = await fetch(`/api/designs/${designId}/with-blueprint`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ design: flat, blueprint: workingBlueprint }) });
           const data = await put.json().catch(() => ({}));
@@ -526,6 +525,21 @@ function DesignStudio(_, ref) {
         }
         if (sequence !== saveSequenceRef.current) return { ok: false, reason: "superseded" };
         mergeSavedDesign(savedDesign);
+        responseFromStaleEditorSession = editorSessionRef.current !== submittedEditorSession || selectedDesignIdRef.current !== existingDesignId;
+        if (responseFromStaleEditorSession) {
+          return { ok: false, reason: "stale-editor-session", designId, savedRevision: submittedRevision, saveKind };
+        }
+        if (!existingDesignId) {
+          setSelectedDesignId(designId);
+          selectedDesignIdRef.current = designId;
+          if (savedDesign?.name && !designNameRef.current) {
+            generatedDraftNameRef.current = savedDesign.name;
+            designNameRef.current = savedDesign.name;
+            setDesignName(savedDesign.name);
+          } else if (savedDesign?.name) {
+            generatedDraftNameRef.current = savedDesign.name;
+          }
+        }
         const unchangedSinceSubmit = editGenerationRef.current === submittedRevision && selectionRevisionRef.current === submittedSelectionRevision;
         if (unchangedSinceSubmit) {
           const normalizedSaved = ensureFullSetBlueprint(savedBlueprint.document, savedDesign);
@@ -551,7 +565,7 @@ function DesignStudio(_, ref) {
           setSaveStatus("Unsaved changes");
           setStatus({ type: "dirty", message: "Newer edits kept locally; another autosave is queued." });
         }
-        return { ok: true, designId, savedRevision: submittedRevision };
+        return { ok: true, designId, savedRevision: submittedRevision, saveKind };
       } catch (error) {
         setSaveStatus("Save failed — changes kept locally");
         setStatus({ type: "error", message: error.message || "Save failed. Your unsaved editor work is still open." });
@@ -560,7 +574,8 @@ function DesignStudio(_, ref) {
         setSaving(false);
         savingRef.current = false;
         activeSavePromiseRef.current = null;
-        if (queuedAutosaveRef.current || (dirtyRef.current && options.autosave)) { queuedAutosaveRef.current = false; scheduleAutosave(); }
+        if (responseFromStaleEditorSession) queuedAutosaveRef.current = false;
+        else if (queuedAutosaveRef.current || (dirtyRef.current && options.autosave)) { queuedAutosaveRef.current = false; scheduleAutosave(); }
         else if (!dirtyRef.current) clearAutosaveTimer();
       }
     })();
