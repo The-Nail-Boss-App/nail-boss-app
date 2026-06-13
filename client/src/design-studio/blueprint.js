@@ -653,7 +653,7 @@ export function ensureFullSetBlueprint(input, design = {}) {
     let suffix = 2;
     while (usedIds.has(id)) id = `nail-${slot}-${suffix++}`;
     usedIds.add(id);
-    return revalidateNailLayers({ ...nail, id, slot, metadata: nail.metadata && typeof nail.metadata === "object" ? { ...nail.metadata } : {} });
+    return { ...nail, id, slot, metadata: nail.metadata && typeof nail.metadata === "object" ? { ...nail.metadata } : {} };
   });
   const previousActive = normalized.canvas?.activeNailId;
   const active = nails.find((nail) => nail.id === previousActive) || nails.find((nail) => nail.slot === DEFAULT_ACTIVE_SLOT) || nails[0];

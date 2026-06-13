@@ -81,7 +81,7 @@ export default function DesignStudio() {
   const [designs, setDesigns] = useState([]);
   const [selectedDesignId, setSelectedDesignId] = useState("");
   const [designName, setDesignName] = useState("");
-  const [blueprint, setBlueprint] = useState(() => createDefaultBlueprint());
+  const [blueprint, setBlueprint] = useState(() => createFullSetBlueprint());
   const [selectedLayerId, setSelectedLayerId] = useState("base-layer");
   const [mode, setMode] = useState("select");
   const [brush, setBrush] = useState({ tool: "solid", colorHex: "#FFFFFF", size: 5, opacity: 1 });
@@ -99,6 +99,8 @@ export default function DesignStudio() {
   const savingRef = useRef(false);
   const queuedAutosaveRef = useRef(false);
   const saveSequenceRef = useRef(0);
+  const editGenerationRef = useRef(0);
+  const activeSavePromiseRef = useRef(null);
   const generatedNameRef = useRef(1);
   const dirtyRef = useRef(false);
   const blueprintRef = useRef(null);
@@ -143,9 +145,16 @@ export default function DesignStudio() {
     }
   }
 
+  function markEdited() {
+    editGenerationRef.current += 1;
+  }
+
   function commit(nextBlueprint, { selectLayerId = selectedLayerId, noticeMessage = "" } = {}) {
+    markEdited();
     const normalized = ensureFullSetBlueprint(nextBlueprint);
     setHistory((prev) => pushHistory(prev, blueprint));
+    blueprintRef.current = normalized;
+    dirtyRef.current = true;
     setBlueprint(normalized);
     setSelectedLayerId(selectLayerId);
     setDirty(true);
@@ -157,6 +166,8 @@ export default function DesignStudio() {
 
   function replaceLoaded(nextBlueprint, design, message = "Blueprint loaded") {
     const normalized = ensureFullSetBlueprint(nextBlueprint, design);
+    blueprintRef.current = normalized;
+    dirtyRef.current = false;
     setBlueprint(normalized);
     setDesignName(design?.name || "");
     setSelectedLayerId("base-layer");
@@ -174,15 +185,28 @@ export default function DesignStudio() {
     });
   }
 
-  function newDesign() {
-    if (dirty && !window.confirm("Replace unsaved work with a new design?")) return;
+  async function confirmDiscardAfterFailedSave() {
+    showNotice("Your changes could not be saved. Keep editing or discard changes and continue?");
+    return window.confirm("Your changes could not be saved. Keep editing or discard changes and continue?");
+  }
+
+  async function guardReplacement() {
+    if (!dirtyRef.current) return true;
+    const result = await save({ autosave: true, immediate: true });
+    if (result?.ok && editGenerationRef.current === result.savedRevision) return true;
+    return confirmDiscardAfterFailedSave();
+  }
+
+  async function newDesign() {
+    if (!(await guardReplacement())) return;
     setSelectedDesignId("");
+    selectedDesignIdRef.current = "";
     replaceLoaded(createFullSetBlueprint(), { name: "" }, "New full-set design started");
   }
 
   async function loadDesign(designId) {
     if (!designId) return;
-    if (dirty) await save({ autosave: true, immediate: true });
+    if (!(await guardReplacement())) return;
     const design = designs.find((item) => item.id === designId);
     setLoading(true);
     try {
@@ -190,6 +214,7 @@ export default function DesignStudio() {
       if (!res.ok) throw new Error("Unable to load this design blueprint.");
       const data = await res.json();
       setSelectedDesignId(designId);
+      selectedDesignIdRef.current = designId;
       replaceLoaded(data.document, design, `Loaded ${design?.name || "saved design"}`);
     } catch (error) {
       setStatus({ type: "error", message: error.message });
@@ -223,7 +248,11 @@ export default function DesignStudio() {
       }),
     }));
     if (record) commit(next, { selectLayerId: layerId });
-    else setBlueprint(ensureFullSetBlueprint(next));
+    else {
+      const normalized = ensureFullSetBlueprint(next);
+      blueprintRef.current = normalized;
+      setBlueprint(normalized);
+    }
   }
 
   function transformLayer(layerId, transform, final, options = {}) {
@@ -240,6 +269,8 @@ export default function DesignStudio() {
       const preDragBlueprint = dragStartBlueprintRef.current || blueprint;
       dragStartBlueprintRef.current = null;
       setHistory((prev) => pushHistory(prev, preDragBlueprint));
+      markEdited();
+      dirtyRef.current = true;
       setDirty(true);
       setStatus({ type: "dirty", message: "Unsaved changes" });
       setSaveStatus("Unsaved changes");
@@ -345,8 +376,12 @@ export default function DesignStudio() {
     if (!canUndo) return;
     const current = JSON.stringify(blueprint);
     const snapshot = history.past[history.past.length - 1];
-    setBlueprint(restoreHistorySnapshot(snapshot));
+    const restored = restoreHistorySnapshot(snapshot);
+    blueprintRef.current = restored;
+    dirtyRef.current = true;
+    setBlueprint(restored);
     setHistory({ past: history.past.slice(0, -1), future: [current, ...history.future].slice(0, 50) });
+    markEdited();
     setDirty(true);
     setStatus({ type: "dirty", message: "Undo applied" });
   }
@@ -355,8 +390,12 @@ export default function DesignStudio() {
     if (!canRedo) return;
     const current = JSON.stringify(blueprint);
     const snapshot = history.future[0];
-    setBlueprint(restoreHistorySnapshot(snapshot));
+    const restored = restoreHistorySnapshot(snapshot);
+    blueprintRef.current = restored;
+    dirtyRef.current = true;
+    setBlueprint(restored);
     setHistory({ past: [...history.past, current].slice(-50), future: history.future.slice(1) });
+    markEdited();
     setDirty(true);
     setStatus({ type: "dirty", message: "Redo applied" });
   }
@@ -374,67 +413,105 @@ export default function DesignStudio() {
   }
 
   async function save(options = {}) {
+    if (savingRef.current) {
+      queuedAutosaveRef.current = queuedAutosaveRef.current || Boolean(options.autosave || dirtyRef.current);
+      setSaveStatus("Saving…");
+      return activeSavePromiseRef.current || { ok: false, reason: "save-in-flight" };
+    }
+
+    const submittedRevision = editGenerationRef.current;
     const workingBlueprint = ensureFullSetBlueprint(blueprintRef.current || blueprint);
+    const existingDesignId = selectedDesignIdRef.current;
     const workingName = designNameRef.current || (options.autosave ? generatedUntitledName() : designName);
     const flat = flatDesignFromBlueprint(workingBlueprint, workingName);
-    if (!flat.name) return setStatus({ type: "error", message: "Enter a design name before saving." });
-    if (!/^#[0-9a-fA-F]{6}$/.test(flat.baseColorHex)) return setStatus({ type: "error", message: "Choose a valid base polish color." });
+    if (!flat.name) {
+      setStatus({ type: "error", message: "Enter a design name before saving." });
+      setSaveStatus("Unsaved changes");
+      return { ok: false, reason: "validation" };
+    }
+    if (!/^#[0-9a-fA-F]{6}$/.test(flat.baseColorHex)) {
+      setStatus({ type: "error", message: "Choose a valid base polish color." });
+      setSaveStatus("Unsaved changes");
+      return { ok: false, reason: "validation" };
+    }
 
     const blueprintBytes = serializedBlueprintSize(workingBlueprint);
     if (blueprintBytes > MAX_BLUEPRINT_JSON_BYTES) {
-      return setStatus({ type: "error", message: `${blueprintSizeMessage(blueprintBytes)} Remove a few strokes or layers before saving.` });
+      setStatus({ type: "error", message: `${blueprintSizeMessage(blueprintBytes)} Remove a few strokes or layers before saving.` });
+      setSaveStatus("Unsaved changes");
+      return { ok: false, reason: "validation" };
     }
     if (blueprintBytes >= BLUEPRINT_WARNING_BYTES) {
       setStatus({ type: "dirty", message: `${blueprintSizeMessage(blueprintBytes)} Saving, but consider simplifying before adding more details.` });
     }
 
-    if (savingRef.current) { queuedAutosaveRef.current = Boolean(options.autosave); return; }
     savingRef.current = true;
     const sequence = ++saveSequenceRef.current;
     setSaving(true);
-    setSaveStatus(options.autosave ? "Saving…" : "Saving…");
-    try {
-      let designId = selectedDesignIdRef.current;
-      let savedDesign = designs.find((design) => design.id === designId);
-      let savedBlueprint;
-      if (!designId) {
-        const res = await fetch("/api/designs/with-blueprint", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ design: flat, blueprint: workingBlueprint }) });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data.error || "Unable to create design with blueprint.");
-        designId = data.design?.id;
-        savedDesign = data.design;
-        savedBlueprint = data.blueprint;
-        if (!designId || !savedBlueprint?.document) throw new Error("Saved design response was incomplete.");
-        setSelectedDesignId(designId);
-      } else {
-        const put = await fetch(`/api/designs/${designId}/with-blueprint`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ design: flat, blueprint: workingBlueprint }) });
-        const data = await put.json().catch(() => ({}));
-        if (!put.ok) throw new Error(data.error || "Unable to save design and blueprint.");
-        savedDesign = data.design;
-        savedBlueprint = data.blueprint;
-        if (!savedDesign?.id || !savedBlueprint?.document) throw new Error("Saved design response was incomplete.");
+    setSaveStatus("Saving…");
+
+    const savePromise = (async () => {
+      try {
+        let designId = existingDesignId;
+        let savedDesign = designs.find((design) => design.id === designId);
+        let savedBlueprint;
+        if (!designId) {
+          const res = await fetch("/api/designs/with-blueprint", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ design: flat, blueprint: workingBlueprint }) });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(data.error || "Unable to create design with blueprint.");
+          designId = data.design?.id;
+          savedDesign = data.design;
+          savedBlueprint = data.blueprint;
+          if (!designId || !savedBlueprint?.document) throw new Error("Saved design response was incomplete.");
+          setSelectedDesignId(designId);
+          selectedDesignIdRef.current = designId;
+        } else {
+          const put = await fetch(`/api/designs/${designId}/with-blueprint`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ design: flat, blueprint: workingBlueprint }) });
+          const data = await put.json().catch(() => ({}));
+          if (!put.ok) throw new Error(data.error || "Unable to save design and blueprint.");
+          savedDesign = data.design;
+          savedBlueprint = data.blueprint;
+          if (!savedDesign?.id || !savedBlueprint?.document) throw new Error("Saved design response was incomplete.");
+        }
+        if (sequence !== saveSequenceRef.current) return { ok: false, reason: "superseded" };
+        mergeSavedDesign(savedDesign);
+        const unchangedSinceSubmit = editGenerationRef.current === submittedRevision;
+        if (unchangedSinceSubmit) {
+          const normalizedSaved = ensureFullSetBlueprint(savedBlueprint.document, savedDesign);
+          blueprintRef.current = normalizedSaved;
+          designNameRef.current = savedDesign?.name || flat.name;
+          setDesignName(savedDesign?.name || flat.name);
+          setBlueprint(normalizedSaved);
+          dirtyRef.current = false;
+          setDirty(false);
+          setSaveStatus(options.autosave ? "Autosaved" : "Saved");
+          setStatus({
+            type: "saved",
+            message: blueprintBytes >= BLUEPRINT_WARNING_BYTES
+              ? `${blueprintSizeMessage(blueprintBytes)} Saved, but consider simplifying before adding more details.`
+              : "Saved editable blueprint",
+          });
+        } else {
+          queuedAutosaveRef.current = true;
+          dirtyRef.current = true;
+          setDirty(true);
+          setSaveStatus("Unsaved changes");
+          setStatus({ type: "dirty", message: "Newer edits kept locally; another autosave is queued." });
+        }
+        return { ok: true, designId, savedRevision: submittedRevision };
+      } catch (error) {
+        setSaveStatus("Save failed — changes kept locally");
+        setStatus({ type: "error", message: error.message || "Save failed. Your unsaved editor work is still open." });
+        return { ok: false, reason: error.message || "save-failed" };
+      } finally {
+        setSaving(false);
+        savingRef.current = false;
+        activeSavePromiseRef.current = null;
+        if (queuedAutosaveRef.current || (dirtyRef.current && options.autosave)) { queuedAutosaveRef.current = false; scheduleAutosave(); }
       }
-      if (sequence !== saveSequenceRef.current) return;
-      mergeSavedDesign(savedDesign);
-      setDesignName(savedDesign?.name || flat.name);
-      setBlueprint(ensureFullSetBlueprint(savedBlueprint.document, savedDesign));
-      setDirty(false);
-      setSaveStatus(options.autosave ? "Autosaved" : "Saved");
-      setHistory({ past: [], future: [] });
-      setStatus({
-        type: "saved",
-        message: blueprintBytes >= BLUEPRINT_WARNING_BYTES
-          ? `${blueprintSizeMessage(blueprintBytes)} Saved, but consider simplifying before adding more details.`
-          : "Saved editable blueprint",
-      });
-    } catch (error) {
-      setSaveStatus("Save failed — changes kept locally");
-      setStatus({ type: "error", message: error.message || "Save failed. Your unsaved editor work is still open." });
-    } finally {
-      setSaving(false);
-      savingRef.current = false;
-      if (queuedAutosaveRef.current || (dirtyRef.current && options.autosave)) { queuedAutosaveRef.current = false; scheduleAutosave(); }
-    }
+    })();
+    activeSavePromiseRef.current = savePromise;
+    return savePromise;
   }
 
   function selectSlot(slot) {
@@ -479,7 +556,7 @@ export default function DesignStudio() {
 
     <div style={UI.layout}>
       <aside style={UI.panel}><div style={UI.panelPad}>
-        <Field label="Design name"><input style={S.input} value={designName} onChange={(e) => { setDesignName(e.target.value); setDirty(true); setSaveStatus("Unsaved changes"); scheduleAutosave(); }} placeholder="Milky bow accent" /></Field>
+        <Field label="Design name"><input style={S.input} value={designName} onChange={(e) => { markEdited(); designNameRef.current = e.target.value; dirtyRef.current = true; setDesignName(e.target.value); setDirty(true); setSaveStatus("Unsaved changes"); scheduleAutosave(); }} placeholder="Milky bow accent" /></Field>
         <div style={{ display: "flex", gap: 8, marginBottom: 14 }}><button type="button" onClick={newDesign} style={{ ...S.btnSecondary, padding: "10px 12px" }}>New Design</button><button type="button" onClick={save} disabled={saving} style={{ ...S.btnPrimary, padding: "10px 12px", opacity: saving ? .65 : 1 }}>Save</button></div>
         <Field label="Saved Designs"><select style={S.input} value={selectedDesignId} onChange={(e) => loadDesign(e.target.value)}><option value="">Choose saved design…</option>{designs.map((design) => <option key={design.id} value={design.id}>{design.name}</option>)}</select></Field>
         <Field label="Nail shape"><select style={S.input} value={activeNail.shape} onChange={(e) => updateBase({ shape: e.target.value })}>{SHAPES.map((shape) => <option key={shape}>{shape}</option>)}</select></Field>

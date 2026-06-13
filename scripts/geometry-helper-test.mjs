@@ -215,6 +215,9 @@ assert.equal(quantitySummary(resized).charm, 1, 'quantity hooks count only valid
 
 const fullSet = blueprint.ensureFullSetBlueprint(blueprint.createFullSetBlueprint({ baseColorHex: '#123456' }));
 assert.equal(fullSet.nails.length, 10, 'new full-set design initializes 10 nails');
+assert.equal(blueprint.getActiveNail(fullSet).slot, blueprint.DEFAULT_ACTIVE_SLOT, 'new full-set design activates the documented right-index default');
+assert(designStudioSource.includes('useState(() => createFullSetBlueprint())'), 'Design Studio initializer mounts from the full-set blueprint helper');
+assert(!designStudioSource.includes('useState(() => createDefaultBlueprint())'), 'Design Studio initializer does not call the removed single-nail default helper');
 assert.equal(new Set(fullSet.nails.map((n) => n.id)).size, 10, 'every full-set nail has a unique id');
 assert.deepEqual(fullSet.nails.map((n) => n.slot), blueprint.FULL_SET_SLOTS, 'full-set preview order follows stable slot order');
 assert.deepEqual(blueprint.LEFT_HAND_SLOTS, ['left-thumb', 'left-index', 'left-middle', 'left-ring', 'left-pinky'], 'left-hand preview order is artist-facing thumb to pinky');
@@ -224,6 +227,23 @@ assert.equal(blueprint.getActiveNail(switched).slot, 'left-ring', 'active nail s
 const oneNailLegacy = blueprint.ensureFullSetBlueprint(blueprint.createDefaultBlueprint({ fullSet: false, baseColorHex: '#AA00AA' }));
 assert.equal(oneNailLegacy.nails.length, 10, 'legacy one-nail blueprint upgrades to 10 slots safely');
 assert(oneNailLegacy.nails.some((n) => n.baseColorHex === '#AA00AA'), 'legacy one-nail upgrade preserves original nail data');
+
+const unusualInactive = JSON.parse(JSON.stringify(fullSet));
+const inactiveSlot = 'left-thumb';
+unusualInactive.nails = unusualInactive.nails.map((n) => n.slot === inactiveSlot ? {
+  ...n,
+  layers: [
+    ...n.layers,
+    { id: 'inactive-decal', type: 'decal', name: 'Inactive Decal', visible: true, locked: false, opacity: 0.8, order: 1, transform: { x: 0.43, y: 0.57, scaleX: 0.21, scaleY: 0.13, rotation: 37 }, data: { assetId: 'decal-weird', colorHex: '#ABCDEF' } },
+  ],
+  metadata: { preserved: true },
+} : n);
+const inactiveBefore = JSON.stringify(blueprint.getNailBySlot(unusualInactive, inactiveSlot));
+const noOpNormalized = blueprint.ensureFullSetBlueprint(unusualInactive);
+assert.equal(JSON.stringify(blueprint.getNailBySlot(noOpNormalized, inactiveSlot)), inactiveBefore, 'ensureFullSetBlueprint preserves backend-valid inactive nails verbatim during no-op normalization');
+const activeOnlyResized = blueprint.revalidateLayersAfterNailResize(unusualInactive);
+assert.equal(JSON.stringify(blueprint.getNailBySlot(activeOnlyResized, inactiveSlot)), inactiveBefore, 'active-only geometry revalidation leaves inactive nails unchanged');
+
 const sourceSlot = 'right-index';
 const sourceNail = blueprint.getNailBySlot(fullSet, sourceSlot);
 const sourceLayer = blueprint.assetLayer({ id: 'charm-bow', name: 'Bow', category: 'charms', defaultColor: '#fff' }, sourceNail);
@@ -265,6 +285,10 @@ assert.equal(summary.nailCount, 10, 'product-use summary counts nails');
 assert.equal(summary.charmsByAssetId['charm-bow'], 1, 'product-use summary counts visible valid charms by assetId');
 assert(designStudioSource.includes('window.setTimeout(() => { void save({ autosave: true }); }, 20000)'), 'autosave uses a debounced 20 second cadence');
 assert(designStudioSource.includes('savingRef.current') && designStudioSource.includes('queuedAutosaveRef.current'), 'autosave prevents overlapping requests and queues follow-up saves');
+assert(designStudioSource.includes('editGenerationRef') && designStudioSource.includes('submittedRevision'), 'autosave captures local edit generations so older responses cannot overwrite newer edits');
+assert(designStudioSource.includes('unchangedSinceSubmit') && designStudioSource.includes('Newer edits kept locally; another autosave is queued.'), 'stale autosave responses keep newer local edits dirty and queue a newest-state follow-up save');
+assert(!designStudioSource.includes('setHistory({ past: [], future: [] });\n      setStatus({'), 'successful autosaves and manual saves preserve undo and redo history');
+assert(designStudioSource.includes('async function guardReplacement()') && designStudioSource.includes('confirmDiscardAfterFailedSave'), 'failed or in-flight saves gate design replacement behind explicit discard confirmation');
 assert(designStudioSource.includes('Save failed — changes kept locally'), 'failed autosaves preserve dirty frontend state with clear status');
 assert(designStudioSource.includes('Untitled Set'), 'new unnamed autosaved drafts get generated editable names');
 assert(designStudioSource.includes('<FullSetPreview'), 'Design Studio renders full-set preview navigation');

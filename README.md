@@ -500,3 +500,15 @@ Milestone 5.1 French-tip refinement backlog:
 - reverse French tip
 - per-nail French-tip controls
 - bulk-apply French-tip settings across selected nails
+
+### Milestone 5 review hardening
+
+The PR #6 review follow-up tightened the full-set editor around autosave races, replacement safety, history retention, and inactive-nail compatibility.
+
+- **Full-set initializer:** the studio now initializes new editor state with `createFullSetBlueprint()`, which creates exactly ten slots and selects the documented `right-index` default active nail.
+- **Edit-generation autosave protection:** every meaningful local mutation increments an editor generation counter. Save requests capture the submitted generation, and a successful response may only replace the visible blueprint or clear dirty state when no newer local edits occurred while the request was in flight. If a newer edit exists, the response is treated as a persisted older snapshot only: the database ID from a first create is preserved, the newer local blueprint and design name stay visible, dirty state remains true, and a follow-up autosave is queued from the latest refs so only one draft row is created.
+- **Save-result navigation gating:** `save()` returns a structured `{ ok, designId, savedRevision }` or `{ ok: false, reason }` result. Loading another saved design or starting a new design first waits for the active save when needed; if dirty work cannot be saved, the current blueprint remains open and replacement requires an explicit discard confirmation.
+- **Autosave history preservation:** successful background and manual saves no longer clear undo/redo stacks. History is intentionally reset only when a different design is loaded, a new design is started, or the editor blueprint is otherwise deliberately replaced.
+- **Structural normalization versus destructive revalidation:** `ensureFullSetBlueprint()` now performs full-set structural repair (slot coverage, ID uniqueness, metadata defaults, and active-nail validity) without revalidating every nail. Destructive geometry revalidation stays scoped to active-nail geometry edits and explicit bulk destinations such as copy, mirror, apply-shape, and reset.
+- **Inactive nail no-op preservation guarantee:** backend-valid inactive nails remain byte-for-byte stable for IDs, slots, layers, stroke IDs, order, transforms including non-uniform scale, rotation, metadata, visibility, locked state, and drawing points during load and no-op save normalization. Invalid nails may still be repaired to keep the Nail Blueprint v1 document server-safe.
+- **Known limitations:** this is still a frontend deterministic smoke layer rather than a browser automation suite. The autosave race and navigation protections are covered by helper-source assertions and pure helper tests; a future Playwright/Vitest harness should simulate delayed network responses in a mounted React environment.
