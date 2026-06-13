@@ -526,3 +526,9 @@ Undo and Redo are treated as editor mutations. Each operation updates the bluepr
 Generated names for unnamed autosaved drafts are stable for the lifetime of that draft. The first generated or server-returned `Untitled Set N` name is reused by stale-response handling, queued follow-up saves, and later autosaves until the user starts a truly new design, loads another design, or enters an authoritative manual name.
 
 Known limitation: browser unload protection depends on native browser confirmation UI and cannot show the richer in-app discard confirmation or guarantee network persistence during page shutdown.
+
+### Stale autosave timer protection
+
+Pending autosave timers are cleared and nulled whenever the editor becomes clean, including successful manual saves, successful autosaves with no newer local edits, loaded/replaced designs, clean new designs, explicit discard/replacement flows, and studio unmount cleanup. Queued follow-up autosaves are preserved when newer local edits remain dirty.
+
+Each scheduled autosave captures the current editor-session token. Timer callbacks clear their own timer ref, verify the studio is still mounted, verify the captured session still matches the current draft/session, and verify `dirtyRef.current` is still true before calling `save({ autosave: true })`. Starting a new draft or loading/replacing editor state increments the session token, preventing a timer created for one draft from saving a later clean replacement draft or generating an unwanted `Untitled Set` row.

@@ -283,7 +283,11 @@ assert.deepEqual(twice, once, 'strict-fit revalidation is idempotent without ano
 const summary = blueprint.summarizeFullSetAssets(decorated);
 assert.equal(summary.nailCount, 10, 'product-use summary counts nails');
 assert.equal(summary.charmsByAssetId['charm-bow'], 1, 'product-use summary counts visible valid charms by assetId');
-assert(designStudioSource.includes('window.setTimeout(() => { void save({ autosave: true }); }, 20000)'), 'autosave uses a debounced 20 second cadence');
+assert(designStudioSource.includes('window.setTimeout(() => {') && designStudioSource.includes('}, 20000)'), 'autosave uses a debounced 20 second cadence');
+assert(designStudioSource.includes('function clearAutosaveTimer()') && designStudioSource.includes('autosaveTimerRef.current = null'), 'pending autosave timers are cleared and nulled when no longer needed');
+assert(designStudioSource.includes('autosaveSessionRef') && designStudioSource.includes('scheduledSession !== autosaveSessionRef.current'), 'autosave timer callbacks are guarded by editor session tokens');
+assert(designStudioSource.includes('!mountedRef.current') && designStudioSource.includes('!dirtyRef.current) return'), 'autosave timer callbacks exit when unmounted or clean before saving');
+assert(designStudioSource.includes('useEffect(() => { if (!dirty) clearAutosaveTimer(); }, [dirty])'), 'autosave timers are cleared when the editor becomes clean');
 assert(designStudioSource.includes('savingRef.current') && designStudioSource.includes('queuedAutosaveRef.current'), 'autosave prevents overlapping requests and queues follow-up saves');
 assert(designStudioSource.includes('editGenerationRef') && designStudioSource.includes('submittedRevision'), 'autosave captures local edit generations so older responses cannot overwrite newer edits');
 assert(designStudioSource.includes('unchangedSinceSubmit') && designStudioSource.includes('Newer edits kept locally; another autosave is queued.'), 'stale autosave responses keep newer local edits dirty and queue a newest-state follow-up save');

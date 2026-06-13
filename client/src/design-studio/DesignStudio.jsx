@@ -96,6 +96,8 @@ function DesignStudio(_, ref) {
   const [selectedSlots, setSelectedSlots] = useState([]);
   const [saveStatus, setSaveStatus] = useState("Ready");
   const autosaveTimerRef = useRef(null);
+  const autosaveSessionRef = useRef(0);
+  const mountedRef = useRef(true);
   const savingRef = useRef(false);
   const queuedAutosaveRef = useRef(false);
   const saveSequenceRef = useRef(0);
@@ -119,7 +121,8 @@ function DesignStudio(_, ref) {
 
   useEffect(() => { loadDesigns(); }, []);
   useEffect(() => { dirtyRef.current = dirty; blueprintRef.current = blueprint; selectedDesignIdRef.current = selectedDesignId; designNameRef.current = designName; }, [dirty, blueprint, selectedDesignId, designName]);
-  useEffect(() => () => { if (autosaveTimerRef.current) window.clearTimeout(autosaveTimerRef.current); }, []);
+  useEffect(() => { if (!dirty) clearAutosaveTimer(); }, [dirty]);
+  useEffect(() => () => { mountedRef.current = false; clearAutosaveTimer(); autosaveSessionRef.current += 1; }, []);
   useEffect(() => {
     function onVisibilityChange() { if (document.visibilityState === "hidden" && dirtyRef.current) void save({ autosave: true, immediate: true }); }
     document.addEventListener("visibilitychange", onVisibilityChange);
@@ -184,6 +187,8 @@ function DesignStudio(_, ref) {
   }
 
   function replaceLoaded(nextBlueprint, design, message = "Blueprint loaded") {
+    autosaveSessionRef.current += 1;
+    clearAutosaveTimer();
     generatedDraftNameRef.current = "";
     const normalized = ensureFullSetBlueprint(nextBlueprint, design);
     blueprintRef.current = normalized;
@@ -425,9 +430,19 @@ function DesignStudio(_, ref) {
     markHistoryMutation("Redo applied");
   }
 
-  function scheduleAutosave() {
+  function clearAutosaveTimer() {
     if (autosaveTimerRef.current) window.clearTimeout(autosaveTimerRef.current);
-    autosaveTimerRef.current = window.setTimeout(() => { void save({ autosave: true }); }, 20000);
+    autosaveTimerRef.current = null;
+  }
+
+  function scheduleAutosave() {
+    clearAutosaveTimer();
+    const scheduledSession = autosaveSessionRef.current;
+    autosaveTimerRef.current = window.setTimeout(() => {
+      autosaveTimerRef.current = null;
+      if (!mountedRef.current || scheduledSession !== autosaveSessionRef.current || !dirtyRef.current) return;
+      void save({ autosave: true });
+    }, 20000);
   }
 
   function generatedUntitledName() {
@@ -519,6 +534,7 @@ function DesignStudio(_, ref) {
           setBlueprint(normalizedSaved);
           dirtyRef.current = false;
           setDirty(false);
+          clearAutosaveTimer();
           setSaveStatus(options.autosave ? "Autosaved" : "Saved");
           setStatus({
             type: "saved",
@@ -543,6 +559,7 @@ function DesignStudio(_, ref) {
         savingRef.current = false;
         activeSavePromiseRef.current = null;
         if (queuedAutosaveRef.current || (dirtyRef.current && options.autosave)) { queuedAutosaveRef.current = false; scheduleAutosave(); }
+        else if (!dirtyRef.current) clearAutosaveTimer();
       }
     })();
     activeSavePromiseRef.current = savePromise;
