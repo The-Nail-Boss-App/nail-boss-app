@@ -475,6 +475,11 @@ export function synchronizeBase(blueprint, patch) {
   });
 }
 
+export function getVisibleBaseColor(nail) {
+  const base = nail?.layers?.find((layer) => layer.type === "base");
+  return normalizeHex(base?.data?.colorHex, normalizeHex(nail?.baseColorHex));
+}
+
 export function flatDesignFromBlueprint(blueprint, name) {
   const nail = getActiveNail(blueprint);
   const base = nail.layers.find((layer) => layer.type === "base") || createBaseLayer(nail);
@@ -483,7 +488,7 @@ export function flatDesignFromBlueprint(blueprint, name) {
     shape: nail.shape,
     length: nail.length,
     width: nail.width,
-    baseColorHex: base.data.colorHex,
+    baseColorHex: getVisibleBaseColor(nail),
     effect: base.data.effect,
     effectColorHex: base.data.effectColorHex,
     tags: normalizeTags(blueprint.metadata?.tags || []),

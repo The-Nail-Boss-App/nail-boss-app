@@ -527,6 +527,8 @@ Undo and Redo are treated as editor mutations. Each operation updates the bluepr
 
 Generated names for unnamed autosaved drafts are stable for the lifetime of that draft. The first generated or server-returned `Untitled Set N` name is reused by stale-response handling, queued follow-up saves, and later autosaves until the user starts a truly new design, loads another design, or enters an authoritative manual name. Existing saved designs do not generate `Untitled Set` names during autosave: if the visible name input is blank, autosave preserves the last persisted design name instead of renaming the row. Manual Save follows the same preserve-and-restore behavior for existing designs with a blank name, and user-entered valid renames remain authoritative on the next successful save.
 
+Base-color synchronization uses the active nail's visible base layer as the source of truth. When a base layer color is edited from Properties, the active nail's legacy `baseColorHex` is synchronized to that layer color where possible; bulk "apply base" actions and legacy flat-field save sync prefer the active base layer `data.colorHex` when it is valid and fall back to `activeNail.baseColorHex` only when the layer color is missing or invalid.
+
 Known limitation: browser unload protection depends on native browser confirmation UI and cannot show the richer in-app discard confirmation or guarantee network persistence during page shutdown.
 
 ### Stale autosave timer protection

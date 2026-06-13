@@ -32,6 +32,7 @@ import {
 
   flatDesignFromBlueprint,
   getActiveNail,
+  getVisibleBaseColor,
   gradientLayer,
   isReusableDrawingLayer,
   normalizeHex,
@@ -277,9 +278,10 @@ function DesignStudio(_, ref) {
         return merged;
       }),
     }));
-    if (record) commit(next, { selectLayerId: layerId });
+    const synced = updateActiveNail(next, (nail) => ({ ...nail, baseColorHex: getVisibleBaseColor(nail) }));
+    if (record) commit(synced, { selectLayerId: layerId });
     else {
-      const normalized = ensureFullSetBlueprint(next);
+      const normalized = ensureFullSetBlueprint(synced);
       blueprintRef.current = normalized;
       setBlueprint(normalized);
     }
@@ -626,7 +628,7 @@ function DesignStudio(_, ref) {
   function pasteToSelected() { if (!clipboardNail || !selectedSlots.length || !confirmBulk("Overwrite selected nail designs?")) return; commit({ ...blueprint, nails: blueprint.nails.map((nail) => selectedSlots.includes(nail.slot) ? cloneNailDesign(clipboardNail, nail) : nail) }, { noticeMessage: "Copied artwork was re-fit where needed." }); }
   function duplicateActive(scope) { const targets = slotsFor(scope); if (!targets.length || !confirmBulk("Overwrite destination nail designs?")) return; commit(copyNailToSlots(blueprint, activeSlot, targets), { noticeMessage: "Copied artwork was re-fit where needed." }); }
   function mirrorHand(hand) { if (!confirmBulk("Mirror this hand to the opposite hand?")) return; commit(mirrorHandDesign(blueprint, hand), { noticeMessage: "Mirrored nails were re-fit where needed." }); }
-  function applyBase(scope) { const targets = slotsFor(scope); if (!confirmBulk("Apply active base color to these nails?")) return; commit(applyBaseToSlots(blueprint, { baseColorHex: activeNail.baseColorHex }, targets)); }
+  function applyBase(scope) { const targets = slotsFor(scope); if (!confirmBulk("Apply active base color to these nails?")) return; commit(applyBaseToSlots(blueprint, { baseColorHex: getVisibleBaseColor(activeNail) }, targets)); }
   function applyShape(scope) { const targets = slotsFor(scope); if (!confirmBulk("Apply active shape, width, and length to these nails?")) return; commit(applyBaseToSlots(blueprint, { shape: activeNail.shape, width: activeNail.width, length: activeNail.length }, targets), { noticeMessage: "Artwork was revalidated after shape changes." }); }
   function resetActive() { if (!confirmBulk("Reset this nail to its base layer only?")) return; commit(resetNailDesign(blueprint, activeSlot), { selectLayerId: "base-layer" }); }
 

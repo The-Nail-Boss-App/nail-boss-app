@@ -25,6 +25,7 @@ const {
   revalidateLayersAfterNailResize,
   safeTransform,
   flatDesignFromBlueprint,
+  getVisibleBaseColor,
   synchronizeBase,
   updateActiveNail,
 } = blueprint;
@@ -101,6 +102,21 @@ for (const count of [5, 10]) {
   assert.deepEqual(edited.nails[4].layers, normalized.nails[4].layers, `${count}-nail active edit leaves inactive nail layers unchanged`);
   assert.equal(flatDesignFromBlueprint(edited).baseColorHex, '#AABBCC', `${count}-nail legacy flat fields sync from active nail only`);
 }
+
+const staleFlatBase = ensureBlueprint(multiNailBlueprint(5));
+const visibleBaseEdited = updateActiveNail(staleFlatBase, (nail) => ({
+  ...nail,
+  baseColorHex: '#445566',
+  layers: nail.layers.map((layer) => layer.type === 'base' ? { ...layer, data: { ...layer.data, colorHex: '#112233' } } : layer),
+}));
+assert.equal(getVisibleBaseColor(getActiveNail(visibleBaseEdited)), '#112233', 'visible base color prefers active base layer data over stale nail flat field');
+assert.equal(flatDesignFromBlueprint(visibleBaseEdited).baseColorHex, '#112233', 'legacy flat fields derive from the visible active base layer color');
+const invalidVisibleBase = updateActiveNail(staleFlatBase, (nail) => ({
+  ...nail,
+  baseColorHex: '#445566',
+  layers: nail.layers.map((layer) => layer.type === 'base' ? { ...layer, data: { ...layer.data, colorHex: 'invalid' } } : layer),
+}));
+assert.equal(getVisibleBaseColor(getActiveNail(invalidVisibleBase)), '#445566', 'visible base color falls back to activeNail.baseColorHex when base layer color is invalid');
 
 const invalidActive = ensureBlueprint({ ...multiNailBlueprint(5), canvas: { mode: 'full-set', activeNailId: 'missing' } });
 assert.equal(invalidActive.canvas.activeNailId, 'nail-1', 'normalization repairs invalid activeNailId to a preserved nail');
@@ -309,6 +325,7 @@ assert(designStudioSource.match(/function redo\(\)[\s\S]*scheduleAutosave\(\)/),
 assert(designStudioSource.includes('generatedDraftNameRef') && designStudioSource.includes('if (generatedDraftNameRef.current) return generatedDraftNameRef.current'), 'generated draft names are stable across queued saves');
 assert(designStudioSource.includes('persistedDesignNameRef') && designStudioSource.includes('workingName = persistedDesignNameRef.current.trim()'), 'existing-design saves preserve the last persisted name when the visible name is blank');
 assert(designStudioSource.includes('existingDesignId') && designStudioSource.includes('generatedUntitledName()') && designStudioSource.indexOf('workingName = persistedDesignNameRef.current.trim()') < designStudioSource.indexOf('workingName = generatedUntitledName()'), 'Untitled Set names are generated only after existing-design persisted-name preservation is considered');
+assert(designStudioSource.includes('getVisibleBaseColor(activeNail)') && designStudioSource.match(/function patchLayer\(layerId, patch, record = true\)[\s\S]*baseColorHex: getVisibleBaseColor\(nail\)/), 'bulk base color and active nail flat sync use the visible active base layer color');
 assert(designStudioSource.match(/function selectSlot\(slot\)[\s\S]*if \(currentActive\?\.slot === slot\) return;[\s\S]*blueprintRef.current = next;/), 'active nail selection updates refs synchronously and clicking the active nail is a no-op');
 const selectSlotSource = designStudioSource.match(/function selectSlot\(slot\) \{[\s\S]*?\n  \}/)?.[0] || '';
 assert(selectSlotSource.includes('selectionRevisionRef.current += 1') && !selectSlotSource.includes('markEdited()'), 'thumbnail navigation uses a separate selection revision instead of content edit generation');
