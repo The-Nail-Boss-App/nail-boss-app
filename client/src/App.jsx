@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { COLORS, S, LogoMark, NavItem } from './styles';
 import Login from './Login';
 import Dashboard from './Dashboard';
@@ -17,13 +17,26 @@ const PAGES = {
 export default function App() {
   const [page, setPage] = useState(PAGES.LOGIN);
   const [techName, setTechName] = useState('');
+  const designStudioRef = useRef(null);
 
   const handleLogin = (name) => {
     setTechName(name);
     setPage(PAGES.DASHBOARD);
   };
 
-  const handleLogout = () => {
+  const guardStudioLeave = async () => {
+    if (page !== PAGES.STUDIO || !designStudioRef.current?.hasDirtyWork?.()) return true;
+    return designStudioRef.current.prepareToLeave();
+  };
+
+  const navigateTo = async (nextPage) => {
+    if (nextPage === page) return;
+    if (!(await guardStudioLeave())) return;
+    setPage(nextPage);
+  };
+
+  const handleLogout = async () => {
+    if (!(await guardStudioLeave())) return;
     setTechName('');
     setPage(PAGES.LOGIN);
   };
@@ -85,7 +98,7 @@ export default function App() {
             icon={item.icon}
             label={item.label}
             active={page === item.id}
-            onClick={() => setPage(item.id)}
+            onClick={() => { void navigateTo(item.id); }}
           />
         ))}
       </nav>
@@ -141,12 +154,12 @@ export default function App() {
         return (
           <Dashboard
             techName={techName}
-            onStartLook={() => setPage(PAGES.STUDIO)}
-            onViewProposals={() => setPage(PAGES.PROPOSALS)}
+            onStartLook={() => { void navigateTo(PAGES.STUDIO); }}
+            onViewProposals={() => { void navigateTo(PAGES.PROPOSALS); }}
           />
         );
       case PAGES.STUDIO:
-        return <DesignStudio />;
+        return <DesignStudio ref={designStudioRef} />;
       case PAGES.PROPOSALS:
         return <Proposals />;
       default:

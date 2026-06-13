@@ -405,3 +405,134 @@ If a deploy fails after introducing PostgreSQL persistence:
 - No rate limiting, request logging, CSRF strategy, or authentication middleware is currently present.
 - Nail Blueprint validation is structural and persistence-focused; advanced visual editing constraints are enforced in the Milestone 4 editor helpers and covered by deterministic geometry tests.
 - The test-only file fallback is not a production database and should never be configured in Render production.
+
+## Milestone 5 — Full Nail Set Studio
+
+Milestone 5 expands AnitaSet's Design Studio from a single-active-nail editor into a full 10-nail set workflow while preserving the Nail Blueprint v1 document and Milestone 4 safety rules.
+
+### Audit findings before implementation
+
+- **Active-nail state flow:** `canvas.activeNailId` selects one editable nail. Left controls, the main `NailCanvas`, `LayersPanel`, and `PropertiesPanel` all read from `getActiveNail()`, while `updateActiveNail()` and `synchronizeBase()` mutate only that nail.
+- **Blueprint structure:** Nail Blueprint v1 stores `schemaVersion`, `canvas`, ordered `nails`, and `metadata`. Each nail owns `id`, `slot`, `shape`, `length`, `width`, `baseColorHex`, `layers`, and optional nail `metadata`; legacy flat design fields are derived from the active nail only.
+- **Inactive-nail preservation:** `ensureBlueprint()`, `cloneInactiveNailVerbatim()`, `updateActiveNail()`, `synchronizeBase()`, `addLayerToBlueprint()`, and `addStrokeToDrawingLayer()` keep inactive nails unchanged unless an explicit full-set helper targets them.
+- **Strict-fit geometry:** asset transforms are constrained with deterministic silhouette checks, drawing points are projected into the nail surface, SVG clipping remains a rendering backstop, and resize/shape edits re-run validation against the current active nail.
+- **Atomic persistence:** layered designs continue to save through `POST /api/designs/with-blueprint` and update through `PUT /api/designs/:id/with-blueprint`, preserving rollback guarantees and avoiding orphan blueprint rows.
+- **Compatibility risks:** proposal cards and legacy endpoints still expect active-nail flat fields; therefore Milestone 5 keeps those fields synchronized from `canvas.activeNailId` and leaves public proposal previews on the legacy active-nail preview for now.
+- **Recommended additions:** reusable `FullSetPreview`, `HandPreview`, `NailThumbnail`, and `BulkActionsPanel` components provide full-set navigation, realistic thumbnails, and explicit bulk tools without rebuilding the editor.
+
+### 10-nail slot model and active editing
+
+Full-set blueprints use stable normalized slots in this order:
+
+1. `left-thumb`
+2. `left-index`
+3. `left-middle`
+4. `left-ring`
+5. `left-pinky`
+6. `right-thumb`
+7. `right-index`
+8. `right-middle`
+9. `right-ring`
+10. `right-pinky`
+
+New designs initialize all 10 nails by default with a unique stable nail ID, slot, default shape, default length, default width, base color, and locked base layer. The documented default active slot is `right-index`. Legacy one-nail blueprints are upgraded safely by preserving the original nail and filling missing slots with default nails; existing multi-nail blueprints are never reset during load.
+
+The full-size `NailCanvas` still edits one nail at a time. Clicking a full-set thumbnail changes `canvas.activeNailId`, updates left-side shape/length/width/base controls, updates Layers and Properties for the active nail, and preserves unsaved edits on every inactive nail. Undo/redo uses a single blueprint-level history capped by the existing history limit, so bulk changes and nail switches remain predictable across the whole set.
+
+### New full-set components
+
+- `FullSetPreview.jsx` renders Full Set, Left Hand, and Right Hand preview tabs and routes thumbnail clicks to active-nail switching.
+- `HandPreview.jsx` renders five thumbnails for one hand in thumb-to-pinky order.
+- `NailThumbnail.jsx` renders a read-only clipped SVG thumbnail using each nail's shape, length, width, base color, visible layers, drawing strokes, overlays, and asset stacking order.
+- `BulkActionsPanel.jsx` exposes copy, paste, duplicate, mirror, apply, and reset actions with explicit selected-slot targeting.
+
+### Bulk action behavior
+
+Milestone 5 supports copying the active nail, pasting to selected slots, duplicating to the current hand, duplicating to all nails, copying to the matching finger on the opposite hand, mirroring one hand to the opposite hand, applying base color to the active hand or all nails, applying shape/width/length to the active hand or all nails, and resetting a selected nail to its base layer only.
+
+Destructive overwrite actions ask for confirmation. Destination nails keep their own nail IDs and slots. Copied layers receive fresh layer IDs, copied drawing strokes receive fresh stroke IDs, and destination artwork is revalidated against that nail's current geometry. AnitaSet shows a lightweight notice when copied or mirrored artwork is adjusted to fit.
+
+### Autosave and draft recovery preparation
+
+Layered Nail Blueprint designs now have a debounced autosave path. Meaningful edits mark the design dirty, show **Unsaved changes**, and schedule an autosave approximately 20 seconds after the latest meaningful edit. Pointermove updates during drag gestures do not create save requests; only completed actions such as asset drag completion, drawing stroke completion, eraser completion, layer mutations, base/shape/width/length changes, bulk actions, and paused metadata edits schedule autosave.
+
+Autosave uses the same atomic routes as manual save:
+
+- New valid drafts use `POST /api/designs/with-blueprint`.
+- Existing saved drafts use `PUT /api/designs/:id/with-blueprint`.
+
+Repeated autosaves update the same draft row after the first successful create. New unnamed autosaved drafts receive an editable generated name such as `Untitled Set 1`. The status label reports **Unsaved changes**, **Saving…**, **Autosaved**, or **Save failed — changes kept locally**. Dirty state is not cleared until the atomic request succeeds, failed autosaves preserve the dirty blueprint in frontend memory, overlapping requests are prevented, and a follow-up autosave is queued when edits occur while a save is in progress. A later enhancement should add safe local browser draft recovery; Milestone 5 intentionally avoids localStorage recovery to keep persistence atomic and low risk.
+
+### Repeated strict-fit revalidation
+
+Every active geometry change (`shape`, `width`, or `length`) re-runs strict-fit validation using the current nail geometry and current layer transforms. This is not a one-time migration: Almond → Square → Coffin → Stiletto → Oval → Almond sequences continue to re-fit artwork deterministically. Assets preserve relative placement and rotation where possible, only repositioning or reducing scale when needed. Drawing points are re-projected into the current silhouette so hidden off-silhouette stroke points are not persisted. SVG clipping remains a visual safety layer, but persisted transforms and stroke points are physically valid.
+
+Revalidation is idempotent. Running the same validation twice without another geometry change produces identical output, avoids cumulative center drift, and avoids repeated shrinking once artwork already fits. Bulk copy, paste, duplicate, mirror, and apply-shape actions revalidate every affected destination nail independently.
+
+### Set-level metadata and product-use hooks
+
+Blueprint metadata can now store tags, optional internal artist notes, an estimated service price placeholder, and a style category: Minimal, French, Glam, Abstract, Bridal, Seasonal, or Custom. No schema migration is required because the data lives inside the existing blueprint metadata object.
+
+`summarizeFullSetAssets()` provides deterministic product-use hooks for later pricing and inventory work. It counts nails, visible valid charms by asset ID, visible valid jewels by asset ID, visible valid decals by asset ID, visible drawing-layer count, visible gradient-layer count, and visible pattern-layer count. Invalid off-silhouette asset geometry is excluded.
+
+### Save, load, and proposal compatibility
+
+New full-set designs and upgraded legacy designs save atomically through the existing blueprint routes. Existing single-nail designs upgrade to 10 slots without discarding the original nail. Existing full-set designs reload with all nails intact and continue editing from the persisted active nail when valid. Design rename persistence, failed-save frontend state preservation, rollback guarantees, and no-orphan-design behavior remain tied to the existing atomic server workflow.
+
+Proposal compatibility is preserved by keeping legacy flat fields synchronized from the active nail only. Public proposal cards may continue using the active-nail preview in Milestone 5; richer full-set proposal previews are intentionally deferred.
+
+### Known limitations and Milestone 5.1 French-tip backlog
+
+Known limitations:
+
+- Public proposal previews remain active-nail based rather than full-set thumbnails.
+- Autosave recovery is memory-only after a failed save; safe local browser draft recovery is deferred.
+- The product-use summary is a counting hook, not a complete product estimator or pricing engine.
+- Bulk action UI uses browser confirmations for destructive operations.
+
+Milestone 5.1 French-tip refinement backlog:
+
+- adjustable French-tip height
+- adjustable smile-line curve
+- soft, medium, and deep smile-line presets
+- angled French tip
+- V-French tip
+- reverse French tip
+- per-nail French-tip controls
+- bulk-apply French-tip settings across selected nails
+
+### Milestone 5 review hardening
+
+The PR #6 review follow-up tightened the full-set editor around autosave races, replacement safety, history retention, and inactive-nail compatibility.
+
+- **Full-set initializer:** the studio now initializes new editor state with `createFullSetBlueprint()`, which creates exactly ten slots and selects the documented `right-index` default active nail.
+- **Edit-generation autosave protection:** every meaningful local mutation increments an editor generation counter. Save requests capture the submitted generation, and a successful response may only replace the visible blueprint or clear dirty state when no newer local edits occurred while the request was in flight. If a newer edit exists, the response is treated as a persisted older snapshot only: the database ID from a first create is preserved, the newer local blueprint and design name stay visible, dirty state remains true, and a follow-up autosave is queued from the latest refs so only one draft row is created.
+- **Save-result navigation gating:** `save()` returns a structured `{ ok, designId, savedRevision }` or `{ ok: false, reason }` result. Loading another saved design or starting a new design first waits for the active save when needed; if dirty work cannot be saved, the current blueprint remains open and replacement requires an explicit discard confirmation.
+- **Autosave history preservation:** successful background and manual saves no longer clear undo/redo stacks. History is intentionally reset only when a different design is loaded, a new design is started, or the editor blueprint is otherwise deliberately replaced.
+- **Structural normalization versus destructive revalidation:** `ensureFullSetBlueprint()` now performs full-set structural repair (slot coverage, ID uniqueness, metadata defaults, and active-nail validity) without revalidating every nail. Destructive geometry revalidation stays scoped to active-nail geometry edits and explicit bulk destinations such as copy, mirror, apply-shape, and reset.
+- **Inactive nail no-op preservation guarantee:** backend-valid inactive nails remain byte-for-byte stable for IDs, slots, layers, stroke IDs, order, transforms including non-uniform scale, rotation, metadata, visibility, locked state, and drawing points during load and no-op save normalization. Invalid nails may still be repaired to keep the Nail Blueprint v1 document server-safe.
+- **Known limitations:** this is still a frontend deterministic smoke layer rather than a browser automation suite. The autosave race and navigation protections are covered by helper-source assertions and pure helper tests; a future Playwright/Vitest harness should simulate delayed network responses in a mounted React environment.
+
+### App-level dirty-work leave protection
+
+Design Studio dirty-work protection now extends beyond in-studio design replacement. The app shell gates sidebar navigation and logout through the studio's imperative leave guard before unmounting the editor. When dirty work exists, the studio first attempts an immediate save and waits for the result. Successful saves allow the requested navigation or logout; failed saves keep the user in Design Studio with the local blueprint still open and require an explicit discard confirmation before leaving.
+
+The studio also registers a browser `beforeunload` warning while dirty work exists. This warning is intentionally conservative: it alerts that unsaved work exists, but it does not promise that an async save can complete during tab close, refresh, or browser shutdown.
+
+Active nail selection remains stored as `canvas.activeNailId` for blueprint compatibility, but thumbnail navigation is UI selection state rather than a content mutation. Clicking a thumbnail updates the local blueprint ref and visible active nail immediately, while clicking the already-active nail is a no-op. Clean thumbnail browsing does not mark the editor dirty, schedule autosave, create history entries, generate an `Untitled Set` name, or create a draft row. A separate selection revision prevents older in-flight save responses from jumping the UI back to a prior nail; the current `activeNailId` is persisted on the next meaningful content save or explicit manual save.
+
+Save responses are also scoped to the editor session that submitted them. Each save captures the current editor-session token, selected design ID, and whether the request is a first draft create, existing-design update, manual save, or autosave. Loading another design, starting a new design, or intentionally replacing/discarding editor state invalidates older in-flight saves. If a previous session's response returns later, the studio may record the saved row in the saved-design list, but it does not apply that response's blueprint, name, dirty state, or selected-design ID to the current editor. This includes stale first-create responses: their created ID is not attached to a newer draft, so future saves for the current session cannot update the old row by accident.
+
+Undo and Redo are treated as editor mutations. Each operation updates the blueprint ref, marks the design dirty, restores the "Unsaved changes" save label, and schedules the standard 20-second debounced autosave while preserving undo/redo history.
+
+Generated names for unnamed autosaved drafts are stable for the lifetime of that draft. The first generated or server-returned `Untitled Set N` name is reused by stale-response handling, queued follow-up saves, and later autosaves until the user starts a truly new design, loads another design, or enters an authoritative manual name. Existing saved designs do not generate `Untitled Set` names during autosave: if the visible name input is blank, autosave preserves the last persisted design name instead of renaming the row. Manual Save follows the same preserve-and-restore behavior for existing designs with a blank name, and user-entered valid renames remain authoritative on the next successful save.
+
+Base-color synchronization uses the active nail's visible base layer as the source of truth. When a base layer color is edited from Properties, the active nail's legacy `baseColorHex` is synchronized to that layer color where possible; bulk "apply base" actions and legacy flat-field save sync prefer the active base layer `data.colorHex` when it is valid and fall back to `activeNail.baseColorHex` only when the layer color is missing or invalid.
+
+Known limitation: browser unload protection depends on native browser confirmation UI and cannot show the richer in-app discard confirmation or guarantee network persistence during page shutdown.
+
+### Stale autosave timer protection
+
+Pending autosave timers are cleared and nulled whenever the editor becomes clean, including successful manual saves, successful autosaves with no newer local edits, loaded/replaced designs, clean new designs, explicit discard/replacement flows, and studio unmount cleanup. Queued follow-up autosaves are preserved when newer local edits remain dirty.
+
+Each scheduled autosave captures the current editor-session token. Timer callbacks clear their own timer ref, verify the studio is still mounted, verify the captured session still matches the current draft/session, and verify `dirtyRef.current` is still true before calling `save({ autosave: true })`. Starting a new draft or loading/replacing editor state increments the session token, preventing a timer created for one draft from saving a later clean replacement draft or generating an unwanted `Untitled Set` row.

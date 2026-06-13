@@ -25,6 +25,7 @@ const {
   revalidateLayersAfterNailResize,
   safeTransform,
   flatDesignFromBlueprint,
+  getVisibleBaseColor,
   synchronizeBase,
   updateActiveNail,
 } = blueprint;
@@ -101,6 +102,21 @@ for (const count of [5, 10]) {
   assert.deepEqual(edited.nails[4].layers, normalized.nails[4].layers, `${count}-nail active edit leaves inactive nail layers unchanged`);
   assert.equal(flatDesignFromBlueprint(edited).baseColorHex, '#AABBCC', `${count}-nail legacy flat fields sync from active nail only`);
 }
+
+const staleFlatBase = ensureBlueprint(multiNailBlueprint(5));
+const visibleBaseEdited = updateActiveNail(staleFlatBase, (nail) => ({
+  ...nail,
+  baseColorHex: '#445566',
+  layers: nail.layers.map((layer) => layer.type === 'base' ? { ...layer, data: { ...layer.data, colorHex: '#112233' } } : layer),
+}));
+assert.equal(getVisibleBaseColor(getActiveNail(visibleBaseEdited)), '#112233', 'visible base color prefers active base layer data over stale nail flat field');
+assert.equal(flatDesignFromBlueprint(visibleBaseEdited).baseColorHex, '#112233', 'legacy flat fields derive from the visible active base layer color');
+const invalidVisibleBase = updateActiveNail(staleFlatBase, (nail) => ({
+  ...nail,
+  baseColorHex: '#445566',
+  layers: nail.layers.map((layer) => layer.type === 'base' ? { ...layer, data: { ...layer.data, colorHex: 'invalid' } } : layer),
+}));
+assert.equal(getVisibleBaseColor(getActiveNail(invalidVisibleBase)), '#445566', 'visible base color falls back to activeNail.baseColorHex when base layer color is invalid');
 
 const invalidActive = ensureBlueprint({ ...multiNailBlueprint(5), canvas: { mode: 'full-set', activeNailId: 'missing' } });
 assert.equal(invalidActive.canvas.activeNailId, 'nail-1', 'normalization repairs invalid activeNailId to a preserved nail');
@@ -211,5 +227,109 @@ const resizedNail = getActiveNail(resized);
 const resizedLayer = resizedNail.layers.find((item) => item.type === 'charm');
 assert(assetFitsNailSilhouette(resizedLayer.transform, resizedNail, resizedLayer), 'asset revalidates after shape, length, and width changes');
 assert.equal(quantitySummary(resized).charm, 1, 'quantity hooks count only valid visible charm geometry');
+
+
+const fullSet = blueprint.ensureFullSetBlueprint(blueprint.createFullSetBlueprint({ baseColorHex: '#123456' }));
+assert.equal(fullSet.nails.length, 10, 'new full-set design initializes 10 nails');
+assert.equal(blueprint.getActiveNail(fullSet).slot, blueprint.DEFAULT_ACTIVE_SLOT, 'new full-set design activates the documented right-index default');
+assert(designStudioSource.includes('useState(() => createFullSetBlueprint())'), 'Design Studio initializer mounts from the full-set blueprint helper');
+assert(!designStudioSource.includes('useState(() => createDefaultBlueprint())'), 'Design Studio initializer does not call the removed single-nail default helper');
+assert.equal(new Set(fullSet.nails.map((n) => n.id)).size, 10, 'every full-set nail has a unique id');
+assert.deepEqual(fullSet.nails.map((n) => n.slot), blueprint.FULL_SET_SLOTS, 'full-set preview order follows stable slot order');
+assert.deepEqual(blueprint.LEFT_HAND_SLOTS, ['left-thumb', 'left-index', 'left-middle', 'left-ring', 'left-pinky'], 'left-hand preview order is artist-facing thumb to pinky');
+assert.deepEqual(blueprint.RIGHT_HAND_SLOTS, ['right-thumb', 'right-index', 'right-middle', 'right-ring', 'right-pinky'], 'right-hand preview order is artist-facing thumb to pinky');
+const switched = blueprint.setActiveNailBySlot(fullSet, 'left-ring');
+assert.equal(blueprint.getActiveNail(switched).slot, 'left-ring', 'active nail switching updates canvas.activeNailId');
+const oneNailLegacy = blueprint.ensureFullSetBlueprint(blueprint.createDefaultBlueprint({ fullSet: false, baseColorHex: '#AA00AA' }));
+assert.equal(oneNailLegacy.nails.length, 10, 'legacy one-nail blueprint upgrades to 10 slots safely');
+assert(oneNailLegacy.nails.some((n) => n.baseColorHex === '#AA00AA'), 'legacy one-nail upgrade preserves original nail data');
+
+const unusualInactive = JSON.parse(JSON.stringify(fullSet));
+const inactiveSlot = 'left-thumb';
+unusualInactive.nails = unusualInactive.nails.map((n) => n.slot === inactiveSlot ? {
+  ...n,
+  layers: [
+    ...n.layers,
+    { id: 'inactive-decal', type: 'decal', name: 'Inactive Decal', visible: true, locked: false, opacity: 0.8, order: 1, transform: { x: 0.43, y: 0.57, scaleX: 0.21, scaleY: 0.13, rotation: 37 }, data: { assetId: 'decal-weird', colorHex: '#ABCDEF' } },
+  ],
+  metadata: { preserved: true },
+} : n);
+const inactiveBefore = JSON.stringify(blueprint.getNailBySlot(unusualInactive, inactiveSlot));
+const noOpNormalized = blueprint.ensureFullSetBlueprint(unusualInactive);
+assert.equal(JSON.stringify(blueprint.getNailBySlot(noOpNormalized, inactiveSlot)), inactiveBefore, 'ensureFullSetBlueprint preserves backend-valid inactive nails verbatim during no-op normalization');
+const activeOnlyResized = blueprint.revalidateLayersAfterNailResize(unusualInactive);
+assert.equal(JSON.stringify(blueprint.getNailBySlot(activeOnlyResized, inactiveSlot)), inactiveBefore, 'active-only geometry revalidation leaves inactive nails unchanged');
+
+const sourceSlot = 'right-index';
+const sourceNail = blueprint.getNailBySlot(fullSet, sourceSlot);
+const sourceLayer = blueprint.assetLayer({ id: 'charm-bow', name: 'Bow', category: 'charms', defaultColor: '#fff' }, sourceNail);
+const decorated = { ...fullSet, nails: fullSet.nails.map((n) => n.slot === sourceSlot ? { ...n, layers: [...n.layers, sourceLayer] } : n) };
+const copiedSelected = blueprint.copyNailToSlots(decorated, sourceSlot, ['left-index']);
+assert(copiedSelected.nails.find((n) => n.slot === 'left-index').layers.some((l) => l.type === 'charm'), 'copy active nail to selected nail copies visible art');
+assert.notEqual(copiedSelected.nails.find((n) => n.slot === 'left-index').id, sourceNail.id, 'copy preserves destination unique nail id');
+const copiedHand = blueprint.copyNailToSlots(decorated, sourceSlot, blueprint.RIGHT_HAND_SLOTS);
+assert(copiedHand.nails.find((n) => n.slot === 'right-thumb').layers.some((l) => l.type === 'charm'), 'copy active nail to current hand works');
+const copiedAll = blueprint.copyNailToSlots(decorated, sourceSlot, blueprint.FULL_SET_SLOTS);
+assert.equal(copiedAll.nails.filter((n) => n.layers.some((l) => l.type === 'charm')).length, 10, 'copy active nail to all nails works while preserving the source');
+const opposite = blueprint.copyNailToSlots(decorated, sourceSlot, ['left-index']);
+assert(opposite.nails.find((n) => n.slot === 'left-index').layers.some((l) => l.type === 'charm'), 'copy active nail to matching opposite finger works');
+const mirrored = blueprint.mirrorHandDesign(decorated, 'right');
+assert(mirrored.nails.find((n) => n.slot === 'left-index').layers.some((l) => l.type === 'charm'), 'mirror right hand to left hand copies matching fingers');
+assert.equal(new Set(mirrored.nails.map((n) => n.id)).size, 10, 'mirror preserves unique nail ids');
+const basedHand = blueprint.applyBaseToSlots(fullSet, { baseColorHex: '#ABCDEF' }, blueprint.LEFT_HAND_SLOTS);
+assert(basedHand.nails.filter((n) => n.slot.startsWith('left') && n.baseColorHex === '#ABCDEF').length === 5, 'apply base color to current hand updates five nails');
+const basedAll = blueprint.applyBaseToSlots(fullSet, { baseColorHex: '#FEDCBA' }, blueprint.FULL_SET_SLOTS);
+assert(basedAll.nails.every((n) => n.baseColorHex === '#FEDCBA'), 'apply base color to all nails updates ten nails');
+const shapedHand = blueprint.applyBaseToSlots(fullSet, { shape: 'Square' }, blueprint.LEFT_HAND_SLOTS);
+assert(shapedHand.nails.filter((n) => n.slot.startsWith('left') && n.shape === 'Square').length === 5, 'apply shape to current hand updates five nails');
+const shapedAll = blueprint.applyBaseToSlots(fullSet, { shape: 'Oval' }, blueprint.FULL_SET_SLOTS);
+assert(shapedAll.nails.every((n) => n.shape === 'Oval'), 'apply shape to all nails updates ten nails');
+const reset = blueprint.resetNailDesign(decorated, sourceSlot);
+assert.equal(reset.nails.find((n) => n.slot === sourceSlot).layers.length, 1, 'reset one nail safely keeps base layer only');
+const sequenceShapes = ['Square', 'Coffin', 'Stiletto', 'Oval', 'Almond'];
+let sequenceDoc = decorated;
+for (const shape of sequenceShapes) {
+  sequenceDoc = blueprint.applyBaseToSlots(sequenceDoc, { shape }, [sourceSlot]);
+  const nailAfter = blueprint.getNailBySlot(sequenceDoc, sourceSlot);
+  for (const layerAfter of nailAfter.layers.filter((l) => ['charm', 'jewel', 'decal'].includes(l.type))) assert(blueprint.assetFitsNailSilhouette(layerAfter.transform, nailAfter, layerAfter), `${shape} revalidation keeps assets valid`);
+}
+const once = blueprint.revalidateAllNails(sequenceDoc);
+const twice = blueprint.revalidateAllNails(once);
+assert.deepEqual(twice, once, 'strict-fit revalidation is idempotent without another geometry change');
+const summary = blueprint.summarizeFullSetAssets(decorated);
+assert.equal(summary.nailCount, 10, 'product-use summary counts nails');
+assert.equal(summary.charmsByAssetId['charm-bow'], 1, 'product-use summary counts visible valid charms by assetId');
+assert(designStudioSource.includes('window.setTimeout(() => {') && designStudioSource.includes('}, 20000)'), 'autosave uses a debounced 20 second cadence');
+assert(designStudioSource.includes('function clearAutosaveTimer()') && designStudioSource.includes('autosaveTimerRef.current = null'), 'pending autosave timers are cleared and nulled when no longer needed');
+assert(designStudioSource.includes('autosaveSessionRef') && designStudioSource.includes('scheduledSession !== autosaveSessionRef.current'), 'autosave timer callbacks are guarded by editor session tokens');
+assert(designStudioSource.includes('!mountedRef.current') && designStudioSource.includes('!dirtyRef.current) return'), 'autosave timer callbacks exit when unmounted or clean before saving');
+assert(designStudioSource.includes('useEffect(() => { if (!dirty) clearAutosaveTimer(); }, [dirty])'), 'autosave timers are cleared when the editor becomes clean');
+assert(designStudioSource.includes('savingRef.current') && designStudioSource.includes('queuedAutosaveRef.current'), 'autosave prevents overlapping requests and queues follow-up saves');
+assert(designStudioSource.includes('editGenerationRef') && designStudioSource.includes('submittedRevision'), 'autosave captures local edit generations so older responses cannot overwrite newer edits');
+assert(designStudioSource.includes('selectionRevisionRef') && designStudioSource.includes('submittedSelectionRevision'), 'autosave also tracks UI selection revisions separately from content edit generations');
+assert(designStudioSource.includes('editorSessionRef') && designStudioSource.includes('submittedEditorSession'), 'save requests capture the current editor session token at submit time');
+assert(designStudioSource.includes('responseFromStaleEditorSession') && designStudioSource.includes('stale-editor-session'), 'save responses from previous editor sessions are ignored before applying blueprint, name, dirty, or selected-design state');
+assert(designStudioSource.includes('const existingDesignId = selectedDesignIdRef.current') && designStudioSource.includes('selectedDesignIdRef.current !== existingDesignId'), 'save requests capture selectedDesignId and reject responses after editor identity changes');
+assert(designStudioSource.includes('mode: options.autosave ? "autosave" : "manual"') && designStudioSource.includes('target: existingDesignId ? "existing-design-update" : "new-draft-create"'), 'save requests classify manual/autosave and create/update intent at submit time');
+assert(designStudioSource.includes('unchangedSinceSubmit') && designStudioSource.includes('Newer edits kept locally; another autosave is queued.'), 'stale autosave responses keep newer local edits dirty and queue a newest-state follow-up save');
+assert(!designStudioSource.includes('setHistory({ past: [], future: [] });\n      setStatus({'), 'successful autosaves and manual saves preserve undo and redo history');
+assert(designStudioSource.includes('async function guardReplacement()') && designStudioSource.includes('confirmDiscardAfterFailedSave'), 'failed or in-flight saves gate design replacement behind explicit discard confirmation');
+assert(designStudioSource.includes('Save failed — changes kept locally'), 'failed autosaves preserve dirty frontend state with clear status');
+assert(designStudioSource.includes('Untitled Set'), 'new unnamed autosaved drafts get generated editable names');
+assert(designStudioSource.includes('<FullSetPreview'), 'Design Studio renders full-set preview navigation');
+assert(designStudioSource.includes('<BulkActionsPanel'), 'Design Studio renders bulk action controls');
+assert(designStudioSource.includes('useImperativeHandle(ref') && designStudioSource.includes('prepareToLeave()'), 'Design Studio exposes an app-level dirty-work leave guard');
+assert(designStudioSource.includes('beforeunload') && designStudioSource.includes('event.returnValue = ""'), 'Design Studio registers browser beforeunload protection for dirty work');
+assert(designStudioSource.includes('function markHistoryMutation') && designStudioSource.match(/function undo\(\)[\s\S]*scheduleAutosave\(\)/), 'Undo marks dirty and schedules the normal autosave debounce');
+assert(designStudioSource.match(/function redo\(\)[\s\S]*scheduleAutosave\(\)/), 'Redo marks dirty and schedules the normal autosave debounce');
+assert(designStudioSource.includes('generatedDraftNameRef') && designStudioSource.includes('if (generatedDraftNameRef.current) return generatedDraftNameRef.current'), 'generated draft names are stable across queued saves');
+assert(designStudioSource.includes('persistedDesignNameRef') && designStudioSource.includes('workingName = persistedDesignNameRef.current.trim()'), 'existing-design saves preserve the last persisted name when the visible name is blank');
+assert(designStudioSource.includes('existingDesignId') && designStudioSource.includes('generatedUntitledName()') && designStudioSource.indexOf('workingName = persistedDesignNameRef.current.trim()') < designStudioSource.indexOf('workingName = generatedUntitledName()'), 'Untitled Set names are generated only after existing-design persisted-name preservation is considered');
+assert(designStudioSource.includes('getVisibleBaseColor(activeNail)') && designStudioSource.match(/function patchLayer\(layerId, patch, record = true\)[\s\S]*baseColorHex: getVisibleBaseColor\(nail\)/), 'bulk base color and active nail flat sync use the visible active base layer color');
+assert(designStudioSource.match(/function selectSlot\(slot\)[\s\S]*if \(currentActive\?\.slot === slot\) return;[\s\S]*blueprintRef.current = next;/), 'active nail selection updates refs synchronously and clicking the active nail is a no-op');
+const selectSlotSource = designStudioSource.match(/function selectSlot\(slot\) \{[\s\S]*?\n  \}/)?.[0] || '';
+assert(selectSlotSource.includes('selectionRevisionRef.current += 1') && !selectSlotSource.includes('markEdited()'), 'thumbnail navigation uses a separate selection revision instead of content edit generation');
+assert(!selectSlotSource.includes('setDirty(true)') && !selectSlotSource.includes('scheduleAutosave()'), 'thumbnail navigation alone does not mark dirty or schedule autosave');
+
 
 console.log('geometry-helper-test passed');
