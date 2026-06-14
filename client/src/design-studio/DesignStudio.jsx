@@ -37,6 +37,7 @@ import {
   FRENCH_TIP_STYLES,
   getActiveNail,
   getVisibleBaseColor,
+  getNailArchitecture,
   gradientLayer,
   isReusableDrawingLayer,
   normalizeHex,
@@ -54,6 +55,10 @@ import {
 
 function Field({ label, children }) {
   return <div style={UI.field}><label style={S.label}>{label}</label>{children}</div>;
+}
+
+function GeometrySlider({ label, value = 0.5, onChange }) {
+  return <Field label={`${label} ${Math.round((value ?? 0.5) * 100)}%`}><input type="range" min="0" max="100" value={Math.round((value ?? 0.5) * 100)} onChange={(e) => onChange(Number(e.target.value) / 100)} style={{ width: "100%" }}/></Field>;
 }
 
 function ColorInput({ value, onChange }) {
@@ -276,7 +281,7 @@ function DesignStudio(_, ref) {
 
   function updateBase(patch) {
     let next = synchronizeBase(blueprint, patch);
-    if (patch.shape !== undefined || patch.length !== undefined || patch.width !== undefined) next = revalidateLayersAfterNailResize(next);
+    if (["shape", "length", "width", "taper", "apexHeight", "sidewallCurve", "freeEdgeThickness"].some((key) => patch[key] !== undefined)) next = revalidateLayersAfterNailResize(next);
     if (patch.tags !== undefined) next = { ...next, metadata: { ...next.metadata, tags: normalizeTags(patch.tags) } };
     const before = JSON.stringify(getActiveNail(blueprint).layers.map((layer) => layer.transform));
     const after = JSON.stringify(getActiveNail(next).layers.map((layer) => layer.transform));
@@ -679,10 +684,11 @@ function DesignStudio(_, ref) {
   function duplicateActive(scope) { const targets = slotsFor(scope); if (!targets.length || !confirmBulk("Overwrite destination nail designs?")) return; commit(copyNailToSlots(blueprint, activeSlot, targets), { noticeMessage: "Copied artwork was re-fit where needed." }); }
   function mirrorHand(hand) { if (!confirmBulk("Mirror this hand to the opposite hand?")) return; commit(mirrorHandDesign(blueprint, hand), { noticeMessage: "Mirrored nails were re-fit where needed." }); }
   function applyBase(scope) { const targets = slotsFor(scope); if (!confirmBulk("Apply active base color to these nails?")) return; commit(applyBaseToSlots(blueprint, { baseColorHex: getVisibleBaseColor(activeNail) }, targets)); }
-  function applyShape(scope) { const targets = slotsFor(scope); if (!confirmBulk("Apply active shape, width, and length to these nails?")) return; commit(applyBaseToSlots(blueprint, { shape: activeNail.shape, width: activeNail.width, length: activeNail.length }, targets), { noticeMessage: "Artwork was revalidated after shape changes." }); }
+  function applyShape(scope) { const targets = slotsFor(scope); if (!confirmBulk("Apply active shape architecture to these nails?")) return; commit(applyBaseToSlots(blueprint, { shape: activeNail.shape, width: activeNail.width, length: activeNail.length, taper: activeNail.taper ?? 0.5, apexHeight: activeNail.apexHeight ?? 0.5, sidewallCurve: activeNail.sidewallCurve ?? 0.5, freeEdgeThickness: activeNail.freeEdgeThickness ?? 0.5 }, targets), { noticeMessage: "Artwork was revalidated after shape changes." }); }
   function resetActive() { if (!confirmBulk("Reset this nail to its base layer only?")) return; commit(resetNailDesign(blueprint, activeSlot), { selectLayerId: "base-layer" }); }
 
   const tagsString = (blueprint.metadata?.tags || []).join(", ");
+  const [debugShapeOverlay, setDebugShapeOverlay] = useState(false);
   const statusColor = status.type === "error" ? "#b91c1c" : status.type === "saved" ? COLORS.statusAccepted : status.type === "dirty" ? COLORS.statusChangesRequested : COLORS.textMuted;
 
   return <div style={UI.shell}>
@@ -704,8 +710,12 @@ function DesignStudio(_, ref) {
         <div style={{ display: "flex", gap: 8, marginBottom: 14 }}><button type="button" onClick={newDesign} style={{ ...S.btnSecondary, padding: "10px 12px" }}>New Design</button><button type="button" onClick={save} disabled={saving} style={{ ...S.btnPrimary, padding: "10px 12px", opacity: saving ? .65 : 1 }}>Save</button></div>
         <Field label="Saved Designs"><select style={S.input} value={selectedDesignId} onChange={(e) => loadDesign(e.target.value)}><option value="">Choose saved design…</option>{designs.map((design) => <option key={design.id} value={design.id}>{design.name}</option>)}</select></Field>
         <Field label="Nail shape"><select style={S.input} value={activeNail.shape} onChange={(e) => updateBase({ shape: e.target.value })}>{SHAPES.map((shape) => <option key={shape}>{shape}</option>)}</select></Field>
-        <Field label={`Nail length ${Math.round(activeNail.length * 100)}%`}><input type="range" min="0" max="100" value={Math.round(activeNail.length * 100)} onChange={(e) => updateBase({ length: Number(e.target.value) / 100 })} style={{ width: "100%" }}/></Field>
-        <Field label={`Nail width ${Math.round(activeNail.width * 100)}%`}><input type="range" min="0" max="100" value={Math.round(activeNail.width * 100)} onChange={(e) => updateBase({ width: Number(e.target.value) / 100 })} style={{ width: "100%" }}/></Field>
+        <GeometrySlider label="Nail length" value={activeNail.length} onChange={(length) => updateBase({ length })}/>
+        <GeometrySlider label="Nail width" value={activeNail.width} onChange={(width) => updateBase({ width })}/>
+        <GeometrySlider label="Taper" value={activeNail.taper} onChange={(taper) => updateBase({ taper })}/>
+        <GeometrySlider label="Apex height" value={activeNail.apexHeight} onChange={(apexHeight) => updateBase({ apexHeight })}/>
+        <GeometrySlider label="Sidewall curve" value={activeNail.sidewallCurve} onChange={(sidewallCurve) => updateBase({ sidewallCurve })}/>
+        <GeometrySlider label="Free edge thickness" value={activeNail.freeEdgeThickness} onChange={(freeEdgeThickness) => updateBase({ freeEdgeThickness })}/>
         <Field label="Base polish color"><ColorInput value={baseLayer?.data?.colorHex || activeNail.baseColorHex} onChange={(value) => updateBase({ baseColorHex: normalizeHex(value, baseLayer?.data?.colorHex) })}/></Field>
         <Field label="Base effect"><select style={S.input} value={baseLayer?.data?.effect || "Solid"} onChange={(e) => updateBase({ effect: e.target.value })}>{EFFECTS.map((effect) => <option key={effect} value={effect}>{effect}</option>)}</select></Field>
         {(baseLayer?.data?.effect || "Solid") !== "Solid" && <Field label="Effect color"><ColorInput value={baseLayer?.data?.effectColorHex || "#FFFFFF"} onChange={(value) => updateBase({ effectColorHex: normalizeHex(value, "#FFFFFF") })}/></Field>}
@@ -716,10 +726,10 @@ function DesignStudio(_, ref) {
 
         <FrenchTipControls layer={activeFrenchTipLayer()} onAdd={addFrenchTip} onPatch={patchFrenchTipData} onApply={applyFrenchTip}/>
         <BulkActionsPanel activeSlot={activeSlot} clipboard={clipboardNail} selectedSlots={selectedSlots} onToggleSlot={(slot) => setSelectedSlots((prev) => prev.includes(slot) ? prev.filter((item) => item !== slot) : [...prev, slot])} onCopy={copyActiveNail} onPaste={pasteToSelected} onDuplicate={duplicateActive} onMirror={mirrorHand} onApplyBase={applyBase} onApplyShape={applyShape} onReset={resetActive}/>
-        <p style={UI.smallText}>Strict-fit mode keeps all editable vectors clipped and clamped inside the active nail surface for realistic product-use planning.</p>
+        <details style={{ marginBottom: 12 }}><summary style={{ ...UI.smallText, cursor: "pointer" }}>Developer geometry tools</summary><label style={{ ...UI.smallText, display: "flex", gap: 8, alignItems: "center", marginTop: 8 }}><input type="checkbox" checked={debugShapeOverlay} onChange={(e) => setDebugShapeOverlay(e.target.checked)}/> Shape Debug Overlay</label><p style={UI.smallText}>Apex Y: {Math.round(getNailArchitecture(activeNail).apexYNorm * 100)}% · Free edge starts: {Math.round(getNailArchitecture(activeNail).freeEdgeYNorm * 100)}%</p></details><p style={UI.smallText}>Strict-fit mode keeps all editable vectors clipped and clamped inside the active nail surface for realistic product-use planning.</p>
       </div></aside>
 
-      <main style={{ ...UI.panel, display: "flex", flexDirection: "column" }}><NailCanvas nail={activeNail} layers={activeNail.layers} selectedLayerId={selectedLayerId} mode={mode} brush={brush} notice={notice} onSelectLayer={(id) => setSelectedLayerId(id || "")} onTransformLayer={transformLayer} onDrawingStroke={addStroke} onStageEraseStroke={stageEraseStroke} onEraseStroke={eraseStroke}/><FullSetPreview blueprint={blueprint} activeNailId={activeNail.id} onSelectSlot={selectSlot} onViewChange={() => dirtyRef.current && void save({ autosave: true, immediate: true })}/></main>
+      <main style={{ ...UI.panel, display: "flex", flexDirection: "column" }}><NailCanvas debugOverlay={debugShapeOverlay} nail={activeNail} layers={activeNail.layers} selectedLayerId={selectedLayerId} mode={mode} brush={brush} notice={notice} onSelectLayer={(id) => setSelectedLayerId(id || "")} onTransformLayer={transformLayer} onDrawingStroke={addStroke} onStageEraseStroke={stageEraseStroke} onEraseStroke={eraseStroke}/><FullSetPreview blueprint={blueprint} activeNailId={activeNail.id} onSelectSlot={selectSlot} onViewChange={() => dirtyRef.current && void save({ autosave: true, immediate: true })}/></main>
 
       <aside style={UI.panel}><div style={UI.panelPad}>
         <div style={{ display: "flex", gap: 6, marginBottom: 16 }}><button type="button" aria-pressed={tab === "assets"} aria-label="Show asset library" onClick={() => setTab("assets")} style={UI.miniButton(tab === "assets")}>Assets</button><button type="button" aria-pressed={tab === "layers"} aria-label="Show layers panel" onClick={() => setTab("layers")} style={UI.miniButton(tab === "layers")}>Layers</button><button type="button" aria-pressed={tab === "properties"} aria-label="Show properties panel" onClick={() => setTab("properties")} style={UI.miniButton(tab === "properties")}>Properties</button></div>

@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import { COLORS } from "../styles.js";
 import { renderAssetShapes } from "./assets.js";
-import { VIEWBOX, buildNailPath, constrainStrokePoints, getNailGeometry, normalizedToSvg, projectPointInsideNailSilhouette, svgToNormalized, layerSort } from "./blueprint.js";
+import { VIEWBOX, buildNailPath, constrainStrokePoints, getNailArchitecture, getNailGeometry, normalizedToSvg, projectPointInsideNailSilhouette, svgToNormalized, layerSort } from "./blueprint.js";
 import { assetLayerRenderProps } from "./assetRendering.js";
 import { FrenchTipShape } from "./frenchTipRendering.js";
 
@@ -57,7 +57,7 @@ export function strokePath(points = [], nail) {
   }).join(" ");
 }
 
-export default function NailCanvas({ nail, layers, selectedLayerId, mode, brush, notice, onSelectLayer, onTransformLayer, onDrawingStroke, onStageEraseStroke, onEraseStroke }) {
+export default function NailCanvas({ nail, layers, selectedLayerId, mode, brush, notice, debugOverlay = false, onSelectLayer, onTransformLayer, onDrawingStroke, onStageEraseStroke, onEraseStroke }) {
   const svgRef = useRef(null);
   const [drag, setDrag] = useState(null);
   const dragRef = useRef(null);
@@ -67,6 +67,7 @@ export default function NailCanvas({ nail, layers, selectedLayerId, mode, brush,
   const baseLayer = layers.find((layer) => layer.type === "base");
   const artLayers = [...layers].filter((layer) => layer.type !== "base" && layer.visible !== false).sort(layerSort);
   const geometry = getNailGeometry(nail);
+  const architecture = getNailArchitecture(nail);
 
   function svgPoint(event) {
     const svg = svgRef.current;
@@ -216,6 +217,15 @@ export default function NailCanvas({ nail, layers, selectedLayerId, mode, brush,
         <g clipPath={`url(#${clipId})`}><ellipse cx="88" cy="105" rx="16" ry="70" fill="#fff" opacity=".28" transform="rotate(12 88 105)"/></g>
         {artLayers.map(layerNode)}
         {drag?.kind === "drawing" && <g clipPath={`url(#${clipId})`}><path d={strokePath(drag.stroke.points, nail)} fill="none" stroke={drag.stroke.colorHex} strokeWidth={(drag.stroke.width || 0.04) * 100} strokeOpacity={drag.stroke.opacity} strokeLinecap="round" strokeLinejoin="round"/></g>}
+        {debugOverlay && <g pointerEvents="none" aria-hidden="true">
+          <line x1={architecture.cx} y1={architecture.topY - 6} x2={architecture.cx} y2={architecture.bottomY + 6} stroke="#2563eb" strokeWidth="1.5" strokeDasharray="6 5"/>
+          <circle cx={architecture.apex.x} cy={architecture.apex.y} r="5" fill="#f97316" stroke="#fff" strokeWidth="2"/>
+          <line x1={architecture.left} y1={architecture.apex.y} x2={architecture.right} y2={architecture.apex.y} stroke="#f97316" strokeWidth="1.25" strokeDasharray="4 4"/>
+          <path d={`M ${architecture.cx - architecture.cuticle.halfW} ${architecture.cuticle.y} Q ${architecture.cx} ${architecture.topY - architecture.height * 0.025} ${architecture.cx + architecture.cuticle.halfW} ${architecture.cuticle.y}`} fill="none" stroke="#16a34a" strokeWidth="2"/>
+          <line x1={architecture.left} y1={architecture.topY + architecture.height * 0.18} x2={architecture.left} y2={architecture.bottomY - 10} stroke="#db2777" strokeWidth="1.5" strokeDasharray="5 5"/>
+          <line x1={architecture.right} y1={architecture.topY + architecture.height * 0.18} x2={architecture.right} y2={architecture.bottomY - 10} stroke="#db2777" strokeWidth="1.5" strokeDasharray="5 5"/>
+          <line x1={architecture.left} y1={architecture.topY + architecture.height * architecture.freeEdgeYNorm} x2={architecture.right} y2={architecture.topY + architecture.height * architecture.freeEdgeYNorm} stroke="#7c3aed" strokeWidth="1.5"/>
+        </g>}
         <path d={path} fill="none" stroke="rgba(59,31,53,.45)" strokeWidth="2.5" pointerEvents="none"/>
       </svg>
     </div>

@@ -1,4 +1,4 @@
-export const SHAPES = ["Almond", "Coffin", "Square", "Stiletto", "Oval"];
+export const SHAPES = ["Square", "Tapered Square", "Russian Square", "Coffin", "Slim Coffin", "Almond", "Russian Almond", "Oval", "Round", "Stiletto", "Edge", "Lipstick", "Flare", "Mountain Peak"];
 export const EFFECTS = ["Solid", "Gradient", "Chrome", "CatEye", "Marble"];
 export const PATTERNS = ["dots", "stripes", "checker", "french-tip", "glitter", "marble"];
 export const GRADIENT_DIRECTIONS = ["vertical", "horizontal", "diagonal", "reverse-diagonal"];
@@ -40,81 +40,107 @@ export function layerSort(a, b) {
   return (a.order ?? 0) - (b.order ?? 0);
 }
 
-export function getNailGeometry(nail) {
-  const length = clamp(nail?.length ?? 0.5, 0, 1);
-  const width = clamp(nail?.width ?? 0.5, 0, 1);
-  const nailH = 180 + length * 110;
-  const halfW = 38 + width * 50;
-  const topY = TIP_BOTTOM - nailH;
+const SHAPE_ARCHITECTURE = {
+  "Square": { cuticle: 0.72, shoulder: 1, tip: 0.94, taper: 0.08, curve: 0.18, apexY: 0.42, freeEdge: 0.22, freeEdgeSlant: 0 },
+  "Tapered Square": { cuticle: 0.7, shoulder: 1, tip: 0.68, taper: 0.34, curve: 0.2, apexY: 0.44, freeEdge: 0.25, freeEdgeSlant: 0 },
+  "Russian Square": { cuticle: 0.74, shoulder: 1.03, tip: 0.86, taper: 0.18, curve: 0.11, apexY: 0.38, freeEdge: 0.3, freeEdgeSlant: 0 },
+  "Coffin": { cuticle: 0.68, shoulder: 1, tip: 0.46, taper: 0.52, curve: 0.16, apexY: 0.46, freeEdge: 0.32, freeEdgeSlant: 0 },
+  "Slim Coffin": { cuticle: 0.62, shoulder: 0.92, tip: 0.34, taper: 0.64, curve: 0.18, apexY: 0.48, freeEdge: 0.36, freeEdgeSlant: 0 },
+  "Almond": { cuticle: 0.64, shoulder: 0.98, tip: 0.03, taper: 0.78, curve: 0.46, apexY: 0.47, freeEdge: 0.34, freeEdgeSlant: 0 },
+  "Russian Almond": { cuticle: 0.6, shoulder: 0.94, tip: 0.02, taper: 0.86, curve: 0.36, apexY: 0.41, freeEdge: 0.42, freeEdgeSlant: 0 },
+  "Oval": { cuticle: 0.66, shoulder: 0.98, tip: 0.18, taper: 0.54, curve: 0.58, apexY: 0.48, freeEdge: 0.28, freeEdgeSlant: 0 },
+  "Round": { cuticle: 0.7, shoulder: 0.98, tip: 0.12, taper: 0.48, curve: 0.72, apexY: 0.46, freeEdge: 0.18, freeEdgeSlant: 0 },
+  "Stiletto": { cuticle: 0.58, shoulder: 0.94, tip: 0, taper: 0.96, curve: 0.26, apexY: 0.5, freeEdge: 0.46, freeEdgeSlant: 0 },
+  "Edge": { cuticle: 0.62, shoulder: 0.96, tip: 0.02, taper: 0.9, curve: 0.12, apexY: 0.4, freeEdge: 0.44, freeEdgeSlant: 0 },
+  "Lipstick": { cuticle: 0.68, shoulder: 0.98, tip: 0.48, taper: 0.36, curve: 0.16, apexY: 0.43, freeEdge: 0.3, freeEdgeSlant: 0.16 },
+  "Flare": { cuticle: 0.72, shoulder: 0.9, tip: 1.16, taper: -0.22, curve: 0.18, apexY: 0.42, freeEdge: 0.28, freeEdgeSlant: 0 },
+  "Mountain Peak": { cuticle: 0.6, shoulder: 0.9, tip: 0, taper: 0.9, curve: 0.18, apexY: 0.48, freeEdge: 0.28, freeEdgeSlant: 0 },
+};
+
+function shapeProfile(shape = "Almond") { return SHAPE_ARCHITECTURE[shape] || SHAPE_ARCHITECTURE.Almond; }
+function nailControl(nail, key, fallback = 0.5) { return clamp(nail?.[key] ?? fallback, 0, 1); }
+
+function defaultShapeControls(source = {}) {
   return {
-    cx: VIEWBOX.cx,
-    topY,
-    bottomY: TIP_BOTTOM,
-    height: nailH,
-    halfW,
-    left: VIEWBOX.cx - halfW,
-    right: VIEWBOX.cx + halfW,
-    width: halfW * 2,
+    taper: clamp(source.taper ?? 0.5, 0, 1),
+    apexHeight: clamp(source.apexHeight ?? 0.5, 0, 1),
+    sidewallCurve: clamp(source.sidewallCurve ?? 0.5, 0, 1),
+    freeEdgeThickness: clamp(source.freeEdgeThickness ?? 0.5, 0, 1),
   };
 }
 
-export function buildNailPath(shape = "Almond", nail) {
-  const { cx, topY, bottomY, halfW, height } = getNailGeometry(nail);
-  switch (shape) {
-    case "Square":
-      return [
-        `M ${cx - halfW} ${topY + 12}`,
-        `Q ${cx - halfW} ${topY} ${cx - halfW + 12} ${topY}`,
-        `L ${cx + halfW - 12} ${topY}`,
-        `Q ${cx + halfW} ${topY} ${cx + halfW} ${topY + 12}`,
-        `L ${cx + halfW} ${bottomY - 12}`,
-        `Q ${cx + halfW} ${bottomY} ${cx + halfW - 12} ${bottomY}`,
-        `L ${cx - halfW + 12} ${bottomY}`,
-        `Q ${cx - halfW} ${bottomY} ${cx - halfW} ${bottomY - 12}`,
-        "Z",
-      ].join(" ");
-    case "Coffin": {
-      const tipHW = halfW * 0.42;
-      return [
-        `M ${cx - halfW} ${topY + 16}`,
-        `Q ${cx - halfW} ${topY} ${cx - halfW + 18} ${topY}`,
-        `L ${cx + halfW - 18} ${topY}`,
-        `Q ${cx + halfW} ${topY} ${cx + halfW} ${topY + 16}`,
-        `L ${cx + halfW * 0.72} ${bottomY - 24}`,
-        `L ${cx + tipHW} ${bottomY}`,
-        `L ${cx - tipHW} ${bottomY}`,
-        `L ${cx - halfW * 0.72} ${bottomY - 24}`,
-        "Z",
-      ].join(" ");
-    }
-    case "Stiletto":
-      return [
-        `M ${cx - halfW} ${topY + 18}`,
-        `C ${cx - halfW} ${topY + height * 0.38} ${cx - halfW * 0.24} ${bottomY - height * 0.15} ${cx} ${bottomY}`,
-        `C ${cx + halfW * 0.24} ${bottomY - height * 0.15} ${cx + halfW} ${topY + height * 0.38} ${cx + halfW} ${topY + 18}`,
-        `Q ${cx} ${topY - 20} ${cx - halfW} ${topY + 18}`,
-        "Z",
-      ].join(" ");
-    case "Oval":
-      return [
-        `M ${cx - halfW} ${topY + 26}`,
-        `C ${cx - halfW} ${topY + height * 0.05} ${cx - halfW * 0.72} ${topY} ${cx} ${topY}`,
-        `C ${cx + halfW * 0.72} ${topY} ${cx + halfW} ${topY + height * 0.05} ${cx + halfW} ${topY + 26}`,
-        `C ${cx + halfW} ${topY + height * 0.64} ${cx + halfW * 0.62} ${bottomY} ${cx} ${bottomY}`,
-        `C ${cx - halfW * 0.62} ${bottomY} ${cx - halfW} ${topY + height * 0.64} ${cx - halfW} ${topY + 26}`,
-        "Z",
-      ].join(" ");
-    case "Almond":
-    default:
-      return [
-        `M ${cx - halfW} ${topY + 24}`,
-        `C ${cx - halfW} ${topY + height * 0.08} ${cx - halfW * 0.58} ${topY} ${cx} ${topY}`,
-        `C ${cx + halfW * 0.58} ${topY} ${cx + halfW} ${topY + height * 0.08} ${cx + halfW} ${topY + 24}`,
-        `C ${cx + halfW} ${topY + height * 0.55} ${cx + halfW * 0.42} ${bottomY - height * 0.07} ${cx} ${bottomY}`,
-        `C ${cx - halfW * 0.42} ${bottomY - height * 0.07} ${cx - halfW} ${topY + height * 0.55} ${cx - halfW} ${topY + 24}`,
-        "Z",
-      ].join(" ");
+export function getNailGeometry(nail) {
+  const length = nailControl(nail, "length");
+  const width = nailControl(nail, "width");
+  const nailH = 180 + length * 110;
+  const halfW = 38 + width * 50;
+  const topY = TIP_BOTTOM - nailH;
+  return { cx: VIEWBOX.cx, topY, bottomY: TIP_BOTTOM, height: nailH, halfW, left: VIEWBOX.cx - halfW, right: VIEWBOX.cx + halfW, width: halfW * 2 };
+}
+
+export function getNailArchitecture(nail = {}) {
+  const g = getNailGeometry(nail);
+  const profile = shapeProfile(nail.shape);
+  const apexHeight = nailControl(nail, "apexHeight", 0.5);
+  const sidewallCurve = nailControl(nail, "sidewallCurve", 0.5);
+  const freeEdgeThickness = nailControl(nail, "freeEdgeThickness", 0.5);
+  const apexYNorm = clamp(profile.apexY - (apexHeight - 0.5) * 0.12, 0.26, 0.62);
+  const cuticleDip = g.height * 0.055;
+  const freeEdgeYNorm = clamp(1 - (profile.freeEdge + (freeEdgeThickness - 0.5) * 0.16), 0.48, 0.9);
+  return {
+    ...g,
+    apexYNorm,
+    freeEdgeYNorm,
+    apex: { x: g.cx, y: g.topY + g.height * apexYNorm },
+    cuticle: { y: g.topY + cuticleDip, halfW: g.halfW * profile.cuticle },
+    sidewallCurve,
+    freeEdgeThickness,
+  };
+}
+
+function normalizedHalfWidthAtY(shape = "Almond", yValue = 0.5, nail = {}) {
+  const y = clamp(yValue, 0, 1);
+  const p = shapeProfile(shape);
+  const taperControl = nailControl(nail, "taper", 0.5) - 0.5;
+  const curveControl = nailControl(nail, "sidewallCurve", 0.5) - 0.5;
+  const freeEdgeControl = nailControl(nail, "freeEdgeThickness", 0.5) - 0.5;
+  const cuticle = p.cuticle * 0.5;
+  const shoulder = p.shoulder * 0.5;
+  const tip = clamp((p.tip - taperControl * 0.34 + freeEdgeControl * 0.12) * 0.5, 0, 0.62);
+  const shoulderY = clamp(0.2 + p.apexY * 0.18, 0.2, 0.34);
+  if (y <= shoulderY) {
+    const t = y / shoulderY;
+    const eased = Math.sin((t * Math.PI) / 2) ** (0.8 + curveControl * 0.55);
+    return cuticle + (shoulder - cuticle) * eased;
   }
+  const t = (y - shoulderY) / (1 - shoulderY);
+  const exponent = clamp(0.82 + p.curve + p.taper * 0.35 + curveControl * 0.7, 0.45, 2.1);
+  const tapered = shoulder + (tip - shoulder) * (t ** exponent);
+  if (shape === "Edge") return tapered * (1 - 0.07 * Math.max(0, Math.sin(Math.PI * t)));
+  if (shape === "Lipstick" && y > 0.9) return tapered * (1 - ((y - 0.9) / 0.1) * 0.08);
+  return Math.max(0, tapered);
+}
+
+function pathPoint(nail, y, side = 1) {
+  const g = getNailGeometry(nail);
+  const p = shapeProfile(nail.shape);
+  const slant = p.freeEdgeSlant ? (side * p.freeEdgeSlant * Math.max(0, y - 0.84) * g.height) : 0;
+  return { x: g.cx + side * normalizedHalfWidthAtY(nail.shape, y, nail) * g.width + slant, y: g.topY + y * g.height };
+}
+
+export function buildNailPath(shape = "Almond", nail = {}) {
+  const scopedNail = { ...nail, shape };
+  const arch = getNailArchitecture(scopedNail);
+  const topY = arch.topY + arch.height * 0.055;
+  const cuticleHalf = normalizedHalfWidthAtY(shape, 0, scopedNail) * arch.width;
+  const samples = [0.07, 0.16, 0.28, 0.42, 0.58, 0.74, 0.88, 1];
+  const right = samples.map((y) => pathPoint(scopedNail, y, 1));
+  const left = [...samples].reverse().map((y) => pathPoint(scopedNail, y, -1));
+  const cmds = [`M ${arch.cx - cuticleHalf} ${topY}`, `C ${arch.cx - cuticleHalf * 0.82} ${arch.topY - arch.height * 0.018} ${arch.cx + cuticleHalf * 0.82} ${arch.topY - arch.height * 0.018} ${arch.cx + cuticleHalf} ${topY}`];
+  for (const pt of right) cmds.push(`L ${pt.x.toFixed(3)} ${pt.y.toFixed(3)}`);
+  for (const pt of left) cmds.push(`L ${pt.x.toFixed(3)} ${pt.y.toFixed(3)}`);
+  cmds.push("Z");
+  return cmds.join(" ");
 }
 
 export function normalizedToSvg(point, nail) {
@@ -135,27 +161,6 @@ function roundPoint(point) {
   return { x: Number(point.x.toFixed(6)), y: Number(point.y.toFixed(6)) };
 }
 
-function normalizedHalfWidthAtY(shape = "Almond", yValue = 0.5) {
-  const y = clamp(yValue, 0, 1);
-  switch (shape) {
-    case "Square": {
-      const corner = 0.055;
-      if (y < corner) return 0.5 - corner + Math.sqrt(Math.max(0, corner * corner - (corner - y) ** 2));
-      if (y > 1 - corner) return 0.5 - corner + Math.sqrt(Math.max(0, corner * corner - (y - (1 - corner)) ** 2));
-      return 0.5;
-    }
-    case "Coffin":
-      return y < 0.89 ? 0.5 - y * 0.08 : 0.428 - ((y - 0.89) / 0.11) * 0.218;
-    case "Stiletto":
-      return 0.5 * (1 - y ** 1.72) * Math.sin(Math.PI * (0.08 + y * 0.84)) ** 0.24;
-    case "Oval":
-      return 0.5 * Math.sin(Math.PI * y) ** 0.36;
-    case "Almond":
-    default:
-      return 0.5 * Math.sin(Math.PI * y) ** 0.48 * (1 - 0.28 * y ** 1.7);
-  }
-}
-
 /**
  * Lightweight silhouette model used for strict-fit validation.
  *
@@ -170,13 +175,13 @@ export function isPointInsideNailSilhouette(point, nail) {
   const x = Number(point?.x);
   const y = Number(point?.y);
   if (!Number.isFinite(x) || !Number.isFinite(y) || x < 0 || x > 1 || y < 0 || y > 1) return false;
-  const half = Math.max(0, normalizedHalfWidthAtY(nail?.shape, y));
+  const half = Math.max(0, normalizedHalfWidthAtY(nail?.shape, y, nail));
   return Math.abs(x - 0.5) <= half + 0.000001;
 }
 
 export function projectPointInsideNailSilhouette(point, nail) {
   const y = clamp(point?.y ?? 0.5, 0, 1);
-  const half = Math.max(0.000001, normalizedHalfWidthAtY(nail?.shape, y));
+  const half = Math.max(0.000001, normalizedHalfWidthAtY(nail?.shape, y, nail));
   return roundPoint({ x: clamp(point?.x ?? 0.5, 0.5 - half, 0.5 + half), y });
 }
 
@@ -311,6 +316,7 @@ export function createDefaultBlueprint(design = {}) {
     shape: SHAPES.includes(design.shape) ? design.shape : "Almond",
     length: clamp(design.length ?? 0.5, 0, 1),
     width: clamp(design.width ?? 0.5, 0, 1),
+    ...defaultShapeControls(design),
     baseColorHex: normalizeHex(design.baseColorHex),
     layers: [createBaseLayer(design)],
   };
@@ -370,6 +376,9 @@ function isBackendValidInactiveNail(nail) {
   if (!SHAPES.includes(nail.shape)) return false;
   if (!isFiniteNumber(nail.length) || nail.length < 0 || nail.length > 1) return false;
   if (!isFiniteNumber(nail.width) || nail.width < 0 || nail.width > 1) return false;
+  for (const key of ["taper", "apexHeight", "sidewallCurve", "freeEdgeThickness"]) {
+    if (Object.prototype.hasOwnProperty.call(nail, key) && (!isFiniteNumber(nail[key]) || nail[key] < 0 || nail[key] > 1)) return false;
+  }
   if (!/^#[0-9a-fA-F]{6}$/.test(nail.baseColorHex || "")) return false;
   if (!Array.isArray(nail.layers)) return false;
   const seenLayerIds = new Set();
@@ -418,6 +427,7 @@ function normalizeEditableNail(raw, fallback, index) {
     shape: SHAPES.includes(raw.shape) ? raw.shape : fallback.shape,
     length: clamp(raw.length ?? fallback.length, 0, 1),
     width: clamp(raw.width ?? fallback.width, 0, 1),
+    ...defaultShapeControls({ ...fallback, ...raw }),
     baseColorHex: normalizeHex(raw.baseColorHex, fallback.baseColorHex),
     layers: Array.isArray(raw.layers) ? raw.layers : [],
     metadata: raw.metadata && typeof raw.metadata === "object" ? { ...raw.metadata } : undefined,
@@ -518,6 +528,10 @@ export function flatDesignFromBlueprint(blueprint, name) {
     shape: nail.shape,
     length: nail.length,
     width: nail.width,
+    taper: nail.taper ?? 0.5,
+    apexHeight: nail.apexHeight ?? 0.5,
+    sidewallCurve: nail.sidewallCurve ?? 0.5,
+    freeEdgeThickness: nail.freeEdgeThickness ?? 0.5,
     baseColorHex: getVisibleBaseColor(nail),
     effect: base.data.effect,
     effectColorHex: base.data.effectColorHex,
@@ -665,6 +679,7 @@ function defaultNailForSlot(slot, design = {}) {
     shape: SHAPES.includes(design.shape) ? design.shape : "Almond",
     length: clamp(design.length ?? 0.5, 0, 1),
     width: clamp(design.width ?? 0.5, 0, 1),
+    ...defaultShapeControls(design),
     baseColorHex: normalizeHex(design.baseColorHex),
     layers: [createBaseLayer(design)],
     metadata: {},
@@ -759,6 +774,10 @@ export function cloneNailDesign(sourceNail, destinationNail) {
     shape: sourceNail.shape,
     length: sourceNail.length,
     width: sourceNail.width,
+    taper: sourceNail.taper ?? 0.5,
+    apexHeight: sourceNail.apexHeight ?? 0.5,
+    sidewallCurve: sourceNail.sidewallCurve ?? 0.5,
+    freeEdgeThickness: sourceNail.freeEdgeThickness ?? 0.5,
     baseColorHex: normalizeHex(sourceNail.baseColorHex, destinationNail.baseColorHex),
     metadata: { ...(destinationNail.metadata || {}), copiedFromSlot: sourceNail.slot },
   };
