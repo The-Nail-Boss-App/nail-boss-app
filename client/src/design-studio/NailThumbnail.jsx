@@ -3,6 +3,7 @@ import { renderAssetShapes } from "./assets.js";
 import { VIEWBOX, buildNailPath, layerSort, slotLabel } from "./blueprint.js";
 import { assetLayerRenderProps, isRenderableAssetLayer } from "./assetRendering.js";
 import { strokePath } from "./NailCanvas.jsx";
+import { FrenchTipShape } from "./frenchTipRendering.js";
 
 function MiniPattern({ id, layer }) {
   const color = layer.data?.colorHex || "#fff";
@@ -20,6 +21,7 @@ export default function NailThumbnail({ nail, active = false, onClick }) {
       <path d={path} fill={base?.data?.colorHex || nail.baseColorHex} stroke="rgba(59,31,53,.35)" strokeWidth="3"/>
       <g clipPath={`url(#${clipId})`}><ellipse cx="88" cy="105" rx="16" ry="70" fill="#fff" opacity=".22" transform="rotate(12 88 105)"/></g>
       {artLayers.map((layer) => {
+        if (layer.type === "frenchTip") return <FrenchTipShape key={layer.id} layer={layer} nail={nail} clipId={clipId} thumbnail/>;
         if (layer.type === "drawing") return <g key={layer.id} clipPath={`url(#${clipId})`} opacity={layer.opacity}>{(layer.data?.strokes || []).map((stroke) => <path key={stroke.id} d={strokePath(stroke.points, nail)} fill="none" stroke={stroke.colorHex} strokeWidth={(stroke.width || 0.04) * 100} strokeOpacity={stroke.opacity} strokeLinecap="round" strokeLinejoin="round"/>)}</g>;
         if (layer.type === "gradient") return <g key={layer.id} clipPath={`url(#${clipId})`} opacity={layer.opacity}><rect width={VIEWBOX.width} height={VIEWBOX.height} fill={layer.data?.colorB || "#E8A0BF"}/></g>;
         if (layer.type === "pattern") { const id = `${clipId}-${layer.id}`; return <g key={layer.id} clipPath={`url(#${clipId})`} opacity={layer.opacity}><defs><MiniPattern id={id} layer={layer}/></defs><rect width={VIEWBOX.width} height={VIEWBOX.height} fill={`url(#${id})`}/></g>; }

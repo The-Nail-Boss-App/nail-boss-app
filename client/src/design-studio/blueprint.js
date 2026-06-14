@@ -2,6 +2,12 @@ export const SHAPES = ["Almond", "Coffin", "Square", "Stiletto", "Oval"];
 export const EFFECTS = ["Solid", "Gradient", "Chrome", "CatEye", "Marble"];
 export const PATTERNS = ["dots", "stripes", "checker", "french-tip", "glitter", "marble"];
 export const GRADIENT_DIRECTIONS = ["vertical", "horizontal", "diagonal", "reverse-diagonal"];
+export const FRENCH_TIP_STYLES = ["classic", "deep", "angled", "v", "reverse"];
+export const FRENCH_TIP_PRESETS = {
+  soft: { tipHeight: 0.24, smileCurve: 0.18, smileDepth: 0.14, smileWidth: 0.72, rotation: 0 },
+  medium: { tipHeight: 0.32, smileCurve: 0.32, smileDepth: 0.24, smileWidth: 0.82, rotation: 0 },
+  deep: { tipHeight: 0.42, smileCurve: 0.5, smileDepth: 0.36, smileWidth: 0.92, rotation: 0 },
+};
 
 export const VIEWBOX = { width: 240, height: 360, cx: 120 };
 const BASE_TOP = 42;
@@ -122,6 +128,7 @@ export function svgToNormalized(point, nail) {
 }
 
 const ASSET_LAYER_TYPES = new Set(["charm", "jewel", "decal"]);
+const NON_ASSET_FULL_SURFACE_TYPES = new Set(["drawing", "pattern", "gradient", "frenchTip"]);
 const ASSET_MIN_SCALE = 0.06;
 
 function roundPoint(point) {
@@ -268,7 +275,7 @@ function legacyRevalidateLayersAfterNailResize(blueprint) {
 
 export function safeTransform(transform = {}, nail, layerType = "asset") {
   if (ASSET_LAYER_TYPES.has(layerType)) return constrainAssetTransform(transform, nail, layerType);
-  const scale = layerType === "drawing" || layerType === "pattern" || layerType === "gradient" ? 1 : clamp(Math.max(Math.abs(transform.scaleX ?? 0.18), Math.abs(transform.scaleY ?? 0.18)), ASSET_MIN_SCALE, 0.34);
+  const scale = NON_ASSET_FULL_SURFACE_TYPES.has(layerType) ? 1 : clamp(Math.max(Math.abs(transform.scaleX ?? 0.18), Math.abs(transform.scaleY ?? 0.18)), ASSET_MIN_SCALE, 0.34);
   return {
     x: clamp(transform.x ?? 0.5, 0, 1),
     y: clamp(transform.y ?? 0.5, 0, 1),
@@ -338,7 +345,7 @@ function isBackendValidInactiveLayer(layer, seenLayerIds) {
   const id = typeof layer.id === "string" ? layer.id.trim() : "";
   if (!id || seenLayerIds.has(id)) return false;
   seenLayerIds.add(id);
-  if (!["base", "gradient", "pattern", "drawing", "charm", "decal", "jewel"].includes(layer.type)) return false;
+  if (!["base", "gradient", "pattern", "drawing", "charm", "decal", "jewel", "frenchTip"].includes(layer.type)) return false;
   if (typeof layer.visible !== "boolean" || typeof layer.locked !== "boolean") return false;
   if (!isFiniteNumber(layer.opacity) || layer.opacity < 0 || layer.opacity > 1) return false;
   if (!isFiniteInteger(layer.order)) return false;
@@ -381,9 +388,26 @@ function cloneInactiveNailVerbatim(nail) {
   };
 }
 
+export function normalizeFrenchTipData(data = {}) {
+  const presetName = Object.prototype.hasOwnProperty.call(FRENCH_TIP_PRESETS, data.preset) ? data.preset : "medium";
+  const preset = FRENCH_TIP_PRESETS[presetName];
+  const style = FRENCH_TIP_STYLES.includes(data.style) ? data.style : "classic";
+  return {
+    style,
+    preset: presetName,
+    tipHeight: clamp(data.tipHeight ?? preset.tipHeight, 0.08, 0.72),
+    smileCurve: clamp(data.smileCurve ?? preset.smileCurve, 0, 1),
+    smileDepth: clamp(data.smileDepth ?? preset.smileDepth, 0, 0.65),
+    smileWidth: clamp(data.smileWidth ?? preset.smileWidth, 0.25, 1),
+    colorHex: normalizeHex(data.colorHex, "#FFFFFF"),
+    rotation: clamp(data.rotation ?? preset.rotation, -45, 45),
+  };
+}
+
 function normalizeLayerData(layer) {
   const data = { ...(layer.data || {}) };
   if (["charm", "jewel", "decal"].includes(layer.type)) delete data.svg;
+  if (layer.type === "frenchTip") return normalizeFrenchTipData(data);
   return data;
 }
 
@@ -544,6 +568,35 @@ export function patternLayer(nail, pattern = "dots") {
     transform: safeTransform({ x: 0.5, y: 0.5, scaleX: 1, scaleY: 1, rotation: 0 }, nail, "pattern"),
     data: { pattern, colorHex: "#FFFFFF", secondaryColorHex: "#3B1F35", density: 0.5 },
   };
+}
+
+export function frenchTipLayer(nail, style = "classic", preset = "medium") {
+  const presetData = FRENCH_TIP_PRESETS[preset] || FRENCH_TIP_PRESETS.medium;
+  return {
+    id: uid("frenchTip"), type: "frenchTip", name: "French Tip", visible: true, locked: false, opacity: 1, order: 99,
+    transform: safeTransform({ x: 0.5, y: 0.5, scaleX: 1, scaleY: 1, rotation: 0 }, nail, "frenchTip"),
+    data: normalizeFrenchTipData({ ...presetData, style, preset, colorHex: "#FFFFFF" }),
+  };
+}
+
+export function applyFrenchTipToSlots(blueprint, sourceLayer, slots = []) {
+  if (!sourceLayer || sourceLayer.type !== "frenchTip") return blueprint;
+  const targets = new Set(slots);
+  return { ...blueprint, nails: blueprint.nails.map((nail) => {
+    if (!targets.has(nail.slot)) return nail;
+    const existing = nail.layers.find((layer) => layer.type === "frenchTip" && layer.id === sourceLayer.id) || nail.layers.find((layer) => layer.type === "frenchTip");
+    const layer = {
+      ...sourceLayer,
+      id: existing?.id || uid("frenchTip"),
+      order: existing?.order ?? nail.layers.length,
+      transform: safeTransform(sourceLayer.transform, nail, "frenchTip"),
+      data: normalizeFrenchTipData(sourceLayer.data),
+    };
+    const layers = existing
+      ? nail.layers.map((item) => item.id === existing.id ? layer : item)
+      : [...nail.layers, layer];
+    return revalidateNailLayers({ ...nail, layers: renumberLayers(layers) });
+  }) };
 }
 
 export function isReusableDrawingLayer(layer) {
@@ -738,7 +791,7 @@ export function resetNailDesign(blueprint, slot) {
 }
 
 export function summarizeFullSetAssets(blueprint) {
-  const summary = { nailCount: 0, charmsByAssetId: {}, jewelsByAssetId: {}, decalsByAssetId: {}, visibleDrawingLayerCount: 0, visibleGradientLayerCount: 0, visiblePatternLayerCount: 0 };
+  const summary = { nailCount: 0, charmsByAssetId: {}, jewelsByAssetId: {}, decalsByAssetId: {}, visibleDrawingLayerCount: 0, visibleGradientLayerCount: 0, visiblePatternLayerCount: 0, visibleFrenchTipLayerCount: 0 };
   for (const nail of blueprint?.nails || []) {
     summary.nailCount += 1;
     for (const layer of nail.layers || []) {
@@ -751,6 +804,7 @@ export function summarizeFullSetAssets(blueprint) {
       if (layer.type === "drawing") summary.visibleDrawingLayerCount += 1;
       if (layer.type === "gradient") summary.visibleGradientLayerCount += 1;
       if (layer.type === "pattern") summary.visiblePatternLayerCount += 1;
+      if (layer.type === "frenchTip") summary.visibleFrenchTipLayerCount += 1;
     }
   }
   return summary;

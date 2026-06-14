@@ -17,6 +17,7 @@ import {
   SHAPES,
   STYLE_CATEGORIES,
   addLayerToBlueprint,
+  applyFrenchTipToSlots,
   addStrokeToDrawingLayer,
   summarizeFullSetAssets,
   setActiveNailBySlot,
@@ -31,6 +32,9 @@ import {
   clamp,
 
   flatDesignFromBlueprint,
+  frenchTipLayer,
+  FRENCH_TIP_PRESETS,
+  FRENCH_TIP_STYLES,
   getActiveNail,
   getVisibleBaseColor,
   gradientLayer,
@@ -54,6 +58,22 @@ function Field({ label, children }) {
 
 function ColorInput({ value, onChange }) {
   return <div style={{ display: "flex", gap: 8 }}><input type="color" value={value} onChange={(e) => onChange(e.target.value)} style={{ width: 44, height: 42, border: `1px solid ${COLORS.border}`, borderRadius: 10, background: "transparent" }}/><input style={{ ...S.input, fontFamily: "monospace" }} value={value} maxLength={7} onChange={(e) => /^#[0-9a-fA-F]{0,6}$/.test(e.target.value) && onChange(e.target.value.toUpperCase())}/></div>;
+}
+
+function FrenchTipControls({ layer, onAdd, onPatch, onApply }) {
+  const data = layer?.data || {};
+  return <section style={{ border: `1px solid ${COLORS.border}`, borderRadius: 16, padding: 12, marginBottom: 14, background: "#fff" }}>
+    <div style={UI.sectionTitle}>French Tip Precision</div>
+    <button type="button" onClick={onAdd} style={{ ...S.btnSecondary, padding: "9px 12px", marginBottom: 10 }}>Add French Tip</button>
+    <Field label="Preset"><select style={S.input} value={data.preset || "medium"} onChange={(e) => onPatch({ preset: e.target.value })}>{Object.keys(FRENCH_TIP_PRESETS).map((preset) => <option key={preset} value={preset}>{preset}</option>)}</select></Field>
+    <Field label="Style"><select style={S.input} value={data.style || "classic"} onChange={(e) => onPatch({ style: e.target.value })}>{FRENCH_TIP_STYLES.map((style) => <option key={style} value={style}>{style}</option>)}</select></Field>
+    <Field label={`Tip height ${Math.round((data.tipHeight ?? 0.32) * 100)}%`}><input type="range" min="8" max="72" value={Math.round((data.tipHeight ?? 0.32) * 100)} onChange={(e) => onPatch({ tipHeight: Number(e.target.value) / 100 })} style={{ width: "100%" }}/></Field>
+    <Field label={`Smile curve ${Math.round((data.smileCurve ?? 0.32) * 100)}%`}><input type="range" min="0" max="100" value={Math.round((data.smileCurve ?? 0.32) * 100)} onChange={(e) => onPatch({ smileCurve: Number(e.target.value) / 100 })} style={{ width: "100%" }}/></Field>
+    <Field label={`Smile depth ${Math.round((data.smileDepth ?? 0.24) * 100)}%`}><input type="range" min="0" max="65" value={Math.round((data.smileDepth ?? 0.24) * 100)} onChange={(e) => onPatch({ smileDepth: Number(e.target.value) / 100 })} style={{ width: "100%" }}/></Field>
+    <Field label="Tip color"><ColorInput value={data.colorHex || "#FFFFFF"} onChange={(value) => onPatch({ colorHex: normalizeHex(value, "#FFFFFF") })}/></Field>
+    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}><button type="button" onClick={() => onApply("active")} style={UI.iconButton(false)}>Apply to active nail</button><button type="button" onClick={() => onApply("hand")} style={UI.iconButton(false)}>Apply to current hand</button><button type="button" onClick={() => onApply("all")} style={UI.iconButton(false)}>Apply to all nails</button></div>
+    <p style={UI.smallText}>Classic, deep, angled, V-French, and reverse French render as clipped vector layers inside each nail silhouette.</p>
+  </section>;
 }
 
 function layerById(nail, id) {
@@ -326,6 +346,31 @@ function DesignStudio(_, ref) {
     const layer = patternLayer(activeNail, "dots");
     commit(addLayerToBlueprint(blueprint, layer), { selectLayerId: layer.id });
     setTab("properties");
+  }
+
+  function addFrenchTip() {
+    const layer = frenchTipLayer(activeNail, "classic", "medium");
+    commit(addLayerToBlueprint(blueprint, layer), { selectLayerId: layer.id });
+    setTab("properties");
+  }
+
+  function activeFrenchTipLayer() {
+    return selectedLayer?.type === "frenchTip" ? selectedLayer : activeNail.layers.find((layer) => layer.type === "frenchTip");
+  }
+
+  function patchFrenchTipData(patch) {
+    const layer = activeFrenchTipLayer();
+    if (!layer) { showNotice("Add a French Tip layer first."); return; }
+    const presetPatch = patch.preset && FRENCH_TIP_PRESETS[patch.preset] ? FRENCH_TIP_PRESETS[patch.preset] : {};
+    patchLayer(layer.id, { data: { ...layer.data, ...presetPatch, ...patch } });
+    setSelectedLayerId(layer.id);
+  }
+
+  function applyFrenchTip(scope) {
+    const layer = activeFrenchTipLayer();
+    if (!layer) { showNotice("Add a French Tip layer first."); return; }
+    const targets = scope === "active" ? [activeSlot] : slotsFor(scope);
+    commit(applyFrenchTipToSlots(blueprint, layer, targets), { selectLayerId: layer.id, noticeMessage: scope === "all" ? "French tip applied to all nails." : scope === "hand" ? "French tip applied to current hand." : "French tip applied to active nail." });
   }
 
   function addStroke(stroke) {
@@ -649,6 +694,7 @@ function DesignStudio(_, ref) {
       <button type="button" onClick={() => setMode("eraser")} style={UI.iconButton(mode === "eraser")}>Eraser</button>
       <button type="button" onClick={addGradient} style={UI.iconButton(false)}>Add gradient</button>
       <button type="button" onClick={addPattern} style={UI.iconButton(false)}>Add pattern</button>
+      <button type="button" onClick={addFrenchTip} style={UI.iconButton(false)}>Add French Tip</button>
       <span style={{ marginLeft: "auto", color: statusColor, fontSize: 13, fontWeight: 800 }}>{saving ? "Saving…" : loading ? "Loading…" : dirty ? `● ${saveStatus}` : saveStatus || status.message}</span>
     </div>
 
@@ -667,6 +713,8 @@ function DesignStudio(_, ref) {
         <Field label="Style category"><select style={S.input} value={blueprint.metadata?.styleCategory || "Custom"} onChange={(e) => commit({ ...blueprint, metadata: { ...blueprint.metadata, styleCategory: e.target.value } })}>{STYLE_CATEGORIES.map((category) => <option key={category}>{category}</option>)}</select></Field>
         <Field label="Internal notes"><textarea style={{ ...S.input, minHeight: 70 }} value={blueprint.metadata?.internalNotes || ""} onChange={(e) => commit({ ...blueprint, metadata: { ...blueprint.metadata, internalNotes: e.target.value } })} placeholder="Optional artist-only notes" /></Field>
         <Field label="Estimated service price"><input style={S.input} value={blueprint.metadata?.estimatedServicePrice || ""} onChange={(e) => commit({ ...blueprint, metadata: { ...blueprint.metadata, estimatedServicePrice: e.target.value } })} placeholder="Placeholder for later pricing" /></Field>
+
+        <FrenchTipControls layer={activeFrenchTipLayer()} onAdd={addFrenchTip} onPatch={patchFrenchTipData} onApply={applyFrenchTip}/>
         <BulkActionsPanel activeSlot={activeSlot} clipboard={clipboardNail} selectedSlots={selectedSlots} onToggleSlot={(slot) => setSelectedSlots((prev) => prev.includes(slot) ? prev.filter((item) => item !== slot) : [...prev, slot])} onCopy={copyActiveNail} onPaste={pasteToSelected} onDuplicate={duplicateActive} onMirror={mirrorHand} onApplyBase={applyBase} onApplyShape={applyShape} onReset={resetActive}/>
         <p style={UI.smallText}>Strict-fit mode keeps all editable vectors clipped and clamped inside the active nail surface for realistic product-use planning.</p>
       </div></aside>
@@ -678,7 +726,7 @@ function DesignStudio(_, ref) {
         {tab === "assets" && <><AssetLibrary onAddAsset={addAsset}/><DrawingToolbar brush={brush} mode={mode} onBrushChange={(patch) => setBrush((prev) => ({ ...prev, ...patch }))}/></>}
         {tab === "layers" && <LayersPanel layers={activeNail.layers} selectedLayerId={selectedLayerId} onSelect={setSelectedLayerId} onToggleVisible={toggleVisible} onToggleLock={toggleLock} onMove={moveLayer} onDelete={deleteLayer}/>} 
         {tab === "properties" && <PropertiesPanel layer={selectedLayer} onPatch={(patch) => selectedLayer && patchLayer(selectedLayer.id, patch)} onDuplicate={() => duplicateLayer()} onDelete={() => deleteLayer()}/>} 
-      <div style={{ marginTop: 12, ...UI.smallText }}>Product-use hook: {productSummary.nailCount} nails, {productSummary.visibleDrawingLayerCount} drawing layers, {productSummary.visibleGradientLayerCount} gradients, {productSummary.visiblePatternLayerCount} patterns.</div></div></aside>
+      <div style={{ marginTop: 12, ...UI.smallText }}>Product-use hook: {productSummary.nailCount} nails, {productSummary.visibleDrawingLayerCount} drawing layers, {productSummary.visibleGradientLayerCount} gradients, {productSummary.visiblePatternLayerCount} patterns, {productSummary.visibleFrenchTipLayerCount} French tips.</div></div></aside>
     </div>
   </div>;
 }

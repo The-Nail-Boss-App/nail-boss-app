@@ -11,7 +11,18 @@ const TERMINAL_STATUSES = ["Accepted", "ChangesRequested", "Declined"];
 const VALID_SHAPES = ["Almond", "Coffin", "Square", "Stiletto", "Oval"];
 const VALID_EFFECTS = ["Solid", "Gradient", "Chrome", "CatEye", "Marble"];
 const SUPPORTED_BLUEPRINT_SCHEMA_VERSIONS = [1];
-const SUPPORTED_LAYER_TYPES = ["base", "gradient", "pattern", "drawing", "charm", "decal", "jewel"];
+const SUPPORTED_LAYER_TYPES = ["base", "gradient", "pattern", "drawing", "charm", "decal", "jewel", "frenchTip"];
+const FRENCH_TIP_STYLES = ["classic", "deep", "angled", "v", "reverse"];
+const FRENCH_TIP_STYLE_ALIASES = { "v-french": "v" };
+const FRENCH_TIP_PRESETS = ["soft", "medium", "deep"];
+const FRENCH_TIP_RANGES = {
+  tipHeight: [0.08, 0.72],
+  smileCurve: [0, 1],
+  smileDepth: [0, 0.65],
+  smileWidth: [0.25, 1],
+  opacity: [0, 1],
+  rotation: [-45, 45],
+};
 const MAX_BLUEPRINT_NAILS = 10;
 const MAX_BLUEPRINT_LAYERS_PER_NAIL = 200;
 const MAX_BLUEPRINT_JSON_BYTES = 100 * 1024;
@@ -89,6 +100,38 @@ function assertHex(value, pathLabel) {
   }
 }
 
+function assertRangedNumber(value, [min, max], pathLabel) {
+  if (!isFiniteNumber(value) || value < min || value > max) {
+    throw new BlueprintValidationError(`${pathLabel} must be a number between ${min} and ${max}`);
+  }
+  return Number(value);
+}
+
+function normalizeFrenchTipData(data, pathPrefix) {
+  const style = FRENCH_TIP_STYLE_ALIASES[data.style] || data.style;
+  if (!FRENCH_TIP_STYLES.includes(style)) {
+    throw new BlueprintValidationError(`${pathPrefix}.data.style must be one of: ${FRENCH_TIP_STYLES.join(", ")}`);
+  }
+  if (!FRENCH_TIP_PRESETS.includes(data.preset)) {
+    throw new BlueprintValidationError(`${pathPrefix}.data.preset must be one of: ${FRENCH_TIP_PRESETS.join(", ")}`);
+  }
+  assertHex(data.colorHex, `${pathPrefix}.data.colorHex`);
+  if (Object.prototype.hasOwnProperty.call(data, "opacity")) {
+    assertRangedNumber(data.opacity, FRENCH_TIP_RANGES.opacity, `${pathPrefix}.data.opacity`);
+  }
+  return {
+    ...data,
+    style,
+    preset: data.preset,
+    colorHex: data.colorHex,
+    tipHeight: assertRangedNumber(data.tipHeight, FRENCH_TIP_RANGES.tipHeight, `${pathPrefix}.data.tipHeight`),
+    smileCurve: assertRangedNumber(data.smileCurve, FRENCH_TIP_RANGES.smileCurve, `${pathPrefix}.data.smileCurve`),
+    smileDepth: assertRangedNumber(data.smileDepth, FRENCH_TIP_RANGES.smileDepth, `${pathPrefix}.data.smileDepth`),
+    smileWidth: assertRangedNumber(data.smileWidth, FRENCH_TIP_RANGES.smileWidth, `${pathPrefix}.data.smileWidth`),
+    rotation: assertRangedNumber(data.rotation, FRENCH_TIP_RANGES.rotation, `${pathPrefix}.data.rotation`),
+  };
+}
+
 function normalizeTags(tags, pathLabel = "metadata.tags") {
   if (!Array.isArray(tags) || tags.some((tag) => typeof tag !== "string")) {
     throw new BlueprintValidationError(`${pathLabel} must be an array of strings`);
@@ -146,6 +189,7 @@ function normalizeLayer(layer, nailIndex, layerIndex, seenLayerIds) {
     }
     assertHex(layer.data.effectColorHex, `${pathPrefix}.data.effectColorHex`);
   }
+  const data = layer.type === "frenchTip" ? normalizeFrenchTipData(layer.data, pathPrefix) : { ...layer.data };
 
   return {
     id: normalizedLayerId,
@@ -156,7 +200,7 @@ function normalizeLayer(layer, nailIndex, layerIndex, seenLayerIds) {
     opacity: Number(layer.opacity),
     order: layer.order,
     transform,
-    data: { ...layer.data },
+    data,
   };
 }
 
