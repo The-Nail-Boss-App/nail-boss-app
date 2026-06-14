@@ -23,6 +23,7 @@ const {
   ensureBlueprint,
   getActiveNail,
   getNailArchitecture,
+  getNailShapeMetrics,
   normalizedToSvg,
   projectPointInsideNailSilhouette,
   isPointInsideNailSilhouette,
@@ -51,6 +52,24 @@ for (const shape of salonShapeFamilies) {
   assert(architecture.apexYNorm > 0.25 && architecture.apexYNorm < 0.65, `${shape} has a realistic apex placement`);
   assert(architecture.freeEdgeYNorm > 0.45 && architecture.freeEdgeYNorm < 0.92, `${shape} has a realistic free-edge boundary`);
 }
+
+const defaultShapeNail = { length: 0.56, width: 0.52, taper: 0.5, apexHeight: 0.5, sidewallCurve: 0.5, freeEdgeThickness: 0.5 };
+const roundMetrics = getNailShapeMetrics('Round', { ...defaultShapeNail, shape: 'Round' });
+const ovalMetrics = getNailShapeMetrics('Oval', { ...defaultShapeNail, shape: 'Oval' });
+const almondMetrics = getNailShapeMetrics('Almond', { ...defaultShapeNail, shape: 'Almond' });
+assert.notEqual(buildNailPath('Round', { ...defaultShapeNail, shape: 'Round' }), buildNailPath('Almond', { ...defaultShapeNail, shape: 'Almond' }), 'Round does not match Almond render geometry');
+assert.notEqual(buildNailPath('Oval', { ...defaultShapeNail, shape: 'Oval' }), buildNailPath('Almond', { ...defaultShapeNail, shape: 'Almond' }), 'Oval does not match Almond render geometry');
+assert(roundMetrics.tipHalfWidth > ovalMetrics.tipHalfWidth && ovalMetrics.tipHalfWidth > almondMetrics.tipHalfWidth, 'Round, Oval, and Almond have distinct tip-width behavior');
+assert(roundMetrics.sidewallHalfWidth > ovalMetrics.sidewallHalfWidth && ovalMetrics.sidewallHalfWidth > almondMetrics.sidewallHalfWidth, 'Round, Oval, and Almond have distinct sidewall/taper behavior');
+for (const shape of ['Round', 'Oval']) {
+  const shaped = { ...defaultShapeNail, shape };
+  assert(buildNailPath(shape, shaped).startsWith('M '), `${shape} produces a valid render path`);
+  assert(isPointInsideNailSilhouette({ x: 0.5, y: 0.96 }, shaped), `${shape} keeps French Tip center geometry inside the clipping silhouette`);
+  const frenchLayer = frenchTipLayer(shaped, 'classic', 'medium');
+  assert.equal(frenchLayer.type, 'frenchTip', `${shape} supports French Tip layer creation for clipped rendering`);
+}
+assert(nailCanvasSource.includes('justifyContent: "flex-start"') && nailCanvasSource.includes('width: "min(54vh, 96%)"') && nailCanvasSource.includes('maxWidth: 430'), 'active nail canvas is top-aligned with reduced vertical footprint while preserving a comfortable design size');
+
 assert.notEqual(buildNailPath('Coffin', { shape: 'Coffin', taper: 0.1 }), buildNailPath('Coffin', { shape: 'Coffin', taper: 0.9 }), 'taper control adjusts geometry without switching shape families');
 assert.notEqual(getNailArchitecture({ shape: 'Almond', apexHeight: 0.1 }).apexYNorm, getNailArchitecture({ shape: 'Almond', apexHeight: 0.9 }).apexYNorm, 'apex height control moves the architecture apex');
 assert(designStudioSource.includes('Shape Debug Overlay') && nailCanvasSource.includes('debugOverlay'), 'hidden developer shape debug overlay can render centerline, apex, sidewalls, cuticle, and free-edge boundaries');
