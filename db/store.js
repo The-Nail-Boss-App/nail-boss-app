@@ -25,6 +25,9 @@ const VALID_SHAPES = [
   "Mountain Peak",
 ];
 const VALID_EFFECTS = ["Solid", "Gradient", "Chrome", "CatEye", "Marble"];
+const VALID_POLISH_TYPES = ["Cream", "Jelly", "Milky", "Matte", "Chrome", "Cat Eye", "Glitter"];
+const VALID_TOP_COATS = ["Gloss", "Matte", "No-Wipe Shine", "Velvet"];
+const POLISH_NUMBER_RANGES = { shine: [0, 1], transparency: [0, 1], sparkleDensity: [0, 1], sparkleSize: [0, 1], catEyeAngle: [-180, 180], catEyeIntensity: [0, 1], chromeIntensity: [0, 1] };
 const SUPPORTED_BLUEPRINT_SCHEMA_VERSIONS = [1];
 const SUPPORTED_LAYER_TYPES = ["base", "gradient", "pattern", "drawing", "charm", "decal", "jewel", "frenchTip"];
 const FRENCH_TIP_STYLES = ["classic", "deep", "angled", "v", "reverse"];
@@ -139,6 +142,23 @@ function normalizeNailArchitectureControls(nail, pathPrefix) {
   return controls;
 }
 
+function normalizePolishFields(data, pathPrefix) {
+  const next = { ...data };
+  if (Object.prototype.hasOwnProperty.call(next, "polishType") && !VALID_POLISH_TYPES.includes(next.polishType)) {
+    throw new BlueprintValidationError(`${pathPrefix}.data.polishType must be one of: ${VALID_POLISH_TYPES.join(", ")}`);
+  }
+  next.polishType = next.polishType || "Cream";
+  if (Object.prototype.hasOwnProperty.call(next, "topCoat") && !VALID_TOP_COATS.includes(next.topCoat)) {
+    throw new BlueprintValidationError(`${pathPrefix}.data.topCoat must be one of: ${VALID_TOP_COATS.join(", ")}`);
+  }
+  next.topCoat = next.topCoat || (next.polishType === "Matte" ? "Matte" : "Gloss");
+  const defaults = { shine: next.polishType === "Matte" ? 0.08 : 0.62, transparency: next.polishType === "Jelly" ? 0.45 : next.polishType === "Milky" ? 0.28 : 0, sparkleDensity: 0.35, sparkleSize: 0.45, catEyeAngle: 28, catEyeIntensity: 0.65, chromeIntensity: 0.7 };
+  for (const [key, range] of Object.entries(POLISH_NUMBER_RANGES)) {
+    next[key] = Object.prototype.hasOwnProperty.call(next, key) ? assertRangedNumber(next[key], range, `${pathPrefix}.data.${key}`) : defaults[key];
+  }
+  return next;
+}
+
 function normalizeFrenchTipData(data, pathPrefix) {
   const style = FRENCH_TIP_STYLE_ALIASES[data.style] || data.style;
   if (!FRENCH_TIP_STYLES.includes(style)) {
@@ -221,7 +241,7 @@ function normalizeLayer(layer, nailIndex, layerIndex, seenLayerIds) {
     }
     assertHex(layer.data.effectColorHex, `${pathPrefix}.data.effectColorHex`);
   }
-  const data = layer.type === "frenchTip" ? normalizeFrenchTipData(layer.data, pathPrefix) : { ...layer.data };
+  const data = layer.type === "base" ? normalizePolishFields(layer.data, pathPrefix) : layer.type === "frenchTip" ? normalizeFrenchTipData(layer.data, pathPrefix) : { ...layer.data };
 
   return {
     id: normalizedLayerId,
@@ -340,6 +360,15 @@ function createDefaultBlueprintForDesign(design) {
           colorHex: design.baseColorHex || "#E8A0BF",
           effect: design.effect || "Solid",
           effectColorHex: design.effectColorHex || "#FFFFFF",
+          polishType: "Cream",
+          shine: 0.62,
+          transparency: 0,
+          topCoat: "Gloss",
+          sparkleDensity: 0.35,
+          sparkleSize: 0.45,
+          catEyeAngle: 28,
+          catEyeIntensity: 0.65,
+          chromeIntensity: 0.7,
         },
       }],
     }],

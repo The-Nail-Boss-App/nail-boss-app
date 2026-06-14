@@ -39,6 +39,8 @@ const {
   applyFrenchTipToSlots,
   normalizeFrenchTipData,
   FRENCH_TIP_PRESETS,
+  POLISH_TYPES,
+  cloneNailDesign,
 } = blueprint;
 
 
@@ -467,3 +469,25 @@ assert(!selectSlotSource.includes('setDirty(true)') && !selectSlotSource.include
 
 
 console.log('geometry-helper-test passed');
+
+const polishSource = await readFile(new URL('../client/src/design-studio/polish.js', import.meta.url), 'utf8');
+const polishRendererSource = await readFile(new URL('../client/src/design-studio/PolishRenderer.jsx', import.meta.url), 'utf8');
+assert(polishRendererSource.includes('id={`${uid}-cream`}') && polishRendererSource.includes('subtle') === false, 'Cream rendering has a dedicated smooth salon polish gradient');
+assert(polishRendererSource.includes('id={`${uid}-jelly`}') && polishRendererSource.includes('polishOpacity'), 'Jelly transparency uses translucent polish opacity');
+assert(polishRendererSource.includes('id={`${uid}-milky`}'), 'Milky rendering has a dedicated cloudy semi-sheer gradient');
+assert(polishRendererSource.includes('data.topCoat === "Matte" || data.polishType === "Matte" ? 0 : data.shine'), 'Matte polish suppresses topcoat shine');
+assert(polishRendererSource.includes('data.chromeIntensity'), 'Chrome rendering is controlled by Chrome Intensity');
+assert(polishRendererSource.includes('data.catEyeAngle') && polishRendererSource.includes('data.catEyeIntensity'), 'Cat Eye rendering is controlled by angle and intensity');
+assert(polishRendererSource.includes('data.sparkleDensity') && polishRendererSource.includes('data.sparkleSize'), 'Glitter rendering is controlled by density and size');
+assert(polishRendererSource.includes('apex') && polishRendererSource.includes('sidewall') === false && polishRendererSource.includes('freeEdgeYNorm'), 'realism layers follow Shape Engine V2 apex and free-edge geometry');
+assert(nailCanvasSource.includes('<PolishSurface') && nailThumbnailSource.includes('<PolishSurface'), 'Polish rendering is shared by NailCanvas, thumbnail, hand, and full-set previews');
+assert(propertiesPanelSource.includes('Polish Settings') && propertiesPanelSource.includes('Polish Type') && propertiesPanelSource.includes('Top Coat'), 'Design Studio exposes salon-language Polish Settings controls');
+assert(propertiesPanelSource.includes('polish.polishType === "Glitter"') && propertiesPanelSource.includes('polish.polishType === "Cat Eye"') && propertiesPanelSource.includes('polish.polishType === "Chrome"'), 'Polish Settings only show relevant Glitter, Cat Eye, and Chrome controls');
+assert.deepEqual(POLISH_TYPES, ['Cream', 'Jelly', 'Milky', 'Matte', 'Chrome', 'Cat Eye', 'Glitter'], 'Polish Engine exposes all required polish types');
+const polishDefaultBlueprint = createDefaultBlueprint({ baseColorHex: '#123456' });
+const polishBase = getActiveNail(polishDefaultBlueprint).layers.find((layer) => layer.type === 'base');
+assert.equal(polishBase.data.polishType, 'Cream', 'old designs default to Cream polish safely');
+assert.equal(polishBase.data.colorHex, '#123456', 'base polish color is preserved through save/load normalization');
+const copiedPolish = cloneNailDesign(getActiveNail(polishDefaultBlueprint), { ...getActiveNail(polishDefaultBlueprint), id: 'copy', slot: 'copy' });
+assert.equal(copiedPolish.layers.find((layer) => layer.type === 'base').data.polishType, 'Cream', 'copy/duplicate-style nail cloning preserves polish fields');
+assert(polishSource.includes('POLISH_TYPES') && polishSource.includes('TOP_COATS'), 'proposal-compatible polish fields stay inside existing blueprint layer data');

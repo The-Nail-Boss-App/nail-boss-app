@@ -778,6 +778,24 @@ async function main() {
     assert(res.status === 200, "history should persist across restart with explicit test DB file");
     assert(res.body.some((entry) => entry.newStatus === "Accepted"), "accepted history should persist across restart");
 
+    const savedBlueprint = await request("GET", `/api/designs/${ids.designId}/blueprint`);
+    const creamDefault = JSON.parse(JSON.stringify(savedBlueprint.body.document));
+    delete creamDefault.nails[0].layers[0].data.polishType;
+    delete creamDefault.nails[0].layers[0].data.shine;
+    res = await request("PUT", `/api/designs/${ids.designId}/blueprint`, creamDefault);
+    assert(res.status === 200, "old base polish data should save with safe Cream defaults");
+    assert(res.body.document.nails[0].layers[0].data.polishType === "Cream", "old base polish data should default to Cream");
+
+    const invalidPolishType = JSON.parse(JSON.stringify(savedBlueprint.body.document));
+    invalidPolishType.nails[0].layers[0].data.polishType = "Gelato";
+    res = await request("PUT", `/api/designs/${ids.designId}/blueprint`, invalidPolishType);
+    assert(res.status === 400, "invalid polishType should be rejected");
+
+    const invalidPolishValue = JSON.parse(JSON.stringify(savedBlueprint.body.document));
+    invalidPolishValue.nails[0].layers[0].data.chromeIntensity = 4;
+    res = await request("PUT", `/api/designs/${ids.designId}/blueprint`, invalidPolishValue);
+    assert(res.status === 400, "malformed polish control values should be rejected");
+
     res = await request("DELETE", `/api/designs/${ids.designId}`);
     assert(res.status === 204, "DELETE /api/designs/:id should delete the design");
 

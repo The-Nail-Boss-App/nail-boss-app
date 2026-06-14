@@ -636,3 +636,33 @@ Bulk application reuses the active layer's normalized French Tip data, creates o
 - Multiple French Tip layers can be stacked manually through normal layer duplication, but the bulk apply workflow updates the first existing French Tip layer per target nail.
 - Rotation is intentionally bounded to keep angled French designs practical inside strict-fit nail silhouettes.
 - Public proposal cards continue using legacy flat fields for compatibility; French Tip detail is preserved in the editable blueprint and studio previews.
+
+### Milestone 6 Polish Engine
+
+Milestone 6 adds the Polish Engine so AnitaSet designs read more like salon polish on a shaped nail and less like flat vector artwork. The engine keeps the existing Nail Blueprint v1 layer system intact: base layers now carry safe polish fields, and older saved designs are normalized as **Cream** polish with conservative defaults when they are opened or saved.
+
+**Supported Polish Types**
+
+- **Cream** — smooth salon color with subtle gloss and soft body.
+- **Jelly** — translucent color that lets light and lower depth show through.
+- **Milky** — semi-sheer cloudy polish with a softened veil.
+- **Matte** — low-shine surface with topcoat shine suppressed.
+- **Chrome** — metallic-style reflective finish controlled by Chrome Intensity.
+- **Cat Eye** — magnetic directional highlight controlled by Cat Eye Angle and Cat Eye Intensity.
+- **Glitter** — scattered reflective sparkle controlled by Glitter Density and Glitter Size.
+
+**Polish Settings controls**
+
+The Design Studio base layer now exposes Polish Settings using nail-industry language: Polish Type, Color, Shine, Transparency, Top Coat, Glitter Density, Glitter Size, Cat Eye Angle, Cat Eye Intensity, and Chrome Intensity. Glitter controls only show for Glitter polish, Cat Eye controls only show for Cat Eye polish, and Chrome Intensity only shows for Chrome polish. Legacy effect controls remain available for compatibility but are visually separated from the salon-facing Polish Settings.
+
+**Rendering behavior**
+
+A shared Polish Renderer is used by the editable NailCanvas plus thumbnail, hand, and full-set previews. It paints the selected Polish Type, then applies automatic realism layers clipped to Shape Engine V2 geometry: apex highlight, sidewall shadow, free-edge highlight, and Top Coat shine. Charms, jewels, and decals keep the same data model but receive a small contact shadow; jewels also get a small highlight where practical.
+
+**Validation and defaults**
+
+The backend validates `polishType`, `topCoat`, and all numeric polish controls during blueprint persistence. Existing base layers that do not have polish fields default to Cream polish with safe Shine, Transparency, Top Coat, sparkle, Cat Eye, and Chrome values. Invalid polish types or malformed numeric controls are rejected with blueprint validation errors. No database migration is required because the fields live inside existing blueprint layer data.
+
+**Compatibility and limitations**
+
+Polish Engine does not add AI, marketplace, inventory, or hand-preview feature upgrades. It preserves Shape Engine V2, French Tips, drawings, charms, jewels, decals, gradients, patterns, full-set workflow, copy/paste/duplicate/mirror, autosave, undo/redo, save/load, and proposal compatibility. The renderer is deterministic SVG/CSS-style polish simulation rather than physically based ray tracing; Chrome, Cat Eye, Jelly, and Glitter are stylized salon approximations optimized for fast previews.
