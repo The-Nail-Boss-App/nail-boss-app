@@ -8,6 +8,7 @@ const assetRenderingSource = await readFile(new URL('../client/src/design-studio
 const bulkActionsPanelSource = await readFile(new URL('../client/src/design-studio/BulkActionsPanel.jsx', import.meta.url), 'utf8');
 const designStudioSource = await readFile(new URL('../client/src/design-studio/DesignStudio.jsx', import.meta.url), 'utf8');
 const frenchTipRenderingSource = await readFile(new URL('../client/src/design-studio/frenchTipRendering.js', import.meta.url), 'utf8');
+const propertiesPanelSource = await readFile(new URL('../client/src/design-studio/PropertiesPanel.jsx', import.meta.url), 'utf8');
 const blueprint = await import(`data:text/javascript;charset=utf-8,${encodeURIComponent(source)}`);
 
 const {
@@ -244,10 +245,14 @@ const classicFrench = frenchTipLayer(frenchActive, 'classic', 'soft');
 assert.equal(classicFrench.type, 'frenchTip', 'classic French creates the dedicated French Tip layer type');
 assert.equal(classicFrench.data.style, 'classic', 'classic French rendering preserves style data');
 assert(normalizeFrenchTipData({ style: 'deep', preset: 'deep' }).smileDepth >= FRENCH_TIP_PRESETS.medium.smileDepth, 'deep smile line preset increases smile depth deterministically');
-for (const style of ['angled', 'v-french', 'reverse']) assert.equal(normalizeFrenchTipData({ style }).style, style, `${style} French data survives normalization`);
+for (const style of ['angled', 'v', 'reverse']) assert.equal(normalizeFrenchTipData({ style }).style, style, `${style} French data survives normalization`);
 const tallerFrench = normalizeFrenchTipData({ tipHeight: 0.6, smileCurve: 0.75 });
 assert.equal(tallerFrench.tipHeight, 0.6, 'tip height changes are preserved');
 assert.equal(tallerFrench.smileCurve, 0.75, 'curve changes are preserved');
+const zeroFrench = normalizeFrenchTipData({ tipHeight: 0.08, smileCurve: 0, smileDepth: 0, smileWidth: 0.25, rotation: 0 });
+assert.equal(zeroFrench.smileCurve, 0, 'zero smile curve survives French Tip normalization');
+assert.equal(zeroFrench.smileDepth, 0, 'zero smile depth survives French Tip normalization');
+assert(propertiesPanelSource.includes('layer.data.smileCurve ?? 0.32') && propertiesPanelSource.includes('layer.data.smileDepth ?? 0.24') && propertiesPanelSource.includes('layer.data.smileWidth ?? 0.82') && propertiesPanelSource.includes('layer.data.tipHeight ?? 0.32') && propertiesPanelSource.includes('layer.data.rotation ?? 0'), 'Properties panel preserves zero-valued French Tip sliders with nullish fallbacks');
 const withFrench = { ...frenchBase, nails: frenchBase.nails.map((n) => n.id === frenchActive.id ? { ...n, layers: [...n.layers, classicFrench] } : n) };
 const handApplied = applyFrenchTipToSlots(withFrench, classicFrench, blueprint.RIGHT_HAND_SLOTS);
 assert.equal(handApplied.nails.filter((n) => n.slot.startsWith('right') && n.layers.some((l) => l.type === 'frenchTip')).length, 5, 'apply to hand adds French Tip to current hand nails');
@@ -258,6 +263,7 @@ assert.equal(reloadedFrench.nails.filter((n) => n.layers.some((l) => l.type === 
 const changedShapeFrench = blueprint.revalidateLayersAfterNailResize({ ...withFrench, nails: withFrench.nails.map((n) => n.id === frenchActive.id ? { ...n, shape: 'Stiletto', width: 0.1, length: 0.2 } : n) });
 assert(changedShapeFrench.nails.find((n) => n.id === frenchActive.id).layers.some((l) => l.type === 'frenchTip'), 'shape-change revalidation preserves French Tip layers');
 assert(frenchTipRenderingSource.includes('clipPath={`url(#${clipId})`}') && frenchTipRenderingSource.includes('data-french-tip-style'), 'preview rendering clips French Tip vectors and exposes deterministic style markers');
+assert(frenchTipRenderingSource.includes('function rotatePath(rotation, cx, cy)') && frenchTipRenderingSource.includes('`rotate(${rotation} ${cx} ${cy})`') && !frenchTipRenderingSource.includes(' ${path}`'), 'angled French Tip transform returns only valid SVG transform text without path commands');
 assert(nailCanvasSource.includes('layer.type === "frenchTip"') && nailThumbnailSource.includes('layer.type === "frenchTip"'), 'main canvas and full-set preview render French Tip layers');
 assert(designStudioSource.includes('Add French Tip') && designStudioSource.includes('Apply to current hand') && designStudioSource.includes('Apply to all nails'), 'Design Studio exposes French Tip controls and bulk apply actions');
 
@@ -389,6 +395,9 @@ assert.deepEqual(twice, once, 'strict-fit revalidation is idempotent without ano
 const summary = blueprint.summarizeFullSetAssets(decorated);
 assert.equal(summary.nailCount, 10, 'product-use summary counts nails');
 assert.equal(summary.charmsByAssetId['charm-bow'], 1, 'product-use summary counts visible valid charms by assetId');
+const frenchSummary = blueprint.summarizeFullSetAssets(allApplied);
+assert.equal(frenchSummary.visibleFrenchTipLayerCount, 10, 'product-use summary counts visible French Tip layers separately');
+assert.equal(frenchSummary.visiblePatternLayerCount, 0, 'product-use summary does not fold French Tips into pattern counts');
 assert(designStudioSource.includes('window.setTimeout(() => {') && designStudioSource.includes('}, 20000)'), 'autosave uses a debounced 20 second cadence');
 assert(designStudioSource.includes('function clearAutosaveTimer()') && designStudioSource.includes('autosaveTimerRef.current = null'), 'pending autosave timers are cleared and nulled when no longer needed');
 assert(designStudioSource.includes('autosaveSessionRef') && designStudioSource.includes('scheduledSession !== autosaveSessionRef.current'), 'autosave timer callbacks are guarded by editor session tokens');

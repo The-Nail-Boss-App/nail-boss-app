@@ -482,7 +482,7 @@ Revalidation is idempotent. Running the same validation twice without another ge
 
 Blueprint metadata can now store tags, optional internal artist notes, an estimated service price placeholder, and a style category: Minimal, French, Glam, Abstract, Bridal, Seasonal, or Custom. No schema migration is required because the data lives inside the existing blueprint metadata object.
 
-`summarizeFullSetAssets()` provides deterministic product-use hooks for later pricing and inventory work. It counts nails, visible valid charms by asset ID, visible valid jewels by asset ID, visible valid decals by asset ID, visible drawing-layer count, visible gradient-layer count, and visible pattern-layer count. Invalid off-silhouette asset geometry is excluded.
+`summarizeFullSetAssets()` provides deterministic product-use hooks for later pricing and inventory work. It counts nails, visible valid charms by asset ID, visible valid jewels by asset ID, visible valid decals by asset ID, visible drawing-layer count, visible gradient-layer count, visible pattern-layer count, and visible French Tip layer count. French Tip layers are counted separately from pattern layers so future pricing and inventory logic can keep those product categories distinct. Invalid off-silhouette asset geometry is excluded.
 
 ### Save, load, and proposal compatibility
 
@@ -568,7 +568,7 @@ Milestone 5.1 adds a dedicated `frenchTip` blueprint layer for practical salon F
 
 A French Tip layer uses `type: "frenchTip"` and stores normalized vector controls in `layer.data`:
 
-- `style` — one of `classic`, `deep`, `angled`, `v-french`, or `reverse`.
+- `style` — one of `classic`, `deep`, `angled`, `v`, or `reverse`.
 - `preset` — one of `soft`, `medium`, or `deep` for quick smile-line starting points.
 - `tipHeight` — normalized tip coverage from the free edge.
 - `smileCurve` — normalized curve lift for the smile line.
@@ -578,6 +578,8 @@ A French Tip layer uses `type: "frenchTip"` and stores normalized vector control
 - `rotation` — a bounded angle used for angled or rotated French layouts.
 
 The layer also keeps standard layer fields (`id`, `name`, `visible`, `locked`, `opacity`, `order`, and `transform`) so autosave, undo/redo, layer ordering, saved/reloaded designs, proposal compatibility, and bulk copy/paste/mirror continue to operate through the existing blueprint architecture.
+
+Backend blueprint validation accepts only the documented French Tip styles (`classic`, `deep`, `angled`, `v`, `reverse`) and presets (`soft`, `medium`, `deep`). It validates `colorHex` as a hex color and enforces the same practical frontend ranges for `tipHeight` (0.08–0.72), `smileCurve` (0–1), `smileDepth` (0–0.65), `smileWidth` (0.25–1), layer opacity (0–1), and `rotation` (-45–45). Malformed French Tip payloads are rejected with blueprint validation errors rather than persisted raw. Existing legacy `v-french` style payloads are normalized to the supported `v` style on save.
 
 ### Controls
 
@@ -589,6 +591,7 @@ The Design Studio now includes a French Tip Precision panel and top-toolbar acti
 - **Preset** switches between `soft`, `medium`, and `deep` smile-line defaults.
 - **Style** switches between classic French, deep French, angled French, V-French, and reverse French.
 - The Properties panel also exposes French Tip layer controls, including smile width, opacity, and angle.
+- Zero-valued smile controls are valid: Smile curve and Smile depth can remain at `0` without the UI falling back to preset defaults.
 
 ### Presets and styles
 

@@ -1,7 +1,7 @@
 import { VIEWBOX, clamp, getNailGeometry, normalizeFrenchTipData } from "./blueprint.js";
 
-function rotatePath(path, rotation, cx, cy) {
-  return rotation ? `rotate(${rotation} ${cx} ${cy}) ${path}` : undefined;
+function rotatePath(rotation, cx, cy) {
+  return rotation ? `rotate(${rotation} ${cx} ${cy})` : undefined;
 }
 
 export function frenchTipPath(layer, nail) {
@@ -24,7 +24,7 @@ export function frenchTipPath(layer, nail) {
     return `M ${g.left} ${g.topY} L ${g.right} ${g.topY} L ${right} ${cutY} Q ${g.cx} ${cupY} ${left} ${cutY} Z`;
   }
 
-  if (data.style === "v-french") {
+  if (data.style === "v") {
     const pointY = clamp(tipY + depth + g.height * 0.08, g.topY, g.bottomY);
     return `M ${left} ${tipY} L ${g.cx} ${pointY} L ${right} ${tipY} L ${g.right} ${g.bottomY} L ${g.left} ${g.bottomY} Z`;
   }
@@ -39,6 +39,6 @@ export function FrenchTipShape({ layer, nail, clipId, thumbnail = false }) {
   const path = frenchTipPath(layer, nail);
   const rotation = data.style === "angled" ? data.rotation || 0 : data.rotation;
   return <g clipPath={`url(#${clipId})`} opacity={layer.opacity} data-layer-type="frenchTip" data-french-tip-style={data.style}>
-    <path d={path} fill={data.colorHex} transform={rotatePath(path, rotation, VIEWBOX.cx, getNailGeometry(nail).bottomY)} stroke={thumbnail ? "none" : "rgba(59,31,53,.12)"} strokeWidth={thumbnail ? 0 : 1.5}/>
+    <path d={path} fill={data.colorHex} transform={rotatePath(rotation, VIEWBOX.cx, getNailGeometry(nail).bottomY)} stroke={thumbnail ? "none" : "rgba(59,31,53,.12)"} strokeWidth={thumbnail ? 0 : 1.5}/>
   </g>;
 }

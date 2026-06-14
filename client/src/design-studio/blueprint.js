@@ -2,7 +2,7 @@ export const SHAPES = ["Almond", "Coffin", "Square", "Stiletto", "Oval"];
 export const EFFECTS = ["Solid", "Gradient", "Chrome", "CatEye", "Marble"];
 export const PATTERNS = ["dots", "stripes", "checker", "french-tip", "glitter", "marble"];
 export const GRADIENT_DIRECTIONS = ["vertical", "horizontal", "diagonal", "reverse-diagonal"];
-export const FRENCH_TIP_STYLES = ["classic", "deep", "angled", "v-french", "reverse"];
+export const FRENCH_TIP_STYLES = ["classic", "deep", "angled", "v", "reverse"];
 export const FRENCH_TIP_PRESETS = {
   soft: { tipHeight: 0.24, smileCurve: 0.18, smileDepth: 0.14, smileWidth: 0.72, rotation: 0 },
   medium: { tipHeight: 0.32, smileCurve: 0.32, smileDepth: 0.24, smileWidth: 0.82, rotation: 0 },
@@ -791,7 +791,7 @@ export function resetNailDesign(blueprint, slot) {
 }
 
 export function summarizeFullSetAssets(blueprint) {
-  const summary = { nailCount: 0, charmsByAssetId: {}, jewelsByAssetId: {}, decalsByAssetId: {}, visibleDrawingLayerCount: 0, visibleGradientLayerCount: 0, visiblePatternLayerCount: 0 };
+  const summary = { nailCount: 0, charmsByAssetId: {}, jewelsByAssetId: {}, decalsByAssetId: {}, visibleDrawingLayerCount: 0, visibleGradientLayerCount: 0, visiblePatternLayerCount: 0, visibleFrenchTipLayerCount: 0 };
   for (const nail of blueprint?.nails || []) {
     summary.nailCount += 1;
     for (const layer of nail.layers || []) {
@@ -803,7 +803,8 @@ export function summarizeFullSetAssets(blueprint) {
       }
       if (layer.type === "drawing") summary.visibleDrawingLayerCount += 1;
       if (layer.type === "gradient") summary.visibleGradientLayerCount += 1;
-      if (layer.type === "pattern" || layer.type === "frenchTip") summary.visiblePatternLayerCount += 1;
+      if (layer.type === "pattern") summary.visiblePatternLayerCount += 1;
+      if (layer.type === "frenchTip") summary.visibleFrenchTipLayerCount += 1;
     }
   }
   return summary;

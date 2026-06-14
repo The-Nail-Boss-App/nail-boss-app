@@ -97,7 +97,9 @@ function layeredBlueprint() {
         transform: { x: 0.5, y: 0.5, scaleX: 1, scaleY: 1, rotation: index * 5 },
         data: type === "base"
           ? { colorHex: "#112233", effect: "Gradient", effectColorHex: "#ABCDEF" }
-          : { colorHex: "#ABCDEF", effectColorHex: "#FFFFFF", label: `${type} payload` },
+          : type === "frenchTip"
+            ? { style: "classic", preset: "medium", colorHex: "#ABCDEF", tipHeight: 0.32, smileCurve: 0.32, smileDepth: 0.24, smileWidth: 0.82, rotation: 0 }
+            : { colorHex: "#ABCDEF", effectColorHex: "#FFFFFF", label: `${type} payload` },
       })),
     }],
     metadata: { tags: ["layered", "smoke"] },
@@ -262,6 +264,23 @@ function designPayload(name = "Atomic Layered Smoke") {
 function oversizedBlueprint() {
   const blueprint = layeredBlueprint();
   blueprint.metadata.notes = "x".repeat(MAX_BLUEPRINT_JSON_BYTES + 1);
+  return blueprint;
+}
+
+function frenchTipValidationBlueprint(data) {
+  const blueprint = layeredBlueprint();
+  blueprint.nails[0].layers = blueprint.nails[0].layers.filter((layer) => layer.type !== "frenchTip");
+  blueprint.nails[0].layers.push({
+    id: "french-validation",
+    type: "frenchTip",
+    name: "French validation",
+    visible: true,
+    locked: false,
+    opacity: 1,
+    order: 99,
+    transform: { x: 0.5, y: 0.5, scaleX: 1, scaleY: 1, rotation: 0 },
+    data,
+  });
   return blueprint;
 }
 
@@ -518,6 +537,23 @@ async function runFlow() {
   assert(res.status === 200, "PUT /api/designs/:id/blueprint should return 200");
   assert(res.body.document.nails[0].layers.length === 8, "layered blueprint should round-trip all layer examples");
   assert(res.body.document.nails[0].layers.some((layer) => layer.type === "jewel"), "layered blueprint should include jewel layer");
+
+  const validFrenchTipData = { style: "angled", preset: "deep", colorHex: "#ABCDEF", tipHeight: 0.42, smileCurve: 0, smileDepth: 0, smileWidth: 0.82, rotation: -30 };
+  res = await request("PUT", `/api/designs/${designId}/blueprint`, frenchTipValidationBlueprint(validFrenchTipData));
+  assert(res.status === 200, "valid French Tip layer data should save successfully");
+  const savedFrenchTip = res.body.document.nails[0].layers.find((layer) => layer.type === "frenchTip");
+  assert(savedFrenchTip.data.smileCurve === 0 && savedFrenchTip.data.smileDepth === 0 && savedFrenchTip.data.rotation === -30, "French Tip validation should preserve valid zero sliders and rotations");
+
+  for (const [label, patch] of [
+    ["invalid style", { style: "sideways" }],
+    ["invalid preset", { preset: "banana" }],
+    ["invalid numeric range", { tipHeight: 999 }],
+    ["invalid rotation type", { rotation: "bad" }],
+    ["invalid color", { colorHex: "not-a-color" }],
+  ]) {
+    res = await request("PUT", `/api/designs/${designId}/blueprint`, frenchTipValidationBlueprint({ ...validFrenchTipData, ...patch }));
+    assert(res.status === 400, `${label} French Tip data should be rejected`);
+  }
 
   res = await request("GET", `/api/designs/${designId}`);
   assert(res.status === 200, "GET /api/designs/:id should return 200 after blueprint update");
