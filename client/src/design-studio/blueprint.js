@@ -564,7 +564,9 @@ export function synchronizeBase(blueprint, patch) {
         catEyeIntensity: patch.catEyeIntensity ?? layer.data.catEyeIntensity,
         chromeIntensity: patch.chromeIntensity ?? layer.data.chromeIntensity,
       };
+      const patchHasMeaningfulLegacyEffect = Object.prototype.hasOwnProperty.call(patch, "effect") && MEANINGFUL_LEGACY_EFFECTS.includes(patch.effect);
       if (POLISH_TYPES.includes(patch.polishType)) data.polishType = patch.polishType;
+      else if (patchHasMeaningfulLegacyEffect) delete data.polishType;
       else if (POLISH_TYPES.includes(layer.data.polishType)) data.polishType = layer.data.polishType;
       else delete data.polishType;
       const normalizedPolish = normalizePolishData(data, data.colorHex);
