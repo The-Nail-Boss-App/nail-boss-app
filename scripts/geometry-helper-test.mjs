@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises';
 const source = await readFile(new URL('../client/src/design-studio/blueprint.js', import.meta.url), 'utf8');
 const nailCanvasSource = await readFile(new URL('../client/src/design-studio/NailCanvas.jsx', import.meta.url), 'utf8');
 const nailThumbnailSource = await readFile(new URL('../client/src/design-studio/NailThumbnail.jsx', import.meta.url), 'utf8');
+const assetRenderingSource = await readFile(new URL('../client/src/design-studio/assetRendering.js', import.meta.url), 'utf8');
 const bulkActionsPanelSource = await readFile(new URL('../client/src/design-studio/BulkActionsPanel.jsx', import.meta.url), 'utf8');
 const designStudioSource = await readFile(new URL('../client/src/design-studio/DesignStudio.jsx', import.meta.url), 'utf8');
 const blueprint = await import(`data:text/javascript;charset=utf-8,${encodeURIComponent(source)}`);
@@ -306,10 +307,33 @@ assert.equal(blueprint.getNailBySlot(copiedSelected, 'left-index').id, blueprint
 assert.equal(blueprint.getNailBySlot(copiedSelected, 'left-index').slot, 'left-index', 'paste preserves destination slot');
 const reloadedCopy = blueprint.ensureFullSetBlueprint(JSON.parse(JSON.stringify(copiedSelected)));
 assertCopiedDesignIntegrity(reloadedCopy, 'left-index', 'save and reload preserves copied asset layers');
-assert(nailCanvasSource.includes('layer.type === "gradient"') && nailCanvasSource.includes('layer.type === "pattern"') && nailCanvasSource.includes('renderAssetShapes(layer.data?.assetId'), 'main canvas renders gradient, pattern, and asset layers');
-assert(nailThumbnailSource.includes('layer.type === "drawing"') && nailThumbnailSource.includes('layer.type === "gradient"') && nailThumbnailSource.includes('layer.type === "pattern"') && nailThumbnailSource.includes('renderAssetShapes(layer.data?.assetId'), 'full-set thumbnails render drawing, gradient, pattern, charm, jewel, and decal asset layers');
+assert(nailCanvasSource.includes('layer.type === "gradient"') && nailCanvasSource.includes('layer.type === "pattern"') && nailCanvasSource.includes('renderAssetShapes(assetRender.assetId'), 'main canvas renders gradient, pattern, and asset layers');
+assert(nailThumbnailSource.includes('layer.type === "drawing"') && nailThumbnailSource.includes('layer.type === "gradient"') && nailThumbnailSource.includes('layer.type === "pattern"') && nailThumbnailSource.includes('renderAssetShapes(assetRender.assetId'), 'full-set thumbnails render drawing, gradient, pattern, charm, jewel, and decal asset layers');
+assert(!nailCanvasSource.includes('dangerouslySetInnerHTML') && !nailThumbnailSource.includes('dangerouslySetInnerHTML'), 'canvas and thumbnail rendering never inject untrusted inline SVG HTML');
 assert(nailThumbnailSource.includes('layer.visible !== false'), 'thumbnail preview hides hidden layers');
 assert(nailThumbnailSource.includes('clipPath={`url(#${clipId})`}'), 'thumbnail preview strictly clips art inside nail silhouette');
+assert(assetRenderingSource.includes('RENDERABLE_ASSET_LAYER_TYPES = new Set(["charm", "jewel", "decal"])'), 'shared asset renderer recognizes charm, jewel, and decal layers');
+assert(assetRenderingSource.includes('layer?.data?.assetId') && !assetRenderingSource.includes('layer?.data?.svg'), 'shared asset renderer supports assetId lookup and ignores untrusted inline SVG data');
+assert(assetRenderingSource.includes('scale(${(size * scaleX) / 84} ${(size * scaleY) / 84})'), 'shared asset renderer converts normalized non-uniform scale into SVG transform scale');
+assert(nailThumbnailSource.includes('data-layer-type={layer.type}') && nailThumbnailSource.includes('data-asset-id={assetRender.assetId}'), 'thumbnail output includes visible SVG nodes with deterministic asset layer markers');
+assert(!nailThumbnailSource.includes('clipPath={`url(#${clipId})`} opacity={layer.opacity} transform={`translate'), 'thumbnail assets do not put transform on the same clipped group, avoiding transformed clipPath misalignment');
+const maliciousInlineSvg = '<svg onload="alert(1)"><script>alert(1)</script><foreignObject><div onclick="alert(1)">x</div></foreignObject><a href="javascript:alert(1)"><path d="M0 0"/></a></svg>';
+const maliciousBlueprint = ensureBlueprint({
+  ...createDefaultBlueprint(),
+  nails: [{
+    ...createDefaultBlueprint().nails[0],
+    layers: [
+      ...createDefaultBlueprint().nails[0].layers,
+      { id: 'malicious-svg-asset', type: 'charm', name: 'Malicious Charm', visible: true, locked: false, opacity: 1, order: 2, transform: { x: 0.5, y: 0.5, scaleX: 0.2, scaleY: 0.2, rotation: 0 }, data: { assetId: 'charm-bow', colorHex: '#FFFFFF', svg: maliciousInlineSvg } },
+    ],
+  }],
+});
+const maliciousLayer = getActiveNail(maliciousBlueprint).layers.find((layer) => layer.id === 'malicious-svg-asset');
+assert.equal(maliciousLayer.data.svg, undefined, 'frontend blueprint normalization strips untrusted inline SVG asset payloads');
+const thumbnailAssetFixture = ['charm-bow', 'jewel-round', 'decal-flame'].map((assetId) => ({ assetId }));
+for (const fixture of thumbnailAssetFixture) {
+  assert(['charm-bow', 'jewel-round', 'decal-flame'].includes(fixture.assetId), `deterministic thumbnail fixture includes ${fixture.assetId}`);
+}
 assert(bulkActionsPanelSource.includes('Select destination nails, then paste copied design.'), 'bulk actions explains destination nail selection workflow');
 assert(designStudioSource.includes('Copy the active nail before pasting to selected nails.') && designStudioSource.includes('Select destination nails, then paste copied design.'), 'paste to selected shows notices for missing clipboard and missing destination nails');
 

@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from "react";
 import { COLORS } from "../styles.js";
 import { renderAssetShapes } from "./assets.js";
 import { VIEWBOX, buildNailPath, constrainStrokePoints, getNailGeometry, normalizedToSvg, projectPointInsideNailSilhouette, svgToNormalized, layerSort } from "./blueprint.js";
+import { assetLayerRenderProps } from "./assetRendering.js";
 
 function EffectDefs({ baseLayer, uid }) {
   const data = baseLayer?.data || {};
@@ -188,10 +189,11 @@ export default function NailCanvas({ nail, layers, selectedLayerId, mode, brush,
     }
     const p = normalizedToSvg(layer.transform, nail);
     const size = Math.min(geometry.width, geometry.height) * layer.transform.scaleX;
+    const assetRender = assetLayerRenderProps(layer, nail);
     const selected = selectedLayerId === layer.id;
-    return <g key={layer.id} clipPath={`url(#${clipId})`} opacity={layer.opacity} onPointerDown={(e) => pointerDown(e, layer)} style={{ cursor: layer.locked ? "not-allowed" : "grab" }}>
-      <g transform={`translate(${p.x} ${p.y}) rotate(${layer.transform.rotation}) scale(${size / 84})`}>
-        {renderAssetShapes(layer.data?.assetId, layer.data?.colorHex)}
+    return <g key={layer.id} clipPath={`url(#${clipId})`} opacity={assetRender.opacity} onPointerDown={(e) => pointerDown(e, layer)} style={{ cursor: layer.locked ? "not-allowed" : "grab" }} data-layer-type={layer.type} data-asset-id={assetRender.assetId}>
+      <g transform={assetRender.innerTransform}>
+        {renderAssetShapes(assetRender.assetId, assetRender.colorHex)}
       </g>
       {selected && <g pointerEvents="none"><rect x={p.x - size / 2} y={p.y - size / 2} width={size} height={size} rx="8" fill="none" stroke={COLORS.plum} strokeWidth="2" strokeDasharray="5 4"/><circle cx={p.x + size / 2} cy={p.y + size / 2} r="5" fill={COLORS.plum}/><path d={`M${p.x} ${p.y - size / 2 - 14} L${p.x} ${p.y - size / 2 - 2}`} stroke={COLORS.plum} strokeWidth="2"/><circle cx={p.x} cy={p.y - size / 2 - 18} r="5" fill="#fff" stroke={COLORS.plum} strokeWidth="2"/></g>}
     </g>;

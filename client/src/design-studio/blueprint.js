@@ -375,10 +375,16 @@ function cloneInactiveNailVerbatim(nail) {
     layers: nail.layers.map((layer) => ({
       ...layer,
       transform: { ...layer.transform },
-      data: { ...layer.data },
+      data: normalizeLayerData(layer),
     })),
     ...(isPlainObject(nail.metadata) ? { metadata: { ...nail.metadata } } : {}),
   };
+}
+
+function normalizeLayerData(layer) {
+  const data = { ...(layer.data || {}) };
+  if (["charm", "jewel", "decal"].includes(layer.type)) delete data.svg;
+  return data;
 }
 
 function normalizeEditableNail(raw, fallback, index) {
@@ -403,7 +409,7 @@ function normalizeEditableNail(raw, fallback, index) {
       opacity: clamp(layer.opacity ?? 1, 0, 1),
       order: Number.isFinite(layer.order) ? layer.order : layerIndex,
       transform: safeTransform(layer.transform || {}, nail, layer.type),
-      data: { ...(layer.data || {}) },
+      data: normalizeLayerData(layer),
     };
     if (normalized.type === "drawing") {
       normalized.data.strokes = (normalized.data.strokes || []).map((stroke) => ({ ...stroke, points: constrainStrokePoints(stroke.points || [], nail) }));

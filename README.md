@@ -180,6 +180,13 @@ Milestone 4 turns the React studio into a Canva-style layered visual editor back
 
 All starter assets are generic inline SVG shapes stored in the repository. No external URLs, branded icons, licensed marketplace assets, or bitmap screenshots are required for persistence.
 
+**Inline SVG security policy:**
+
+- Blueprint `layer.data.svg` is not trusted because saved or imported blueprints can contain arbitrary layer data.
+- Runtime rendering supports built-in charm, jewel, and decal artwork by resolving known internal `layer.data.assetId` values through `assets.js`.
+- Untrusted inline SVG from blueprint data is ignored during canvas and thumbnail rendering, and frontend blueprint normalization strips `svg` fields from charm, jewel, and decal layer data.
+- Full-set previews render built-in charms, jewels, and decals safely from internal asset IDs while preserving asset color, opacity, position, scale, rotation, clipping, and layer order.
+
 **Silhouette-based strict-fit architecture:**
 
 - The active nail silhouette is treated as a hard physical design boundary. SVG clip paths remain in place as a rendering safety layer, but persisted artwork is also validated before it is saved or displayed.
@@ -538,3 +545,17 @@ Known limitation: browser unload protection depends on native browser confirmati
 Pending autosave timers are cleared and nulled whenever the editor becomes clean, including successful manual saves, successful autosaves with no newer local edits, loaded/replaced designs, clean new designs, explicit discard/replacement flows, and studio unmount cleanup. Queued follow-up autosaves are preserved when newer local edits remain dirty.
 
 Each scheduled autosave captures the current editor-session token. Timer callbacks clear their own timer ref, verify the studio is still mounted, verify the captured session still matches the current draft/session, and verify `dirtyRef.current` is still true before calling `save({ autosave: true })`. Starting a new draft or loading/replacing editor state increments the session token, preventing a timer created for one draft from saving a later clean replacement draft or generating an unwanted `Untitled Set` row.
+
+### Manual QA: full-set asset thumbnail rendering
+
+Use this focused regression check for full-set previews after bulk copying asset artwork:
+
+1. Create or open a full-set nail design.
+2. On one nail, add at least one charm, one jewel, and one decal layer. Add a drawing stroke too so mixed layer ordering is visible.
+3. Use **Duplicate all** from the bulk actions panel.
+4. Confirm the full-set preview shows the charm, jewel, and decal on every copied nail thumbnail.
+5. Confirm the left-hand and right-hand filtered hand previews also show the charm, jewel, and decal.
+6. Copy the decorated nail, select a different destination nail, and use **Paste selected**; confirm the selected nail preview shows all asset types.
+7. Use **Mirror hand**; confirm the destination hand previews show all asset types.
+8. Click an individual copied thumbnail and confirm the Layers panel still lists the copied charm, jewel, decal, drawing, and base layers.
+9. Save the design, reload it, and confirm both the copied layers and the full-set/hand preview rendering still show the charm, jewel, and decal.
