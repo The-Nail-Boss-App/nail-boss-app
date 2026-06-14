@@ -16,7 +16,6 @@ export function assetLayerRenderProps(layer, nail) {
   return {
     assetId: layer?.data?.assetId || "",
     colorHex: layer?.data?.colorHex || "#FFFFFF",
-    inlineSvg: layer?.data?.svg || "",
     opacity: layer?.opacity ?? 1,
     outerTransform: null,
     innerTransform: `translate(${point.x} ${point.y}) rotate(${transform.rotation ?? 0}) scale(${(size * scaleX) / 84} ${(size * scaleY) / 84})`,

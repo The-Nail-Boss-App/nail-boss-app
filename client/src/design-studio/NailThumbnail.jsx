@@ -27,7 +27,7 @@ export default function NailThumbnail({ nail, active = false, onClick }) {
         const assetRender = assetLayerRenderProps(layer, nail);
         return <g key={layer.id} clipPath={`url(#${clipId})`} opacity={assetRender.opacity} data-layer-type={layer.type} data-asset-id={assetRender.assetId}>
           <g transform={assetRender.innerTransform}>
-            {assetRender.inlineSvg ? <g dangerouslySetInnerHTML={{ __html: assetRender.inlineSvg }}/> : renderAssetShapes(assetRender.assetId, assetRender.colorHex)}
+            {renderAssetShapes(assetRender.assetId, assetRender.colorHex)}
           </g>
         </g>;
       })}

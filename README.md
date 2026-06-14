@@ -180,6 +180,13 @@ Milestone 4 turns the React studio into a Canva-style layered visual editor back
 
 All starter assets are generic inline SVG shapes stored in the repository. No external URLs, branded icons, licensed marketplace assets, or bitmap screenshots are required for persistence.
 
+**Inline SVG security policy:**
+
+- Blueprint `layer.data.svg` is not trusted because saved or imported blueprints can contain arbitrary layer data.
+- Runtime rendering supports built-in charm, jewel, and decal artwork by resolving known internal `layer.data.assetId` values through `assets.js`.
+- Untrusted inline SVG from blueprint data is ignored during canvas and thumbnail rendering, and frontend blueprint normalization strips `svg` fields from charm, jewel, and decal layer data.
+- Full-set previews render built-in charms, jewels, and decals safely from internal asset IDs while preserving asset color, opacity, position, scale, rotation, clipping, and layer order.
+
 **Silhouette-based strict-fit architecture:**
 
 - The active nail silhouette is treated as a hard physical design boundary. SVG clip paths remain in place as a rendering safety layer, but persisted artwork is also validated before it is saved or displayed.
