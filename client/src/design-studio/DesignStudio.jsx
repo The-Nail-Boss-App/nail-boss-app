@@ -625,7 +625,12 @@ function DesignStudio(_, ref) {
 
   function confirmBulk(message) { return window.confirm(message); }
   function copyActiveNail() { setClipboardNail(JSON.parse(JSON.stringify(activeNail))); showNotice("Active nail copied."); }
-  function pasteToSelected() { if (!clipboardNail || !selectedSlots.length || !confirmBulk("Overwrite selected nail designs?")) return; commit({ ...blueprint, nails: blueprint.nails.map((nail) => selectedSlots.includes(nail.slot) ? cloneNailDesign(clipboardNail, nail) : nail) }, { noticeMessage: "Copied artwork was re-fit where needed." }); }
+  function pasteToSelected() {
+    if (!clipboardNail) { showNotice("Copy the active nail before pasting to selected nails."); return; }
+    if (!selectedSlots.length) { showNotice("Select destination nails, then paste copied design."); return; }
+    if (!confirmBulk("Overwrite selected nail designs?")) return;
+    commit({ ...blueprint, nails: blueprint.nails.map((nail) => selectedSlots.includes(nail.slot) ? cloneNailDesign(clipboardNail, nail) : nail) }, { noticeMessage: "Copied artwork was re-fit where needed." });
+  }
   function duplicateActive(scope) { const targets = slotsFor(scope); if (!targets.length || !confirmBulk("Overwrite destination nail designs?")) return; commit(copyNailToSlots(blueprint, activeSlot, targets), { noticeMessage: "Copied artwork was re-fit where needed." }); }
   function mirrorHand(hand) { if (!confirmBulk("Mirror this hand to the opposite hand?")) return; commit(mirrorHandDesign(blueprint, hand), { noticeMessage: "Mirrored nails were re-fit where needed." }); }
   function applyBase(scope) { const targets = slotsFor(scope); if (!confirmBulk("Apply active base color to these nails?")) return; commit(applyBaseToSlots(blueprint, { baseColorHex: getVisibleBaseColor(activeNail) }, targets)); }
