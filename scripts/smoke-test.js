@@ -75,7 +75,7 @@ function assert(condition, message) {
 }
 
 function layeredBlueprint() {
-  const layerTypes = ["base", "gradient", "pattern", "drawing", "charm", "decal", "jewel"];
+  const layerTypes = ["base", "gradient", "pattern", "drawing", "charm", "decal", "jewel", "frenchTip"];
   return {
     schemaVersion: 1,
     canvas: { mode: "single-nail", activeNailId: "nail-1" },
@@ -516,7 +516,7 @@ async function runFlow() {
   const blueprint = layeredBlueprint();
   res = await request("PUT", `/api/designs/${designId}/blueprint`, blueprint);
   assert(res.status === 200, "PUT /api/designs/:id/blueprint should return 200");
-  assert(res.body.document.nails[0].layers.length === 7, "layered blueprint should round-trip all layer examples");
+  assert(res.body.document.nails[0].layers.length === 8, "layered blueprint should round-trip all layer examples");
   assert(res.body.document.nails[0].layers.some((layer) => layer.type === "jewel"), "layered blueprint should include jewel layer");
 
   res = await request("GET", `/api/designs/${designId}`);
@@ -627,7 +627,7 @@ async function main() {
 
     res = await request("GET", `/api/designs/${ids.designId}/blueprint`);
     assert(res.status === 200, "blueprint should persist across restart with explicit test DB file");
-    assert(res.body.document.nails[0].layers.length === 7, "layered blueprint should survive restart");
+    assert(res.body.document.nails[0].layers.length === 8, "layered blueprint should survive restart");
 
     res = await request("GET", `/api/proposals/${ids.proposalId}`);
     assert(res.status === 200, "proposal should persist across restart with explicit test DB file");

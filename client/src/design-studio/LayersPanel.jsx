@@ -2,7 +2,7 @@ import { COLORS } from "../styles.js";
 import { UI } from "./studioStyles.js";
 import { layerSort } from "./blueprint.js";
 
-const LABELS = { base: "Base", gradient: "Gradient", pattern: "Pattern", drawing: "Drawing", charm: "Charm", decal: "Decal", jewel: "Jewel" };
+const LABELS = { base: "Base", gradient: "Gradient", pattern: "Pattern", drawing: "Drawing", charm: "Charm", decal: "Decal", jewel: "Jewel", frenchTip: "French Tip" };
 
 export default function LayersPanel({ layers, selectedLayerId, onSelect, onToggleVisible, onToggleLock, onMove, onDelete }) {
   const ordered = [...layers].sort(layerSort).reverse();

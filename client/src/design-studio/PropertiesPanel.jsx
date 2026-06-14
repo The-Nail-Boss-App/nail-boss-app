@@ -1,6 +1,6 @@
 import { COLORS, S } from "../styles.js";
 import { EFFECTS } from "./blueprint.js";
-import { PATTERNS, GRADIENT_DIRECTIONS } from "./blueprint.js";
+import { PATTERNS, GRADIENT_DIRECTIONS, FRENCH_TIP_PRESETS, FRENCH_TIP_STYLES } from "./blueprint.js";
 import { findAsset } from "./assets.js";
 import { UI } from "./studioStyles.js";
 
@@ -51,6 +51,17 @@ export default function PropertiesPanel({ layer, onPatch, onDuplicate, onDelete 
         <Color label="Pattern color" value={layer.data.colorHex} onChange={(colorHex) => onPatch({ data: { ...layer.data, colorHex } })} disabled={disabled} />
         <Color label="Secondary color" value={layer.data.secondaryColorHex || "#3B1F35"} onChange={(secondaryColorHex) => onPatch({ data: { ...layer.data, secondaryColorHex } })} disabled={disabled} />
         <Range label="Opacity" value={Math.round(layer.opacity * 100)} min={5} max={100} onChange={(v) => onPatch({ opacity: v / 100 })} disabled={disabled} />
+      </>}
+      {layer.type === "frenchTip" && <>
+        <div style={UI.field}><label style={S.label}>Style</label><select style={S.input} value={layer.data.style || "classic"} disabled={disabled} onChange={(e) => onPatch({ data: { ...layer.data, style: e.target.value } })}>{FRENCH_TIP_STYLES.map((style) => <option key={style} value={style}>{style}</option>)}</select></div>
+        <div style={UI.field}><label style={S.label}>Smile preset</label><select style={S.input} value={layer.data.preset || "medium"} disabled={disabled} onChange={(e) => onPatch({ data: { ...layer.data, ...FRENCH_TIP_PRESETS[e.target.value], preset: e.target.value } })}>{Object.keys(FRENCH_TIP_PRESETS).map((preset) => <option key={preset} value={preset}>{preset}</option>)}</select></div>
+        <Color label="Tip color" value={layer.data.colorHex} onChange={(colorHex) => onPatch({ data: { ...layer.data, colorHex } })} disabled={disabled} />
+        <Range label="Tip height" value={Math.round((layer.data.tipHeight || 0.32) * 100)} min={8} max={72} onChange={(v) => onPatch({ data: { ...layer.data, tipHeight: v / 100 } })} disabled={disabled} />
+        <Range label="Smile curve" value={Math.round((layer.data.smileCurve || 0.32) * 100)} min={0} max={100} onChange={(v) => onPatch({ data: { ...layer.data, smileCurve: v / 100 } })} disabled={disabled} />
+        <Range label="Smile depth" value={Math.round((layer.data.smileDepth || 0.24) * 100)} min={0} max={65} onChange={(v) => onPatch({ data: { ...layer.data, smileDepth: v / 100 } })} disabled={disabled} />
+        <Range label="Smile width" value={Math.round((layer.data.smileWidth || 0.82) * 100)} min={25} max={100} onChange={(v) => onPatch({ data: { ...layer.data, smileWidth: v / 100 } })} disabled={disabled} />
+        <Range label="Opacity" value={Math.round(layer.opacity * 100)} min={5} max={100} onChange={(v) => onPatch({ opacity: v / 100 })} disabled={disabled} />
+        <Range label="Angle" value={Math.round(layer.data.rotation || 0)} min={-45} max={45} onChange={(v) => onPatch({ data: { ...layer.data, rotation: v } })} disabled={disabled} />
       </>}
       {layer.type === "drawing" && <>
         <Range label="Opacity" value={Math.round(layer.opacity * 100)} min={5} max={100} onChange={(v) => onPatch({ opacity: v / 100 })} disabled={disabled} />

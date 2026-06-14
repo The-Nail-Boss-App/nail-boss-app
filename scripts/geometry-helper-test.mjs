@@ -7,6 +7,7 @@ const nailThumbnailSource = await readFile(new URL('../client/src/design-studio/
 const assetRenderingSource = await readFile(new URL('../client/src/design-studio/assetRendering.js', import.meta.url), 'utf8');
 const bulkActionsPanelSource = await readFile(new URL('../client/src/design-studio/BulkActionsPanel.jsx', import.meta.url), 'utf8');
 const designStudioSource = await readFile(new URL('../client/src/design-studio/DesignStudio.jsx', import.meta.url), 'utf8');
+const frenchTipRenderingSource = await readFile(new URL('../client/src/design-studio/frenchTipRendering.js', import.meta.url), 'utf8');
 const blueprint = await import(`data:text/javascript;charset=utf-8,${encodeURIComponent(source)}`);
 
 const {
@@ -31,6 +32,10 @@ const {
   getVisibleBaseColor,
   synchronizeBase,
   updateActiveNail,
+  frenchTipLayer,
+  applyFrenchTipToSlots,
+  normalizeFrenchTipData,
+  FRENCH_TIP_PRESETS,
 } = blueprint;
 
 
@@ -232,6 +237,30 @@ assert(assetFitsNailSilhouette(resizedLayer.transform, resizedNail, resizedLayer
 assert.equal(quantitySummary(resized).charm, 1, 'quantity hooks count only valid visible charm geometry');
 
 
+
+const frenchBase = blueprint.ensureFullSetBlueprint(blueprint.createFullSetBlueprint({ baseColorHex: '#E8A0BF' }));
+const frenchActive = blueprint.getActiveNail(frenchBase);
+const classicFrench = frenchTipLayer(frenchActive, 'classic', 'soft');
+assert.equal(classicFrench.type, 'frenchTip', 'classic French creates the dedicated French Tip layer type');
+assert.equal(classicFrench.data.style, 'classic', 'classic French rendering preserves style data');
+assert(normalizeFrenchTipData({ style: 'deep', preset: 'deep' }).smileDepth >= FRENCH_TIP_PRESETS.medium.smileDepth, 'deep smile line preset increases smile depth deterministically');
+for (const style of ['angled', 'v-french', 'reverse']) assert.equal(normalizeFrenchTipData({ style }).style, style, `${style} French data survives normalization`);
+const tallerFrench = normalizeFrenchTipData({ tipHeight: 0.6, smileCurve: 0.75 });
+assert.equal(tallerFrench.tipHeight, 0.6, 'tip height changes are preserved');
+assert.equal(tallerFrench.smileCurve, 0.75, 'curve changes are preserved');
+const withFrench = { ...frenchBase, nails: frenchBase.nails.map((n) => n.id === frenchActive.id ? { ...n, layers: [...n.layers, classicFrench] } : n) };
+const handApplied = applyFrenchTipToSlots(withFrench, classicFrench, blueprint.RIGHT_HAND_SLOTS);
+assert.equal(handApplied.nails.filter((n) => n.slot.startsWith('right') && n.layers.some((l) => l.type === 'frenchTip')).length, 5, 'apply to hand adds French Tip to current hand nails');
+const allApplied = applyFrenchTipToSlots(withFrench, classicFrench, blueprint.FULL_SET_SLOTS);
+assert.equal(allApplied.nails.filter((n) => n.layers.some((l) => l.type === 'frenchTip')).length, 10, 'apply to all nails adds French Tip to every nail');
+const reloadedFrench = blueprint.ensureFullSetBlueprint(JSON.parse(JSON.stringify(allApplied)));
+assert.equal(reloadedFrench.nails.filter((n) => n.layers.some((l) => l.type === 'frenchTip')).length, 10, 'save and reload preserves French Tip layers');
+const changedShapeFrench = blueprint.revalidateLayersAfterNailResize({ ...withFrench, nails: withFrench.nails.map((n) => n.id === frenchActive.id ? { ...n, shape: 'Stiletto', width: 0.1, length: 0.2 } : n) });
+assert(changedShapeFrench.nails.find((n) => n.id === frenchActive.id).layers.some((l) => l.type === 'frenchTip'), 'shape-change revalidation preserves French Tip layers');
+assert(frenchTipRenderingSource.includes('clipPath={`url(#${clipId})`}') && frenchTipRenderingSource.includes('data-french-tip-style'), 'preview rendering clips French Tip vectors and exposes deterministic style markers');
+assert(nailCanvasSource.includes('layer.type === "frenchTip"') && nailThumbnailSource.includes('layer.type === "frenchTip"'), 'main canvas and full-set preview render French Tip layers');
+assert(designStudioSource.includes('Add French Tip') && designStudioSource.includes('Apply to current hand') && designStudioSource.includes('Apply to all nails'), 'Design Studio exposes French Tip controls and bulk apply actions');
+
 const fullSet = blueprint.ensureFullSetBlueprint(blueprint.createFullSetBlueprint({ baseColorHex: '#123456' }));
 assert.equal(fullSet.nails.length, 10, 'new full-set design initializes 10 nails');
 assert.equal(blueprint.getActiveNail(fullSet).slot, blueprint.DEFAULT_ACTIVE_SLOT, 'new full-set design activates the documented right-index default');
@@ -307,8 +336,8 @@ assert.equal(blueprint.getNailBySlot(copiedSelected, 'left-index').id, blueprint
 assert.equal(blueprint.getNailBySlot(copiedSelected, 'left-index').slot, 'left-index', 'paste preserves destination slot');
 const reloadedCopy = blueprint.ensureFullSetBlueprint(JSON.parse(JSON.stringify(copiedSelected)));
 assertCopiedDesignIntegrity(reloadedCopy, 'left-index', 'save and reload preserves copied asset layers');
-assert(nailCanvasSource.includes('layer.type === "gradient"') && nailCanvasSource.includes('layer.type === "pattern"') && nailCanvasSource.includes('renderAssetShapes(assetRender.assetId'), 'main canvas renders gradient, pattern, and asset layers');
-assert(nailThumbnailSource.includes('layer.type === "drawing"') && nailThumbnailSource.includes('layer.type === "gradient"') && nailThumbnailSource.includes('layer.type === "pattern"') && nailThumbnailSource.includes('renderAssetShapes(assetRender.assetId'), 'full-set thumbnails render drawing, gradient, pattern, charm, jewel, and decal asset layers');
+assert(nailCanvasSource.includes('layer.type === "gradient"') && nailCanvasSource.includes('layer.type === "pattern"') && nailCanvasSource.includes('layer.type === "frenchTip"') && nailCanvasSource.includes('renderAssetShapes(assetRender.assetId'), 'main canvas renders gradient, pattern, French Tip, and asset layers');
+assert(nailThumbnailSource.includes('layer.type === "drawing"') && nailThumbnailSource.includes('layer.type === "gradient"') && nailThumbnailSource.includes('layer.type === "pattern"') && nailThumbnailSource.includes('layer.type === "frenchTip"') && nailThumbnailSource.includes('renderAssetShapes(assetRender.assetId'), 'full-set thumbnails render drawing, gradient, pattern, French Tip, charm, jewel, and decal asset layers');
 assert(!nailCanvasSource.includes('dangerouslySetInnerHTML') && !nailThumbnailSource.includes('dangerouslySetInnerHTML'), 'canvas and thumbnail rendering never inject untrusted inline SVG HTML');
 assert(nailThumbnailSource.includes('layer.visible !== false'), 'thumbnail preview hides hidden layers');
 assert(nailThumbnailSource.includes('clipPath={`url(#${clipId})`}'), 'thumbnail preview strictly clips art inside nail silhouette');

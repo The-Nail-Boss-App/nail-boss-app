@@ -3,6 +3,7 @@ import { COLORS } from "../styles.js";
 import { renderAssetShapes } from "./assets.js";
 import { VIEWBOX, buildNailPath, constrainStrokePoints, getNailGeometry, normalizedToSvg, projectPointInsideNailSilhouette, svgToNormalized, layerSort } from "./blueprint.js";
 import { assetLayerRenderProps } from "./assetRendering.js";
+import { FrenchTipShape } from "./frenchTipRendering.js";
 
 function EffectDefs({ baseLayer, uid }) {
   const data = baseLayer?.data || {};
@@ -181,6 +182,9 @@ export default function NailCanvas({ nail, layers, selectedLayerId, mode, brush,
     if (layer.type === "pattern") {
       const id = `${uid}-${layer.id}`;
       return <g key={layer.id} clipPath={`url(#${clipId})`} opacity={layer.opacity} pointerEvents="none"><defs><PatternDefs layer={layer} id={id}/></defs><rect x="0" y="0" width={VIEWBOX.width} height={VIEWBOX.height} fill={`url(#${id})`}/></g>;
+    }
+    if (layer.type === "frenchTip") {
+      return <FrenchTipShape key={layer.id} layer={layer} nail={nail} clipId={clipId}/>;
     }
     if (layer.type === "drawing") {
       return <g key={layer.id} clipPath={`url(#${clipId})`} opacity={layer.opacity} pointerEvents={drawingMode ? "none" : "auto"} onPointerDown={selectOverlay}>
