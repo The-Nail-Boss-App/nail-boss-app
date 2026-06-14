@@ -40,6 +40,7 @@ const {
   normalizeFrenchTipData,
   FRENCH_TIP_PRESETS,
   POLISH_TYPES,
+  normalizePolishData,
   cloneNailDesign,
 } = blueprint;
 
@@ -489,6 +490,15 @@ const polishDefaultBlueprint = createDefaultBlueprint({ baseColorHex: '#123456' 
 const polishBase = getActiveNail(polishDefaultBlueprint).layers.find((layer) => layer.type === 'base');
 assert.equal(polishBase.data.polishType, 'Cream', 'old designs default to Cream polish safely');
 assert.equal(polishBase.data.colorHex, '#123456', 'base polish color is preserved through save/load normalization');
+for (const effect of ['Gradient', 'Chrome', 'CatEye', 'Marble']) {
+  const legacyBase = normalizePolishData({ colorHex: '#123456', effect, effectColorHex: '#FFFFFF' }, '#123456');
+  assert(!Object.hasOwn(legacyBase, 'polishType'), `frontend normalization preserves absent Polish Type for legacy ${effect}`);
+  const legacyBlueprint = createDefaultBlueprint({ baseColorHex: '#123456', effect });
+  const legacyBlueprintBase = getActiveNail(legacyBlueprint).layers.find((layer) => layer.type === 'base');
+  assert(!Object.hasOwn(legacyBlueprintBase.data, 'polishType'), `default blueprint preserves absent Polish Type for legacy ${effect}`);
+}
+assert.equal(normalizePolishData({ colorHex: '#123456', effect: 'Solid', effectColorHex: '#FFFFFF' }, '#123456').polishType, 'Cream', 'frontend normalization defaults legacy Solid to Cream');
+assert.equal(normalizePolishData({ colorHex: '#123456', effect: 'Chrome', effectColorHex: '#FFFFFF', polishType: 'Jelly' }, '#123456').polishType, 'Jelly', 'frontend normalization preserves explicit Polish Type over legacy effect');
 const copiedPolish = cloneNailDesign(getActiveNail(polishDefaultBlueprint), { ...getActiveNail(polishDefaultBlueprint), id: 'copy', slot: 'copy' });
 assert.equal(copiedPolish.layers.find((layer) => layer.type === 'base').data.polishType, 'Cream', 'copy/duplicate-style nail cloning preserves polish fields');
 assert(polishSource.includes('POLISH_TYPES') && polishSource.includes('TOP_COATS'), 'proposal-compatible polish fields stay inside existing blueprint layer data');

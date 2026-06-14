@@ -2,11 +2,15 @@ export const SHAPES = ["Square", "Tapered Square", "Russian Square", "Coffin", "
 export const EFFECTS = ["Solid", "Gradient", "Chrome", "CatEye", "Marble"];
 export const POLISH_TYPES = ["Cream", "Jelly", "Milky", "Matte", "Chrome", "Cat Eye", "Glitter"];
 export const TOP_COATS = ["Gloss", "Matte", "No-Wipe Shine", "Velvet"];
+export const MEANINGFUL_LEGACY_EFFECTS = ["Gradient", "Chrome", "CatEye", "Marble"];
+export function hasMeaningfulLegacyEffect(data = {}) {
+  return MEANINGFUL_LEGACY_EFFECTS.includes(data.effect);
+}
 export function normalizePolishData(data = {}, fallbackColor = "#E8A0BF") {
   const polishType = POLISH_TYPES.includes(data.polishType) ? data.polishType : "Cream";
   const topCoat = TOP_COATS.includes(data.topCoat) ? data.topCoat : (polishType === "Matte" ? "Matte" : "Gloss");
   const range = (value, min, max, fallback) => { const parsed = Number(value); return Number.isFinite(parsed) ? Math.min(max, Math.max(min, parsed)) : fallback; };
-  return {
+  const normalized = {
     ...data,
     polishType,
     colorHex: normalizeHex(data.colorHex, fallbackColor),
@@ -19,6 +23,10 @@ export function normalizePolishData(data = {}, fallbackColor = "#E8A0BF") {
     catEyeIntensity: range(data.catEyeIntensity, 0, 1, 0.65),
     chromeIntensity: range(data.chromeIntensity, 0, 1, 0.7),
   };
+  if (!Object.prototype.hasOwnProperty.call(data, "polishType") && hasMeaningfulLegacyEffect(data)) {
+    delete normalized.polishType;
+  }
+  return normalized;
 }
 export const PATTERNS = ["dots", "stripes", "checker", "french-tip", "glitter", "marble"];
 export const GRADIENT_DIRECTIONS = ["vertical", "horizontal", "diagonal", "reverse-diagonal"];
@@ -321,6 +329,12 @@ export function safeTransform(transform = {}, nail, layerType = "asset") {
 }
 
 export function createBaseLayer(design = {}) {
+  const data = {
+    colorHex: normalizeHex(design.baseColorHex),
+    effect: EFFECTS.includes(design.effect) ? design.effect : "Solid",
+    effectColorHex: normalizeHex(design.effectColorHex, "#FFFFFF"),
+  };
+  if (POLISH_TYPES.includes(design.polishType)) data.polishType = design.polishType;
   return {
     id: "base-layer",
     type: "base",
@@ -330,12 +344,7 @@ export function createBaseLayer(design = {}) {
     opacity: 1,
     order: 0,
     transform: { x: 0.5, y: 0.5, scaleX: 1, scaleY: 1, rotation: 0 },
-    data: normalizePolishData({
-      colorHex: normalizeHex(design.baseColorHex),
-      effect: EFFECTS.includes(design.effect) ? design.effect : "Solid",
-      effectColorHex: normalizeHex(design.effectColorHex, "#FFFFFF"),
-      polishType: POLISH_TYPES.includes(design.polishType) ? design.polishType : "Cream",
-    }, normalizeHex(design.baseColorHex)),
+    data: normalizePolishData(data, normalizeHex(design.baseColorHex)),
   };
 }
 

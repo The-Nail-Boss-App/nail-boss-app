@@ -27,6 +27,7 @@ const VALID_SHAPES = [
 const VALID_EFFECTS = ["Solid", "Gradient", "Chrome", "CatEye", "Marble"];
 const VALID_POLISH_TYPES = ["Cream", "Jelly", "Milky", "Matte", "Chrome", "Cat Eye", "Glitter"];
 const VALID_TOP_COATS = ["Gloss", "Matte", "No-Wipe Shine", "Velvet"];
+const MEANINGFUL_LEGACY_EFFECTS = ["Gradient", "Chrome", "CatEye", "Marble"];
 const POLISH_NUMBER_RANGES = { shine: [0, 1], transparency: [0, 1], sparkleDensity: [0, 1], sparkleSize: [0, 1], catEyeAngle: [-180, 180], catEyeIntensity: [0, 1], chromeIntensity: [0, 1] };
 const SUPPORTED_BLUEPRINT_SCHEMA_VERSIONS = [1];
 const SUPPORTED_LAYER_TYPES = ["base", "gradient", "pattern", "drawing", "charm", "decal", "jewel", "frenchTip"];
@@ -144,15 +145,18 @@ function normalizeNailArchitectureControls(nail, pathPrefix) {
 
 function normalizePolishFields(data, pathPrefix) {
   const next = { ...data };
+  const hasExplicitPolishType = Object.prototype.hasOwnProperty.call(next, "polishType");
+  const hasMeaningfulLegacyEffect = MEANINGFUL_LEGACY_EFFECTS.includes(next.effect);
   if (Object.prototype.hasOwnProperty.call(next, "polishType") && !VALID_POLISH_TYPES.includes(next.polishType)) {
     throw new BlueprintValidationError(`${pathPrefix}.data.polishType must be one of: ${VALID_POLISH_TYPES.join(", ")}`);
   }
-  next.polishType = next.polishType || "Cream";
+  if (!hasExplicitPolishType && !hasMeaningfulLegacyEffect) next.polishType = "Cream";
+  const polishTypeForDefaults = next.polishType || "Cream";
   if (Object.prototype.hasOwnProperty.call(next, "topCoat") && !VALID_TOP_COATS.includes(next.topCoat)) {
     throw new BlueprintValidationError(`${pathPrefix}.data.topCoat must be one of: ${VALID_TOP_COATS.join(", ")}`);
   }
-  next.topCoat = next.topCoat || (next.polishType === "Matte" ? "Matte" : "Gloss");
-  const defaults = { shine: next.polishType === "Matte" ? 0.08 : 0.62, transparency: next.polishType === "Jelly" ? 0.45 : next.polishType === "Milky" ? 0.28 : 0, sparkleDensity: 0.35, sparkleSize: 0.45, catEyeAngle: 28, catEyeIntensity: 0.65, chromeIntensity: 0.7 };
+  next.topCoat = next.topCoat || (polishTypeForDefaults === "Matte" ? "Matte" : "Gloss");
+  const defaults = { shine: polishTypeForDefaults === "Matte" ? 0.08 : 0.62, transparency: polishTypeForDefaults === "Jelly" ? 0.45 : polishTypeForDefaults === "Milky" ? 0.28 : 0, sparkleDensity: 0.35, sparkleSize: 0.45, catEyeAngle: 28, catEyeIntensity: 0.65, chromeIntensity: 0.7 };
   for (const [key, range] of Object.entries(POLISH_NUMBER_RANGES)) {
     next[key] = Object.prototype.hasOwnProperty.call(next, key) ? assertRangedNumber(next[key], range, `${pathPrefix}.data.${key}`) : defaults[key];
   }
@@ -337,6 +341,22 @@ function validateAndNormalizeBlueprint(input) {
 }
 
 function createDefaultBlueprintForDesign(design) {
+  const baseEffect = VALID_EFFECTS.includes(design.effect) ? design.effect : "Solid";
+  const hasMeaningfulLegacyEffect = MEANINGFUL_LEGACY_EFFECTS.includes(baseEffect);
+  const baseData = {
+    colorHex: design.baseColorHex || "#E8A0BF",
+    effect: baseEffect,
+    effectColorHex: design.effectColorHex || "#FFFFFF",
+    shine: 0.62,
+    transparency: 0,
+    topCoat: "Gloss",
+    sparkleDensity: 0.35,
+    sparkleSize: 0.45,
+    catEyeAngle: 28,
+    catEyeIntensity: 0.65,
+    chromeIntensity: 0.7,
+  };
+  if (!hasMeaningfulLegacyEffect) baseData.polishType = "Cream";
   return validateAndNormalizeBlueprint({
     schemaVersion: 1,
     canvas: { mode: "single-nail", activeNailId: "nail-1" },
@@ -356,20 +376,7 @@ function createDefaultBlueprintForDesign(design) {
         opacity: 1,
         order: 0,
         transform: { x: 0.5, y: 0.5, scaleX: 1, scaleY: 1, rotation: 0 },
-        data: {
-          colorHex: design.baseColorHex || "#E8A0BF",
-          effect: design.effect || "Solid",
-          effectColorHex: design.effectColorHex || "#FFFFFF",
-          polishType: "Cream",
-          shine: 0.62,
-          transparency: 0,
-          topCoat: "Gloss",
-          sparkleDensity: 0.35,
-          sparkleSize: 0.45,
-          catEyeAngle: 28,
-          catEyeIntensity: 0.65,
-          chromeIntensity: 0.7,
-        },
+        data: baseData,
       }],
     }],
     metadata: { tags: Array.isArray(design.tags) ? design.tags : [] },
