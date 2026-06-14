@@ -412,8 +412,17 @@ assert(designStudioSource.includes('Copy the active nail before pasting to selec
 
 const basedHand = blueprint.applyBaseToSlots(fullSet, { baseColorHex: '#ABCDEF' }, blueprint.LEFT_HAND_SLOTS);
 assert(basedHand.nails.filter((n) => n.slot.startsWith('left') && n.baseColorHex === '#ABCDEF').length === 5, 'apply base color to current hand updates five nails');
+assert(basedHand.nails.filter((n) => n.slot.startsWith('left') && n.layers.find((layer) => layer.type === 'base')?.data?.colorHex === '#ABCDEF').length === 5, 'apply base color to current hand updates rendered base layer color');
 const basedAll = blueprint.applyBaseToSlots(fullSet, { baseColorHex: '#FEDCBA' }, blueprint.FULL_SET_SLOTS);
 assert(basedAll.nails.every((n) => n.baseColorHex === '#FEDCBA'), 'apply base color to all nails updates ten nails');
+assert(basedAll.nails.every((n) => n.layers.find((layer) => layer.type === 'base')?.data?.colorHex === '#FEDCBA'), 'apply base color to all nails updates every rendered base layer color');
+assert(basedAll.nails.every((n) => getVisibleBaseColor(n) === '#FEDCBA'), 'bulk rendered polish color source follows the new base layer color');
+const colorHexBulk = blueprint.applyBaseToSlots(fullSet, { colorHex: '#BADA55' }, blueprint.LEFT_HAND_SLOTS);
+assert(colorHexBulk.nails.filter((n) => n.slot.startsWith('left') && n.baseColorHex === '#BADA55' && n.layers.find((layer) => layer.type === 'base')?.data?.colorHex === '#BADA55').length === 5, 'bulk apply accepts colorHex as a base layer color source');
+const explicitHandPolish = blueprint.applyBaseToSlots(fullSet, { polishType: 'Jelly', baseColorHex: '#112244' }, blueprint.LEFT_HAND_SLOTS);
+assert(explicitHandPolish.nails.filter((n) => n.slot.startsWith('left') && n.layers.find((layer) => layer.type === 'base')?.data?.polishType === 'Jelly').length === 5, 'apply base color to hand preserves explicit Polish Type');
+const explicitAllPolish = blueprint.applyBaseToSlots(fullSet, { polishType: 'Chrome', baseColorHex: '#221144' }, blueprint.FULL_SET_SLOTS);
+assert(explicitAllPolish.nails.every((n) => n.layers.find((layer) => layer.type === 'base')?.data?.polishType === 'Chrome'), 'apply base color to all preserves explicit Polish Type');
 const shapedHand = blueprint.applyBaseToSlots(fullSet, { shape: 'Square' }, blueprint.LEFT_HAND_SLOTS);
 assert(shapedHand.nails.filter((n) => n.slot.startsWith('left') && n.shape === 'Square').length === 5, 'apply shape to current hand updates five nails');
 const shapedAll = blueprint.applyBaseToSlots(fullSet, { shape: 'Oval' }, blueprint.FULL_SET_SLOTS);
@@ -501,6 +510,10 @@ for (const effect of ['Gradient', 'Chrome', 'CatEye', 'Marble']) {
     const syncedBase = getActiveNail(synced).layers.find((layer) => layer.type === 'base');
     assert(!Object.hasOwn(syncedBase.data, 'polishType'), `synchronizeBase preserves absent Polish Type for legacy ${effect}`);
   }
+  const legacyBulk = blueprint.applyBaseToSlots(blueprint.ensureFullSetBlueprint(createDefaultBlueprint({ baseColorHex: '#123456', effect })), { baseColorHex: '#654321' }, blueprint.FULL_SET_SLOTS);
+  assert(legacyBulk.nails.every((n) => n.baseColorHex === '#654321'), `applyBaseToSlots updates nail baseColorHex for legacy ${effect}`);
+  assert(legacyBulk.nails.every((n) => n.layers.find((layer) => layer.type === 'base')?.data?.colorHex === '#654321'), `applyBaseToSlots updates base layer colorHex for legacy ${effect}`);
+  assert(legacyBulk.nails.every((n) => !Object.hasOwn(n.layers.find((layer) => layer.type === 'base')?.data || {}, 'polishType')), `applyBaseToSlots does not inject explicit Cream for legacy ${effect}`);
   const undefinedPoison = normalizePolishData({ colorHex: '#123456', effect, effectColorHex: '#FFFFFF', polishType: undefined }, '#123456');
   assert(!Object.hasOwn(undefinedPoison, 'polishType'), `frontend normalization treats undefined Polish Type as absent for legacy ${effect}`);
 }

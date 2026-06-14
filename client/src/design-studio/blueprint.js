@@ -862,7 +862,33 @@ export function mirrorHandDesign(blueprint, fromHand = "left") {
 
 export function applyBaseToSlots(blueprint, patch = {}, slots = []) {
   const targets = new Set(slots);
-  return { ...blueprint, nails: blueprint.nails.map((nail) => targets.has(nail.slot) ? revalidateNailLayers({ ...nail, ...patch, baseColorHex: normalizeHex(patch.baseColorHex ?? patch.colorHex ?? nail.baseColorHex, nail.baseColorHex), layers: nail.layers.map((layer) => layer.type === "base" ? { ...layer, data: { ...layer.data, colorHex: normalizeHex(patch.baseColorHex ?? patch.colorHex ?? layer.data.colorHex, layer.data.colorHex), effect: EFFECTS.includes(patch.effect) ? patch.effect : layer.data.effect, effectColorHex: normalizeHex(patch.effectColorHex ?? layer.data.effectColorHex, layer.data.effectColorHex), ...normalizePolishData({ ...layer.data, ...patch, polishType: POLISH_TYPES.includes(patch.polishType) ? patch.polishType : POLISH_TYPES.includes(layer.data.polishType) ? layer.data.polishType : undefined }, layer.data.colorHex) } } : layer) }) : nail) };
+  return {
+    ...blueprint,
+    nails: blueprint.nails.map((nail) => {
+      if (!targets.has(nail.slot)) return nail;
+      const resolvedBaseColor = normalizeHex(patch.baseColorHex ?? patch.colorHex ?? nail.baseColorHex, nail.baseColorHex);
+      return revalidateNailLayers({
+        ...nail,
+        ...patch,
+        baseColorHex: resolvedBaseColor,
+        layers: nail.layers.map((layer) => {
+          if (layer.type !== "base") return layer;
+          const resolvedLayerColor = normalizeHex(patch.baseColorHex ?? patch.colorHex ?? layer.data.colorHex, layer.data.colorHex);
+          const data = {
+            ...layer.data,
+            ...patch,
+            colorHex: resolvedLayerColor,
+            effect: EFFECTS.includes(patch.effect) ? patch.effect : layer.data.effect,
+            effectColorHex: normalizeHex(patch.effectColorHex ?? layer.data.effectColorHex, layer.data.effectColorHex),
+          };
+          if (POLISH_TYPES.includes(patch.polishType)) data.polishType = patch.polishType;
+          else if (POLISH_TYPES.includes(layer.data.polishType)) data.polishType = layer.data.polishType;
+          else delete data.polishType;
+          return { ...layer, data: normalizePolishData(data, resolvedLayerColor) };
+        }),
+      });
+    }),
+  };
 }
 
 export function resetNailDesign(blueprint, slot) {
