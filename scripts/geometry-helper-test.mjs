@@ -3,6 +3,8 @@ import { readFile } from 'node:fs/promises';
 
 const source = await readFile(new URL('../client/src/design-studio/blueprint.js', import.meta.url), 'utf8');
 const nailCanvasSource = await readFile(new URL('../client/src/design-studio/NailCanvas.jsx', import.meta.url), 'utf8');
+const nailThumbnailSource = await readFile(new URL('../client/src/design-studio/NailThumbnail.jsx', import.meta.url), 'utf8');
+const bulkActionsPanelSource = await readFile(new URL('../client/src/design-studio/BulkActionsPanel.jsx', import.meta.url), 'utf8');
 const designStudioSource = await readFile(new URL('../client/src/design-studio/DesignStudio.jsx', import.meta.url), 'utf8');
 const blueprint = await import(`data:text/javascript;charset=utf-8,${encodeURIComponent(source)}`);
 
@@ -263,7 +265,15 @@ assert.equal(JSON.stringify(blueprint.getNailBySlot(activeOnlyResized, inactiveS
 const sourceSlot = 'right-index';
 const sourceNail = blueprint.getNailBySlot(fullSet, sourceSlot);
 const sourceLayer = blueprint.assetLayer({ id: 'charm-bow', name: 'Bow', category: 'charms', defaultColor: '#fff' }, sourceNail);
-const decorated = { ...fullSet, nails: fullSet.nails.map((n) => n.slot === sourceSlot ? { ...n, layers: [...n.layers, sourceLayer] } : n) };
+const jewelLayer = blueprint.assetLayer({ id: 'jewel-round', name: 'Round', category: 'jewels', defaultColor: '#ddf7ff' }, sourceNail);
+const decalLayer = blueprint.assetLayer({ id: 'decal-flame', name: 'Flame', category: 'decals', defaultColor: '#ff6b35' }, sourceNail);
+const hiddenDecalLayer = { ...blueprint.assetLayer({ id: 'decal-smiley', name: 'Hidden Smiley', category: 'decals', defaultColor: '#ffd166' }, sourceNail), visible: false };
+const drawingSource = { ...blueprint.drawingLayer(sourceNail), data: { tool: 'solid', strokes: [{ id: 'stroke-original', points: [{ x: 0.5, y: 0.45 }, { x: 0.52, y: 0.5 }], colorHex: '#111111', width: 0.04, opacity: 1, tool: 'solid' }] } };
+const gradientSource = blueprint.gradientLayer(sourceNail);
+const patternSource = blueprint.patternLayer(sourceNail, 'dots');
+const sourceLayers = [sourceLayer, jewelLayer, decalLayer, hiddenDecalLayer, drawingSource, gradientSource, patternSource];
+const decorated = { ...fullSet, nails: fullSet.nails.map((n) => n.slot === sourceSlot ? { ...n, layers: [...n.layers, ...sourceLayers] } : n) };
+const originalSourceSnapshot = JSON.stringify(blueprint.getNailBySlot(decorated, sourceSlot));
 const copiedSelected = blueprint.copyNailToSlots(decorated, sourceSlot, ['left-index']);
 assert(copiedSelected.nails.find((n) => n.slot === 'left-index').layers.some((l) => l.type === 'charm'), 'copy active nail to selected nail copies visible art');
 assert.notEqual(copiedSelected.nails.find((n) => n.slot === 'left-index').id, sourceNail.id, 'copy preserves destination unique nail id');
@@ -276,6 +286,33 @@ assert(opposite.nails.find((n) => n.slot === 'left-index').layers.some((l) => l.
 const mirrored = blueprint.mirrorHandDesign(decorated, 'right');
 assert(mirrored.nails.find((n) => n.slot === 'left-index').layers.some((l) => l.type === 'charm'), 'mirror right hand to left hand copies matching fingers');
 assert.equal(new Set(mirrored.nails.map((n) => n.id)).size, 10, 'mirror preserves unique nail ids');
+
+const allLayerTypes = ['base', 'drawing', 'gradient', 'pattern', 'charm', 'jewel', 'decal'];
+function typeCounts(nail) { return nail.layers.reduce((counts, layer) => ({ ...counts, [layer.type]: (counts[layer.type] || 0) + 1 }), {}); }
+function assertCopiedDesignIntegrity(doc, slot, message) {
+  const nail = blueprint.getNailBySlot(doc, slot);
+  const counts = typeCounts(nail);
+  for (const type of allLayerTypes) assert(counts[type] >= 1, `${message} preserves ${type} layers`);
+  for (const layer of nail.layers.filter((l) => ['charm', 'jewel', 'decal'].includes(l.type))) assert(blueprint.assetFitsNailSilhouette(layer.transform, nail, layer), `${message} keeps ${layer.type} visible/recoverably fit`);
+  assert(nail.layers.find((l) => l.id !== 'base-layer' && l.type === 'charm').id !== sourceLayer.id, `${message} creates safe copied charm id`);
+  assert(nail.layers.find((l) => l.type === 'drawing').data.strokes[0].id !== 'stroke-original', `${message} creates safe copied stroke id`);
+  assert.equal(nail.layers.find((l) => l.data?.assetId === 'decal-smiley').visible, false, `${message} copies hidden assets as hidden`);
+}
+assertCopiedDesignIntegrity(copiedSelected, 'left-index', 'paste to selected');
+assertCopiedDesignIntegrity(copiedAll, 'left-thumb', 'duplicate all');
+assertCopiedDesignIntegrity(mirrored, 'left-index', 'mirror hand');
+assert.equal(JSON.stringify(blueprint.getNailBySlot(decorated, sourceSlot)), originalSourceSnapshot, 'copy helpers do not mutate source nail');
+assert.equal(blueprint.getNailBySlot(copiedSelected, 'left-index').id, blueprint.getNailBySlot(decorated, 'left-index').id, 'paste preserves destination nail id');
+assert.equal(blueprint.getNailBySlot(copiedSelected, 'left-index').slot, 'left-index', 'paste preserves destination slot');
+const reloadedCopy = blueprint.ensureFullSetBlueprint(JSON.parse(JSON.stringify(copiedSelected)));
+assertCopiedDesignIntegrity(reloadedCopy, 'left-index', 'save and reload preserves copied asset layers');
+assert(nailCanvasSource.includes('layer.type === "gradient"') && nailCanvasSource.includes('layer.type === "pattern"') && nailCanvasSource.includes('renderAssetShapes(layer.data?.assetId'), 'main canvas renders gradient, pattern, and asset layers');
+assert(nailThumbnailSource.includes('layer.type === "drawing"') && nailThumbnailSource.includes('layer.type === "gradient"') && nailThumbnailSource.includes('layer.type === "pattern"') && nailThumbnailSource.includes('renderAssetShapes(layer.data?.assetId'), 'full-set thumbnails render drawing, gradient, pattern, charm, jewel, and decal asset layers');
+assert(nailThumbnailSource.includes('layer.visible !== false'), 'thumbnail preview hides hidden layers');
+assert(nailThumbnailSource.includes('clipPath={`url(#${clipId})`}'), 'thumbnail preview strictly clips art inside nail silhouette');
+assert(bulkActionsPanelSource.includes('Select destination nails, then paste copied design.'), 'bulk actions explains destination nail selection workflow');
+assert(designStudioSource.includes('Copy the active nail before pasting to selected nails.') && designStudioSource.includes('Select destination nails, then paste copied design.'), 'paste to selected shows notices for missing clipboard and missing destination nails');
+
 const basedHand = blueprint.applyBaseToSlots(fullSet, { baseColorHex: '#ABCDEF' }, blueprint.LEFT_HAND_SLOTS);
 assert(basedHand.nails.filter((n) => n.slot.startsWith('left') && n.baseColorHex === '#ABCDEF').length === 5, 'apply base color to current hand updates five nails');
 const basedAll = blueprint.applyBaseToSlots(fullSet, { baseColorHex: '#FEDCBA' }, blueprint.FULL_SET_SLOTS);

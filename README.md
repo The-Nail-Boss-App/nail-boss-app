@@ -443,14 +443,16 @@ The full-size `NailCanvas` still edits one nail at a time. Clicking a full-set t
 
 - `FullSetPreview.jsx` renders Full Set, Left Hand, and Right Hand preview tabs and routes thumbnail clicks to active-nail switching.
 - `HandPreview.jsx` renders five thumbnails for one hand in thumb-to-pinky order.
-- `NailThumbnail.jsx` renders a read-only clipped SVG thumbnail using each nail's shape, length, width, base color, visible layers, drawing strokes, overlays, and asset stacking order.
+- `NailThumbnail.jsx` renders a read-only clipped SVG thumbnail using each nail's shape, length, width, base color, visible drawing, gradient, pattern, charm, jewel, and decal layers in stacking order. Hidden layers remain saved on the nail but do not render in the thumbnail or full-set preview.
 - `BulkActionsPanel.jsx` exposes copy, paste, duplicate, mirror, apply, and reset actions with explicit selected-slot targeting.
 
 ### Bulk action behavior
 
 Milestone 5 supports copying the active nail, pasting to selected slots, duplicating to the current hand, duplicating to all nails, copying to the matching finger on the opposite hand, mirroring one hand to the opposite hand, applying base color to the active hand or all nails, applying shape/width/length to the active hand or all nails, and resetting a selected nail to its base layer only.
 
-Destructive overwrite actions ask for confirmation. Destination nails keep their own nail IDs and slots. Copied layers receive fresh layer IDs, copied drawing strokes receive fresh stroke IDs, and destination artwork is revalidated against that nail's current geometry. AnitaSet shows a lightweight notice when copied or mirrored artwork is adjusted to fit.
+Destructive overwrite actions ask for confirmation. Destination nails keep their own nail IDs and slots. Bulk copy, duplicate, paste, and mirror preserve the full visible layer model: base, drawing, gradient, pattern, charm, jewel, and decal layers. Hidden layers also copy with their hidden state intact when the full design is copied, and locked layer state is preserved except for the always-locked base layer. Copied layers receive fresh layer IDs, copied drawing strokes receive fresh stroke IDs, and destination artwork is revalidated against that nail's current geometry. Strict-fit revalidation keeps recoverable asset layers visible by re-fitting them inside the destination nail silhouette instead of dropping them; AnitaSet shows a lightweight notice when copied or mirrored artwork is adjusted to fit.
+
+Paste to Selected is a three-step workflow: click **Copy active nail**, check one or more destination nail boxes, then click **Paste to selected**. The panel helper text says “Select destination nails, then paste copied design.” If a user attempts to paste before copying a nail or before choosing destinations, AnitaSet shows a non-blocking notice instead of silently doing nothing.
 
 ### Autosave and draft recovery preparation
 
