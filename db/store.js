@@ -145,12 +145,13 @@ function normalizeNailArchitectureControls(nail, pathPrefix) {
 
 function normalizePolishFields(data, pathPrefix) {
   const next = { ...data };
-  const hasExplicitPolishType = Object.prototype.hasOwnProperty.call(next, "polishType");
+  const hasValidPolishType = VALID_POLISH_TYPES.includes(next.polishType);
   const hasMeaningfulLegacyEffect = MEANINGFUL_LEGACY_EFFECTS.includes(next.effect);
-  if (Object.prototype.hasOwnProperty.call(next, "polishType") && !VALID_POLISH_TYPES.includes(next.polishType)) {
-    throw new BlueprintValidationError(`${pathPrefix}.data.polishType must be one of: ${VALID_POLISH_TYPES.join(", ")}`);
+  if (Object.prototype.hasOwnProperty.call(next, "polishType") && !hasValidPolishType) {
+    if (next.polishType == null && hasMeaningfulLegacyEffect) delete next.polishType;
+    else throw new BlueprintValidationError(`${pathPrefix}.data.polishType must be one of: ${VALID_POLISH_TYPES.join(", ")}`);
   }
-  if (!hasExplicitPolishType && !hasMeaningfulLegacyEffect) next.polishType = "Cream";
+  if (!hasValidPolishType && !hasMeaningfulLegacyEffect) next.polishType = "Cream";
   const polishTypeForDefaults = next.polishType || "Cream";
   if (Object.prototype.hasOwnProperty.call(next, "topCoat") && !VALID_TOP_COATS.includes(next.topCoat)) {
     throw new BlueprintValidationError(`${pathPrefix}.data.topCoat must be one of: ${VALID_TOP_COATS.join(", ")}`);

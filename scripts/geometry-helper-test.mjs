@@ -496,8 +496,18 @@ for (const effect of ['Gradient', 'Chrome', 'CatEye', 'Marble']) {
   const legacyBlueprint = createDefaultBlueprint({ baseColorHex: '#123456', effect });
   const legacyBlueprintBase = getActiveNail(legacyBlueprint).layers.find((layer) => layer.type === 'base');
   assert(!Object.hasOwn(legacyBlueprintBase.data, 'polishType'), `default blueprint preserves absent Polish Type for legacy ${effect}`);
+  for (const patch of [{ baseColorHex: '#654321' }, { effectColorHex: '#ABCDEF' }, { shape: 'Almond', length: 0.72, taper: 0.4 }]) {
+    const synced = synchronizeBase(legacyBlueprint, patch);
+    const syncedBase = getActiveNail(synced).layers.find((layer) => layer.type === 'base');
+    assert(!Object.hasOwn(syncedBase.data, 'polishType'), `synchronizeBase preserves absent Polish Type for legacy ${effect}`);
+  }
+  const undefinedPoison = normalizePolishData({ colorHex: '#123456', effect, effectColorHex: '#FFFFFF', polishType: undefined }, '#123456');
+  assert(!Object.hasOwn(undefinedPoison, 'polishType'), `frontend normalization treats undefined Polish Type as absent for legacy ${effect}`);
 }
 assert.equal(normalizePolishData({ colorHex: '#123456', effect: 'Solid', effectColorHex: '#FFFFFF' }, '#123456').polishType, 'Cream', 'frontend normalization defaults legacy Solid to Cream');
+assert.equal(normalizePolishData({ colorHex: '#123456', effect: 'Chrome', effectColorHex: '#FFFFFF', polishType: 'Cream' }, '#123456').polishType, 'Cream', 'explicit Cream Polish Type persists over legacy effect');
+const explicitChromeCream = synchronizeBase(createDefaultBlueprint({ baseColorHex: '#123456', effect: 'Chrome' }), { polishType: 'Cream' });
+assert.equal(getActiveNail(explicitChromeCream).layers.find((layer) => layer.type === 'base').data.polishType, 'Cream', 'synchronizeBase persists user-selected explicit Cream Polish Type');
 assert.equal(normalizePolishData({ colorHex: '#123456', effect: 'Chrome', effectColorHex: '#FFFFFF', polishType: 'Jelly' }, '#123456').polishType, 'Jelly', 'frontend normalization preserves explicit Polish Type over legacy effect');
 const copiedPolish = cloneNailDesign(getActiveNail(polishDefaultBlueprint), { ...getActiveNail(polishDefaultBlueprint), id: 'copy', slot: 'copy' });
 assert.equal(copiedPolish.layers.find((layer) => layer.type === 'base').data.polishType, 'Cream', 'copy/duplicate-style nail cloning preserves polish fields');

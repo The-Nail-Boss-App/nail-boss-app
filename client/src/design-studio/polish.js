@@ -43,9 +43,12 @@ export function resolvePolishDataForRender(data = {}, fallbackColor = "#E8A0BF")
   return { ...normalized, polishType: legacyPolishType };
 }
 export function normalizePolishData(data = {}, fallbackColor = "#E8A0BF") {
-  const polishType = POLISH_TYPES.includes(data.polishType) ? data.polishType : "Cream";
+  const hasValidPolishType = hasExplicitPolishType(data);
+  const legacyPolishType = legacyEffectPolishType(data);
+  const preserveAbsentLegacyPolishType = !hasValidPolishType && legacyPolishType !== "Cream";
+  const polishType = hasValidPolishType ? data.polishType : "Cream";
   const topCoat = TOP_COATS.includes(data.topCoat) ? data.topCoat : (polishType === "Matte" ? "Matte" : "Gloss");
-  return {
+  const normalized = {
     ...data,
     polishType,
     colorHex: HEX.test(data.colorHex || "") ? data.colorHex.toUpperCase() : fallbackColor,
@@ -58,6 +61,8 @@ export function normalizePolishData(data = {}, fallbackColor = "#E8A0BF") {
     catEyeIntensity: clampPolishNumber(data.catEyeIntensity, 0, 1, POLISH_DEFAULTS.catEyeIntensity),
     chromeIntensity: clampPolishNumber(data.chromeIntensity, 0, 1, POLISH_DEFAULTS.chromeIntensity),
   };
+  if (preserveAbsentLegacyPolishType) delete normalized.polishType;
+  return normalized;
 }
 export function polishOpacity(data = {}) {
   const type = data.polishType || "Cream";
