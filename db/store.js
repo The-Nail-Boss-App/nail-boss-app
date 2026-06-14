@@ -8,7 +8,22 @@ const { v4: uuidv4 } = require("uuid");
 const LOCAL_DB_HOSTS = new Set(["localhost", "127.0.0.1", "::1"]);
 const VALID_STATUSES = ["Sent", "Viewed", "Accepted", "ChangesRequested", "Declined"];
 const TERMINAL_STATUSES = ["Accepted", "ChangesRequested", "Declined"];
-const VALID_SHAPES = ["Almond", "Coffin", "Square", "Stiletto", "Oval"];
+const VALID_SHAPES = [
+  "Square",
+  "Tapered Square",
+  "Russian Square",
+  "Coffin",
+  "Slim Coffin",
+  "Almond",
+  "Russian Almond",
+  "Oval",
+  "Round",
+  "Stiletto",
+  "Edge",
+  "Lipstick",
+  "Flare",
+  "Mountain Peak",
+];
 const VALID_EFFECTS = ["Solid", "Gradient", "Chrome", "CatEye", "Marble"];
 const SUPPORTED_BLUEPRINT_SCHEMA_VERSIONS = [1];
 const SUPPORTED_LAYER_TYPES = ["base", "gradient", "pattern", "drawing", "charm", "decal", "jewel", "frenchTip"];
@@ -22,6 +37,13 @@ const FRENCH_TIP_RANGES = {
   smileWidth: [0.25, 1],
   opacity: [0, 1],
   rotation: [-45, 45],
+};
+const NAIL_ARCHITECTURE_CONTROL_DEFAULT = 0.5;
+const NAIL_ARCHITECTURE_CONTROL_RANGES = {
+  taper: [0, 1],
+  apexHeight: [0, 1],
+  sidewallCurve: [0, 1],
+  freeEdgeThickness: [0, 1],
 };
 const MAX_BLUEPRINT_NAILS = 10;
 const MAX_BLUEPRINT_LAYERS_PER_NAIL = 200;
@@ -105,6 +127,16 @@ function assertRangedNumber(value, [min, max], pathLabel) {
     throw new BlueprintValidationError(`${pathLabel} must be a number between ${min} and ${max}`);
   }
   return Number(value);
+}
+
+function normalizeNailArchitectureControls(nail, pathPrefix) {
+  const controls = {};
+  for (const [key, range] of Object.entries(NAIL_ARCHITECTURE_CONTROL_RANGES)) {
+    controls[key] = Object.prototype.hasOwnProperty.call(nail, key)
+      ? assertRangedNumber(nail[key], range, `${pathPrefix}.${key}`)
+      : NAIL_ARCHITECTURE_CONTROL_DEFAULT;
+  }
+  return controls;
 }
 
 function normalizeFrenchTipData(data, pathPrefix) {
@@ -241,6 +273,7 @@ function validateAndNormalizeBlueprint(input) {
     if (!isFiniteNumber(nail.width) || nail.width < 0 || nail.width > 1) {
       throw new BlueprintValidationError(`${pathPrefix}.width must be a number between 0 and 1`);
     }
+    const architectureControls = normalizeNailArchitectureControls(nail, pathPrefix);
     assertHex(nail.baseColorHex, `${pathPrefix}.baseColorHex`);
     if (!Array.isArray(nail.layers) || nail.layers.length > MAX_BLUEPRINT_LAYERS_PER_NAIL) {
       throw new BlueprintValidationError(`${pathPrefix}.layers must be an array with at most ${MAX_BLUEPRINT_LAYERS_PER_NAIL} layers`);
@@ -254,6 +287,7 @@ function validateAndNormalizeBlueprint(input) {
       shape: nail.shape,
       length: Number(nail.length),
       width: Number(nail.width),
+      ...architectureControls,
       baseColorHex: nail.baseColorHex,
       layers,
       ...(nailMetadata ? { metadata: nailMetadata } : {}),

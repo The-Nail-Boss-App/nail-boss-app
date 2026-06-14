@@ -11,6 +11,23 @@ const BASE_URL = `http://127.0.0.1:${PORT}`;
 const TEST_DB_FILE = process.env.ANITASET_TEST_DB_FILE || path.join(".tmp", "smoke-test-db.json");
 const MAX_BLUEPRINT_JSON_BYTES = 100 * 1024;
 
+const SHAPE_ENGINE_V2_SHAPES = [
+  "Square",
+  "Tapered Square",
+  "Russian Square",
+  "Coffin",
+  "Slim Coffin",
+  "Almond",
+  "Russian Almond",
+  "Oval",
+  "Round",
+  "Stiletto",
+  "Edge",
+  "Lipstick",
+  "Flare",
+  "Mountain Peak",
+];
+const ARCHITECTURE_CONTROL_KEYS = ["taper", "apexHeight", "sidewallCurve", "freeEdgeThickness"];
 
 function request(method, requestPath, body) {
   const payload = body ? JSON.stringify(body) : null;
@@ -150,6 +167,30 @@ function multiNailBlueprint(count, activeIndex = 2) {
     }),
     metadata: { tags: ["multi-nail", `${count}-nails`] },
   };
+}
+
+
+function shapeEngineBlueprint(shape = "Almond", controls = {}) {
+  const blueprint = layeredBlueprint();
+  blueprint.nails[0] = {
+    ...blueprint.nails[0],
+    shape,
+    ...controls,
+  };
+  return blueprint;
+}
+
+function fullSetArchitectureBlueprint() {
+  const blueprint = multiNailBlueprint(10, 4);
+  blueprint.nails = blueprint.nails.map((nail, index) => ({
+    ...nail,
+    shape: SHAPE_ENGINE_V2_SHAPES[index % SHAPE_ENGINE_V2_SHAPES.length],
+    taper: Number((0.1 + index * 0.07).toFixed(2)),
+    apexHeight: Number((0.9 - index * 0.06).toFixed(2)),
+    sidewallCurve: Number((0.2 + index * 0.05).toFixed(2)),
+    freeEdgeThickness: Number((0.8 - index * 0.04).toFixed(2)),
+  }));
+  return blueprint;
 }
 
 function whitespaceLayerBlueprint() {
@@ -426,6 +467,70 @@ async function runFlow() {
   res = await request("POST", "/api/designs/with-blueprint", { design: designPayload("Rollback Atomic Design"), blueprint: failingBlueprint });
   assert(res.status === 500, "simulated atomic blueprint persistence failure should return 500");
   assert(await designCount() === beforeCount, "simulated atomic blueprint persistence failure should roll back the flat design row");
+
+
+  for (const shape of SHAPE_ENGINE_V2_SHAPES) {
+    const createBlueprint = shapeEngineBlueprint(shape, { taper: 0.21, apexHeight: 0.37, sidewallCurve: 0.63, freeEdgeThickness: 0.79 });
+    res = await request("POST", "/api/designs/with-blueprint", { design: designPayload(`Shape V2 ${shape}`), blueprint: createBlueprint });
+    assert(res.status === 201, `POST /api/designs/with-blueprint should save Shape Engine V2 shape ${shape}`);
+    assert(res.body.design.shape === shape, `atomic create should sync flat shape for ${shape}`);
+    const shapeDesignId = res.body.design.id;
+
+    res = await request("GET", `/api/designs/${shapeDesignId}/blueprint`);
+    assert(res.status === 200, `GET /api/designs/:id/blueprint should reload ${shape}`);
+    assert(res.body.document.nails[0].shape === shape, `reloaded blueprint should preserve ${shape}`);
+    for (const key of ARCHITECTURE_CONTROL_KEYS) {
+      assert(res.body.document.nails[0][key] === createBlueprint.nails[0][key], `reloaded ${shape} blueprint should preserve ${key}`);
+    }
+  }
+
+  res = await request("POST", "/api/designs", { ...designPayload("Flat Shape V2 Design"), shape: "Russian Almond" });
+  assert(res.status === 201, "legacy flat design create should accept Shape Engine V2 shapes");
+  assert(res.body.shape === "Russian Almond", "legacy flat design should preserve the Shape Engine V2 shape");
+
+  res = await request("POST", "/api/designs/with-blueprint", { design: designPayload("Invalid Shape Design"), blueprint: shapeEngineBlueprint("Banana") });
+  assert(res.status === 400, "invalid Shape Engine V2 blueprint shape names should be rejected");
+
+  for (const key of ARCHITECTURE_CONTROL_KEYS) {
+    const controls = { [key]: 0.88 };
+    res = await request("PUT", `/api/designs/${designId}/blueprint`, shapeEngineBlueprint("Tapered Square", controls));
+    assert(res.status === 200, `PUT /api/designs/:id/blueprint should save non-default ${key}`);
+    assert(res.body.document.nails[0][key] === 0.88, `PUT response should preserve non-default ${key}`);
+
+    res = await request("GET", `/api/designs/${designId}/blueprint`);
+    assert(res.status === 200, `GET /api/designs/:id/blueprint should reload after ${key} save`);
+    assert(res.body.document.nails[0][key] === 0.88, `GET reload should preserve non-default ${key}`);
+  }
+
+  for (const key of ARCHITECTURE_CONTROL_KEYS) {
+    res = await request("PUT", `/api/designs/${designId}/blueprint`, shapeEngineBlueprint("Almond", { [key]: "0.5" }));
+    assert(res.status === 400, `malformed non-numeric ${key} should be rejected`);
+  }
+
+  const legacyNoControlsBlueprint = shapeEngineBlueprint("Round");
+  for (const key of ARCHITECTURE_CONTROL_KEYS) delete legacyNoControlsBlueprint.nails[0][key];
+  res = await request("PUT", `/api/designs/${designId}/blueprint`, legacyNoControlsBlueprint);
+  assert(res.status === 200, "legacy blueprints without architecture controls should save with defaults");
+  for (const key of ARCHITECTURE_CONTROL_KEYS) {
+    assert(res.body.document.nails[0][key] === 0.5, `legacy blueprints should default missing ${key} safely`);
+  }
+
+  const fullSetArchitecture = fullSetArchitectureBlueprint();
+  res = await request("PUT", `/api/designs/${designId}/blueprint`, fullSetArchitecture);
+  assert(res.status === 200, "full-set blueprints should preserve per-nail architecture controls");
+  assert(JSON.stringify(res.body.document.nails.map((nail) => ARCHITECTURE_CONTROL_KEYS.map((key) => nail[key]))) === JSON.stringify(fullSetArchitecture.nails.map((nail) => ARCHITECTURE_CONTROL_KEYS.map((key) => nail[key]))), "full-set architecture controls should round-trip exactly on save");
+  const duplicatedNail = { ...res.body.document.nails[0], id: "duplicated-architecture-nail", slot: "duplicate" };
+  const mirroredNail = { ...res.body.document.nails[1], id: "mirrored-architecture-nail", slot: "mirror" };
+  const copyPasteBlueprint = {
+    ...res.body.document,
+    canvas: { ...res.body.document.canvas, activeNailId: duplicatedNail.id },
+    nails: [duplicatedNail, mirroredNail],
+  };
+  res = await request("PUT", `/api/designs/${designId}/blueprint`, copyPasteBlueprint);
+  assert(res.status === 200, "copy/paste/duplicate/mirror style blueprints should preserve valid architecture controls");
+  for (const nail of res.body.document.nails) {
+    for (const key of ARCHITECTURE_CONTROL_KEYS) assert(typeof nail[key] === "number", `duplicated/mirrored ${key} should remain numeric`);
+  }
 
   const whitespaceBlueprint = whitespaceMultiNailBlueprint();
   res = await request("PUT", `/api/designs/${designId}/blueprint`, whitespaceBlueprint);
