@@ -194,7 +194,7 @@ export default function NailCanvas({ nail, layers, selectedLayerId, mode, brush,
         <defs>
           <clipPath id={clipId}><path d={path}/></clipPath>
           <filter id={`${uid}-soft`}><feGaussianBlur stdDeviation="1.2"/></filter>
-          <PolishDefs baseLayer={baseLayer} uid={uid}/>
+          <PolishDefs nail={nail} baseLayer={baseLayer} uid={uid}/>
         </defs>
         <rect width={VIEWBOX.width} height={VIEWBOX.height} fill="transparent"/>
         <PolishSurface nail={nail} baseLayer={baseLayer} path={path} clipId={clipId} uid={uid}/>

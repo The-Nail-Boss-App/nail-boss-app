@@ -1,8 +1,9 @@
 import { getNailArchitecture, VIEWBOX } from "./blueprint.js";
 import { polishOpacity, resolvePolishDataForRender } from "./polish.js";
 
-export function PolishDefs({ baseLayer, uid }) {
-  const data = resolvePolishDataForRender(baseLayer?.data || {});
+export function PolishDefs({ nail, baseLayer, fallbackColor, uid }) {
+  const resolvedFallbackColor = fallbackColor || nail?.baseColorHex || "#E8A0BF";
+  const data = resolvePolishDataForRender(baseLayer?.data || {}, resolvedFallbackColor);
   const color = data.colorHex;
   const shine = data.topCoat === "Matte" || data.polishType === "Matte" ? 0 : data.shine;
   const chrome = data.polishType === "Chrome" ? data.chromeIntensity : 0;
