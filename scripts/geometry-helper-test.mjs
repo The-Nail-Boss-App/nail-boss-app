@@ -22,6 +22,7 @@ const {
   createDefaultBlueprint,
   ensureBlueprint,
   getActiveNail,
+  getNailArchitecture,
   normalizedToSvg,
   projectPointInsideNailSilhouette,
   isPointInsideNailSilhouette,
@@ -39,6 +40,20 @@ const {
   FRENCH_TIP_PRESETS,
 } = blueprint;
 
+
+const salonShapeFamilies = ['Square', 'Tapered Square', 'Russian Square', 'Coffin', 'Slim Coffin', 'Almond', 'Russian Almond', 'Oval', 'Round', 'Stiletto', 'Edge', 'Lipstick', 'Flare', 'Mountain Peak'];
+assert.deepEqual(SHAPES, salonShapeFamilies, 'Shape Engine V2 exposes the required salon shape families without length variants');
+for (const shape of salonShapeFamilies) {
+  const nail = { shape, length: 0.56, width: 0.52, taper: 0.5, apexHeight: 0.5, sidewallCurve: 0.5, freeEdgeThickness: 0.5 };
+  assert(buildNailPath(shape, nail).startsWith('M '), `${shape} returns a renderable nail silhouette path`);
+  assert(isPointInsideNailSilhouette({ x: 0.5, y: 0.5 }, nail), `${shape} keeps the centerline inside the nail bed`);
+  const architecture = getNailArchitecture(nail);
+  assert(architecture.apexYNorm > 0.25 && architecture.apexYNorm < 0.65, `${shape} has a realistic apex placement`);
+  assert(architecture.freeEdgeYNorm > 0.45 && architecture.freeEdgeYNorm < 0.92, `${shape} has a realistic free-edge boundary`);
+}
+assert.notEqual(buildNailPath('Coffin', { shape: 'Coffin', taper: 0.1 }), buildNailPath('Coffin', { shape: 'Coffin', taper: 0.9 }), 'taper control adjusts geometry without switching shape families');
+assert.notEqual(getNailArchitecture({ shape: 'Almond', apexHeight: 0.1 }).apexYNorm, getNailArchitecture({ shape: 'Almond', apexHeight: 0.9 }).apexYNorm, 'apex height control moves the architecture apex');
+assert(designStudioSource.includes('Shape Debug Overlay') && nailCanvasSource.includes('debugOverlay'), 'hidden developer shape debug overlay can render centerline, apex, sidewalls, cuticle, and free-edge boundaries');
 
 function multiNailBlueprint(count) {
   return {
