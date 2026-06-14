@@ -538,3 +538,17 @@ Known limitation: browser unload protection depends on native browser confirmati
 Pending autosave timers are cleared and nulled whenever the editor becomes clean, including successful manual saves, successful autosaves with no newer local edits, loaded/replaced designs, clean new designs, explicit discard/replacement flows, and studio unmount cleanup. Queued follow-up autosaves are preserved when newer local edits remain dirty.
 
 Each scheduled autosave captures the current editor-session token. Timer callbacks clear their own timer ref, verify the studio is still mounted, verify the captured session still matches the current draft/session, and verify `dirtyRef.current` is still true before calling `save({ autosave: true })`. Starting a new draft or loading/replacing editor state increments the session token, preventing a timer created for one draft from saving a later clean replacement draft or generating an unwanted `Untitled Set` row.
+
+### Manual QA: full-set asset thumbnail rendering
+
+Use this focused regression check for full-set previews after bulk copying asset artwork:
+
+1. Create or open a full-set nail design.
+2. On one nail, add at least one charm, one jewel, and one decal layer. Add a drawing stroke too so mixed layer ordering is visible.
+3. Use **Duplicate all** from the bulk actions panel.
+4. Confirm the full-set preview shows the charm, jewel, and decal on every copied nail thumbnail.
+5. Confirm the left-hand and right-hand filtered hand previews also show the charm, jewel, and decal.
+6. Copy the decorated nail, select a different destination nail, and use **Paste selected**; confirm the selected nail preview shows all asset types.
+7. Use **Mirror hand**; confirm the destination hand previews show all asset types.
+8. Click an individual copied thumbnail and confirm the Layers panel still lists the copied charm, jewel, decal, drawing, and base layers.
+9. Save the design, reload it, and confirm both the copied layers and the full-set/hand preview rendering still show the charm, jewel, and decal.
