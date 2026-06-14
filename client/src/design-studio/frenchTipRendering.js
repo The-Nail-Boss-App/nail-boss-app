@@ -38,7 +38,7 @@ export function FrenchTipShape({ layer, nail, clipId, thumbnail = false }) {
   const data = normalizeFrenchTipData(layer?.data || {});
   const path = frenchTipPath(layer, nail);
   const rotation = data.style === "angled" ? data.rotation || 0 : data.rotation;
-  return <g clipPath={`url(#${clipId})`} opacity={layer.opacity} data-layer-type="frenchTip" data-french-tip-style={data.style}>
+  return <g clipPath={`url(#${clipId})`} opacity={layer.opacity} pointerEvents="none" data-layer-type="frenchTip" data-french-tip-style={data.style}>
     <path d={path} fill={data.colorHex} transform={rotatePath(rotation, VIEWBOX.cx, getNailGeometry(nail).bottomY)} stroke={thumbnail ? "none" : "rgba(59,31,53,.12)"} strokeWidth={thumbnail ? 0 : 1.5}/>
   </g>;
 }

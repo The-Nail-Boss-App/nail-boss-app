@@ -152,6 +152,7 @@ assert(nailCanvasSource.includes('if (activeDrag.kind === "eraser")') && nailCan
 assert(nailCanvasSource.includes('if (mode === "draw" || mode === "eraser") return;'), 'asset transform pointerMove is guarded during draw and eraser modes');
 assert(nailCanvasSource.includes('pointerEvents="none"><defs><LayerGradient'), 'gradient overlays are canvas-nonblocking in every mode');
 assert(nailCanvasSource.includes('pointerEvents="none"><defs><PatternDefs'), 'pattern overlays are canvas-nonblocking in every mode');
+assert(frenchTipRenderingSource.includes('pointerEvents="none" data-layer-type="frenchTip"'), 'French Tip overlays pass pointer events through to underlying canvas artwork');
 assert(!nailCanvasSource.includes('LayerGradient layer={layer} id={id}/></defs><rect') || !nailCanvasSource.includes('onPointerDown={selectOverlay}><defs><LayerGradient'), 'gradient overlay selection is not captured by a full-surface canvas handler');
 
 const drawingDeletedBlueprint = updateActiveNail(createDefaultBlueprint(), (activeNail) => ({

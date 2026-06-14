@@ -607,6 +607,7 @@ The Design Studio now includes a French Tip Precision panel and top-toolbar acti
 ### Preview behavior
 
 French Tip rendering is SVG-vector based and clipped by the same nail silhouette used by the main canvas and thumbnails. It respects each nail's current shape, length, and width because the rendered path is generated from the nail geometry at render time. Revalidation after shape, length, or width changes preserves French Tip layers and re-normalizes their full-surface transform without touching base, drawing, charm, jewel, decal, gradient, or pattern layers.
+French Tip SVG overlays opt out of pointer events in the editable canvas and previews, matching gradient and pattern overlay behavior. Artists select and edit French Tip layers through the Layers panel and Properties panel, while clicks, drags, Draw, and Eraser gestures pass through the visible tip overlay to underlying artwork or the root canvas handler.
 
 French Tip layers appear in:
 
