@@ -21,6 +21,27 @@ export function clampPolishNumber(value, min, max, fallback) {
   if (!Number.isFinite(parsed)) return fallback;
   return Math.min(max, Math.max(min, parsed));
 }
+export const LEGACY_EFFECT_POLISH_TYPE = {
+  Solid: "Cream",
+  Gradient: "Gradient",
+  Chrome: "Chrome",
+  CatEye: "Cat Eye",
+  Marble: "Marble",
+};
+export const LEGACY_RENDER_POLISH_TYPES = ["Gradient", "Marble"];
+export function hasExplicitPolishType(data = {}) {
+  return Object.prototype.hasOwnProperty.call(data, "polishType") && POLISH_TYPES.includes(data.polishType);
+}
+export function legacyEffectPolishType(data = {}) {
+  return LEGACY_EFFECT_POLISH_TYPE[data.effect] || "Cream";
+}
+export function resolvePolishDataForRender(data = {}, fallbackColor = "#E8A0BF") {
+  const normalized = normalizePolishData(data, fallbackColor);
+  if (hasExplicitPolishType(data)) return normalized;
+  const legacyPolishType = legacyEffectPolishType(data);
+  if (legacyPolishType === "Cream") return normalized;
+  return { ...normalized, polishType: legacyPolishType };
+}
 export function normalizePolishData(data = {}, fallbackColor = "#E8A0BF") {
   const polishType = POLISH_TYPES.includes(data.polishType) ? data.polishType : "Cream";
   const topCoat = TOP_COATS.includes(data.topCoat) ? data.topCoat : (polishType === "Matte" ? "Matte" : "Gloss");

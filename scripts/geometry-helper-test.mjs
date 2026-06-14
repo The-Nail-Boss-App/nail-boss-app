@@ -471,6 +471,7 @@ assert(!selectSlotSource.includes('setDirty(true)') && !selectSlotSource.include
 console.log('geometry-helper-test passed');
 
 const polishSource = await readFile(new URL('../client/src/design-studio/polish.js', import.meta.url), 'utf8');
+const polishModule = await import(`data:text/javascript;charset=utf-8,${encodeURIComponent(polishSource)}`);
 const polishRendererSource = await readFile(new URL('../client/src/design-studio/PolishRenderer.jsx', import.meta.url), 'utf8');
 assert(polishRendererSource.includes('id={`${uid}-cream`}') && polishRendererSource.includes('subtle') === false, 'Cream rendering has a dedicated smooth salon polish gradient');
 assert(polishRendererSource.includes('id={`${uid}-jelly`}') && polishRendererSource.includes('polishOpacity'), 'Jelly transparency uses translucent polish opacity');
@@ -491,3 +492,12 @@ assert.equal(polishBase.data.colorHex, '#123456', 'base polish color is preserve
 const copiedPolish = cloneNailDesign(getActiveNail(polishDefaultBlueprint), { ...getActiveNail(polishDefaultBlueprint), id: 'copy', slot: 'copy' });
 assert.equal(copiedPolish.layers.find((layer) => layer.type === 'base').data.polishType, 'Cream', 'copy/duplicate-style nail cloning preserves polish fields');
 assert(polishSource.includes('POLISH_TYPES') && polishSource.includes('TOP_COATS'), 'proposal-compatible polish fields stay inside existing blueprint layer data');
+assert.equal(polishModule.resolvePolishDataForRender({ colorHex: '#101010', effect: 'Solid', effectColorHex: '#FFFFFF' }).polishType, 'Cream', 'legacy Solid base effects render as Cream polish');
+assert.equal(polishModule.resolvePolishDataForRender({ colorHex: '#101010', effect: 'Gradient', effectColorHex: '#FFFFFF' }).polishType, 'Gradient', 'legacy Gradient base effects keep gradient rendering when no explicit Polish Type exists');
+assert.equal(polishModule.resolvePolishDataForRender({ colorHex: '#101010', effect: 'Chrome', effectColorHex: '#FFFFFF' }).polishType, 'Chrome', 'legacy Chrome base effects map to Chrome polish rendering when no explicit Polish Type exists');
+assert.equal(polishModule.resolvePolishDataForRender({ colorHex: '#101010', effect: 'CatEye', effectColorHex: '#FFFFFF' }).polishType, 'Cat Eye', 'legacy CatEye base effects map to Cat Eye polish rendering when no explicit Polish Type exists');
+assert.equal(polishModule.resolvePolishDataForRender({ colorHex: '#101010', effect: 'Marble', effectColorHex: '#FFFFFF' }).polishType, 'Marble', 'legacy Marble base effects keep marble-like rendering when no explicit Polish Type exists');
+assert.equal(polishModule.resolvePolishDataForRender({ colorHex: '#101010', polishType: 'Jelly', effect: 'Chrome', effectColorHex: '#FFFFFF' }).polishType, 'Jelly', 'explicit Polish Type overrides legacy base effects');
+assert(polishRendererSource.includes('resolvePolishDataForRender(baseLayer?.data || {})') && polishRendererSource.includes('resolvePolishDataForRender(baseLayer?.data || {}, nail?.baseColorHex || "#E8A0BF")'), 'NailCanvas, thumbnails, hand previews, and full-set previews share legacy-aware Polish rendering');
+assert(polishRendererSource.includes('id={`${uid}-legacy-gradient`}') && polishRendererSource.includes('id={`${uid}-legacy-marble`}'), 'legacy Gradient and Marble have dedicated compatible renderer definitions');
+assert(polishSource.includes('hasExplicitPolishType') && polishSource.includes('if (hasExplicitPolishType(data)) return normalized'), 'user-selected Polish Type remains authoritative over legacy effect fields');

@@ -659,9 +659,21 @@ The Design Studio base layer now exposes Polish Settings using nail-industry lan
 
 A shared Polish Renderer is used by the editable NailCanvas plus thumbnail, hand, and full-set previews. It paints the selected Polish Type, then applies automatic realism layers clipped to Shape Engine V2 geometry: apex highlight, sidewall shadow, free-edge highlight, and Top Coat shine. Charms, jewels, and decals keep the same data model but receive a small contact shadow; jewels also get a small highlight where practical.
 
-**Validation and defaults**
+**Validation, defaults, and legacy effect compatibility**
 
 The backend validates `polishType`, `topCoat`, and all numeric polish controls during blueprint persistence. Existing base layers that do not have polish fields default to Cream polish with safe Shine, Transparency, Top Coat, sparkle, Cat Eye, and Chrome values. Invalid polish types or malformed numeric controls are rejected with blueprint validation errors. No database migration is required because the fields live inside existing blueprint layer data.
+
+Legacy base effect fields remain render-compatible for older saved designs, cards, thumbnails, hand/full-set previews, and proposal flows. Rendering does not mutate stored designs just to preview them: when a base layer has `effect`/`effectColorHex` but no explicit user-selected `polishType`, the renderer maps legacy effects into the Polish Engine as follows:
+
+| Legacy base effect | Polish Engine rendering behavior |
+| --- | --- |
+| `Solid` | Safe Cream polish rendering. |
+| `Gradient` | Preserves a two-color legacy gradient using base color plus `effectColorHex`. |
+| `Chrome` | Maps to Chrome polish rendering and keeps the chrome-like reflective finish. |
+| `CatEye` | Maps to Cat Eye polish rendering and keeps the directional magnetic-style highlight. |
+| `Marble` | Uses a marble-like compatibility overlay with legacy veining color from `effectColorHex`. |
+
+If both `polishType` and legacy `effect` are present, the explicit Polish Type is authoritative. This lets intentionally migrated or newly edited designs keep the user-selected Polish Type while preserving older designs that only have legacy effect data. Save/load continues to preserve `effect` and `effectColorHex` flat fields unless the user intentionally changes the newer Polish Type settings.
 
 **Compatibility and limitations**
 
