@@ -204,8 +204,8 @@ export default function NailCanvas({ nail, layers, selectedLayerId, mode, brush,
     </g>;
   }
 
-  return <div style={{ height: "100%", minHeight: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", position: "relative" }}>
-    <div style={{ width: "min(72vh, 96%)", maxWidth: 560, aspectRatio: "2 / 3", background: "linear-gradient(180deg,#fff,#fbf1f8)", border: `1px solid ${COLORS.border}`, borderRadius: 28, boxShadow: "inset 0 0 0 12px rgba(255,255,255,.55), 0 18px 50px rgba(60,20,50,.10)", padding: 18 }}>
+  return <div style={{ height: "100%", minHeight: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-start", position: "relative" }}>
+    <div style={{ width: "min(54vh, 96%)", maxWidth: 430, aspectRatio: "2 / 3", background: "linear-gradient(180deg,#fff,#fbf1f8)", border: `1px solid ${COLORS.border}`, borderRadius: 28, boxShadow: "inset 0 0 0 12px rgba(255,255,255,.55), 0 18px 50px rgba(60,20,50,.10)", padding: 12 }}>
       <svg ref={svgRef} viewBox={`0 0 ${VIEWBOX.width} ${VIEWBOX.height}`} width="100%" height="100%" role="img" aria-label="Editable single nail canvas" onPointerDown={canvasDown} onPointerMove={(e) => { pointerMove(e); canvasMove(e); }} onPointerUp={finishPointerGesture} onPointerCancel={cancelPointerGesture} style={{ touchAction: "none", userSelect: "none" }}>
         <defs>
           <clipPath id={clipId}><path d={path}/></clipPath>
@@ -229,7 +229,7 @@ export default function NailCanvas({ nail, layers, selectedLayerId, mode, brush,
         <path d={path} fill="none" stroke="rgba(59,31,53,.45)" strokeWidth="2.5" pointerEvents="none"/>
       </svg>
     </div>
-    <p style={{ marginTop: 10, color: COLORS.textMuted, fontSize: 13 }}>{selectedLayerId ? "Drag selected artwork inside the strict nail boundary. Use Properties for size and rotation." : "Select an art layer, add an asset, or choose Draw to begin."}</p>
+    <p style={{ marginTop: 6, color: COLORS.textMuted, fontSize: 13 }}>{selectedLayerId ? "Drag selected artwork inside the strict nail boundary. Use Properties for size and rotation." : "Select an art layer, add an asset, or choose Draw to begin."}</p>
     {notice && <div style={{ position: "absolute", bottom: 18, left: "50%", transform: "translateX(-50%)", background: COLORS.plum, color: "#fff", padding: "10px 14px", borderRadius: 999, fontSize: 12, boxShadow: "0 10px 30px rgba(60,20,50,.2)" }}>{notice}</div>}
   </div>;
 }

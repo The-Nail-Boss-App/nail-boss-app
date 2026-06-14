@@ -46,10 +46,10 @@ const SHAPE_ARCHITECTURE = {
   "Russian Square": { cuticle: 0.74, shoulder: 1.03, tip: 0.86, taper: 0.18, curve: 0.11, apexY: 0.38, freeEdge: 0.3, freeEdgeSlant: 0 },
   "Coffin": { cuticle: 0.68, shoulder: 1, tip: 0.46, taper: 0.52, curve: 0.16, apexY: 0.46, freeEdge: 0.32, freeEdgeSlant: 0 },
   "Slim Coffin": { cuticle: 0.62, shoulder: 0.92, tip: 0.34, taper: 0.64, curve: 0.18, apexY: 0.48, freeEdge: 0.36, freeEdgeSlant: 0 },
-  "Almond": { cuticle: 0.64, shoulder: 0.98, tip: 0.03, taper: 0.78, curve: 0.46, apexY: 0.47, freeEdge: 0.34, freeEdgeSlant: 0 },
-  "Russian Almond": { cuticle: 0.6, shoulder: 0.94, tip: 0.02, taper: 0.86, curve: 0.36, apexY: 0.41, freeEdge: 0.42, freeEdgeSlant: 0 },
-  "Oval": { cuticle: 0.66, shoulder: 0.98, tip: 0.18, taper: 0.54, curve: 0.58, apexY: 0.48, freeEdge: 0.28, freeEdgeSlant: 0 },
-  "Round": { cuticle: 0.7, shoulder: 0.98, tip: 0.12, taper: 0.48, curve: 0.72, apexY: 0.46, freeEdge: 0.18, freeEdgeSlant: 0 },
+  "Almond": { cuticle: 0.64, shoulder: 0.98, tip: 0.04, taper: 0.8, curve: 0.5, apexY: 0.47, freeEdge: 0.36, freeEdgeSlant: 0 },
+  "Russian Almond": { cuticle: 0.6, shoulder: 0.94, tip: 0.015, taper: 0.88, curve: 0.38, apexY: 0.41, freeEdge: 0.42, freeEdgeSlant: 0 },
+  "Oval": { cuticle: 0.68, shoulder: 0.99, tip: 0.36, taper: 0.38, curve: 0.82, apexY: 0.47, freeEdge: 0.24, freeEdgeSlant: 0 },
+  "Round": { cuticle: 0.72, shoulder: 0.96, tip: 0.52, taper: 0.22, curve: 0.96, apexY: 0.43, freeEdge: 0.16, freeEdgeSlant: 0 },
   "Stiletto": { cuticle: 0.58, shoulder: 0.94, tip: 0, taper: 0.96, curve: 0.26, apexY: 0.5, freeEdge: 0.46, freeEdgeSlant: 0 },
   "Edge": { cuticle: 0.62, shoulder: 0.96, tip: 0.02, taper: 0.9, curve: 0.12, apexY: 0.4, freeEdge: 0.44, freeEdgeSlant: 0 },
   "Lipstick": { cuticle: 0.68, shoulder: 0.98, tip: 0.48, taper: 0.36, curve: 0.16, apexY: 0.43, freeEdge: 0.3, freeEdgeSlant: 0.16 },
@@ -119,6 +119,16 @@ function normalizedHalfWidthAtY(shape = "Almond", yValue = 0.5, nail = {}) {
   if (shape === "Edge") return tapered * (1 - 0.07 * Math.max(0, Math.sin(Math.PI * t)));
   if (shape === "Lipstick" && y > 0.9) return tapered * (1 - ((y - 0.9) / 0.1) * 0.08);
   return Math.max(0, tapered);
+}
+
+export function getNailShapeMetrics(shape = "Almond", nail = {}) {
+  const scopedNail = { ...nail, shape };
+  return {
+    shoulderHalfWidth: Number(normalizedHalfWidthAtY(shape, 0.28, scopedNail).toFixed(6)),
+    sidewallHalfWidth: Number(normalizedHalfWidthAtY(shape, 0.62, scopedNail).toFixed(6)),
+    freeEdgeHalfWidth: Number(normalizedHalfWidthAtY(shape, 0.86, scopedNail).toFixed(6)),
+    tipHalfWidth: Number(normalizedHalfWidthAtY(shape, 1, scopedNail).toFixed(6)),
+  };
 }
 
 function pathPoint(nail, y, side = 1) {
