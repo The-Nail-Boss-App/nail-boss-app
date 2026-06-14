@@ -9,6 +9,14 @@ export function hasMeaningfulLegacyEffect(data = {}) {
 export function hasExplicitPolishType(data = {}) {
   return Object.prototype.hasOwnProperty.call(data, "polishType") && POLISH_TYPES.includes(data.polishType);
 }
+export function clearStalePolishTypeForLegacyEffect(data = {}, patch = {}) {
+  const next = { ...data };
+  const patchHasExplicitPolishType = POLISH_TYPES.includes(patch.polishType);
+  const patchHasMeaningfulLegacyEffect = Object.prototype.hasOwnProperty.call(patch, "effect") && MEANINGFUL_LEGACY_EFFECTS.includes(patch.effect);
+  if (patchHasExplicitPolishType) next.polishType = patch.polishType;
+  else if (patchHasMeaningfulLegacyEffect) delete next.polishType;
+  return next;
+}
 export function normalizePolishData(data = {}, fallbackColor = "#E8A0BF") {
   const hasValidPolishType = hasExplicitPolishType(data);
   const preserveAbsentLegacyPolishType = !hasValidPolishType && hasMeaningfulLegacyEffect(data);
@@ -564,9 +572,9 @@ export function synchronizeBase(blueprint, patch) {
         catEyeIntensity: patch.catEyeIntensity ?? layer.data.catEyeIntensity,
         chromeIntensity: patch.chromeIntensity ?? layer.data.chromeIntensity,
       };
-      const patchHasMeaningfulLegacyEffect = Object.prototype.hasOwnProperty.call(patch, "effect") && MEANINGFUL_LEGACY_EFFECTS.includes(patch.effect);
-      if (POLISH_TYPES.includes(patch.polishType)) data.polishType = patch.polishType;
-      else if (patchHasMeaningfulLegacyEffect) delete data.polishType;
+      const patchedData = clearStalePolishTypeForLegacyEffect(data, patch);
+      if (POLISH_TYPES.includes(patch.polishType)) data.polishType = patchedData.polishType;
+      else if (!Object.prototype.hasOwnProperty.call(patchedData, "polishType")) delete data.polishType;
       else if (POLISH_TYPES.includes(layer.data.polishType)) data.polishType = layer.data.polishType;
       else delete data.polishType;
       const normalizedPolish = normalizePolishData(data, data.colorHex);

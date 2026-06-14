@@ -1,5 +1,5 @@
 import { COLORS, S } from "../styles.js";
-import { EFFECTS, POLISH_TYPES, TOP_COATS, normalizePolishData } from "./blueprint.js";
+import { EFFECTS, POLISH_TYPES, TOP_COATS, clearStalePolishTypeForLegacyEffect, normalizePolishData } from "./blueprint.js";
 import { PATTERNS, GRADIENT_DIRECTIONS, FRENCH_TIP_PRESETS, FRENCH_TIP_STYLES } from "./blueprint.js";
 import { findAsset } from "./assets.js";
 import { UI } from "./studioStyles.js";
@@ -29,7 +29,7 @@ export default function PropertiesPanel({ layer, onPatch, onDuplicate, onDelete 
       <p style={{ ...UI.smallText, marginBottom: 12 }}>Type: <strong>{layer.type}</strong>{asset ? ` · ${asset.category}` : ""}</p>
       {layer.type === "base" && (() => {
         const polish = normalizePolishData(layer.data);
-        const patchPolish = (patch) => onPatch({ data: normalizePolishData({ ...layer.data, ...patch }, layer.data.colorHex) });
+        const patchPolish = (patch) => onPatch({ data: normalizePolishData(clearStalePolishTypeForLegacyEffect({ ...layer.data, ...patch }, patch), layer.data.colorHex) });
         return <>
           <div style={{ ...UI.sectionTitle, marginTop: 8 }}>Polish Settings</div>
           <div style={UI.field}><label style={S.label}>Polish Type</label><select style={S.input} value={polish.polishType} onChange={(e) => patchPolish({ polishType: e.target.value })}>{POLISH_TYPES.map((type) => <option key={type}>{type}</option>)}</select></div>
@@ -46,7 +46,7 @@ export default function PropertiesPanel({ layer, onPatch, onDuplicate, onDelete 
             <Range label="Cat Eye Intensity" value={Math.round(polish.catEyeIntensity * 100)} min={0} max={100} onChange={(v) => patchPolish({ catEyeIntensity: v / 100 })} />
           </>}
           {polish.polishType === "Chrome" && <Range label="Chrome Intensity" value={Math.round(polish.chromeIntensity * 100)} min={0} max={100} onChange={(v) => patchPolish({ chromeIntensity: v / 100 })} />}
-          <div style={UI.field}><label style={S.label}>Legacy effect</label><select style={S.input} value={layer.data.effect} onChange={(e) => onPatch({ data: { ...layer.data, effect: e.target.value } })}>{EFFECTS.map((effect) => <option key={effect}>{effect}</option>)}</select></div>
+          <div style={UI.field}><label style={S.label}>Legacy effect</label><select style={S.input} value={layer.data.effect} onChange={(e) => patchPolish({ effect: e.target.value })}>{EFFECTS.map((effect) => <option key={effect}>{effect}</option>)}</select></div>
           <Color label="Effect color" value={layer.data.effectColorHex} onChange={(effectColorHex) => onPatch({ data: { ...layer.data, effectColorHex } })} />
         </>;
       })()}

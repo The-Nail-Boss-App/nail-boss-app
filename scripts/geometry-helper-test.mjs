@@ -40,6 +40,7 @@ const {
   normalizeFrenchTipData,
   FRENCH_TIP_PRESETS,
   POLISH_TYPES,
+  clearStalePolishTypeForLegacyEffect,
   normalizePolishData,
   cloneNailDesign,
 } = blueprint;
@@ -519,6 +520,10 @@ for (const effect of ['Gradient', 'Chrome', 'CatEye', 'Marble']) {
 }
 assert.equal(normalizePolishData({ colorHex: '#123456', effect: 'Solid', effectColorHex: '#FFFFFF' }, '#123456').polishType, 'Cream', 'frontend normalization defaults legacy Solid to Cream');
 for (const [effect, expectedPolishType] of [['Chrome', 'Chrome'], ['CatEye', 'Cat Eye'], ['Gradient', 'Gradient'], ['Marble', 'Marble']]) {
+  const propertiesPatchData = normalizePolishData(clearStalePolishTypeForLegacyEffect({ colorHex: '#123456', effect, effectColorHex: '#FFFFFF', polishType: 'Cream' }, { effect }), '#123456');
+  assert(!Object.hasOwn(propertiesPatchData, 'polishType'), `PropertiesPanel legacy effect ${effect} clears stale Cream Polish Type`);
+  assert.equal(polishModule.resolvePolishDataForRender(propertiesPatchData, '#123456').polishType, expectedPolishType, `PropertiesPanel legacy effect ${effect} renders ${expectedPolishType}`);
+  assert(!('polishType' in propertiesPatchData) || propertiesPatchData.polishType !== undefined, `PropertiesPanel legacy effect ${effect} does not create polishType undefined`);
   const changedLegacyEffect = synchronizeBase(createDefaultBlueprint({ baseColorHex: '#123456', effect: 'Solid' }), { effect });
   const changedLegacyBase = getActiveNail(changedLegacyEffect).layers.find((layer) => layer.type === 'base');
   assert(!Object.hasOwn(changedLegacyBase.data, 'polishType'), `changing legacy effect to ${effect} clears explicit Cream Polish Type`);
@@ -527,10 +532,13 @@ for (const [effect, expectedPolishType] of [['Chrome', 'Chrome'], ['CatEye', 'Ca
 }
 const changedLegacySolid = synchronizeBase(createDefaultBlueprint({ baseColorHex: '#123456', effect: 'Chrome' }), { effect: 'Solid' });
 assert.equal(getActiveNail(changedLegacySolid).layers.find((layer) => layer.type === 'base').data.polishType, 'Cream', 'changing legacy effect to Solid defaults safely to Cream');
+assert.equal(normalizePolishData(clearStalePolishTypeForLegacyEffect({ colorHex: '#123456', effect: 'Solid', effectColorHex: '#FFFFFF', polishType: 'Cream' }, { effect: 'Solid' }), '#123456').polishType, 'Cream', 'PropertiesPanel legacy effect Solid keeps Cream safely');
 const explicitPolishWithLegacyEffect = synchronizeBase(createDefaultBlueprint({ baseColorHex: '#123456', effect: 'Solid' }), { effect: 'Chrome', polishType: 'Jelly' });
 assert.equal(getActiveNail(explicitPolishWithLegacyEffect).layers.find((layer) => layer.type === 'base').data.polishType, 'Jelly', 'explicit Polish Type patch remains authoritative when legacy effect also changes');
 const explicitCreamWithLegacyEffect = synchronizeBase(createDefaultBlueprint({ baseColorHex: '#123456', effect: 'Solid' }), { effect: 'Chrome', polishType: 'Cream' });
 assert.equal(getActiveNail(explicitCreamWithLegacyEffect).layers.find((layer) => layer.type === 'base').data.polishType, 'Cream', 'explicit Cream selected through Polish Type remains Cream');
+assert.equal(normalizePolishData(clearStalePolishTypeForLegacyEffect({ colorHex: '#123456', effect: 'Chrome', effectColorHex: '#FFFFFF', polishType: 'Cream' }, { polishType: 'Cream' }), '#123456').polishType, 'Cream', 'PropertiesPanel Polish Type selector explicit Cream remains Cream');
+assert.equal(normalizePolishData(clearStalePolishTypeForLegacyEffect({ colorHex: '#123456', effect: 'Solid', effectColorHex: '#FFFFFF', polishType: 'Cream' }, { polishType: 'Chrome' }), '#123456').polishType, 'Chrome', 'PropertiesPanel Polish Type selector explicit Chrome remains Chrome');
 assert.equal(normalizePolishData({ colorHex: '#123456', effect: 'Chrome', effectColorHex: '#FFFFFF', polishType: 'Cream' }, '#123456').polishType, 'Cream', 'explicit Cream Polish Type persists over legacy effect');
 const explicitChromeCream = synchronizeBase(createDefaultBlueprint({ baseColorHex: '#123456', effect: 'Chrome' }), { polishType: 'Cream' });
 assert.equal(getActiveNail(explicitChromeCream).layers.find((layer) => layer.type === 'base').data.polishType, 'Cream', 'synchronizeBase persists user-selected explicit Cream Polish Type');
@@ -551,3 +559,4 @@ assert.equal(polishModule.resolvePolishDataForRender({}, '#336699').colorHex, '#
 assert.equal(polishModule.resolvePolishDataForRender({ colorHex: '#112233', polishType: 'Chrome' }, '#336699').colorHex, '#112233', 'normal base-layer polish color remains authoritative over no-base fallback');
 assert(polishRendererSource.includes('id={`${uid}-legacy-gradient`}') && polishRendererSource.includes('id={`${uid}-legacy-marble`}'), 'legacy Gradient and Marble have dedicated compatible renderer definitions');
 assert(polishSource.includes('hasExplicitPolishType') && polishSource.includes('if (hasExplicitPolishType(data)) return normalized'), 'user-selected Polish Type remains authoritative over legacy effect fields');
+assert(propertiesPanelSource.includes('clearStalePolishTypeForLegacyEffect') && propertiesPanelSource.includes('onChange={(e) => patchPolish({ effect: e.target.value })}'), 'PropertiesPanel legacy effect dropdown uses shared stale Polish Type clearing helper');
