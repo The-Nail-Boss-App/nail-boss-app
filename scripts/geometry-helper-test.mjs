@@ -8,6 +8,8 @@ const assetRenderingSource = await readFile(new URL('../client/src/design-studio
 const bulkActionsPanelSource = await readFile(new URL('../client/src/design-studio/BulkActionsPanel.jsx', import.meta.url), 'utf8');
 const designStudioSource = await readFile(new URL('../client/src/design-studio/DesignStudio.jsx', import.meta.url), 'utf8');
 const frenchTipRenderingSource = await readFile(new URL('../client/src/design-studio/frenchTipRendering.js', import.meta.url), 'utf8');
+
+const polishRendererSource = await readFile(new URL('../client/src/design-studio/PolishRenderer.jsx', import.meta.url), 'utf8');
 const propertiesPanelSource = await readFile(new URL('../client/src/design-studio/PropertiesPanel.jsx', import.meta.url), 'utf8');
 const blueprint = await import(`data:text/javascript;charset=utf-8,${encodeURIComponent(source)}`);
 
@@ -71,6 +73,14 @@ const smoothPath = buildNailPath('Oval', { ...defaultShapeNail, shape: 'Oval' })
 assert(!/ L /.test(smoothPath) && (smoothPath.match(/ C /g) || []).length >= 10, 'smooth path generation uses cubic curves instead of jagged polygon line fallback');
 assert(nailCanvasSource.includes('const path = buildNailPath(nail.shape, nail);') && nailCanvasSource.includes('<PolishSurface nail={nail} baseLayer={baseLayer} path={path}'), 'polish rendering clips against the shared smooth nail path');
 assert(nailThumbnailSource.includes('const path = buildNailPath(nail.shape, nail);') && nailThumbnailSource.includes('<clipPath id={clipId}><path d={path}/></clipPath>'), 'thumbnails use the same smooth geometry path as the active canvas');
+
+assert(polishRendererSource.includes('data-realism-layer="soft-edge-definition"') && polishRendererSource.includes('strokeWidth="1.15"'), 'realistic renderer replaces hard cartoon outline with soft edge definition');
+assert(!nailCanvasSource.includes('stroke="rgba(59,31,53,.45)" strokeWidth="2.5"') && !nailThumbnailSource.includes('stroke="rgba(59,31,53,.45)" strokeWidth="3"'), 'canvas and thumbnails no longer draw the previous hard cartoon outline');
+assert(polishRendererSource.includes('data-realism-layer="apex-highlight"') && polishRendererSource.includes('arch.apex') && polishRendererSource.includes('arch.apexYNorm'), 'realistic renderer includes shape-aware apex highlight rendering');
+assert(polishRendererSource.includes('data-realism-layer="sidewall-shadows"') && polishRendererSource.includes('sidewallOpacity') && polishRendererSource.includes('sidewallCurve'), 'realistic renderer includes sidewall shadow rendering for curvature');
+assert(polishRendererSource.includes('data-realism-layer="free-edge-depth"') && polishRendererSource.includes('freeEdgeYNorm') && polishRendererSource.includes('freeEdgeThickness'), 'realistic renderer includes free-edge depth and translucency rendering');
+assert(polishRendererSource.includes('export function RealisticNailSurfaceRenderer') && polishRendererSource.includes('export const PolishSurface = RealisticNailSurfaceRenderer') && nailCanvasSource.includes('<PolishSurface nail={nail} baseLayer={baseLayer} path={path}') && nailThumbnailSource.includes('<PolishSurface nail={nail} baseLayer={base} path={path}'), 'NailCanvas, NailThumbnail, and full-set previews share the realistic nail surface renderer');
+
 assert(assetRenderingSource.includes('getNailGeometry(nail)') && source.includes('assetFitsNailSilhouette(transform = {}, nail, layer = {})'), 'assets still strict-fit against nail geometry after shape smoothing');
 
 for (const shape of ['Round', 'Oval']) {
@@ -510,7 +520,6 @@ console.log('geometry-helper-test passed');
 
 const polishSource = await readFile(new URL('../client/src/design-studio/polish.js', import.meta.url), 'utf8');
 const polishModule = await import(`data:text/javascript;charset=utf-8,${encodeURIComponent(polishSource)}`);
-const polishRendererSource = await readFile(new URL('../client/src/design-studio/PolishRenderer.jsx', import.meta.url), 'utf8');
 assert(polishRendererSource.includes('id={`${uid}-cream`}') && polishRendererSource.includes('subtle') === false, 'Cream rendering has a dedicated smooth salon polish gradient');
 assert(polishRendererSource.includes('id={`${uid}-jelly`}') && polishRendererSource.includes('polishOpacity'), 'Jelly transparency uses translucent polish opacity');
 assert(polishRendererSource.includes('id={`${uid}-milky`}'), 'Milky rendering has a dedicated cloudy semi-sheer gradient');
@@ -518,7 +527,7 @@ assert(polishRendererSource.includes('data.topCoat === "Matte" || data.polishTyp
 assert(polishRendererSource.includes('data.chromeIntensity'), 'Chrome rendering is controlled by Chrome Intensity');
 assert(polishRendererSource.includes('data.catEyeAngle') && polishRendererSource.includes('data.catEyeIntensity'), 'Cat Eye rendering is controlled by angle and intensity');
 assert(polishRendererSource.includes('data.sparkleDensity') && polishRendererSource.includes('data.sparkleSize'), 'Glitter rendering is controlled by density and size');
-assert(polishRendererSource.includes('apex') && polishRendererSource.includes('sidewall') === false && polishRendererSource.includes('freeEdgeYNorm'), 'realism layers follow Shape Engine V2 apex and free-edge geometry');
+assert(polishRendererSource.includes('apex') && polishRendererSource.includes('sidewall') && polishRendererSource.includes('freeEdgeYNorm'), 'realism layers follow Shape Engine V2 apex, sidewall, and free-edge geometry');
 assert(nailCanvasSource.includes('<PolishSurface') && nailThumbnailSource.includes('<PolishSurface'), 'Polish rendering is shared by NailCanvas, thumbnail, hand, and full-set previews');
 assert(propertiesPanelSource.includes('Polish Settings') && propertiesPanelSource.includes('Polish Type') && propertiesPanelSource.includes('Top Coat'), 'Design Studio exposes salon-language Polish Settings controls');
 assert(propertiesPanelSource.includes('polish.polishType === "Glitter"') && propertiesPanelSource.includes('polish.polishType === "Cat Eye"') && propertiesPanelSource.includes('polish.polishType === "Chrome"'), 'Polish Settings only show relevant Glitter, Cat Eye, and Chrome controls');

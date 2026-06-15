@@ -33,7 +33,6 @@ export default function NailThumbnail({ nail, active = false, onClick }) {
           </g>
         </g>;
       })}
-      <path d={path} fill="none" stroke="rgba(59,31,53,.45)" strokeWidth="3"/>
     </svg>
     <div style={{ fontSize: 11, fontWeight: 800, color: active ? COLORS.plum : COLORS.textMuted }}>{slotLabel(nail.slot)}</div>
   </button>;
