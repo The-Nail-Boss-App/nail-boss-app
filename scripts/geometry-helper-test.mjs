@@ -23,6 +23,7 @@ const {
   ensureBlueprint,
   getActiveNail,
   getNailArchitecture,
+  getNailFreeEdgeExtent,
   getNailShapeMetrics,
   normalizedToSvg,
   projectPointInsideNailSilhouette,
@@ -74,11 +75,16 @@ assert(assetRenderingSource.includes('getNailGeometry(nail)') && source.includes
 
 for (const shape of ['Round', 'Oval']) {
   const shaped = { ...defaultShapeNail, shape };
+  const freeEdge = getNailFreeEdgeExtent(shaped);
   assert(buildNailPath(shape, shaped).startsWith('M '), `${shape} produces a valid render path`);
+  assert(freeEdge.renderBottomY > freeEdge.bottomY, `${shape} exposes the smooth rounded free-edge extent below the nominal nail bottom`);
   assert(isPointInsideNailSilhouette({ x: 0.5, y: 0.96 }, shaped), `${shape} keeps French Tip center geometry inside the clipping silhouette`);
   const frenchLayer = frenchTipLayer(shaped, 'classic', 'medium');
   assert.equal(frenchLayer.type, 'frenchTip', `${shape} supports French Tip layer creation for clipped rendering`);
 }
+
+assert.equal(getNailFreeEdgeExtent({ ...defaultShapeNail, shape: 'Almond' }).renderBottomY, getNailArchitecture({ ...defaultShapeNail, shape: 'Almond' }).bottomY, 'Almond keeps the original French Tip free-edge boundary');
+assert.equal(getNailFreeEdgeExtent({ ...defaultShapeNail, shape: 'Coffin' }).renderBottomY, getNailArchitecture({ ...defaultShapeNail, shape: 'Coffin' }).bottomY, 'Coffin keeps the original French Tip free-edge boundary');
 
 const lipstickPath = buildNailPath('Lipstick', { ...defaultShapeNail, shape: 'Lipstick' });
 assert(/C [^C]+ 3(?:1[0-7]|0[0-9])\.\d{3} [^C]+ 318\.000/.test(lipstickPath), 'Lipstick has a visibly slanted free edge instead of a flat or almond tip');
@@ -91,6 +97,7 @@ const wideData = normalizeFrenchTipData(wideFrench.data);
 assert.notEqual(narrowData.smileWidth, wideData.smileWidth, 'French Tip width changes normalized layer data and render inputs visibly');
 assert(designStudioSource.includes('Smile width') && propertiesPanelSource.includes('Smile width'), 'French Tip width control is available in main controls and layer properties');
 assert(frenchTipRenderingSource.includes('const width = g.width * data.smileWidth') && frenchTipRenderingSource.includes('Q ${g.cx} ${qY} ${right}'), 'French Tip width changes the rendered smile path endpoints');
+assert(frenchTipRenderingSource.includes('getNailFreeEdgeExtent(nail)') && frenchTipRenderingSource.includes('L ${g.right} ${renderBottomY} L ${g.left} ${renderBottomY} Z'), 'French Tip free-edge fill closes against shared smooth silhouette extent to prevent Round/Oval base-color crescents');
 
 assert(nailCanvasSource.includes('justifyContent: "flex-start"') && nailCanvasSource.includes('width: "min(54vh, 96%)"') && nailCanvasSource.includes('maxWidth: 430'), 'active nail canvas is top-aligned with reduced vertical footprint while preserving a comfortable design size');
 

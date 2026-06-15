@@ -1,4 +1,4 @@
-import { VIEWBOX, clamp, getNailGeometry, normalizeFrenchTipData } from "./blueprint.js";
+import { VIEWBOX, clamp, getNailFreeEdgeExtent, getNailGeometry, normalizeFrenchTipData } from "./blueprint.js";
 
 function rotatePath(rotation, cx, cy) {
   return rotation ? `rotate(${rotation} ${cx} ${cy})` : undefined;
@@ -7,6 +7,8 @@ function rotatePath(rotation, cx, cy) {
 export function frenchTipPath(layer, nail) {
   const data = normalizeFrenchTipData(layer?.data || {});
   const g = getNailGeometry(nail);
+  const freeEdge = getNailFreeEdgeExtent(nail);
+  const renderBottomY = freeEdge.renderBottomY;
   const width = g.width * data.smileWidth;
   const left = g.cx - width / 2;
   const right = g.cx + width / 2;
@@ -26,12 +28,12 @@ export function frenchTipPath(layer, nail) {
 
   if (data.style === "v") {
     const pointY = clamp(tipY + depth + g.height * 0.08, g.topY, g.bottomY);
-    return `M ${left} ${tipY} L ${g.cx} ${pointY} L ${right} ${tipY} L ${g.right} ${g.bottomY} L ${g.left} ${g.bottomY} Z`;
+    return `M ${left} ${tipY} L ${g.cx} ${pointY} L ${right} ${tipY} L ${g.right} ${renderBottomY} L ${g.left} ${renderBottomY} Z`;
   }
 
   const deepBoost = data.style === "deep" ? g.height * 0.12 : 0;
   const qY = clamp(centerY + deepBoost, g.topY, g.bottomY);
-  return `M ${left} ${yLeft} Q ${g.cx} ${qY} ${right} ${yRight} L ${g.right} ${g.bottomY} L ${g.left} ${g.bottomY} Z`;
+  return `M ${left} ${yLeft} Q ${g.cx} ${qY} ${right} ${yRight} L ${g.right} ${renderBottomY} L ${g.left} ${renderBottomY} Z`;
 }
 
 export function FrenchTipShape({ layer, nail, clipId, thumbnail = false }) {

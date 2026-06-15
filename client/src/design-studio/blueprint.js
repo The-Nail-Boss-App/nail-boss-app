@@ -139,6 +139,16 @@ export function getNailArchitecture(nail = {}) {
   };
 }
 
+export function getNailFreeEdgeExtent(nail = {}) {
+  const scopedNail = { ...nail, shape: nail?.shape || "Almond" };
+  const arch = getNailArchitecture(scopedNail);
+  const smoothFreeEdgeControlY = arch.bottomY + arch.height * 0.055;
+  return {
+    ...arch,
+    renderBottomY: scopedNail.shape === "Round" || scopedNail.shape === "Oval" ? smoothFreeEdgeControlY : arch.bottomY,
+  };
+}
+
 function normalizedHalfWidthAtY(shape = "Almond", yValue = 0.5, nail = {}) {
   const y = clamp(yValue, 0, 1);
   const p = shapeProfile(shape);
@@ -228,7 +238,7 @@ export function buildNailPath(shape = "Almond", nail = {}) {
   } else {
     const tipRight = pathPoint(scopedNail, 1, 1);
     const tipLeft = pathPoint(scopedNail, 1, -1);
-    const cpY = arch.bottomY + (shape === "Round" || shape === "Oval" ? arch.height * 0.055 : 0);
+    const cpY = getNailFreeEdgeExtent(scopedNail).renderBottomY;
     cmds.push(`C ${tipRight.x.toFixed(3)} ${cpY.toFixed(3)} ${tipLeft.x.toFixed(3)} ${cpY.toFixed(3)} ${tipLeft.x.toFixed(3)} ${tipLeft.y.toFixed(3)}`);
   }
 
