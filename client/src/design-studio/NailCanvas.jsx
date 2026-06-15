@@ -4,25 +4,7 @@ import { renderAssetShapes } from "./assets.js";
 import { VIEWBOX, buildNailPath, constrainStrokePoints, getNailArchitecture, getNailGeometry, normalizedToSvg, projectPointInsideNailSilhouette, svgToNormalized, layerSort } from "./blueprint.js";
 import { assetLayerRenderProps } from "./assetRendering.js";
 import { FrenchTipShape } from "./frenchTipRendering.js";
-
-function EffectDefs({ baseLayer, uid }) {
-  const data = baseLayer?.data || {};
-  const base = data.colorHex || "#E8A0BF";
-  const fx = data.effectColorHex || "#FFFFFF";
-  switch (data.effect) {
-    case "Gradient":
-      return <linearGradient id={`${uid}-base`} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={fx}/><stop offset="100%" stopColor={base}/></linearGradient>;
-    case "Chrome":
-      return <linearGradient id={`${uid}-base`} x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#fff" stopOpacity=".95"/><stop offset="30%" stopColor={base}/><stop offset="62%" stopColor={fx}/><stop offset="100%" stopColor="#fff" stopOpacity=".6"/></linearGradient>;
-    case "CatEye":
-      return <radialGradient id={`${uid}-base`} cx="50%" cy="45%" r="70%"><stop offset="0%" stopColor={fx}/><stop offset="42%" stopColor={base}/><stop offset="100%" stopColor="#2c1530" stopOpacity=".38"/></radialGradient>;
-    case "Marble":
-      return <pattern id={`${uid}-base`} width="42" height="42" patternUnits="userSpaceOnUse"><rect width="42" height="42" fill={base}/><path d="M-8 33 C8 20 13 8 31 -4 M4 45 C17 30 25 27 50 11" stroke={fx} strokeWidth="4" opacity=".62" fill="none"/><path d="M2 4 C16 14 25 8 40 19" stroke="#fff" strokeWidth="2" opacity=".55" fill="none"/></pattern>;
-    case "Solid":
-    default:
-      return null;
-  }
-}
+import { PolishDefs, PolishSurface } from "./PolishRenderer.jsx";
 
 function LayerGradient({ layer, id }) {
   const direction = layer.data.direction || "vertical";
@@ -197,8 +179,10 @@ export default function NailCanvas({ nail, layers, selectedLayerId, mode, brush,
     const assetRender = assetLayerRenderProps(layer, nail);
     const selected = selectedLayerId === layer.id;
     return <g key={layer.id} clipPath={`url(#${clipId})`} opacity={assetRender.opacity} onPointerDown={(e) => pointerDown(e, layer)} style={{ cursor: layer.locked ? "not-allowed" : "grab" }} data-layer-type={layer.type} data-asset-id={assetRender.assetId}>
+      <ellipse cx={p.x + 4} cy={p.y + size * .28} rx={size * .34} ry={size * .13} fill="#2b1024" opacity=".22"/>
       <g transform={assetRender.innerTransform}>
         {renderAssetShapes(assetRender.assetId, assetRender.colorHex)}
+        {layer.type === "jewel" && <circle cx={p.x - size * .12} cy={p.y - size * .14} r={Math.max(2, size * .08)} fill="#fff" opacity=".72"/>}
       </g>
       {selected && <g pointerEvents="none"><rect x={p.x - size / 2} y={p.y - size / 2} width={size} height={size} rx="8" fill="none" stroke={COLORS.plum} strokeWidth="2" strokeDasharray="5 4"/><circle cx={p.x + size / 2} cy={p.y + size / 2} r="5" fill={COLORS.plum}/><path d={`M${p.x} ${p.y - size / 2 - 14} L${p.x} ${p.y - size / 2 - 2}`} stroke={COLORS.plum} strokeWidth="2"/><circle cx={p.x} cy={p.y - size / 2 - 18} r="5" fill="#fff" stroke={COLORS.plum} strokeWidth="2"/></g>}
     </g>;
@@ -210,11 +194,10 @@ export default function NailCanvas({ nail, layers, selectedLayerId, mode, brush,
         <defs>
           <clipPath id={clipId}><path d={path}/></clipPath>
           <filter id={`${uid}-soft`}><feGaussianBlur stdDeviation="1.2"/></filter>
-          <EffectDefs baseLayer={baseLayer} uid={uid}/>
+          <PolishDefs nail={nail} baseLayer={baseLayer} uid={uid}/>
         </defs>
         <rect width={VIEWBOX.width} height={VIEWBOX.height} fill="transparent"/>
-        <path d={path} fill={baseLayer?.data?.effect === "Solid" ? baseLayer.data.colorHex : `url(#${uid}-base)`} stroke="rgba(59,31,53,.24)" strokeWidth="2"/>
-        <g clipPath={`url(#${clipId})`}><ellipse cx="88" cy="105" rx="16" ry="70" fill="#fff" opacity=".28" transform="rotate(12 88 105)"/></g>
+        <PolishSurface nail={nail} baseLayer={baseLayer} path={path} clipId={clipId} uid={uid}/>
         {artLayers.map(layerNode)}
         {drag?.kind === "drawing" && <g clipPath={`url(#${clipId})`}><path d={strokePath(drag.stroke.points, nail)} fill="none" stroke={drag.stroke.colorHex} strokeWidth={(drag.stroke.width || 0.04) * 100} strokeOpacity={drag.stroke.opacity} strokeLinecap="round" strokeLinejoin="round"/></g>}
         {debugOverlay && <g pointerEvents="none" aria-hidden="true">

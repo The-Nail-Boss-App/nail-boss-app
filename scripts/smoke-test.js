@@ -778,6 +778,44 @@ async function main() {
     assert(res.status === 200, "history should persist across restart with explicit test DB file");
     assert(res.body.some((entry) => entry.newStatus === "Accepted"), "accepted history should persist across restart");
 
+    const savedBlueprint = await request("GET", `/api/designs/${ids.designId}/blueprint`);
+    const creamDefault = JSON.parse(JSON.stringify(savedBlueprint.body.document));
+    creamDefault.nails[0].layers[0].data.effect = "Solid";
+    delete creamDefault.nails[0].layers[0].data.polishType;
+    delete creamDefault.nails[0].layers[0].data.shine;
+    res = await request("PUT", `/api/designs/${ids.designId}/blueprint`, creamDefault);
+    assert(res.status === 200, "old base polish data should save with safe Cream defaults");
+    assert(res.body.document.nails[0].layers[0].data.polishType === "Cream", "old base polish data should default to Cream");
+
+    for (const effect of ["Gradient", "Chrome", "CatEye", "Marble"]) {
+      const legacyEffectBlueprint = JSON.parse(JSON.stringify(savedBlueprint.body.document));
+      legacyEffectBlueprint.nails[0].layers[0].data.effect = effect;
+      legacyEffectBlueprint.nails[0].layers[0].data.effectColorHex = "#FEDCBA";
+      delete legacyEffectBlueprint.nails[0].layers[0].data.polishType;
+      res = await request("PUT", `/api/designs/${ids.designId}/blueprint`, legacyEffectBlueprint);
+      assert(res.status === 200, `legacy ${effect} base polish data should save without forcing Cream`);
+      assert(!Object.prototype.hasOwnProperty.call(res.body.document.nails[0].layers[0].data, "polishType"), `legacy ${effect} should preserve absent polishType`);
+      assert(res.body.document.nails[0].layers[0].data.effectColorHex === "#FEDCBA", `legacy ${effect} should preserve effectColorHex`);
+
+      res = await request("POST", "/api/designs", { ...designPayload(`Flat Legacy ${effect}`), effect, effectColorHex: "#ABCDEF" });
+      assert(res.status === 201, `flat legacy ${effect} design should be created`);
+      const flatLegacyId = res.body.id;
+      res = await request("GET", `/api/designs/${flatLegacyId}/blueprint`);
+      assert(res.status === 200, `flat legacy ${effect} default blueprint should be readable`);
+      assert(!Object.prototype.hasOwnProperty.call(res.body.document.nails[0].layers[0].data, "polishType"), `flat legacy ${effect} default blueprint should not become explicit Cream`);
+      assert(res.body.document.nails[0].layers[0].data.effect === effect, `flat legacy ${effect} default blueprint should preserve effect`);
+    }
+
+    const invalidPolishType = JSON.parse(JSON.stringify(savedBlueprint.body.document));
+    invalidPolishType.nails[0].layers[0].data.polishType = "Gelato";
+    res = await request("PUT", `/api/designs/${ids.designId}/blueprint`, invalidPolishType);
+    assert(res.status === 400, "invalid polishType should be rejected");
+
+    const invalidPolishValue = JSON.parse(JSON.stringify(savedBlueprint.body.document));
+    invalidPolishValue.nails[0].layers[0].data.chromeIntensity = 4;
+    res = await request("PUT", `/api/designs/${ids.designId}/blueprint`, invalidPolishValue);
+    assert(res.status === 400, "malformed polish control values should be rejected");
+
     res = await request("DELETE", `/api/designs/${ids.designId}`);
     assert(res.status === 204, "DELETE /api/designs/:id should delete the design");
 

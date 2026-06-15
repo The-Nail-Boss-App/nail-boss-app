@@ -1,5 +1,46 @@
 export const SHAPES = ["Square", "Tapered Square", "Russian Square", "Coffin", "Slim Coffin", "Almond", "Russian Almond", "Oval", "Round", "Stiletto", "Edge", "Lipstick", "Flare", "Mountain Peak"];
 export const EFFECTS = ["Solid", "Gradient", "Chrome", "CatEye", "Marble"];
+export const POLISH_TYPES = ["Cream", "Jelly", "Milky", "Matte", "Chrome", "Cat Eye", "Glitter"];
+export const TOP_COATS = ["Gloss", "Matte", "No-Wipe Shine", "Velvet"];
+export const MEANINGFUL_LEGACY_EFFECTS = ["Gradient", "Chrome", "CatEye", "Marble"];
+export function hasMeaningfulLegacyEffect(data = {}) {
+  return MEANINGFUL_LEGACY_EFFECTS.includes(data.effect);
+}
+export function hasExplicitPolishType(data = {}) {
+  return Object.prototype.hasOwnProperty.call(data, "polishType") && POLISH_TYPES.includes(data.polishType);
+}
+export function clearStalePolishTypeForLegacyEffect(data = {}, patch = {}) {
+  const next = { ...data };
+  const patchHasExplicitPolishType = POLISH_TYPES.includes(patch.polishType);
+  const patchHasMeaningfulLegacyEffect = Object.prototype.hasOwnProperty.call(patch, "effect") && MEANINGFUL_LEGACY_EFFECTS.includes(patch.effect);
+  if (patchHasExplicitPolishType) next.polishType = patch.polishType;
+  else if (patchHasMeaningfulLegacyEffect) delete next.polishType;
+  return next;
+}
+export function normalizePolishData(data = {}, fallbackColor = "#E8A0BF") {
+  const hasValidPolishType = hasExplicitPolishType(data);
+  const preserveAbsentLegacyPolishType = !hasValidPolishType && hasMeaningfulLegacyEffect(data);
+  const polishType = hasValidPolishType ? data.polishType : "Cream";
+  const topCoat = TOP_COATS.includes(data.topCoat) ? data.topCoat : (polishType === "Matte" ? "Matte" : "Gloss");
+  const range = (value, min, max, fallback) => { const parsed = Number(value); return Number.isFinite(parsed) ? Math.min(max, Math.max(min, parsed)) : fallback; };
+  const normalized = {
+    ...data,
+    polishType,
+    colorHex: normalizeHex(data.colorHex, fallbackColor),
+    shine: range(data.shine, 0, 1, polishType === "Matte" ? 0.08 : 0.62),
+    transparency: range(data.transparency, 0, 1, polishType === "Jelly" ? 0.45 : polishType === "Milky" ? 0.28 : 0),
+    topCoat,
+    sparkleDensity: range(data.sparkleDensity, 0, 1, 0.35),
+    sparkleSize: range(data.sparkleSize, 0, 1, 0.45),
+    catEyeAngle: range(data.catEyeAngle, -180, 180, 28),
+    catEyeIntensity: range(data.catEyeIntensity, 0, 1, 0.65),
+    chromeIntensity: range(data.chromeIntensity, 0, 1, 0.7),
+  };
+  if (preserveAbsentLegacyPolishType) {
+    delete normalized.polishType;
+  }
+  return normalized;
+}
 export const PATTERNS = ["dots", "stripes", "checker", "french-tip", "glitter", "marble"];
 export const GRADIENT_DIRECTIONS = ["vertical", "horizontal", "diagonal", "reverse-diagonal"];
 export const FRENCH_TIP_STYLES = ["classic", "deep", "angled", "v", "reverse"];
@@ -301,6 +342,12 @@ export function safeTransform(transform = {}, nail, layerType = "asset") {
 }
 
 export function createBaseLayer(design = {}) {
+  const data = {
+    colorHex: normalizeHex(design.baseColorHex),
+    effect: EFFECTS.includes(design.effect) ? design.effect : "Solid",
+    effectColorHex: normalizeHex(design.effectColorHex, "#FFFFFF"),
+  };
+  if (POLISH_TYPES.includes(design.polishType)) data.polishType = design.polishType;
   return {
     id: "base-layer",
     type: "base",
@@ -310,11 +357,7 @@ export function createBaseLayer(design = {}) {
     opacity: 1,
     order: 0,
     transform: { x: 0.5, y: 0.5, scaleX: 1, scaleY: 1, rotation: 0 },
-    data: {
-      colorHex: normalizeHex(design.baseColorHex),
-      effect: EFFECTS.includes(design.effect) ? design.effect : "Solid",
-      effectColorHex: normalizeHex(design.effectColorHex, "#FFFFFF"),
-    },
+    data: normalizePolishData(data, normalizeHex(design.baseColorHex)),
   };
 }
 
@@ -373,7 +416,8 @@ function isBackendValidInactiveLayer(layer, seenLayerIds) {
   if (Object.prototype.hasOwnProperty.call(layer.data, "colorHex") && !/^#[0-9a-fA-F]{6}$/.test(layer.data.colorHex || "")) return false;
   if (Object.prototype.hasOwnProperty.call(layer.data, "effectColorHex") && !/^#[0-9a-fA-F]{6}$/.test(layer.data.effectColorHex || "")) return false;
   if (layer.type === "base") {
-    if (!/^#[0-9a-fA-F]{6}$/.test(layer.data.colorHex || "")) return false;
+    const polish = normalizePolishData(layer.data, layer.data.colorHex);
+    if (!/^#[0-9a-fA-F]{6}$/.test(polish.colorHex || "")) return false;
     if (!EFFECTS.includes(layer.data.effect)) return false;
     if (!/^#[0-9a-fA-F]{6}$/.test(layer.data.effectColorHex || "")) return false;
   }
@@ -463,11 +507,12 @@ function normalizeEditableNail(raw, fallback, index) {
       normalized.name = "Base Color";
       normalized.locked = true;
       normalized.order = 0;
-      normalized.data = {
+      normalized.data = normalizePolishData({
+        ...normalized.data,
         colorHex: normalizeHex(normalized.data.colorHex, nail.baseColorHex),
         effect: EFFECTS.includes(normalized.data.effect) ? normalized.data.effect : "Solid",
         effectColorHex: normalizeHex(normalized.data.effectColorHex, "#FFFFFF"),
-      };
+      }, nail.baseColorHex);
       nail.baseColorHex = normalized.data.colorHex;
     }
     return normalized;
@@ -518,8 +563,22 @@ export function synchronizeBase(blueprint, patch) {
         colorHex: normalizeHex(patch.baseColorHex ?? patch.colorHex ?? layer.data.colorHex, layer.data.colorHex),
         effect: EFFECTS.includes(patch.effect) ? patch.effect : layer.data.effect,
         effectColorHex: normalizeHex(patch.effectColorHex ?? layer.data.effectColorHex, layer.data.effectColorHex),
+        shine: patch.shine ?? layer.data.shine,
+        transparency: patch.transparency ?? layer.data.transparency,
+        topCoat: patch.topCoat ?? layer.data.topCoat,
+        sparkleDensity: patch.sparkleDensity ?? layer.data.sparkleDensity,
+        sparkleSize: patch.sparkleSize ?? layer.data.sparkleSize,
+        catEyeAngle: patch.catEyeAngle ?? layer.data.catEyeAngle,
+        catEyeIntensity: patch.catEyeIntensity ?? layer.data.catEyeIntensity,
+        chromeIntensity: patch.chromeIntensity ?? layer.data.chromeIntensity,
       };
-      return { ...layer, data, locked: true, visible: true, transform: safeTransform(layer.transform, nextNail, "base") };
+      const patchedData = clearStalePolishTypeForLegacyEffect(data, patch);
+      if (POLISH_TYPES.includes(patch.polishType)) data.polishType = patchedData.polishType;
+      else if (!Object.prototype.hasOwnProperty.call(patchedData, "polishType")) delete data.polishType;
+      else if (POLISH_TYPES.includes(layer.data.polishType)) data.polishType = layer.data.polishType;
+      else delete data.polishType;
+      const normalizedPolish = normalizePolishData(data, data.colorHex);
+      return { ...layer, data: normalizedPolish, locked: true, visible: true, transform: safeTransform(layer.transform, nextNail, "base") };
     });
     return { ...nextNail, baseColorHex: normalizeHex(patch.baseColorHex ?? patch.colorHex ?? nextNail.baseColorHex), layers };
   });
@@ -545,6 +604,7 @@ export function flatDesignFromBlueprint(blueprint, name) {
     baseColorHex: getVisibleBaseColor(nail),
     effect: base.data.effect,
     effectColorHex: base.data.effectColorHex,
+    polishType: base.data.polishType || "Cream",
     tags: normalizeTags(blueprint.metadata?.tags || []),
   };
 }
@@ -812,7 +872,33 @@ export function mirrorHandDesign(blueprint, fromHand = "left") {
 
 export function applyBaseToSlots(blueprint, patch = {}, slots = []) {
   const targets = new Set(slots);
-  return { ...blueprint, nails: blueprint.nails.map((nail) => targets.has(nail.slot) ? revalidateNailLayers({ ...nail, ...patch, baseColorHex: normalizeHex(patch.baseColorHex ?? patch.colorHex ?? nail.baseColorHex, nail.baseColorHex), layers: nail.layers.map((layer) => layer.type === "base" ? { ...layer, data: { ...layer.data, colorHex: normalizeHex(patch.baseColorHex ?? patch.colorHex ?? layer.data.colorHex, layer.data.colorHex), effect: EFFECTS.includes(patch.effect) ? patch.effect : layer.data.effect, effectColorHex: normalizeHex(patch.effectColorHex ?? layer.data.effectColorHex, layer.data.effectColorHex) } } : layer) }) : nail) };
+  return {
+    ...blueprint,
+    nails: blueprint.nails.map((nail) => {
+      if (!targets.has(nail.slot)) return nail;
+      const resolvedBaseColor = normalizeHex(patch.baseColorHex ?? patch.colorHex ?? nail.baseColorHex, nail.baseColorHex);
+      return revalidateNailLayers({
+        ...nail,
+        ...patch,
+        baseColorHex: resolvedBaseColor,
+        layers: nail.layers.map((layer) => {
+          if (layer.type !== "base") return layer;
+          const resolvedLayerColor = normalizeHex(patch.baseColorHex ?? patch.colorHex ?? layer.data.colorHex, layer.data.colorHex);
+          const data = {
+            ...layer.data,
+            ...patch,
+            colorHex: resolvedLayerColor,
+            effect: EFFECTS.includes(patch.effect) ? patch.effect : layer.data.effect,
+            effectColorHex: normalizeHex(patch.effectColorHex ?? layer.data.effectColorHex, layer.data.effectColorHex),
+          };
+          if (POLISH_TYPES.includes(patch.polishType)) data.polishType = patch.polishType;
+          else if (POLISH_TYPES.includes(layer.data.polishType)) data.polishType = layer.data.polishType;
+          else delete data.polishType;
+          return { ...layer, data: normalizePolishData(data, resolvedLayerColor) };
+        }),
+      });
+    }),
+  };
 }
 
 export function resetNailDesign(blueprint, slot) {

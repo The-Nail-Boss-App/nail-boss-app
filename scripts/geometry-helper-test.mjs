@@ -39,6 +39,10 @@ const {
   applyFrenchTipToSlots,
   normalizeFrenchTipData,
   FRENCH_TIP_PRESETS,
+  POLISH_TYPES,
+  clearStalePolishTypeForLegacyEffect,
+  normalizePolishData,
+  cloneNailDesign,
 } = blueprint;
 
 
@@ -409,8 +413,17 @@ assert(designStudioSource.includes('Copy the active nail before pasting to selec
 
 const basedHand = blueprint.applyBaseToSlots(fullSet, { baseColorHex: '#ABCDEF' }, blueprint.LEFT_HAND_SLOTS);
 assert(basedHand.nails.filter((n) => n.slot.startsWith('left') && n.baseColorHex === '#ABCDEF').length === 5, 'apply base color to current hand updates five nails');
+assert(basedHand.nails.filter((n) => n.slot.startsWith('left') && n.layers.find((layer) => layer.type === 'base')?.data?.colorHex === '#ABCDEF').length === 5, 'apply base color to current hand updates rendered base layer color');
 const basedAll = blueprint.applyBaseToSlots(fullSet, { baseColorHex: '#FEDCBA' }, blueprint.FULL_SET_SLOTS);
 assert(basedAll.nails.every((n) => n.baseColorHex === '#FEDCBA'), 'apply base color to all nails updates ten nails');
+assert(basedAll.nails.every((n) => n.layers.find((layer) => layer.type === 'base')?.data?.colorHex === '#FEDCBA'), 'apply base color to all nails updates every rendered base layer color');
+assert(basedAll.nails.every((n) => getVisibleBaseColor(n) === '#FEDCBA'), 'bulk rendered polish color source follows the new base layer color');
+const colorHexBulk = blueprint.applyBaseToSlots(fullSet, { colorHex: '#BADA55' }, blueprint.LEFT_HAND_SLOTS);
+assert(colorHexBulk.nails.filter((n) => n.slot.startsWith('left') && n.baseColorHex === '#BADA55' && n.layers.find((layer) => layer.type === 'base')?.data?.colorHex === '#BADA55').length === 5, 'bulk apply accepts colorHex as a base layer color source');
+const explicitHandPolish = blueprint.applyBaseToSlots(fullSet, { polishType: 'Jelly', baseColorHex: '#112244' }, blueprint.LEFT_HAND_SLOTS);
+assert(explicitHandPolish.nails.filter((n) => n.slot.startsWith('left') && n.layers.find((layer) => layer.type === 'base')?.data?.polishType === 'Jelly').length === 5, 'apply base color to hand preserves explicit Polish Type');
+const explicitAllPolish = blueprint.applyBaseToSlots(fullSet, { polishType: 'Chrome', baseColorHex: '#221144' }, blueprint.FULL_SET_SLOTS);
+assert(explicitAllPolish.nails.every((n) => n.layers.find((layer) => layer.type === 'base')?.data?.polishType === 'Chrome'), 'apply base color to all preserves explicit Polish Type');
 const shapedHand = blueprint.applyBaseToSlots(fullSet, { shape: 'Square' }, blueprint.LEFT_HAND_SLOTS);
 assert(shapedHand.nails.filter((n) => n.slot.startsWith('left') && n.shape === 'Square').length === 5, 'apply shape to current hand updates five nails');
 const shapedAll = blueprint.applyBaseToSlots(fullSet, { shape: 'Oval' }, blueprint.FULL_SET_SLOTS);
@@ -467,3 +480,88 @@ assert(!selectSlotSource.includes('setDirty(true)') && !selectSlotSource.include
 
 
 console.log('geometry-helper-test passed');
+
+const polishSource = await readFile(new URL('../client/src/design-studio/polish.js', import.meta.url), 'utf8');
+const polishModule = await import(`data:text/javascript;charset=utf-8,${encodeURIComponent(polishSource)}`);
+const polishRendererSource = await readFile(new URL('../client/src/design-studio/PolishRenderer.jsx', import.meta.url), 'utf8');
+assert(polishRendererSource.includes('id={`${uid}-cream`}') && polishRendererSource.includes('subtle') === false, 'Cream rendering has a dedicated smooth salon polish gradient');
+assert(polishRendererSource.includes('id={`${uid}-jelly`}') && polishRendererSource.includes('polishOpacity'), 'Jelly transparency uses translucent polish opacity');
+assert(polishRendererSource.includes('id={`${uid}-milky`}'), 'Milky rendering has a dedicated cloudy semi-sheer gradient');
+assert(polishRendererSource.includes('data.topCoat === "Matte" || data.polishType === "Matte" ? 0 : data.shine'), 'Matte polish suppresses topcoat shine');
+assert(polishRendererSource.includes('data.chromeIntensity'), 'Chrome rendering is controlled by Chrome Intensity');
+assert(polishRendererSource.includes('data.catEyeAngle') && polishRendererSource.includes('data.catEyeIntensity'), 'Cat Eye rendering is controlled by angle and intensity');
+assert(polishRendererSource.includes('data.sparkleDensity') && polishRendererSource.includes('data.sparkleSize'), 'Glitter rendering is controlled by density and size');
+assert(polishRendererSource.includes('apex') && polishRendererSource.includes('sidewall') === false && polishRendererSource.includes('freeEdgeYNorm'), 'realism layers follow Shape Engine V2 apex and free-edge geometry');
+assert(nailCanvasSource.includes('<PolishSurface') && nailThumbnailSource.includes('<PolishSurface'), 'Polish rendering is shared by NailCanvas, thumbnail, hand, and full-set previews');
+assert(propertiesPanelSource.includes('Polish Settings') && propertiesPanelSource.includes('Polish Type') && propertiesPanelSource.includes('Top Coat'), 'Design Studio exposes salon-language Polish Settings controls');
+assert(propertiesPanelSource.includes('polish.polishType === "Glitter"') && propertiesPanelSource.includes('polish.polishType === "Cat Eye"') && propertiesPanelSource.includes('polish.polishType === "Chrome"'), 'Polish Settings only show relevant Glitter, Cat Eye, and Chrome controls');
+assert.deepEqual(POLISH_TYPES, ['Cream', 'Jelly', 'Milky', 'Matte', 'Chrome', 'Cat Eye', 'Glitter'], 'Polish Engine exposes all required polish types');
+const polishDefaultBlueprint = createDefaultBlueprint({ baseColorHex: '#123456' });
+const polishBase = getActiveNail(polishDefaultBlueprint).layers.find((layer) => layer.type === 'base');
+assert.equal(polishBase.data.polishType, 'Cream', 'old designs default to Cream polish safely');
+assert.equal(polishBase.data.colorHex, '#123456', 'base polish color is preserved through save/load normalization');
+for (const effect of ['Gradient', 'Chrome', 'CatEye', 'Marble']) {
+  const legacyBase = normalizePolishData({ colorHex: '#123456', effect, effectColorHex: '#FFFFFF' }, '#123456');
+  assert(!Object.hasOwn(legacyBase, 'polishType'), `frontend normalization preserves absent Polish Type for legacy ${effect}`);
+  const legacyBlueprint = createDefaultBlueprint({ baseColorHex: '#123456', effect });
+  const legacyBlueprintBase = getActiveNail(legacyBlueprint).layers.find((layer) => layer.type === 'base');
+  assert(!Object.hasOwn(legacyBlueprintBase.data, 'polishType'), `default blueprint preserves absent Polish Type for legacy ${effect}`);
+  for (const patch of [{ baseColorHex: '#654321' }, { effectColorHex: '#ABCDEF' }, { shape: 'Almond', length: 0.72, taper: 0.4 }]) {
+    const synced = synchronizeBase(legacyBlueprint, patch);
+    const syncedBase = getActiveNail(synced).layers.find((layer) => layer.type === 'base');
+    assert(!Object.hasOwn(syncedBase.data, 'polishType'), `synchronizeBase preserves absent Polish Type for legacy ${effect}`);
+  }
+  const legacyBulk = blueprint.applyBaseToSlots(blueprint.ensureFullSetBlueprint(createDefaultBlueprint({ baseColorHex: '#123456', effect })), { baseColorHex: '#654321' }, blueprint.FULL_SET_SLOTS);
+  assert(legacyBulk.nails.every((n) => n.baseColorHex === '#654321'), `applyBaseToSlots updates nail baseColorHex for legacy ${effect}`);
+  assert(legacyBulk.nails.every((n) => n.layers.find((layer) => layer.type === 'base')?.data?.colorHex === '#654321'), `applyBaseToSlots updates base layer colorHex for legacy ${effect}`);
+  assert(legacyBulk.nails.every((n) => !Object.hasOwn(n.layers.find((layer) => layer.type === 'base')?.data || {}, 'polishType')), `applyBaseToSlots does not inject explicit Cream for legacy ${effect}`);
+  const undefinedPoison = normalizePolishData({ colorHex: '#123456', effect, effectColorHex: '#FFFFFF', polishType: undefined }, '#123456');
+  assert(!Object.hasOwn(undefinedPoison, 'polishType'), `frontend normalization treats undefined Polish Type as absent for legacy ${effect}`);
+}
+assert.equal(normalizePolishData({ colorHex: '#123456', effect: 'Solid', effectColorHex: '#FFFFFF' }, '#123456').polishType, 'Cream', 'frontend normalization defaults legacy Solid to Cream');
+for (const [effect, expectedPolishType] of [['Chrome', 'Chrome'], ['CatEye', 'Cat Eye'], ['Gradient', 'Gradient'], ['Marble', 'Marble']]) {
+  const propertiesPatchData = normalizePolishData(clearStalePolishTypeForLegacyEffect({ colorHex: '#123456', effect, effectColorHex: '#FFFFFF', polishType: 'Cream' }, { effect }), '#123456');
+  assert(!Object.hasOwn(propertiesPatchData, 'polishType'), `PropertiesPanel legacy effect ${effect} clears stale Cream Polish Type`);
+  assert.equal(polishModule.resolvePolishDataForRender(propertiesPatchData, '#123456').polishType, expectedPolishType, `PropertiesPanel legacy effect ${effect} renders ${expectedPolishType}`);
+  assert(!('polishType' in propertiesPatchData) || propertiesPatchData.polishType !== undefined, `PropertiesPanel legacy effect ${effect} does not create polishType undefined`);
+  const changedLegacyEffect = synchronizeBase(createDefaultBlueprint({ baseColorHex: '#123456', effect: 'Solid' }), { effect });
+  const changedLegacyBase = getActiveNail(changedLegacyEffect).layers.find((layer) => layer.type === 'base');
+  assert(!Object.hasOwn(changedLegacyBase.data, 'polishType'), `changing legacy effect to ${effect} clears explicit Cream Polish Type`);
+  assert.equal(polishModule.resolvePolishDataForRender(changedLegacyBase.data, '#123456').polishType, expectedPolishType, `changing legacy effect to ${effect} renders ${expectedPolishType}`);
+  assert(!('polishType' in changedLegacyBase.data) || changedLegacyBase.data.polishType !== undefined, `changing legacy effect to ${effect} does not create polishType undefined`);
+}
+const changedLegacySolid = synchronizeBase(createDefaultBlueprint({ baseColorHex: '#123456', effect: 'Chrome' }), { effect: 'Solid' });
+assert.equal(getActiveNail(changedLegacySolid).layers.find((layer) => layer.type === 'base').data.polishType, 'Cream', 'changing legacy effect to Solid defaults safely to Cream');
+assert.equal(normalizePolishData(clearStalePolishTypeForLegacyEffect({ colorHex: '#123456', effect: 'Solid', effectColorHex: '#FFFFFF', polishType: 'Cream' }, { effect: 'Solid' }), '#123456').polishType, 'Cream', 'PropertiesPanel legacy effect Solid keeps Cream safely');
+const explicitPolishWithLegacyEffect = synchronizeBase(createDefaultBlueprint({ baseColorHex: '#123456', effect: 'Solid' }), { effect: 'Chrome', polishType: 'Jelly' });
+assert.equal(getActiveNail(explicitPolishWithLegacyEffect).layers.find((layer) => layer.type === 'base').data.polishType, 'Jelly', 'explicit Polish Type patch remains authoritative when legacy effect also changes');
+const explicitCreamWithLegacyEffect = synchronizeBase(createDefaultBlueprint({ baseColorHex: '#123456', effect: 'Solid' }), { effect: 'Chrome', polishType: 'Cream' });
+assert.equal(getActiveNail(explicitCreamWithLegacyEffect).layers.find((layer) => layer.type === 'base').data.polishType, 'Cream', 'explicit Cream selected through Polish Type remains Cream');
+assert.equal(normalizePolishData(clearStalePolishTypeForLegacyEffect({ colorHex: '#123456', effect: 'Chrome', effectColorHex: '#FFFFFF', polishType: 'Cream' }, { polishType: 'Cream' }), '#123456').polishType, 'Cream', 'PropertiesPanel Polish Type selector explicit Cream remains Cream');
+assert.equal(normalizePolishData(clearStalePolishTypeForLegacyEffect({ colorHex: '#123456', effect: 'Solid', effectColorHex: '#FFFFFF', polishType: 'Cream' }, { polishType: 'Chrome' }), '#123456').polishType, 'Chrome', 'PropertiesPanel Polish Type selector explicit Chrome remains Chrome');
+assert.equal(normalizePolishData({ colorHex: '#123456', effect: 'Chrome', effectColorHex: '#FFFFFF', polishType: 'Cream' }, '#123456').polishType, 'Cream', 'explicit Cream Polish Type persists over legacy effect');
+const explicitChromeCream = synchronizeBase(createDefaultBlueprint({ baseColorHex: '#123456', effect: 'Chrome' }), { polishType: 'Cream' });
+assert.equal(getActiveNail(explicitChromeCream).layers.find((layer) => layer.type === 'base').data.polishType, 'Cream', 'synchronizeBase persists user-selected explicit Cream Polish Type');
+assert.equal(normalizePolishData({ colorHex: '#123456', effect: 'Chrome', effectColorHex: '#FFFFFF', polishType: 'Jelly' }, '#123456').polishType, 'Jelly', 'frontend normalization preserves explicit Polish Type over legacy effect');
+const copiedPolish = cloneNailDesign(getActiveNail(polishDefaultBlueprint), { ...getActiveNail(polishDefaultBlueprint), id: 'copy', slot: 'copy' });
+assert.equal(copiedPolish.layers.find((layer) => layer.type === 'base').data.polishType, 'Cream', 'copy/duplicate-style nail cloning preserves polish fields');
+assert(polishSource.includes('POLISH_TYPES') && polishSource.includes('TOP_COATS'), 'proposal-compatible polish fields stay inside existing blueprint layer data');
+assert.equal(polishModule.resolvePolishDataForRender({ colorHex: '#101010', effect: 'Solid', effectColorHex: '#FFFFFF' }).polishType, 'Cream', 'legacy Solid base effects render as Cream polish');
+assert.equal(polishModule.resolvePolishDataForRender({ colorHex: '#101010', effect: 'Gradient', effectColorHex: '#FFFFFF' }).polishType, 'Gradient', 'legacy Gradient base effects keep gradient rendering when no explicit Polish Type exists');
+assert.equal(polishModule.resolvePolishDataForRender({ colorHex: '#101010', effect: 'Chrome', effectColorHex: '#FFFFFF' }).polishType, 'Chrome', 'legacy Chrome base effects map to Chrome polish rendering when no explicit Polish Type exists');
+assert.equal(polishModule.resolvePolishDataForRender({ colorHex: '#101010', effect: 'CatEye', effectColorHex: '#FFFFFF' }).polishType, 'Cat Eye', 'legacy CatEye base effects map to Cat Eye polish rendering when no explicit Polish Type exists');
+assert.equal(polishModule.resolvePolishDataForRender({ colorHex: '#101010', effect: 'Marble', effectColorHex: '#FFFFFF' }).polishType, 'Marble', 'legacy Marble base effects keep marble-like rendering when no explicit Polish Type exists');
+assert.equal(polishModule.resolvePolishDataForRender({ colorHex: '#101010', polishType: 'Jelly', effect: 'Chrome', effectColorHex: '#FFFFFF' }).polishType, 'Jelly', 'explicit Polish Type overrides legacy base effects');
+assert(polishRendererSource.includes('export function PolishDefs({ nail, baseLayer, fallbackColor, uid })') && polishRendererSource.includes('const resolvedFallbackColor = fallbackColor || nail?.baseColorHex || "#E8A0BF"') && polishRendererSource.includes('const rawData = baseLayer?.data || {}') && polishRendererSource.includes('resolvePolishDataForRender(rawData, resolvedFallbackColor)'), 'PolishDefs uses the same nail base color fallback as PolishSurface when no base layer exists');
+assert(polishRendererSource.includes('resolvePolishDataForRender(baseLayer?.data || {}, nail?.baseColorHex || "#E8A0BF")'), 'PolishSurface uses nail baseColorHex as the no-base-layer polish fallback');
+assert(nailCanvasSource.includes('<PolishDefs nail={nail} baseLayer={baseLayer} uid={uid}/>') && nailThumbnailSource.includes('<PolishDefs nail={nail} baseLayer={base} uid={clipId}/>'), 'NailCanvas, thumbnails, hand previews, and full-set previews pass nail fallback color into shared PolishDefs');
+assert.equal(polishModule.resolvePolishDataForRender({}, '#336699').colorHex, '#336699', 'no-base-layer polish render data falls back to nail.baseColorHex instead of default pink');
+assert.equal(polishModule.resolvePolishDataForRender({ colorHex: '#112233', polishType: 'Chrome' }, '#336699').colorHex, '#112233', 'normal base-layer polish color remains authoritative over no-base fallback');
+assert(polishRendererSource.includes('id={`${uid}-legacy-gradient`}') && polishRendererSource.includes('id={`${uid}-legacy-marble`}'), 'legacy Gradient and Marble have dedicated compatible renderer definitions');
+assert(polishRendererSource.includes('import { hasExplicitPolishType, polishOpacity, resolvePolishDataForRender }') && polishRendererSource.includes('const usesLegacyEffect = !hasExplicitPolishType(rawData)'), 'legacy effect colors are gated to absent Polish Type rendering only');
+assert(polishRendererSource.includes('id={`${uid}-legacy-gradient`} x1="0" y1="0" x2="0" y2="1"') && polishRendererSource.includes('<stop offset="0%" stopColor={legacyEffectColor}/><stop offset="100%" stopColor={color}/>'), 'legacy Gradient renders vertical effectColorHex-to-base gradient');
+assert(polishRendererSource.includes('rawData.effect === "Chrome" ? legacyEffectColor : color') && polishRendererSource.includes('stopColor={legacyChromeColor}'), 'legacy Chrome uses effectColorHex in the chrome reflection while explicit Chrome keeps Polish Engine color');
+assert(polishRendererSource.includes('rawData.effect === "CatEye" ? legacyEffectColor : "#fff"') && polishRendererSource.includes('stopColor={legacyCatEyeColor}'), 'legacy CatEye uses effectColorHex as the magnetic highlight while explicit Cat Eye keeps Polish Engine highlight');
+assert(polishRendererSource.includes('stroke={legacyEffectColor}'), 'legacy Marble uses effectColorHex as the veining color');
+assert(polishSource.includes('hasExplicitPolishType') && polishSource.includes('if (hasExplicitPolishType(data)) return normalized'), 'user-selected Polish Type remains authoritative over legacy effect fields');
+assert(propertiesPanelSource.includes('clearStalePolishTypeForLegacyEffect') && propertiesPanelSource.includes('onChange={(e) => patchPolish({ effect: e.target.value })}'), 'PropertiesPanel legacy effect dropdown uses shared stale Polish Type clearing helper');
