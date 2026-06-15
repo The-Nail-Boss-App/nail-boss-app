@@ -89,13 +89,13 @@ const SHAPE_ARCHITECTURE = {
   "Slim Coffin": { cuticle: 0.62, shoulder: 0.92, tip: 0.34, taper: 0.64, curve: 0.18, apexY: 0.48, freeEdge: 0.36, freeEdgeSlant: 0 },
   "Almond": { cuticle: 0.64, shoulder: 0.98, tip: 0.04, taper: 0.8, curve: 0.5, apexY: 0.47, freeEdge: 0.36, freeEdgeSlant: 0 },
   "Russian Almond": { cuticle: 0.6, shoulder: 0.94, tip: 0.015, taper: 0.88, curve: 0.38, apexY: 0.41, freeEdge: 0.42, freeEdgeSlant: 0 },
-  "Oval": { cuticle: 0.68, shoulder: 0.99, tip: 0.36, taper: 0.38, curve: 0.82, apexY: 0.47, freeEdge: 0.24, freeEdgeSlant: 0 },
-  "Round": { cuticle: 0.72, shoulder: 0.96, tip: 0.52, taper: 0.22, curve: 0.96, apexY: 0.43, freeEdge: 0.16, freeEdgeSlant: 0 },
+  "Oval": { cuticle: 0.74, shoulder: 0.98, tip: 0.56, taper: 0.34, curve: 0.98, apexY: 0.45, freeEdge: 0.2, freeEdgeSlant: 0 },
+  "Round": { cuticle: 0.78, shoulder: 0.94, tip: 0.7, taper: 0.08, curve: 1.18, apexY: 0.4, freeEdge: 0.12, freeEdgeSlant: 0 },
   "Stiletto": { cuticle: 0.58, shoulder: 0.94, tip: 0, taper: 0.96, curve: 0.26, apexY: 0.5, freeEdge: 0.46, freeEdgeSlant: 0 },
   "Edge": { cuticle: 0.62, shoulder: 0.96, tip: 0.02, taper: 0.9, curve: 0.12, apexY: 0.4, freeEdge: 0.44, freeEdgeSlant: 0 },
-  "Lipstick": { cuticle: 0.68, shoulder: 0.98, tip: 0.48, taper: 0.36, curve: 0.16, apexY: 0.43, freeEdge: 0.3, freeEdgeSlant: 0.16 },
+  "Lipstick": { cuticle: 0.68, shoulder: 0.98, tip: 0.5, taper: 0.34, curve: 0.2, apexY: 0.43, freeEdge: 0.3, freeEdgeSlant: 0.26 },
   "Flare": { cuticle: 0.72, shoulder: 0.9, tip: 1.16, taper: -0.22, curve: 0.18, apexY: 0.42, freeEdge: 0.28, freeEdgeSlant: 0 },
-  "Mountain Peak": { cuticle: 0.6, shoulder: 0.9, tip: 0, taper: 0.9, curve: 0.18, apexY: 0.48, freeEdge: 0.28, freeEdgeSlant: 0 },
+  "Mountain Peak": { cuticle: 0.62, shoulder: 0.92, tip: 0, taper: 0.82, curve: 0.16, apexY: 0.46, freeEdge: 0.34, freeEdgeSlant: 0 },
 };
 
 function shapeProfile(shape = "Almond") { return SHAPE_ARCHITECTURE[shape] || SHAPE_ARCHITECTURE.Almond; }
@@ -179,17 +179,60 @@ function pathPoint(nail, y, side = 1) {
   return { x: g.cx + side * normalizedHalfWidthAtY(nail.shape, y, nail) * g.width + slant, y: g.topY + y * g.height };
 }
 
+function cubicSegment(from, to, previous, next) {
+  const tension = 0.34;
+  const c1 = {
+    x: from.x + (to.x - previous.x) * tension,
+    y: from.y + (to.y - previous.y) * tension,
+  };
+  const c2 = {
+    x: to.x - (next.x - from.x) * tension,
+    y: to.y - (next.y - from.y) * tension,
+  };
+  return `C ${c1.x.toFixed(3)} ${c1.y.toFixed(3)} ${c2.x.toFixed(3)} ${c2.y.toFixed(3)} ${to.x.toFixed(3)} ${to.y.toFixed(3)}`;
+}
+
+function sideCurveCommands(points) {
+  return points.slice(1).map((point, index) => {
+    const currentIndex = index + 1;
+    const previous = points[currentIndex - 1];
+    const beforePrevious = points[Math.max(0, currentIndex - 2)];
+    const next = points[Math.min(points.length - 1, currentIndex + 1)];
+    return cubicSegment(previous, point, beforePrevious, next);
+  });
+}
+
 export function buildNailPath(shape = "Almond", nail = {}) {
   const scopedNail = { ...nail, shape };
   const arch = getNailArchitecture(scopedNail);
   const topY = arch.topY + arch.height * 0.055;
   const cuticleHalf = normalizedHalfWidthAtY(shape, 0, scopedNail) * arch.width;
-  const samples = [0.07, 0.16, 0.28, 0.42, 0.58, 0.74, 0.88, 1];
-  const right = samples.map((y) => pathPoint(scopedNail, y, 1));
+  const topLeft = { x: arch.cx - cuticleHalf, y: topY };
+  const topRight = { x: arch.cx + cuticleHalf, y: topY };
+  const samples = [0.055, 0.12, 0.2, 0.31, 0.44, 0.58, 0.72, 0.84, 0.93];
+  const right = [topRight, ...samples.map((y) => pathPoint(scopedNail, y, 1))];
   const left = [...samples].reverse().map((y) => pathPoint(scopedNail, y, -1));
-  const cmds = [`M ${arch.cx - cuticleHalf} ${topY}`, `C ${arch.cx - cuticleHalf * 0.82} ${arch.topY - arch.height * 0.018} ${arch.cx + cuticleHalf * 0.82} ${arch.topY - arch.height * 0.018} ${arch.cx + cuticleHalf} ${topY}`];
-  for (const pt of right) cmds.push(`L ${pt.x.toFixed(3)} ${pt.y.toFixed(3)}`);
-  for (const pt of left) cmds.push(`L ${pt.x.toFixed(3)} ${pt.y.toFixed(3)}`);
+  const cmds = [`M ${topLeft.x.toFixed(3)} ${topLeft.y.toFixed(3)}`, `C ${(arch.cx - cuticleHalf * 0.86).toFixed(3)} ${(arch.topY - arch.height * 0.022).toFixed(3)} ${(arch.cx + cuticleHalf * 0.86).toFixed(3)} ${(arch.topY - arch.height * 0.022).toFixed(3)} ${topRight.x.toFixed(3)} ${topRight.y.toFixed(3)}`];
+  cmds.push(...sideCurveCommands(right));
+
+  if (shape === "Mountain Peak") {
+    const peak = { x: arch.cx, y: arch.bottomY };
+    const rightBase = pathPoint(scopedNail, 0.93, 1);
+    const leftBase = pathPoint(scopedNail, 0.93, -1);
+    cmds.push(`C ${(rightBase.x * 0.7 + arch.cx * 0.3).toFixed(3)} ${(arch.bottomY - arch.height * 0.02).toFixed(3)} ${(arch.cx + arch.halfW * 0.12).toFixed(3)} ${(arch.bottomY - arch.height * 0.005).toFixed(3)} ${peak.x.toFixed(3)} ${peak.y.toFixed(3)}`);
+    cmds.push(`C ${(arch.cx - arch.halfW * 0.12).toFixed(3)} ${(arch.bottomY - arch.height * 0.005).toFixed(3)} ${(leftBase.x * 0.7 + arch.cx * 0.3).toFixed(3)} ${(arch.bottomY - arch.height * 0.02).toFixed(3)} ${leftBase.x.toFixed(3)} ${leftBase.y.toFixed(3)}`);
+  } else if (shape === "Lipstick") {
+    const rightTip = pathPoint(scopedNail, 0.88, 1);
+    const leftTip = pathPoint(scopedNail, 1, -1);
+    cmds.push(`C ${(rightTip.x + arch.halfW * 0.02).toFixed(3)} ${(rightTip.y + arch.height * 0.04).toFixed(3)} ${(leftTip.x + arch.halfW * 0.16).toFixed(3)} ${(leftTip.y - arch.height * 0.01).toFixed(3)} ${leftTip.x.toFixed(3)} ${leftTip.y.toFixed(3)}`);
+  } else {
+    const tipRight = pathPoint(scopedNail, 1, 1);
+    const tipLeft = pathPoint(scopedNail, 1, -1);
+    const cpY = arch.bottomY + (shape === "Round" || shape === "Oval" ? arch.height * 0.055 : 0);
+    cmds.push(`C ${tipRight.x.toFixed(3)} ${cpY.toFixed(3)} ${tipLeft.x.toFixed(3)} ${cpY.toFixed(3)} ${tipLeft.x.toFixed(3)} ${tipLeft.y.toFixed(3)}`);
+  }
+
+  cmds.push(...sideCurveCommands([...(shape === "Lipstick" ? [pathPoint(scopedNail, 1, -1)] : []), ...left, topLeft]));
   cmds.push("Z");
   return cmds.join(" ");
 }

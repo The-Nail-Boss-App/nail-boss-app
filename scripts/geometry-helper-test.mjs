@@ -65,6 +65,13 @@ assert.notEqual(buildNailPath('Round', { ...defaultShapeNail, shape: 'Round' }),
 assert.notEqual(buildNailPath('Oval', { ...defaultShapeNail, shape: 'Oval' }), buildNailPath('Almond', { ...defaultShapeNail, shape: 'Almond' }), 'Oval does not match Almond render geometry');
 assert(roundMetrics.tipHalfWidth > ovalMetrics.tipHalfWidth && ovalMetrics.tipHalfWidth > almondMetrics.tipHalfWidth, 'Round, Oval, and Almond have distinct tip-width behavior');
 assert(roundMetrics.sidewallHalfWidth > ovalMetrics.sidewallHalfWidth && ovalMetrics.sidewallHalfWidth > almondMetrics.sidewallHalfWidth, 'Round, Oval, and Almond have distinct sidewall/taper behavior');
+
+const smoothPath = buildNailPath('Oval', { ...defaultShapeNail, shape: 'Oval' });
+assert(!/ L /.test(smoothPath) && (smoothPath.match(/ C /g) || []).length >= 10, 'smooth path generation uses cubic curves instead of jagged polygon line fallback');
+assert(nailCanvasSource.includes('const path = buildNailPath(nail.shape, nail);') && nailCanvasSource.includes('<PolishSurface nail={nail} baseLayer={baseLayer} path={path}'), 'polish rendering clips against the shared smooth nail path');
+assert(nailThumbnailSource.includes('const path = buildNailPath(nail.shape, nail);') && nailThumbnailSource.includes('<clipPath id={clipId}><path d={path}/></clipPath>'), 'thumbnails use the same smooth geometry path as the active canvas');
+assert(assetRenderingSource.includes('getNailGeometry(nail)') && source.includes('assetFitsNailSilhouette(transform = {}, nail, layer = {})'), 'assets still strict-fit against nail geometry after shape smoothing');
+
 for (const shape of ['Round', 'Oval']) {
   const shaped = { ...defaultShapeNail, shape };
   assert(buildNailPath(shape, shaped).startsWith('M '), `${shape} produces a valid render path`);
@@ -72,6 +79,19 @@ for (const shape of ['Round', 'Oval']) {
   const frenchLayer = frenchTipLayer(shaped, 'classic', 'medium');
   assert.equal(frenchLayer.type, 'frenchTip', `${shape} supports French Tip layer creation for clipped rendering`);
 }
+
+const lipstickPath = buildNailPath('Lipstick', { ...defaultShapeNail, shape: 'Lipstick' });
+assert(/C [^C]+ 3(?:1[0-7]|0[0-9])\.\d{3} [^C]+ 318\.000/.test(lipstickPath), 'Lipstick has a visibly slanted free edge instead of a flat or almond tip');
+const mountainPath = buildNailPath('Mountain Peak', { ...defaultShapeNail, shape: 'Mountain Peak' });
+assert(mountainPath.includes('120.000 318.000'), 'Mountain Peak has a sharper centered peak at the free edge');
+const narrowFrench = frenchTipLayer({ ...defaultShapeNail, shape: 'Oval' }, 'classic', 'medium');
+const wideFrench = { ...narrowFrench, data: { ...narrowFrench.data, smileWidth: 1 } };
+const narrowData = normalizeFrenchTipData({ ...narrowFrench.data, smileWidth: 0.35 });
+const wideData = normalizeFrenchTipData(wideFrench.data);
+assert.notEqual(narrowData.smileWidth, wideData.smileWidth, 'French Tip width changes normalized layer data and render inputs visibly');
+assert(designStudioSource.includes('Smile width') && propertiesPanelSource.includes('Smile width'), 'French Tip width control is available in main controls and layer properties');
+assert(frenchTipRenderingSource.includes('const width = g.width * data.smileWidth') && frenchTipRenderingSource.includes('Q ${g.cx} ${qY} ${right}'), 'French Tip width changes the rendered smile path endpoints');
+
 assert(nailCanvasSource.includes('justifyContent: "flex-start"') && nailCanvasSource.includes('width: "min(54vh, 96%)"') && nailCanvasSource.includes('maxWidth: 430'), 'active nail canvas is top-aligned with reduced vertical footprint while preserving a comfortable design size');
 
 assert.notEqual(buildNailPath('Coffin', { shape: 'Coffin', taper: 0.1 }), buildNailPath('Coffin', { shape: 'Coffin', taper: 0.9 }), 'taper control adjusts geometry without switching shape families');
