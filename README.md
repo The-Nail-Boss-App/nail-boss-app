@@ -668,9 +668,9 @@ Legacy base effect fields remain render-compatible for older saved designs, card
 | Legacy base effect | Polish Engine rendering behavior |
 | --- | --- |
 | `Solid` | Safe Cream polish rendering. |
-| `Gradient` | Preserves a two-color legacy gradient using base color plus `effectColorHex`. |
-| `Chrome` | Maps to Chrome polish rendering and keeps the chrome-like reflective finish. |
-| `CatEye` | Maps to Cat Eye polish rendering and keeps the directional magnetic-style highlight. |
+| `Gradient` | Preserves the old vertical legacy gradient: `effectColorHex` at the top fading to the base color at the bottom. |
+| `Chrome` | Maps to Chrome polish rendering and uses `effectColorHex` inside the reflective chrome bands. |
+| `CatEye` | Maps to Cat Eye polish rendering and uses `effectColorHex` as the bright magnetic highlight color. |
 | `Marble` | Uses a marble-like compatibility overlay with legacy veining color from `effectColorHex`. |
 
 If both `polishType` and legacy `effect` are present, the explicit Polish Type is authoritative. This lets intentionally migrated or newly edited designs keep the user-selected Polish Type while preserving older designs that only have legacy effect data. Loading, normalizing, saving, or creating a default blueprint from an old flat row must not turn `Gradient`, `Chrome`, `CatEye`, or `Marble` into explicit Cream; save/load continues to preserve `effect` and `effectColorHex` unless the user intentionally changes the newer Polish Type settings.

@@ -1,20 +1,25 @@
 import { getNailArchitecture, VIEWBOX } from "./blueprint.js";
-import { polishOpacity, resolvePolishDataForRender } from "./polish.js";
+import { hasExplicitPolishType, polishOpacity, resolvePolishDataForRender } from "./polish.js";
 
 export function PolishDefs({ nail, baseLayer, fallbackColor, uid }) {
   const resolvedFallbackColor = fallbackColor || nail?.baseColorHex || "#E8A0BF";
-  const data = resolvePolishDataForRender(baseLayer?.data || {}, resolvedFallbackColor);
+  const rawData = baseLayer?.data || {};
+  const data = resolvePolishDataForRender(rawData, resolvedFallbackColor);
   const color = data.colorHex;
+  const legacyEffectColor = data.effectColorHex || "#FFFFFF";
+  const usesLegacyEffect = !hasExplicitPolishType(rawData);
+  const legacyChromeColor = usesLegacyEffect && rawData.effect === "Chrome" ? legacyEffectColor : color;
+  const legacyCatEyeColor = usesLegacyEffect && rawData.effect === "CatEye" ? legacyEffectColor : "#fff";
   const shine = data.topCoat === "Matte" || data.polishType === "Matte" ? 0 : data.shine;
   const chrome = data.polishType === "Chrome" ? data.chromeIntensity : 0;
   return <>
     <linearGradient id={`${uid}-cream`} x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#fff" stopOpacity={0.22 + shine * 0.28}/><stop offset="34%" stopColor={color}/><stop offset="72%" stopColor={color} stopOpacity=".9"/><stop offset="100%" stopColor="#2b1024" stopOpacity=".18"/></linearGradient>
     <radialGradient id={`${uid}-jelly`} cx="48%" cy="38%" r="72%"><stop offset="0%" stopColor="#fff" stopOpacity=".32"/><stop offset="42%" stopColor={color} stopOpacity=".72"/><stop offset="100%" stopColor={color} stopOpacity=".42"/></radialGradient>
     <radialGradient id={`${uid}-milky`} cx="52%" cy="36%" r="82%"><stop offset="0%" stopColor="#fff" stopOpacity=".62"/><stop offset="45%" stopColor={color} stopOpacity=".74"/><stop offset="100%" stopColor="#fff" stopOpacity=".38"/></radialGradient>
-    <linearGradient id={`${uid}-chrome`} x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#fff" stopOpacity={0.55 + chrome * 0.38}/><stop offset="18%" stopColor={color}/><stop offset="38%" stopColor="#777" stopOpacity={0.18 + chrome * 0.5}/><stop offset="58%" stopColor="#fff" stopOpacity={0.4 + chrome * 0.45}/><stop offset="82%" stopColor={color}/><stop offset="100%" stopColor="#111" stopOpacity={0.18 + chrome * 0.24}/></linearGradient>
-    <linearGradient id={`${uid}-cat`} x1="0" y1="0" x2="1" y2="0" gradientTransform={`rotate(${data.catEyeAngle} .5 .5)`}><stop offset="0%" stopColor={color}/><stop offset="45%" stopColor="#fff" stopOpacity={data.catEyeIntensity}/><stop offset="54%" stopColor={color}/><stop offset="100%" stopColor="#210e24" stopOpacity=".45"/></linearGradient>
-    <linearGradient id={`${uid}-legacy-gradient`} x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor={color}/><stop offset="100%" stopColor={data.effectColorHex || "#FFFFFF"}/></linearGradient>
-    <pattern id={`${uid}-legacy-marble`} width="54" height="54" patternUnits="userSpaceOnUse"><rect width="54" height="54" fill="transparent"/><path d="M-8 42 C14 24 19 12 46 -2 M5 57 C22 37 38 34 62 10" stroke={data.effectColorHex || "#FFFFFF"} strokeWidth="5" opacity=".72" fill="none"/><path d="M3 8 C22 23 31 7 51 26" stroke="#fff" strokeWidth="2" opacity=".32" fill="none"/></pattern>
+    <linearGradient id={`${uid}-chrome`} x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#fff" stopOpacity={0.55 + chrome * 0.38}/><stop offset="18%" stopColor={color}/><stop offset="38%" stopColor={legacyChromeColor} stopOpacity={0.18 + chrome * 0.5}/><stop offset="58%" stopColor="#fff" stopOpacity={0.4 + chrome * 0.45}/><stop offset="82%" stopColor={legacyChromeColor}/><stop offset="100%" stopColor="#111" stopOpacity={0.18 + chrome * 0.24}/></linearGradient>
+    <linearGradient id={`${uid}-cat`} x1="0" y1="0" x2="1" y2="0" gradientTransform={`rotate(${data.catEyeAngle} .5 .5)`}><stop offset="0%" stopColor={color}/><stop offset="45%" stopColor={legacyCatEyeColor} stopOpacity={data.catEyeIntensity}/><stop offset="54%" stopColor={color}/><stop offset="100%" stopColor="#210e24" stopOpacity=".45"/></linearGradient>
+    <linearGradient id={`${uid}-legacy-gradient`} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={legacyEffectColor}/><stop offset="100%" stopColor={color}/></linearGradient>
+    <pattern id={`${uid}-legacy-marble`} width="54" height="54" patternUnits="userSpaceOnUse"><rect width="54" height="54" fill="transparent"/><path d="M-8 42 C14 24 19 12 46 -2 M5 57 C22 37 38 34 62 10" stroke={legacyEffectColor} strokeWidth="5" opacity=".72" fill="none"/><path d="M3 8 C22 23 31 7 51 26" stroke="#fff" strokeWidth="2" opacity=".32" fill="none"/></pattern>
     <pattern id={`${uid}-glitter`} width="28" height="28" patternUnits="userSpaceOnUse"><rect width="28" height="28" fill="transparent"/><circle cx="6" cy="7" r={1 + data.sparkleSize * 2.2} fill="#fff" opacity={0.35 + data.sparkleDensity * 0.55}/><circle cx="21" cy="17" r={0.8 + data.sparkleSize * 1.5} fill={color} opacity=".8"/><path d="M14 3 l1.8 4 4 1.8 -4 1.8 -1.8 4 -1.8 -4 -4-1.8 4-1.8Z" fill="#fff" opacity={data.sparkleDensity}/></pattern>
   </>;
 }
