@@ -107,7 +107,8 @@ const HERO_SHAPE_MASKS = {
     path: (m) => `M ${m.cx - m.w * 0.38} ${m.top + m.h * 0.055} C ${m.cx - m.w * 0.31} ${m.top - m.h * 0.014} ${m.cx + m.w * 0.31} ${m.top - m.h * 0.014} ${m.cx + m.w * 0.38} ${m.top + m.h * 0.055} C ${m.cx + m.w * 0.5} ${m.top + m.h * 0.18} ${m.cx + m.w * 0.51} ${m.top + m.h * 0.56} ${m.cx + m.w * 0.42} ${m.top + m.h * 0.78} C ${m.cx + m.w * 0.32} ${m.bottom} ${m.cx + m.w * 0.11} ${m.bottom + m.h * 0.035} ${m.cx} ${m.bottom + m.h * 0.035} C ${m.cx - m.w * 0.11} ${m.bottom + m.h * 0.035} ${m.cx - m.w * 0.32} ${m.bottom} ${m.cx - m.w * 0.42} ${m.top + m.h * 0.78} C ${m.cx - m.w * 0.51} ${m.top + m.h * 0.56} ${m.cx - m.w * 0.5} ${m.top + m.h * 0.18} ${m.cx - m.w * 0.38} ${m.top + m.h * 0.055} Z`,
   },
   Lipstick: {
-    halfWidths: [[0, 0.34], [0.16, 0.49], [0.58, 0.45], [0.88, 0.27], [1, 0.22]],
+    halfWidths: [[0, 0.34], [0.16, 0.49], [0.58, 0.45], [0.86, 0.32], [0.88, 0.293], [1, 0]],
+    xBounds: [[0, 0.16, 0.84], [0.16, 0.01, 0.99], [0.58, 0.05, 0.95], [0.86, 0.18, 0.82], [0.88, 0.16, 0.746], [1, 0.3, 0.3]],
     path: (m) => `M ${m.cx - m.w * 0.34} ${m.top + m.h * 0.055} C ${m.cx - m.w * 0.28} ${m.top - m.h * 0.012} ${m.cx + m.w * 0.28} ${m.top - m.h * 0.012} ${m.cx + m.w * 0.34} ${m.top + m.h * 0.055} C ${m.cx + m.w * 0.51} ${m.top + m.h * 0.18} ${m.cx + m.w * 0.49} ${m.top + m.h * 0.56} ${m.cx + m.w * 0.32} ${m.top + m.h * 0.86} L ${m.cx - m.w * 0.2} ${m.bottom} L ${m.cx - m.w * 0.34} ${m.top + m.h * 0.88} C ${m.cx - m.w * 0.46} ${m.top + m.h * 0.56} ${m.cx - m.w * 0.51} ${m.top + m.h * 0.18} ${m.cx - m.w * 0.34} ${m.top + m.h * 0.055} Z`,
   },
   Duck: {
@@ -166,19 +167,34 @@ export function getNailFreeEdgeExtent(nail = {}) {
   };
 }
 
-function normalizedHalfWidthAtY(shape = "Almond", yValue = 0.5) {
+function interpolateProfilePoint(points, yValue, interpolateValues) {
   const y = clamp(yValue, 0, 1);
-  const points = shapeProfile(shape).halfWidths;
   for (let index = 1; index < points.length; index += 1) {
-    const [y1, w1] = points[index];
-    const [y0, w0] = points[index - 1];
-    if (y <= y1) {
-      const t = (y - y0) / Math.max(0.000001, y1 - y0);
+    const current = points[index];
+    const previous = points[index - 1];
+    if (y <= current[0]) {
+      const t = (y - previous[0]) / Math.max(0.000001, current[0] - previous[0]);
       const eased = t * t * (3 - 2 * t);
-      return w0 + (w1 - w0) * eased;
+      return interpolateValues(previous, current, eased);
     }
   }
-  return points[points.length - 1][1];
+  return interpolateValues(points[points.length - 1], points[points.length - 1], 1);
+}
+
+function normalizedHalfWidthAtY(shape = "Almond", yValue = 0.5) {
+  return interpolateProfilePoint(shapeProfile(shape).halfWidths, yValue, (previous, current, eased) => previous[1] + (current[1] - previous[1]) * eased);
+}
+
+function normalizedXBoundsAtY(shape = "Almond", yValue = 0.5) {
+  const profile = shapeProfile(shape);
+  if (profile.xBounds) {
+    return interpolateProfilePoint(profile.xBounds, yValue, (previous, current, eased) => ({
+      left: previous[1] + (current[1] - previous[1]) * eased,
+      right: previous[2] + (current[2] - previous[2]) * eased,
+    }));
+  }
+  const half = Math.max(0, normalizedHalfWidthAtY(shape, yValue));
+  return { left: 0.5 - half, right: 0.5 + half };
 }
 
 export function getNailShapeMetrics(shape = "Almond", nail = {}) {
@@ -258,14 +274,14 @@ export function isPointInsideNailSilhouette(point, nail) {
   const x = Number(point?.x);
   const y = Number(point?.y);
   if (!Number.isFinite(x) || !Number.isFinite(y) || x < 0 || x > 1 || y < 0 || y > 1) return false;
-  const half = Math.max(0, normalizedHalfWidthAtY(nail?.shape, y, nail));
-  return Math.abs(x - 0.5) <= half + 0.000001;
+  const bounds = normalizedXBoundsAtY(nail?.shape, y);
+  return x >= bounds.left - 0.000001 && x <= bounds.right + 0.000001;
 }
 
 export function projectPointInsideNailSilhouette(point, nail) {
   const y = clamp(point?.y ?? 0.5, 0, 1);
-  const half = Math.max(0.000001, normalizedHalfWidthAtY(nail?.shape, y, nail));
-  return roundPoint({ x: clamp(point?.x ?? 0.5, 0.5 - half, 0.5 + half), y });
+  const bounds = normalizedXBoundsAtY(nail?.shape, y);
+  return roundPoint({ x: clamp(point?.x ?? 0.5, bounds.left, bounds.right), y });
 }
 
 function assetBoundaryPoints(transform = {}, nail) {
