@@ -1,4 +1,4 @@
-export const SHAPES = ["Square", "Tapered Square", "Russian Square", "Coffin", "Slim Coffin", "Almond", "Russian Almond", "Oval", "Round", "Stiletto", "Edge", "Lipstick", "Flare", "Mountain Peak"];
+export const SHAPES = ["Almond", "Square", "Coffin", "Stiletto", "Oval", "Round", "Lipstick", "Duck"];
 export const EFFECTS = ["Solid", "Gradient", "Chrome", "CatEye", "Marble"];
 export const POLISH_TYPES = ["Cream", "Jelly", "Milky", "Matte", "Chrome", "Cat Eye", "Glitter"];
 export const TOP_COATS = ["Gloss", "Matte", "No-Wipe Shine", "Velvet"];
@@ -81,24 +81,46 @@ export function layerSort(a, b) {
   return (a.order ?? 0) - (b.order ?? 0);
 }
 
-const SHAPE_ARCHITECTURE = {
-  "Square": { cuticle: 0.72, shoulder: 1, tip: 0.98, taper: 0.02, curve: 0.1, apexY: 0.42, freeEdge: 0.22, freeEdgeSlant: 0, taperStart: 0.82, sidewallHold: 1 },
-  "Tapered Square": { cuticle: 0.7, shoulder: 1, tip: 0.68, taper: 0.34, curve: 0.2, apexY: 0.44, freeEdge: 0.25, freeEdgeSlant: 0 },
-  "Russian Square": { cuticle: 0.74, shoulder: 1.03, tip: 0.86, taper: 0.18, curve: 0.11, apexY: 0.38, freeEdge: 0.3, freeEdgeSlant: 0 },
-  "Coffin": { cuticle: 0.68, shoulder: 1, tip: 0.5, taper: 0.48, curve: 0.14, apexY: 0.46, freeEdge: 0.32, freeEdgeSlant: 0, taperStart: 0.58, sidewallHold: 0.98 },
-  "Slim Coffin": { cuticle: 0.62, shoulder: 0.92, tip: 0.34, taper: 0.64, curve: 0.18, apexY: 0.48, freeEdge: 0.36, freeEdgeSlant: 0 },
-  "Almond": { cuticle: 0.68, shoulder: 1, tip: 0.08, taper: 0.72, curve: 0.62, apexY: 0.47, freeEdge: 0.36, freeEdgeSlant: 0, taperStart: 0.38, sidewallHold: 0.86 },
-  "Russian Almond": { cuticle: 0.6, shoulder: 0.94, tip: 0.015, taper: 0.88, curve: 0.38, apexY: 0.41, freeEdge: 0.42, freeEdgeSlant: 0 },
-  "Oval": { cuticle: 0.74, shoulder: 0.98, tip: 0.56, taper: 0.34, curve: 0.98, apexY: 0.45, freeEdge: 0.2, freeEdgeSlant: 0 },
-  "Round": { cuticle: 0.78, shoulder: 0.94, tip: 0.7, taper: 0.08, curve: 1.18, apexY: 0.4, freeEdge: 0.12, freeEdgeSlant: 0 },
-  "Stiletto": { cuticle: 0.58, shoulder: 0.96, tip: 0, taper: 0.94, curve: 0.18, apexY: 0.5, freeEdge: 0.46, freeEdgeSlant: 0, taperStart: 0.52, sidewallHold: 0.94 },
-  "Edge": { cuticle: 0.62, shoulder: 0.96, tip: 0.02, taper: 0.9, curve: 0.12, apexY: 0.4, freeEdge: 0.44, freeEdgeSlant: 0 },
-  "Lipstick": { cuticle: 0.68, shoulder: 0.98, tip: 0.5, taper: 0.34, curve: 0.2, apexY: 0.43, freeEdge: 0.3, freeEdgeSlant: 0.26 },
-  "Flare": { cuticle: 0.72, shoulder: 0.9, tip: 1.16, taper: -0.22, curve: 0.18, apexY: 0.42, freeEdge: 0.28, freeEdgeSlant: 0 },
-  "Mountain Peak": { cuticle: 0.62, shoulder: 0.92, tip: 0, taper: 0.82, curve: 0.16, apexY: 0.46, freeEdge: 0.34, freeEdgeSlant: 0 },
+const HERO_SHAPE_MASKS = {
+  Almond: {
+    halfWidths: [[0, 0.34], [0.14, 0.48], [0.32, 0.5], [0.54, 0.42], [0.74, 0.27], [0.92, 0.08], [1, 0.012]],
+    path: (m) => `M ${m.cx - m.w * 0.34} ${m.top + m.h * 0.055} C ${m.cx - m.w * 0.29} ${m.top - m.h * 0.015} ${m.cx + m.w * 0.29} ${m.top - m.h * 0.015} ${m.cx + m.w * 0.34} ${m.top + m.h * 0.055} C ${m.cx + m.w * 0.51} ${m.top + m.h * 0.16} ${m.cx + m.w * 0.52} ${m.top + m.h * 0.36} ${m.cx + m.w * 0.43} ${m.top + m.h * 0.56} C ${m.cx + m.w * 0.31} ${m.top + m.h * 0.78} ${m.cx + m.w * 0.12} ${m.top + m.h * 0.95} ${m.cx} ${m.bottom} C ${m.cx - m.w * 0.12} ${m.top + m.h * 0.95} ${m.cx - m.w * 0.31} ${m.top + m.h * 0.78} ${m.cx - m.w * 0.43} ${m.top + m.h * 0.56} C ${m.cx - m.w * 0.52} ${m.top + m.h * 0.36} ${m.cx - m.w * 0.51} ${m.top + m.h * 0.16} ${m.cx - m.w * 0.34} ${m.top + m.h * 0.055} Z`,
+  },
+  Square: {
+    halfWidths: [[0, 0.36], [0.12, 0.49], [0.86, 0.49], [0.96, 0.48], [1, 0.43]],
+    path: (m) => `M ${m.cx - m.w * 0.36} ${m.top + m.h * 0.055} C ${m.cx - m.w * 0.29} ${m.top - m.h * 0.012} ${m.cx + m.w * 0.29} ${m.top - m.h * 0.012} ${m.cx + m.w * 0.36} ${m.top + m.h * 0.055} C ${m.cx + m.w * 0.49} ${m.top + m.h * 0.12} ${m.cx + m.w * 0.49} ${m.top + m.h * 0.34} ${m.cx + m.w * 0.49} ${m.top + m.h * 0.74} Q ${m.cx + m.w * 0.49} ${m.bottom} ${m.cx + m.w * 0.37} ${m.bottom} L ${m.cx - m.w * 0.37} ${m.bottom} Q ${m.cx - m.w * 0.49} ${m.bottom} ${m.cx - m.w * 0.49} ${m.top + m.h * 0.74} C ${m.cx - m.w * 0.49} ${m.top + m.h * 0.34} ${m.cx - m.w * 0.49} ${m.top + m.h * 0.12} ${m.cx - m.w * 0.36} ${m.top + m.h * 0.055} Z`,
+  },
+  Coffin: {
+    halfWidths: [[0, 0.34], [0.16, 0.5], [0.5, 0.48], [0.78, 0.36], [0.95, 0.26], [1, 0.25]],
+    path: (m) => `M ${m.cx - m.w * 0.34} ${m.top + m.h * 0.055} C ${m.cx - m.w * 0.28} ${m.top - m.h * 0.012} ${m.cx + m.w * 0.28} ${m.top - m.h * 0.012} ${m.cx + m.w * 0.34} ${m.top + m.h * 0.055} C ${m.cx + m.w * 0.51} ${m.top + m.h * 0.17} ${m.cx + m.w * 0.5} ${m.top + m.h * 0.42} ${m.cx + m.w * 0.43} ${m.top + m.h * 0.64} L ${m.cx + m.w * 0.25} ${m.bottom} L ${m.cx - m.w * 0.25} ${m.bottom} L ${m.cx - m.w * 0.43} ${m.top + m.h * 0.64} C ${m.cx - m.w * 0.5} ${m.top + m.h * 0.42} ${m.cx - m.w * 0.51} ${m.top + m.h * 0.17} ${m.cx - m.w * 0.34} ${m.top + m.h * 0.055} Z`,
+  },
+  Stiletto: {
+    halfWidths: [[0, 0.3], [0.18, 0.48], [0.46, 0.45], [0.72, 0.25], [0.9, 0.08], [1, 0]],
+    path: (m) => `M ${m.cx - m.w * 0.3} ${m.top + m.h * 0.055} C ${m.cx - m.w * 0.24} ${m.top - m.h * 0.012} ${m.cx + m.w * 0.24} ${m.top - m.h * 0.012} ${m.cx + m.w * 0.3} ${m.top + m.h * 0.055} C ${m.cx + m.w * 0.5} ${m.top + m.h * 0.2} ${m.cx + m.w * 0.46} ${m.top + m.h * 0.52} ${m.cx + m.w * 0.2} ${m.top + m.h * 0.82} C ${m.cx + m.w * 0.1} ${m.top + m.h * 0.93} ${m.cx + m.w * 0.035} ${m.top + m.h * 0.985} ${m.cx} ${m.bottom} C ${m.cx - m.w * 0.035} ${m.top + m.h * 0.985} ${m.cx - m.w * 0.1} ${m.top + m.h * 0.93} ${m.cx - m.w * 0.2} ${m.top + m.h * 0.82} C ${m.cx - m.w * 0.46} ${m.top + m.h * 0.52} ${m.cx - m.w * 0.5} ${m.top + m.h * 0.2} ${m.cx - m.w * 0.3} ${m.top + m.h * 0.055} Z`,
+  },
+  Oval: {
+    halfWidths: [[0, 0.36], [0.16, 0.49], [0.48, 0.5], [0.74, 0.42], [0.93, 0.24], [1, 0.08]],
+    path: (m) => `M ${m.cx - m.w * 0.36} ${m.top + m.h * 0.055} C ${m.cx - m.w * 0.3} ${m.top - m.h * 0.014} ${m.cx + m.w * 0.3} ${m.top - m.h * 0.014} ${m.cx + m.w * 0.36} ${m.top + m.h * 0.055} C ${m.cx + m.w * 0.52} ${m.top + m.h * 0.18} ${m.cx + m.w * 0.52} ${m.top + m.h * 0.52} ${m.cx + m.w * 0.38} ${m.top + m.h * 0.78} C ${m.cx + m.w * 0.25} ${m.top + m.h * 0.96} ${m.cx + m.w * 0.09} ${m.bottom} ${m.cx} ${m.bottom} C ${m.cx - m.w * 0.09} ${m.bottom} ${m.cx - m.w * 0.25} ${m.top + m.h * 0.96} ${m.cx - m.w * 0.38} ${m.top + m.h * 0.78} C ${m.cx - m.w * 0.52} ${m.top + m.h * 0.52} ${m.cx - m.w * 0.52} ${m.top + m.h * 0.18} ${m.cx - m.w * 0.36} ${m.top + m.h * 0.055} Z`,
+  },
+  Round: {
+    halfWidths: [[0, 0.38], [0.14, 0.48], [0.58, 0.49], [0.82, 0.38], [0.96, 0.18], [1, 0]],
+    path: (m) => `M ${m.cx - m.w * 0.38} ${m.top + m.h * 0.055} C ${m.cx - m.w * 0.31} ${m.top - m.h * 0.014} ${m.cx + m.w * 0.31} ${m.top - m.h * 0.014} ${m.cx + m.w * 0.38} ${m.top + m.h * 0.055} C ${m.cx + m.w * 0.5} ${m.top + m.h * 0.18} ${m.cx + m.w * 0.51} ${m.top + m.h * 0.56} ${m.cx + m.w * 0.42} ${m.top + m.h * 0.78} C ${m.cx + m.w * 0.32} ${m.bottom} ${m.cx + m.w * 0.11} ${m.bottom + m.h * 0.035} ${m.cx} ${m.bottom + m.h * 0.035} C ${m.cx - m.w * 0.11} ${m.bottom + m.h * 0.035} ${m.cx - m.w * 0.32} ${m.bottom} ${m.cx - m.w * 0.42} ${m.top + m.h * 0.78} C ${m.cx - m.w * 0.51} ${m.top + m.h * 0.56} ${m.cx - m.w * 0.5} ${m.top + m.h * 0.18} ${m.cx - m.w * 0.38} ${m.top + m.h * 0.055} Z`,
+  },
+  Lipstick: {
+    halfWidths: [[0, 0.34], [0.16, 0.49], [0.58, 0.45], [0.88, 0.27], [1, 0.22]],
+    path: (m) => `M ${m.cx - m.w * 0.34} ${m.top + m.h * 0.055} C ${m.cx - m.w * 0.28} ${m.top - m.h * 0.012} ${m.cx + m.w * 0.28} ${m.top - m.h * 0.012} ${m.cx + m.w * 0.34} ${m.top + m.h * 0.055} C ${m.cx + m.w * 0.51} ${m.top + m.h * 0.18} ${m.cx + m.w * 0.49} ${m.top + m.h * 0.56} ${m.cx + m.w * 0.32} ${m.top + m.h * 0.86} L ${m.cx - m.w * 0.2} ${m.bottom} L ${m.cx - m.w * 0.34} ${m.top + m.h * 0.88} C ${m.cx - m.w * 0.46} ${m.top + m.h * 0.56} ${m.cx - m.w * 0.51} ${m.top + m.h * 0.18} ${m.cx - m.w * 0.34} ${m.top + m.h * 0.055} Z`,
+  },
+  Duck: {
+    halfWidths: [[0, 0.35], [0.2, 0.44], [0.58, 0.45], [0.82, 0.56], [1, 0.66]],
+    path: (m) => `M ${m.cx - m.w * 0.35} ${m.top + m.h * 0.055} C ${m.cx - m.w * 0.29} ${m.top - m.h * 0.012} ${m.cx + m.w * 0.29} ${m.top - m.h * 0.012} ${m.cx + m.w * 0.35} ${m.top + m.h * 0.055} C ${m.cx + m.w * 0.45} ${m.top + m.h * 0.24} ${m.cx + m.w * 0.42} ${m.top + m.h * 0.58} ${m.cx + m.w * 0.56} ${m.top + m.h * 0.82} L ${m.cx + m.w * 0.66} ${m.bottom} L ${m.cx - m.w * 0.66} ${m.bottom} L ${m.cx - m.w * 0.56} ${m.top + m.h * 0.82} C ${m.cx - m.w * 0.42} ${m.top + m.h * 0.58} ${m.cx - m.w * 0.45} ${m.top + m.h * 0.24} ${m.cx - m.w * 0.35} ${m.top + m.h * 0.055} Z`,
+  },
 };
 
-function shapeProfile(shape = "Almond") { return SHAPE_ARCHITECTURE[shape] || SHAPE_ARCHITECTURE.Almond; }
+function shapeProfile(shape = "Almond") { return HERO_SHAPE_MASKS[shape] || HERO_SHAPE_MASKS.Almond; }
+function maskMetrics(nail = {}) {
+  const g = getNailGeometry(nail);
+  return { cx: g.cx, top: g.topY, bottom: g.bottomY, h: g.height, w: g.width };
+}
 function nailControl(nail, key, fallback = 0.5) { return clamp(nail?.[key] ?? fallback, 0, 1); }
 
 function defaultShapeControls(source = {}) {
@@ -121,21 +143,16 @@ export function getNailGeometry(nail) {
 
 export function getNailArchitecture(nail = {}) {
   const g = getNailGeometry(nail);
-  const profile = shapeProfile(nail.shape);
-  const apexHeight = nailControl(nail, "apexHeight", 0.5);
-  const sidewallCurve = nailControl(nail, "sidewallCurve", 0.5);
-  const freeEdgeThickness = nailControl(nail, "freeEdgeThickness", 0.5);
-  const apexYNorm = clamp(profile.apexY - (apexHeight - 0.5) * 0.12, 0.26, 0.62);
+  const apexYNorm = 0.42;
   const cuticleDip = g.height * 0.055;
-  const freeEdgeYNorm = clamp(1 - (profile.freeEdge + (freeEdgeThickness - 0.5) * 0.16), 0.48, 0.9);
   return {
     ...g,
     apexYNorm,
-    freeEdgeYNorm,
+    freeEdgeYNorm: 0.78,
     apex: { x: g.cx, y: g.topY + g.height * apexYNorm },
-    cuticle: { y: g.topY + cuticleDip, halfW: g.halfW * profile.cuticle },
-    sidewallCurve,
-    freeEdgeThickness,
+    cuticle: { y: g.topY + cuticleDip, halfW: g.width * normalizedHalfWidthAtY(nail.shape, 0) },
+    sidewallCurve: 0.5,
+    freeEdgeThickness: 0.5,
   };
 }
 
@@ -149,34 +166,19 @@ export function getNailFreeEdgeExtent(nail = {}) {
   };
 }
 
-function normalizedHalfWidthAtY(shape = "Almond", yValue = 0.5, nail = {}) {
+function normalizedHalfWidthAtY(shape = "Almond", yValue = 0.5) {
   const y = clamp(yValue, 0, 1);
-  const p = shapeProfile(shape);
-  const taperControl = nailControl(nail, "taper", 0.5) - 0.5;
-  const curveControl = nailControl(nail, "sidewallCurve", 0.5) - 0.5;
-  const freeEdgeControl = nailControl(nail, "freeEdgeThickness", 0.5) - 0.5;
-  const cuticle = p.cuticle * 0.5;
-  const shoulder = p.shoulder * 0.5;
-  const tip = clamp((p.tip - taperControl * 0.34 + freeEdgeControl * 0.12) * 0.5, 0, 0.62);
-  const shoulderY = clamp(0.2 + p.apexY * 0.18, 0.2, 0.34);
-  if (y <= shoulderY) {
-    const t = y / shoulderY;
-    const eased = Math.sin((t * Math.PI) / 2) ** (0.8 + curveControl * 0.55);
-    return cuticle + (shoulder - cuticle) * eased;
+  const points = shapeProfile(shape).halfWidths;
+  for (let index = 1; index < points.length; index += 1) {
+    const [y1, w1] = points[index];
+    const [y0, w0] = points[index - 1];
+    if (y <= y1) {
+      const t = (y - y0) / Math.max(0.000001, y1 - y0);
+      const eased = t * t * (3 - 2 * t);
+      return w0 + (w1 - w0) * eased;
+    }
   }
-  const taperStart = Math.max(shoulderY, p.taperStart ?? shoulderY);
-  if (y <= taperStart) {
-    const t = (y - shoulderY) / Math.max(0.000001, taperStart - shoulderY);
-    const heldShoulder = shoulder * (p.sidewallHold ?? 1);
-    const easedHold = Math.sin((clamp(t, 0, 1) * Math.PI) / 2) ** (1.35 + curveControl * 0.45);
-    return shoulder + (heldShoulder - shoulder) * easedHold;
-  }
-  const t = (y - taperStart) / (1 - taperStart);
-  const exponent = clamp(0.82 + p.curve + p.taper * 0.35 + curveControl * 0.7, 0.45, 2.1);
-  const tapered = shoulder + (tip - shoulder) * (t ** exponent);
-  if (shape === "Edge") return tapered * (1 - 0.07 * Math.max(0, Math.sin(Math.PI * t)));
-  if (shape === "Lipstick" && y > 0.9) return tapered * (1 - ((y - 0.9) / 0.1) * 0.08);
-  return Math.max(0, tapered);
+  return points[points.length - 1][1];
 }
 
 export function getNailShapeMetrics(shape = "Almond", nail = {}) {
@@ -221,37 +223,7 @@ function sideCurveCommands(points) {
 
 export function buildNailPath(shape = "Almond", nail = {}) {
   const scopedNail = { ...nail, shape };
-  const arch = getNailArchitecture(scopedNail);
-  const topY = arch.topY + arch.height * 0.055;
-  const cuticleHalf = normalizedHalfWidthAtY(shape, 0, scopedNail) * arch.width;
-  const topLeft = { x: arch.cx - cuticleHalf, y: topY };
-  const topRight = { x: arch.cx + cuticleHalf, y: topY };
-  const samples = [0.055, 0.12, 0.2, 0.31, 0.44, 0.58, 0.72, 0.84, 0.93];
-  const right = [topRight, ...samples.map((y) => pathPoint(scopedNail, y, 1))];
-  const left = [...samples].reverse().map((y) => pathPoint(scopedNail, y, -1));
-  const cmds = [`M ${topLeft.x.toFixed(3)} ${topLeft.y.toFixed(3)}`, `C ${(arch.cx - cuticleHalf * 0.86).toFixed(3)} ${(arch.topY - arch.height * 0.022).toFixed(3)} ${(arch.cx + cuticleHalf * 0.86).toFixed(3)} ${(arch.topY - arch.height * 0.022).toFixed(3)} ${topRight.x.toFixed(3)} ${topRight.y.toFixed(3)}`];
-  cmds.push(...sideCurveCommands(right));
-
-  if (shape === "Mountain Peak") {
-    const peak = { x: arch.cx, y: arch.bottomY };
-    const rightBase = pathPoint(scopedNail, 0.93, 1);
-    const leftBase = pathPoint(scopedNail, 0.93, -1);
-    cmds.push(`C ${(rightBase.x * 0.7 + arch.cx * 0.3).toFixed(3)} ${(arch.bottomY - arch.height * 0.02).toFixed(3)} ${(arch.cx + arch.halfW * 0.12).toFixed(3)} ${(arch.bottomY - arch.height * 0.005).toFixed(3)} ${peak.x.toFixed(3)} ${peak.y.toFixed(3)}`);
-    cmds.push(`C ${(arch.cx - arch.halfW * 0.12).toFixed(3)} ${(arch.bottomY - arch.height * 0.005).toFixed(3)} ${(leftBase.x * 0.7 + arch.cx * 0.3).toFixed(3)} ${(arch.bottomY - arch.height * 0.02).toFixed(3)} ${leftBase.x.toFixed(3)} ${leftBase.y.toFixed(3)}`);
-  } else if (shape === "Lipstick") {
-    const rightTip = pathPoint(scopedNail, 0.88, 1);
-    const leftTip = pathPoint(scopedNail, 1, -1);
-    cmds.push(`C ${(rightTip.x + arch.halfW * 0.02).toFixed(3)} ${(rightTip.y + arch.height * 0.04).toFixed(3)} ${(leftTip.x + arch.halfW * 0.16).toFixed(3)} ${(leftTip.y - arch.height * 0.01).toFixed(3)} ${leftTip.x.toFixed(3)} ${leftTip.y.toFixed(3)}`);
-  } else {
-    const tipRight = pathPoint(scopedNail, 1, 1);
-    const tipLeft = pathPoint(scopedNail, 1, -1);
-    const cpY = getNailFreeEdgeExtent(scopedNail).renderBottomY;
-    cmds.push(`C ${tipRight.x.toFixed(3)} ${cpY.toFixed(3)} ${tipLeft.x.toFixed(3)} ${cpY.toFixed(3)} ${tipLeft.x.toFixed(3)} ${tipLeft.y.toFixed(3)}`);
-  }
-
-  cmds.push(...sideCurveCommands([...(shape === "Lipstick" ? [pathPoint(scopedNail, 1, -1)] : []), ...left, topLeft]));
-  cmds.push("Z");
-  return cmds.join(" ");
+  return shapeProfile(shape).path(maskMetrics(scopedNail));
 }
 
 export function normalizedToSvg(point, nail) {
