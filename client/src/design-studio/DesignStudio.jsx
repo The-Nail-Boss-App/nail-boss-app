@@ -11,6 +11,7 @@ import { UI } from "./studioStyles.js";
 import {
   DEFAULT_ACTIVE_SLOT,
   EFFECTS,
+  POLISH_TYPES,
   FULL_SET_SLOTS,
   LEFT_HAND_SLOTS,
   RIGHT_HAND_SLOTS,
@@ -104,6 +105,35 @@ function blueprintSizeMessage(bytes) {
   return `Blueprint is ${kb}KB; AnitaSet supports up to ${maxKb}KB per editable design.`;
 }
 
+
+function collectDesignPalette(nail) {
+  const colors = [];
+  const add = (value) => {
+    if (typeof value !== "string" || !/^#[0-9a-fA-F]{6}$/.test(value)) return;
+    const normalized = value.toUpperCase();
+    if (!colors.includes(normalized)) colors.push(normalized);
+  };
+  add(nail?.baseColorHex);
+  (nail?.layers || []).forEach((layer) => {
+    const data = layer.data || {};
+    add(data.colorHex);
+    add(data.effectColorHex);
+    add(data.colorA);
+    add(data.colorB);
+    add(data.secondaryColorHex);
+    (data.strokes || []).forEach((stroke) => add(stroke.colorHex));
+  });
+  return colors;
+}
+
+function DesignPalette({ colors }) {
+  return <section style={{ border: `1px solid ${COLORS.border}`, borderRadius: 16, padding: 12, marginBottom: 14, background: "#fff" }}>
+    <div style={UI.sectionTitle}>Design Palette</div>
+    {colors.length ? <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+      {colors.map((color) => <div key={color} title={color} style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 8px", border: `1px solid ${COLORS.border}`, borderRadius: 999, background: "#fff" }}><span style={{ width: 18, height: 18, borderRadius: "50%", background: color, border: `1px solid ${COLORS.border}` }}/><span style={{ fontSize: 11, fontFamily: "monospace", color: COLORS.textMuted }}>{color}</span></div>)}
+    </div> : <p style={UI.smallText}>Choose polish or artwork colors and they will appear here automatically.</p>}
+  </section>;
+}
 function DesignStudio(_, ref) {
   const [designs, setDesigns] = useState([]);
   const [selectedDesignId, setSelectedDesignId] = useState("");
@@ -148,6 +178,7 @@ function DesignStudio(_, ref) {
   const canRedo = history.future.length > 0;
   const activeSlot = activeNail.slot || DEFAULT_ACTIVE_SLOT;
   const productSummary = useMemo(() => summarizeFullSetAssets(blueprint), [blueprint]);
+  const designPalette = useMemo(() => collectDesignPalette(activeNail), [activeNail]);
 
   useEffect(() => { loadDesigns(); }, []);
   useEffect(() => { dirtyRef.current = dirty; blueprintRef.current = blueprint; selectedDesignIdRef.current = selectedDesignId; designNameRef.current = designName; }, [dirty, blueprint, selectedDesignId, designName]);
@@ -701,7 +732,6 @@ function DesignStudio(_, ref) {
       <button type="button" onClick={() => setMode("eraser")} style={UI.iconButton(mode === "eraser")}>Eraser</button>
       <button type="button" onClick={addGradient} style={UI.iconButton(false)}>Add gradient</button>
       <button type="button" onClick={addPattern} style={UI.iconButton(false)}>Add pattern</button>
-      <button type="button" onClick={addFrenchTip} style={UI.iconButton(false)}>Add French Tip</button>
       <span style={{ marginLeft: "auto", color: statusColor, fontSize: 13, fontWeight: 800 }}>{saving ? "Saving…" : loading ? "Loading…" : dirty ? `● ${saveStatus}` : saveStatus || status.message}</span>
     </div>
 
@@ -713,15 +743,13 @@ function DesignStudio(_, ref) {
         <Field label="Nail shape"><select style={S.input} value={activeNail.shape} onChange={(e) => updateBase({ shape: e.target.value })}>{SHAPES.map((shape) => <option key={shape}>{shape}</option>)}</select></Field>
         <GeometrySlider label="Nail length" value={activeNail.length} onChange={(length) => updateBase({ length })}/>
         <GeometrySlider label="Nail width" value={activeNail.width} onChange={(width) => updateBase({ width })}/>
-        <GeometrySlider label="Taper" value={activeNail.taper} onChange={(taper) => updateBase({ taper })}/>
-        <GeometrySlider label="Apex height" value={activeNail.apexHeight} onChange={(apexHeight) => updateBase({ apexHeight })}/>
-        <GeometrySlider label="Sidewall curve" value={activeNail.sidewallCurve} onChange={(sidewallCurve) => updateBase({ sidewallCurve })}/>
-        <GeometrySlider label="Free edge thickness" value={activeNail.freeEdgeThickness} onChange={(freeEdgeThickness) => updateBase({ freeEdgeThickness })}/>
         <Field label="Base polish color"><ColorInput value={baseLayer?.data?.colorHex || activeNail.baseColorHex} onChange={(value) => updateBase({ baseColorHex: normalizeHex(value, baseLayer?.data?.colorHex) })}/></Field>
-        <Field label="Base effect"><select style={S.input} value={baseLayer?.data?.effect || "Solid"} onChange={(e) => updateBase({ effect: e.target.value })}>{EFFECTS.map((effect) => <option key={effect} value={effect}>{effect}</option>)}</select></Field>
-        {(baseLayer?.data?.effect || "Solid") !== "Solid" && <Field label="Effect color"><ColorInput value={baseLayer?.data?.effectColorHex || "#FFFFFF"} onChange={(value) => updateBase({ effectColorHex: normalizeHex(value, "#FFFFFF") })}/></Field>}
+        <section style={{ border: `1px solid ${COLORS.border}`, borderRadius: 16, padding: 12, marginBottom: 14, background: "#fff" }}><div style={UI.sectionTitle}>Polish Type</div><div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>{POLISH_TYPES.map((type) => <button key={type} type="button" onClick={() => updateBase({ polishType: type })} style={UI.miniButton((baseLayer?.data?.polishType || "Cream") === type)}>{type}</button>)}</div></section>
+        <DesignPalette colors={designPalette}/>
+        <details style={{ marginBottom: 14 }}><summary style={{ ...UI.sectionTitle, cursor: "pointer", marginBottom: 0 }}>Advanced Shape Controls</summary><div style={{ marginTop: 10 }}><GeometrySlider label="Taper" value={activeNail.taper} onChange={(taper) => updateBase({ taper })}/><GeometrySlider label="Apex height" value={activeNail.apexHeight} onChange={(apexHeight) => updateBase({ apexHeight })}/><GeometrySlider label="Sidewall curve" value={activeNail.sidewallCurve} onChange={(sidewallCurve) => updateBase({ sidewallCurve })}/><GeometrySlider label="Free edge thickness" value={activeNail.freeEdgeThickness} onChange={(freeEdgeThickness) => updateBase({ freeEdgeThickness })}/></div></details>
+        <details style={{ marginBottom: 14 }}><summary style={{ ...UI.sectionTitle, cursor: "pointer", marginBottom: 0 }}>Advanced / Legacy Base Effect</summary><div style={{ marginTop: 10 }}><Field label="Base effect"><select style={S.input} value={baseLayer?.data?.effect || "Solid"} onChange={(e) => updateBase({ effect: e.target.value })}>{EFFECTS.map((effect) => <option key={effect} value={effect}>{effect}</option>)}</select></Field>{(baseLayer?.data?.effect || "Solid") !== "Solid" && <Field label="Effect color"><ColorInput value={baseLayer?.data?.effectColorHex || "#FFFFFF"} onChange={(value) => updateBase({ effectColorHex: normalizeHex(value, "#FFFFFF") })}/></Field>}</div></details>
         <Field label="Tags"><input style={S.input} value={tagsString} onChange={(e) => updateBase({ tags: e.target.value })} placeholder="bridal, chrome, accent" /></Field>
-        <Field label="Style category"><select style={S.input} value={blueprint.metadata?.styleCategory || "Custom"} onChange={(e) => commit({ ...blueprint, metadata: { ...blueprint.metadata, styleCategory: e.target.value } })}>{STYLE_CATEGORIES.map((category) => <option key={category}>{category}</option>)}</select></Field>
+        <Field label="Signature Looks"><select style={S.input} value={blueprint.metadata?.styleCategory || "Custom"} onChange={(e) => commit({ ...blueprint, metadata: { ...blueprint.metadata, styleCategory: e.target.value } })}>{STYLE_CATEGORIES.map((category) => <option key={category}>{category}</option>)}</select></Field>
         <Field label="Internal notes"><textarea style={{ ...S.input, minHeight: 70 }} value={blueprint.metadata?.internalNotes || ""} onChange={(e) => commit({ ...blueprint, metadata: { ...blueprint.metadata, internalNotes: e.target.value } })} placeholder="Optional artist-only notes" /></Field>
         <Field label="Estimated service price"><input style={S.input} value={blueprint.metadata?.estimatedServicePrice || ""} onChange={(e) => commit({ ...blueprint, metadata: { ...blueprint.metadata, estimatedServicePrice: e.target.value } })} placeholder="Placeholder for later pricing" /></Field>
 
@@ -733,7 +761,7 @@ function DesignStudio(_, ref) {
       <main style={{ ...UI.panel, display: "flex", flexDirection: "column", alignItems: "stretch" }}><NailCanvas debugOverlay={debugShapeOverlay} nail={activeNail} layers={activeNail.layers} selectedLayerId={selectedLayerId} mode={mode} brush={brush} notice={notice} onSelectLayer={(id) => setSelectedLayerId(id || "")} onTransformLayer={transformLayer} onDrawingStroke={addStroke} onStageEraseStroke={stageEraseStroke} onEraseStroke={eraseStroke}/><FullSetPreview blueprint={blueprint} activeNailId={activeNail.id} onSelectSlot={selectSlot} onViewChange={() => dirtyRef.current && void save({ autosave: true, immediate: true })}/></main>
 
       <aside style={UI.panel}><div style={UI.panelPad}>
-        <div style={{ display: "flex", gap: 6, marginBottom: 16 }}><button type="button" aria-pressed={tab === "assets"} aria-label="Show asset library" onClick={() => setTab("assets")} style={UI.miniButton(tab === "assets")}>Assets</button><button type="button" aria-pressed={tab === "layers"} aria-label="Show layers panel" onClick={() => setTab("layers")} style={UI.miniButton(tab === "layers")}>Layers</button><button type="button" aria-pressed={tab === "properties"} aria-label="Show properties panel" onClick={() => setTab("properties")} style={UI.miniButton(tab === "properties")}>Properties</button></div>
+        <div style={{ display: "flex", gap: 6, marginBottom: 16 }}><button type="button" aria-pressed={tab === "assets"} aria-label="Show nail art library" onClick={() => setTab("assets")} style={UI.miniButton(tab === "assets")}>Nail Art</button><button type="button" aria-pressed={tab === "layers"} aria-label="Show layers panel" onClick={() => setTab("layers")} style={UI.miniButton(tab === "layers")}>Layers</button><button type="button" aria-pressed={tab === "properties"} aria-label="Show properties panel" onClick={() => setTab("properties")} style={UI.miniButton(tab === "properties")}>Properties</button></div>
         {tab === "assets" && <><AssetLibrary onAddAsset={addAsset}/><DrawingToolbar brush={brush} mode={mode} onBrushChange={(patch) => setBrush((prev) => ({ ...prev, ...patch }))}/></>}
         {tab === "layers" && <LayersPanel layers={activeNail.layers} selectedLayerId={selectedLayerId} onSelect={setSelectedLayerId} onToggleVisible={toggleVisible} onToggleLock={toggleLock} onMove={moveLayer} onDelete={deleteLayer}/>} 
         {tab === "properties" && <PropertiesPanel layer={selectedLayer} onPatch={(patch) => selectedLayer && patchLayer(selectedLayer.id, patch)} onDuplicate={() => duplicateLayer()} onDelete={() => deleteLayer()}/>} 
