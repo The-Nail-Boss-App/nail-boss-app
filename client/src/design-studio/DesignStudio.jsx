@@ -10,8 +10,6 @@ import BulkActionsPanel from "./BulkActionsPanel.jsx";
 import { UI } from "./studioStyles.js";
 import {
   DEFAULT_ACTIVE_SLOT,
-  EFFECTS,
-  POLISH_TYPES,
   FULL_SET_SLOTS,
   LEFT_HAND_SLOTS,
   RIGHT_HAND_SLOTS,
@@ -126,6 +124,31 @@ function collectDesignPalette(nail) {
   return colors;
 }
 
+
+const NAIL_COLOR_SWATCHES = ["#F7D7E6", "#E8A0BF", "#C86B8D", "#9D4D72", "#7B2F59", "#FFFFFF", "#F5E8D8", "#2B1024"];
+
+function NailColorSystem({ value, onChange, onApply }) {
+  return <section style={{ border: `1px solid ${COLORS.border}`, borderRadius: 16, padding: 12, marginBottom: 14, background: "#fff" }}>
+    <div style={UI.sectionTitle}>Nail Color System</div>
+    <ColorInput value={value} onChange={onChange}/>
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, marginTop: 10 }}>
+      {NAIL_COLOR_SWATCHES.map((color) => <button key={color} type="button" aria-label={`Set nail color ${color}`} onClick={() => onChange(color)} style={{ height: 34, borderRadius: 12, border: `2px solid ${value?.toUpperCase() === color ? COLORS.plum : COLORS.border}`, background: color, cursor: "pointer" }}/>) }
+    </div>
+    <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 10 }}>
+      <button type="button" onClick={() => onApply("active")} style={UI.iconButton(false)}>Active nail</button>
+      <button type="button" onClick={() => onApply("hand")} style={UI.iconButton(false)}>Current hand</button>
+      <button type="button" onClick={() => onApply("all")} style={UI.iconButton(false)}>Full set</button>
+    </div>
+    <p style={UI.smallText}>Flat color only for now: no polish effects, realism layers, or new shape artwork.</p>
+  </section>;
+}
+
+function DesignBoardIntro() {
+  return <section style={{ border: `1px solid ${COLORS.border}`, borderRadius: 16, padding: 12, marginBottom: 14, background: "#fff" }}>
+    <div style={UI.sectionTitle}>Design Board Framework</div>
+    <p style={{ ...UI.smallText, marginTop: 0 }}>Use this board to organize reusable nail art, drawing strokes, and layer edits while the preview stays sticky.</p>
+  </section>;
+}
 function DesignPalette({ colors }) {
   return <section style={{ border: `1px solid ${COLORS.border}`, borderRadius: 16, padding: 12, marginBottom: 14, background: "#fff" }}>
     <div style={UI.sectionTitle}>Design Palette</div>
@@ -730,8 +753,6 @@ function DesignStudio(_, ref) {
       <button type="button" onClick={() => setMode("select")} style={UI.iconButton(mode === "select")}>Select</button>
       <button type="button" onClick={() => setMode("draw")} style={UI.iconButton(mode === "draw")}>Draw</button>
       <button type="button" onClick={() => setMode("eraser")} style={UI.iconButton(mode === "eraser")}>Eraser</button>
-      <button type="button" onClick={addGradient} style={UI.iconButton(false)}>Add gradient</button>
-      <button type="button" onClick={addPattern} style={UI.iconButton(false)}>Add pattern</button>
       <span style={{ marginLeft: "auto", color: statusColor, fontSize: 13, fontWeight: 800 }}>{saving ? "Saving…" : loading ? "Loading…" : dirty ? `● ${saveStatus}` : saveStatus || status.message}</span>
     </div>
 
@@ -743,11 +764,9 @@ function DesignStudio(_, ref) {
         <Field label="Nail shape"><select style={S.input} value={activeNail.shape} onChange={(e) => updateBase({ shape: e.target.value })}>{SHAPES.map((shape) => <option key={shape}>{shape}</option>)}</select></Field>
         <GeometrySlider label="Nail length" value={activeNail.length} onChange={(length) => updateBase({ length })}/>
         <GeometrySlider label="Nail width" value={activeNail.width} onChange={(width) => updateBase({ width })}/>
-        <Field label="Base polish color"><ColorInput value={baseLayer?.data?.colorHex || activeNail.baseColorHex} onChange={(value) => updateBase({ baseColorHex: normalizeHex(value, baseLayer?.data?.colorHex) })}/></Field>
-        <section style={{ border: `1px solid ${COLORS.border}`, borderRadius: 16, padding: 12, marginBottom: 14, background: "#fff" }}><div style={UI.sectionTitle}>Polish Type</div><div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>{POLISH_TYPES.map((type) => <button key={type} type="button" onClick={() => updateBase({ polishType: type })} style={UI.miniButton((baseLayer?.data?.polishType || "Cream") === type)}>{type}</button>)}</div></section>
+        <NailColorSystem value={baseLayer?.data?.colorHex || activeNail.baseColorHex} onChange={(value) => updateBase({ baseColorHex: normalizeHex(value, baseLayer?.data?.colorHex), polishType: "Cream", effect: "Solid" })} onApply={(scope) => { const targets = scope === "active" ? [activeSlot] : slotsFor(scope); commit(applyBaseToSlots(blueprint, { baseColorHex: getVisibleBaseColor(activeNail), polishType: "Cream", effect: "Solid" }, targets)); }}/>
         <DesignPalette colors={designPalette}/>
         <details style={{ marginBottom: 14 }}><summary style={{ ...UI.sectionTitle, cursor: "pointer", marginBottom: 0 }}>Advanced Shape Controls</summary><div style={{ marginTop: 10 }}><GeometrySlider label="Taper" value={activeNail.taper} onChange={(taper) => updateBase({ taper })}/><GeometrySlider label="Apex height" value={activeNail.apexHeight} onChange={(apexHeight) => updateBase({ apexHeight })}/><GeometrySlider label="Sidewall curve" value={activeNail.sidewallCurve} onChange={(sidewallCurve) => updateBase({ sidewallCurve })}/><GeometrySlider label="Free edge thickness" value={activeNail.freeEdgeThickness} onChange={(freeEdgeThickness) => updateBase({ freeEdgeThickness })}/></div></details>
-        <details style={{ marginBottom: 14 }}><summary style={{ ...UI.sectionTitle, cursor: "pointer", marginBottom: 0 }}>Advanced / Legacy Base Effect</summary><div style={{ marginTop: 10 }}><Field label="Base effect"><select style={S.input} value={baseLayer?.data?.effect || "Solid"} onChange={(e) => updateBase({ effect: e.target.value })}>{EFFECTS.map((effect) => <option key={effect} value={effect}>{effect}</option>)}</select></Field>{(baseLayer?.data?.effect || "Solid") !== "Solid" && <Field label="Effect color"><ColorInput value={baseLayer?.data?.effectColorHex || "#FFFFFF"} onChange={(value) => updateBase({ effectColorHex: normalizeHex(value, "#FFFFFF") })}/></Field>}</div></details>
         <Field label="Tags"><input style={S.input} value={tagsString} onChange={(e) => updateBase({ tags: e.target.value })} placeholder="bridal, chrome, accent" /></Field>
         <Field label="Signature Looks"><select style={S.input} value={blueprint.metadata?.styleCategory || "Custom"} onChange={(e) => commit({ ...blueprint, metadata: { ...blueprint.metadata, styleCategory: e.target.value } })}>{STYLE_CATEGORIES.map((category) => <option key={category}>{category}</option>)}</select></Field>
         <Field label="Internal notes"><textarea style={{ ...S.input, minHeight: 70 }} value={blueprint.metadata?.internalNotes || ""} onChange={(e) => commit({ ...blueprint, metadata: { ...blueprint.metadata, internalNotes: e.target.value } })} placeholder="Optional artist-only notes" /></Field>
@@ -758,10 +777,10 @@ function DesignStudio(_, ref) {
         <details style={{ marginBottom: 12 }}><summary style={{ ...UI.smallText, cursor: "pointer" }}>Developer geometry tools</summary><label style={{ ...UI.smallText, display: "flex", gap: 8, alignItems: "center", marginTop: 8 }}><input type="checkbox" checked={debugShapeOverlay} onChange={(e) => setDebugShapeOverlay(e.target.checked)}/> Shape Debug Overlay</label><p style={UI.smallText}>Apex Y: {Math.round(getNailArchitecture(activeNail).apexYNorm * 100)}% · Free edge starts: {Math.round(getNailArchitecture(activeNail).freeEdgeYNorm * 100)}%</p></details><p style={UI.smallText}>Strict-fit mode keeps all editable vectors clipped and clamped inside the active nail surface for realistic product-use planning.</p>
       </div></aside>
 
-      <main style={{ ...UI.panel, display: "flex", flexDirection: "column", alignItems: "stretch" }}><NailCanvas debugOverlay={debugShapeOverlay} nail={activeNail} layers={activeNail.layers} selectedLayerId={selectedLayerId} mode={mode} brush={brush} notice={notice} onSelectLayer={(id) => setSelectedLayerId(id || "")} onTransformLayer={transformLayer} onDrawingStroke={addStroke} onStageEraseStroke={stageEraseStroke} onEraseStroke={eraseStroke}/><FullSetPreview blueprint={blueprint} activeNailId={activeNail.id} onSelectSlot={selectSlot} onViewChange={() => dirtyRef.current && void save({ autosave: true, immediate: true })}/></main>
+      <main style={{ ...UI.panel, ...UI.stickyPreview, display: "flex", flexDirection: "column", alignItems: "stretch" }}><NailCanvas debugOverlay={debugShapeOverlay} nail={activeNail} layers={activeNail.layers} selectedLayerId={selectedLayerId} mode={mode} brush={brush} notice={notice} onSelectLayer={(id) => setSelectedLayerId(id || "")} onTransformLayer={transformLayer} onDrawingStroke={addStroke} onStageEraseStroke={stageEraseStroke} onEraseStroke={eraseStroke}/><FullSetPreview blueprint={blueprint} activeNailId={activeNail.id} onSelectSlot={selectSlot} onViewChange={() => dirtyRef.current && void save({ autosave: true, immediate: true })}/></main>
 
       <aside style={UI.panel}><div style={UI.panelPad}>
-        <div style={{ display: "flex", gap: 6, marginBottom: 16 }}><button type="button" aria-pressed={tab === "assets"} aria-label="Show nail art library" onClick={() => setTab("assets")} style={UI.miniButton(tab === "assets")}>Nail Art</button><button type="button" aria-pressed={tab === "layers"} aria-label="Show layers panel" onClick={() => setTab("layers")} style={UI.miniButton(tab === "layers")}>Layers</button><button type="button" aria-pressed={tab === "properties"} aria-label="Show properties panel" onClick={() => setTab("properties")} style={UI.miniButton(tab === "properties")}>Properties</button></div>
+        <DesignBoardIntro/><div style={{ display: "flex", gap: 6, marginBottom: 16 }}><button type="button" aria-pressed={tab === "assets"} aria-label="Show nail art library" onClick={() => setTab("assets")} style={UI.miniButton(tab === "assets")}>Art</button><button type="button" aria-pressed={tab === "layers"} aria-label="Show layers panel" onClick={() => setTab("layers")} style={UI.miniButton(tab === "layers")}>Layers</button><button type="button" aria-pressed={tab === "properties"} aria-label="Show properties panel" onClick={() => setTab("properties")} style={UI.miniButton(tab === "properties")}>Properties</button></div>
         {tab === "assets" && <><AssetLibrary onAddAsset={addAsset}/><DrawingToolbar brush={brush} mode={mode} onBrushChange={(patch) => setBrush((prev) => ({ ...prev, ...patch }))}/></>}
         {tab === "layers" && <LayersPanel layers={activeNail.layers} selectedLayerId={selectedLayerId} onSelect={setSelectedLayerId} onToggleVisible={toggleVisible} onToggleLock={toggleLock} onMove={moveLayer} onDelete={deleteLayer}/>} 
         {tab === "properties" && <PropertiesPanel layer={selectedLayer} onPatch={(patch) => selectedLayer && patchLayer(selectedLayer.id, patch)} onDuplicate={() => duplicateLayer()} onDelete={() => deleteLayer()}/>} 

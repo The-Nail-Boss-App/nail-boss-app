@@ -42,6 +42,7 @@ export function strokePath(points = [], nail) {
 export default function NailCanvas({ nail, layers, selectedLayerId, mode, brush, notice, debugOverlay = false, onSelectLayer, onTransformLayer, onDrawingStroke, onStageEraseStroke, onEraseStroke }) {
   const svgRef = useRef(null);
   const [drag, setDrag] = useState(null);
+  const [cursorPoint, setCursorPoint] = useState(null);
   const dragRef = useRef(null);
   const clipId = useMemo(() => `nail-clip-${Math.random().toString(36).slice(2)}`, []);
   const uid = useMemo(() => `defs-${Math.random().toString(36).slice(2)}`, []);
@@ -122,6 +123,7 @@ export default function NailCanvas({ nail, layers, selectedLayerId, mode, brush,
   }
 
   function canvasDown(event) {
+    if (mode === "draw" || mode === "eraser") setCursorPoint(svgPoint(event));
     if (dragRef.current) return;
     if (mode !== "draw" && mode !== "eraser") {
       onSelectLayer(null);
@@ -141,6 +143,7 @@ export default function NailCanvas({ nail, layers, selectedLayerId, mode, brush,
   }
 
   function canvasMove(event) {
+    if (mode === "draw" || mode === "eraser") setCursorPoint(svgPoint(event));
     const activeDrag = dragRef.current;
     if (activeDrag?.kind !== "drawing" || activeDrag.pointerId !== event.pointerId) return;
     const point = projectPointInsideNailSilhouette(svgToNormalized(svgPoint(event), nail), nail);
@@ -188,9 +191,12 @@ export default function NailCanvas({ nail, layers, selectedLayerId, mode, brush,
     </g>;
   }
 
+  const brushCursorRadius = Math.max(3, (brush?.size || 5) * 0.9);
+  const canvasCursor = mode === "draw" || mode === "eraser" ? "none" : "default";
+
   return <div style={{ height: "100%", minHeight: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-start", position: "relative" }}>
     <div style={{ width: "min(54vh, 96%)", maxWidth: 430, aspectRatio: "2 / 3", background: "linear-gradient(180deg,#fff,#fbf1f8)", border: `1px solid ${COLORS.border}`, borderRadius: 28, boxShadow: "inset 0 0 0 12px rgba(255,255,255,.55), 0 18px 50px rgba(60,20,50,.10)", padding: 12 }}>
-      <svg ref={svgRef} viewBox={`0 0 ${VIEWBOX.width} ${VIEWBOX.height}`} width="100%" height="100%" role="img" aria-label="Editable single nail canvas" onPointerDown={canvasDown} onPointerMove={(e) => { pointerMove(e); canvasMove(e); }} onPointerUp={finishPointerGesture} onPointerCancel={cancelPointerGesture} style={{ touchAction: "none", userSelect: "none" }}>
+      <svg ref={svgRef} viewBox={`0 0 ${VIEWBOX.width} ${VIEWBOX.height}`} width="100%" height="100%" role="img" aria-label="Editable single nail canvas" onPointerDown={canvasDown} onPointerMove={(e) => { pointerMove(e); canvasMove(e); }} onPointerUp={finishPointerGesture} onPointerCancel={cancelPointerGesture} onPointerLeave={() => setCursorPoint(null)} style={{ touchAction: "none", userSelect: "none", cursor: canvasCursor }}>
         <defs>
           <clipPath id={clipId}><path d={path}/></clipPath>
           <filter id={`${uid}-soft`}><feGaussianBlur stdDeviation="1.2"/></filter>
@@ -200,6 +206,7 @@ export default function NailCanvas({ nail, layers, selectedLayerId, mode, brush,
         <PolishSurface nail={nail} baseLayer={baseLayer} path={path} clipId={clipId} uid={uid}/>
         {artLayers.map(layerNode)}
         {drag?.kind === "drawing" && <g clipPath={`url(#${clipId})`}><path d={strokePath(drag.stroke.points, nail)} fill="none" stroke={drag.stroke.colorHex} strokeWidth={(drag.stroke.width || 0.04) * 100} strokeOpacity={drag.stroke.opacity} strokeLinecap="round" strokeLinejoin="round"/></g>}
+        {cursorPoint && (mode === "draw" || mode === "eraser") && <g pointerEvents="none" aria-hidden="true"><circle cx={cursorPoint.x} cy={cursorPoint.y} r={brushCursorRadius} fill={mode === "eraser" ? "rgba(255,255,255,.42)" : brush.colorHex} fillOpacity={mode === "eraser" ? .55 : .16} stroke={mode === "eraser" ? COLORS.plum : brush.colorHex} strokeWidth="1.8" strokeDasharray={mode === "eraser" ? "4 3" : undefined}/><line x1={cursorPoint.x - brushCursorRadius - 4} y1={cursorPoint.y} x2={cursorPoint.x + brushCursorRadius + 4} y2={cursorPoint.y} stroke={COLORS.plum} strokeOpacity=".35"/><line x1={cursorPoint.x} y1={cursorPoint.y - brushCursorRadius - 4} x2={cursorPoint.x} y2={cursorPoint.y + brushCursorRadius + 4} stroke={COLORS.plum} strokeOpacity=".35"/></g>}
         {debugOverlay && <g pointerEvents="none" aria-hidden="true">
           <line x1={architecture.cx} y1={architecture.topY - 6} x2={architecture.cx} y2={architecture.bottomY + 6} stroke="#2563eb" strokeWidth="1.5" strokeDasharray="6 5"/>
           <circle cx={architecture.apex.x} cy={architecture.apex.y} r="5" fill="#f97316" stroke="#fff" strokeWidth="2"/>
@@ -211,7 +218,7 @@ export default function NailCanvas({ nail, layers, selectedLayerId, mode, brush,
         </g>}
       </svg>
     </div>
-    <p style={{ marginTop: 6, color: COLORS.textMuted, fontSize: 13 }}>{selectedLayerId ? "Drag selected artwork inside the strict nail boundary. Use Properties for size and rotation." : "Select an art layer, add an asset, or choose Draw to begin."}</p>
+    <p style={{ marginTop: 6, color: COLORS.textMuted, fontSize: 13 }}>{selectedLayerId ? "Drag selected artwork inside the strict nail boundary. Use Properties for size and rotation." : "Choose Draw for a visible brush cursor, set nail color, or select a board layer."}</p>
     {notice && <div style={{ position: "absolute", bottom: 18, left: "50%", transform: "translateX(-50%)", background: COLORS.plum, color: "#fff", padding: "10px 14px", borderRadius: 999, fontSize: 12, boxShadow: "0 10px 30px rgba(60,20,50,.2)" }}>{notice}</div>}
   </div>;
 }
