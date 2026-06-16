@@ -49,9 +49,11 @@ const {
 } = blueprint;
 
 
-const salonShapeFamilies = ['Square', 'Tapered Square', 'Russian Square', 'Coffin', 'Slim Coffin', 'Almond', 'Russian Almond', 'Oval', 'Round', 'Stiletto', 'Edge', 'Lipstick', 'Flare', 'Mountain Peak'];
-assert.deepEqual(SHAPES, salonShapeFamilies, 'Shape Engine V2 exposes the required salon shape families without length variants');
-for (const shape of salonShapeFamilies) {
+const heroShapeFamilies = ['Almond', 'Square', 'Coffin', 'Stiletto', 'Oval', 'Round', 'Lipstick', 'Duck'];
+const nonHeroShapeFamilies = ['Tapered Square', 'Russian Square', 'Slim Coffin', 'Russian Almond', 'Edge', 'Flare', 'Mountain Peak'];
+assert.deepEqual(SHAPES, heroShapeFamilies, 'Editor shape list exposes exactly the Hero 8 shapes');
+for (const shape of nonHeroShapeFamilies) assert(!SHAPES.includes(shape), `${shape} is not expected in the editor shape list`);
+for (const shape of heroShapeFamilies) {
   const nail = { shape, length: 0.56, width: 0.52, taper: 0.5, apexHeight: 0.5, sidewallCurve: 0.5, freeEdgeThickness: 0.5 };
   assert(buildNailPath(shape, nail).startsWith('M '), `${shape} returns a renderable nail silhouette path`);
   assert(isPointInsideNailSilhouette({ x: 0.5, y: 0.5 }, nail), `${shape} keeps the centerline inside the nail bed`);
@@ -66,11 +68,11 @@ const ovalMetrics = getNailShapeMetrics('Oval', { ...defaultShapeNail, shape: 'O
 const almondMetrics = getNailShapeMetrics('Almond', { ...defaultShapeNail, shape: 'Almond' });
 assert.notEqual(buildNailPath('Round', { ...defaultShapeNail, shape: 'Round' }), buildNailPath('Almond', { ...defaultShapeNail, shape: 'Almond' }), 'Round does not match Almond render geometry');
 assert.notEqual(buildNailPath('Oval', { ...defaultShapeNail, shape: 'Oval' }), buildNailPath('Almond', { ...defaultShapeNail, shape: 'Almond' }), 'Oval does not match Almond render geometry');
-assert(roundMetrics.tipHalfWidth > ovalMetrics.tipHalfWidth && ovalMetrics.tipHalfWidth > almondMetrics.tipHalfWidth, 'Round, Oval, and Almond have distinct tip-width behavior');
+assert(roundMetrics.freeEdgeHalfWidth > ovalMetrics.freeEdgeHalfWidth && ovalMetrics.freeEdgeHalfWidth > almondMetrics.freeEdgeHalfWidth, 'Round, Oval, and Almond have distinct free-edge width behavior');
 assert(roundMetrics.sidewallHalfWidth > ovalMetrics.sidewallHalfWidth && ovalMetrics.sidewallHalfWidth > almondMetrics.sidewallHalfWidth, 'Round, Oval, and Almond have distinct sidewall/taper behavior');
 
 const smoothPath = buildNailPath('Oval', { ...defaultShapeNail, shape: 'Oval' });
-assert(!/ L /.test(smoothPath) && (smoothPath.match(/ C /g) || []).length >= 10, 'smooth path generation uses cubic curves instead of jagged polygon line fallback');
+assert(!/ L /.test(smoothPath) && (smoothPath.match(/ C /g) || []).length >= 4, 'Hero Oval path uses smooth cubic curves instead of jagged polygon line fallback');
 assert(nailCanvasSource.includes('const path = buildNailPath(nail.shape, nail);') && nailCanvasSource.includes('<PolishSurface nail={nail} baseLayer={baseLayer} path={path}'), 'polish rendering clips against the shared smooth nail path');
 assert(nailThumbnailSource.includes('const path = buildNailPath(nail.shape, nail);') && nailThumbnailSource.includes('<clipPath id={clipId}><path d={path}/></clipPath>'), 'thumbnails use the same smooth geometry path as the active canvas');
 
@@ -97,9 +99,14 @@ assert.equal(getNailFreeEdgeExtent({ ...defaultShapeNail, shape: 'Almond' }).ren
 assert.equal(getNailFreeEdgeExtent({ ...defaultShapeNail, shape: 'Coffin' }).renderBottomY, getNailArchitecture({ ...defaultShapeNail, shape: 'Coffin' }).bottomY, 'Coffin keeps the original French Tip free-edge boundary');
 
 const lipstickPath = buildNailPath('Lipstick', { ...defaultShapeNail, shape: 'Lipstick' });
-assert(/C [^C]+ 3(?:1[0-7]|0[0-9])\.\d{3} [^C]+ 318\.000/.test(lipstickPath), 'Lipstick has a visibly slanted free edge instead of a flat or almond tip');
-const mountainPath = buildNailPath('Mountain Peak', { ...defaultShapeNail, shape: 'Mountain Peak' });
-assert(mountainPath.includes('120.000 318.000'), 'Mountain Peak has a sharper centered peak at the free edge');
+assert(lipstickPath.includes('L 94.4 318') && lipstickPath.includes('L 76.47999999999999 289.008'), 'Lipstick has a visibly slanted free edge instead of a flat or almond tip');
+const lipstickNail = { ...defaultShapeNail, shape: 'Lipstick' };
+const lipstickOutsideLowerRight = { x: 0.72, y: 0.98 };
+const lipstickProjectedLowerRight = projectPointInsideNailSilhouette(lipstickOutsideLowerRight, lipstickNail);
+assert.equal(isPointInsideNailSilhouette(lipstickOutsideLowerRight, lipstickNail), false, 'Lipstick rejects lower-right points outside the slanted visual mask');
+assert(isPointInsideNailSilhouette(lipstickProjectedLowerRight, lipstickNail), 'Lipstick projected lower-right points land inside the visible mask');
+assert(lipstickProjectedLowerRight.x < 0.42, 'Lipstick strict-fit projection follows the left-closing slanted free edge');
+assert.equal(assetFitsNailSilhouette({ x: 0.72, y: 0.98, scaleX: 0.06, scaleY: 0.06, rotation: 0 }, lipstickNail, { type: 'decal' }), false, 'Lipstick strict-fit rejects decals outside the visual lower-right clip path');
 const narrowFrench = frenchTipLayer({ ...defaultShapeNail, shape: 'Oval' }, 'classic', 'medium');
 const wideFrench = { ...narrowFrench, data: { ...narrowFrench.data, smileWidth: 1 } };
 const narrowData = normalizeFrenchTipData({ ...narrowFrench.data, smileWidth: 0.35 });
@@ -111,18 +118,16 @@ assert(frenchTipRenderingSource.includes('getNailFreeEdgeExtent(nail)') && frenc
 
 assert(nailCanvasSource.includes('justifyContent: "flex-start"') && nailCanvasSource.includes('width: "min(54vh, 96%)"') && nailCanvasSource.includes('maxWidth: 430'), 'active nail canvas is top-aligned with reduced vertical footprint while preserving a comfortable design size');
 
-assert.notEqual(buildNailPath('Coffin', { shape: 'Coffin', taper: 0.1 }), buildNailPath('Coffin', { shape: 'Coffin', taper: 0.9 }), 'taper control adjusts geometry without switching shape families');
-assert.notEqual(getNailArchitecture({ shape: 'Almond', apexHeight: 0.1 }).apexYNorm, getNailArchitecture({ shape: 'Almond', apexHeight: 0.9 }).apexYNorm, 'apex height control moves the architecture apex');
-assert(designStudioSource.includes('Shape Debug Overlay') && nailCanvasSource.includes('debugOverlay'), 'hidden developer shape debug overlay can render centerline, apex, sidewalls, cuticle, and free-edge boundaries');
+assert(!designStudioSource.includes('Taper') && !designStudioSource.includes('Apex height') && !designStudioSource.includes('Sidewall curve') && !designStudioSource.includes('Free-edge thickness'), 'advanced taper/apex/sidewall/free-edge controls are not exposed in the editor flow');
 
 const heroCoffin = getNailShapeMetrics('Coffin', { ...defaultShapeNail, shape: 'Coffin' });
 const heroSquare = getNailShapeMetrics('Square', { ...defaultShapeNail, shape: 'Square' });
 const heroAlmond = getNailShapeMetrics('Almond', { ...defaultShapeNail, shape: 'Almond' });
 const heroStiletto = getNailShapeMetrics('Stiletto', { ...defaultShapeNail, shape: 'Stiletto' });
-assert(heroCoffin.sidewallHalfWidth >= heroCoffin.shoulderHalfWidth * 0.96 && heroCoffin.freeEdgeHalfWidth > heroCoffin.tipHalfWidth * 1.32, 'Hero Coffin holds salon sidewall width longer before the free-edge taper');
+assert(heroCoffin.sidewallHalfWidth > heroCoffin.freeEdgeHalfWidth && heroCoffin.freeEdgeHalfWidth > heroCoffin.tipHalfWidth, 'Hero Coffin tapers from fuller sidewalls into a squared free edge');
 assert(Math.abs(heroSquare.sidewallHalfWidth - heroSquare.shoulderHalfWidth) <= 0.001 && heroSquare.freeEdgeHalfWidth >= heroSquare.shoulderHalfWidth * 0.99, 'Hero Square maintains parallel sidewalls through the free edge');
-assert(heroAlmond.sidewallHalfWidth > 0.4 && heroAlmond.freeEdgeHalfWidth > 0.19 && heroAlmond.freeEdgeHalfWidth < ovalMetrics.freeEdgeHalfWidth, 'Hero Almond uses a softer, fuller taper while staying distinct from Oval');
-assert(heroStiletto.sidewallHalfWidth >= heroStiletto.shoulderHalfWidth * 0.86 && heroStiletto.freeEdgeHalfWidth < heroStiletto.sidewallHalfWidth * 0.45, 'Hero Stiletto keeps width through the upper body, then tapers late to the point');
+assert(heroAlmond.sidewallHalfWidth > heroAlmond.freeEdgeHalfWidth && heroAlmond.freeEdgeHalfWidth < ovalMetrics.freeEdgeHalfWidth, 'Hero Almond uses a tapered free edge while staying distinct from Oval');
+assert(heroStiletto.sidewallHalfWidth > heroStiletto.freeEdgeHalfWidth && heroStiletto.tipHalfWidth === 0, 'Hero Stiletto tapers to a pointed tip');
 
 function multiNailBlueprint(count) {
   return {

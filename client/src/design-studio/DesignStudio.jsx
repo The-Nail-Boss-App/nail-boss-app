@@ -336,7 +336,7 @@ function DesignStudio(_, ref) {
 
   function updateBase(patch) {
     let next = synchronizeBase(blueprint, patch);
-    if (["shape", "length", "width", "taper", "apexHeight", "sidewallCurve", "freeEdgeThickness"].some((key) => patch[key] !== undefined)) next = revalidateLayersAfterNailResize(next);
+    if (["shape", "length", "width"].some((key) => patch[key] !== undefined)) next = revalidateLayersAfterNailResize(next);
     if (patch.tags !== undefined) next = { ...next, metadata: { ...next.metadata, tags: normalizeTags(patch.tags) } };
     const before = JSON.stringify(getActiveNail(blueprint).layers.map((layer) => layer.transform));
     const after = JSON.stringify(getActiveNail(next).layers.map((layer) => layer.transform));
@@ -739,7 +739,7 @@ function DesignStudio(_, ref) {
   function duplicateActive(scope) { const targets = slotsFor(scope); if (!targets.length || !confirmBulk("Overwrite destination nail designs?")) return; commit(copyNailToSlots(blueprint, activeSlot, targets), { noticeMessage: "Copied artwork was re-fit where needed." }); }
   function mirrorHand(hand) { if (!confirmBulk("Mirror this hand to the opposite hand?")) return; commit(mirrorHandDesign(blueprint, hand), { noticeMessage: "Mirrored nails were re-fit where needed." }); }
   function applyBase(scope) { const targets = slotsFor(scope); if (!confirmBulk("Apply active base color to these nails?")) return; commit(applyBaseToSlots(blueprint, { baseColorHex: getVisibleBaseColor(activeNail) }, targets)); }
-  function applyShape(scope) { const targets = slotsFor(scope); if (!confirmBulk("Apply active shape architecture to these nails?")) return; commit(applyBaseToSlots(blueprint, { shape: activeNail.shape, width: activeNail.width, length: activeNail.length, taper: activeNail.taper ?? 0.5, apexHeight: activeNail.apexHeight ?? 0.5, sidewallCurve: activeNail.sidewallCurve ?? 0.5, freeEdgeThickness: activeNail.freeEdgeThickness ?? 0.5 }, targets), { noticeMessage: "Artwork was revalidated after shape changes." }); }
+  function applyShape(scope) { const targets = slotsFor(scope); if (!confirmBulk("Apply active hero shape, length, and width to these nails?")) return; commit(applyBaseToSlots(blueprint, { shape: activeNail.shape, width: activeNail.width, length: activeNail.length }, targets), { noticeMessage: "Artwork was revalidated after shape changes." }); }
   function resetActive() { if (!confirmBulk("Reset this nail to its base layer only?")) return; commit(resetNailDesign(blueprint, activeSlot), { selectLayerId: "base-layer" }); }
 
   const tagsString = (blueprint.metadata?.tags || []).join(", ");
@@ -766,7 +766,7 @@ function DesignStudio(_, ref) {
         <GeometrySlider label="Nail width" value={activeNail.width} onChange={(width) => updateBase({ width })}/>
         <NailColorSystem value={baseLayer?.data?.colorHex || activeNail.baseColorHex} onChange={(value) => updateBase({ baseColorHex: normalizeHex(value, baseLayer?.data?.colorHex), polishType: "Cream", effect: "Solid" })} onApply={(scope) => { const targets = scope === "active" ? [activeSlot] : slotsFor(scope); commit(applyBaseToSlots(blueprint, { baseColorHex: getVisibleBaseColor(activeNail), polishType: "Cream", effect: "Solid" }, targets)); }}/>
         <DesignPalette colors={designPalette}/>
-        <details style={{ marginBottom: 14 }}><summary style={{ ...UI.sectionTitle, cursor: "pointer", marginBottom: 0 }}>Advanced Shape Controls</summary><div style={{ marginTop: 10 }}><GeometrySlider label="Taper" value={activeNail.taper} onChange={(taper) => updateBase({ taper })}/><GeometrySlider label="Apex height" value={activeNail.apexHeight} onChange={(apexHeight) => updateBase({ apexHeight })}/><GeometrySlider label="Sidewall curve" value={activeNail.sidewallCurve} onChange={(sidewallCurve) => updateBase({ sidewallCurve })}/><GeometrySlider label="Free edge thickness" value={activeNail.freeEdgeThickness} onChange={(freeEdgeThickness) => updateBase({ freeEdgeThickness })}/></div></details>
+        <p style={UI.smallText}>Hero shape masks are artist-calibrated. Length and width can scale the mask, but they do not redefine the shape family.</p>
         <Field label="Tags"><input style={S.input} value={tagsString} onChange={(e) => updateBase({ tags: e.target.value })} placeholder="bridal, chrome, accent" /></Field>
         <Field label="Signature Looks"><select style={S.input} value={blueprint.metadata?.styleCategory || "Custom"} onChange={(e) => commit({ ...blueprint, metadata: { ...blueprint.metadata, styleCategory: e.target.value } })}>{STYLE_CATEGORIES.map((category) => <option key={category}>{category}</option>)}</select></Field>
         <Field label="Internal notes"><textarea style={{ ...S.input, minHeight: 70 }} value={blueprint.metadata?.internalNotes || ""} onChange={(e) => commit({ ...blueprint, metadata: { ...blueprint.metadata, internalNotes: e.target.value } })} placeholder="Optional artist-only notes" /></Field>
