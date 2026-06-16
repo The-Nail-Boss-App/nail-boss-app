@@ -14,7 +14,7 @@ export const UI = {
     alignItems: "start",
   },
   panel: { background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 18, boxShadow: "0 10px 30px rgba(60,20,50,.06)", minHeight: 0, minWidth: 0, overflow: "auto" },
-  stickyPreview: { position: "sticky", top: 10, maxHeight: "calc(100vh - 92px)", overflow: "auto" },
+  stickyPreview: { position: "sticky", top: 10, zIndex: 2, background: COLORS.surface },
   panelPad: { padding: 14 },
   sectionTitle: { fontSize: 12, letterSpacing: ".08em", textTransform: "uppercase", color: COLORS.textMuted, fontWeight: 800, marginBottom: 10 },
   miniButton: (active = false) => ({ ...(active ? S.btnSecondary : S.btnGhost), padding: "8px 10px", fontSize: 12, borderColor: active ? COLORS.plum : COLORS.border, color: active ? COLORS.plum : COLORS.textMuted, whiteSpace: "nowrap" }),
