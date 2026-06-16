@@ -82,16 +82,16 @@ export function layerSort(a, b) {
 }
 
 const SHAPE_ARCHITECTURE = {
-  "Square": { cuticle: 0.72, shoulder: 1, tip: 0.94, taper: 0.08, curve: 0.18, apexY: 0.42, freeEdge: 0.22, freeEdgeSlant: 0 },
+  "Square": { cuticle: 0.72, shoulder: 1, tip: 0.98, taper: 0.02, curve: 0.1, apexY: 0.42, freeEdge: 0.22, freeEdgeSlant: 0, taperStart: 0.82, sidewallHold: 1 },
   "Tapered Square": { cuticle: 0.7, shoulder: 1, tip: 0.68, taper: 0.34, curve: 0.2, apexY: 0.44, freeEdge: 0.25, freeEdgeSlant: 0 },
   "Russian Square": { cuticle: 0.74, shoulder: 1.03, tip: 0.86, taper: 0.18, curve: 0.11, apexY: 0.38, freeEdge: 0.3, freeEdgeSlant: 0 },
-  "Coffin": { cuticle: 0.68, shoulder: 1, tip: 0.46, taper: 0.52, curve: 0.16, apexY: 0.46, freeEdge: 0.32, freeEdgeSlant: 0 },
+  "Coffin": { cuticle: 0.68, shoulder: 1, tip: 0.5, taper: 0.48, curve: 0.14, apexY: 0.46, freeEdge: 0.32, freeEdgeSlant: 0, taperStart: 0.58, sidewallHold: 0.98 },
   "Slim Coffin": { cuticle: 0.62, shoulder: 0.92, tip: 0.34, taper: 0.64, curve: 0.18, apexY: 0.48, freeEdge: 0.36, freeEdgeSlant: 0 },
-  "Almond": { cuticle: 0.64, shoulder: 0.98, tip: 0.04, taper: 0.8, curve: 0.5, apexY: 0.47, freeEdge: 0.36, freeEdgeSlant: 0 },
+  "Almond": { cuticle: 0.68, shoulder: 1, tip: 0.08, taper: 0.72, curve: 0.62, apexY: 0.47, freeEdge: 0.36, freeEdgeSlant: 0, taperStart: 0.38, sidewallHold: 0.86 },
   "Russian Almond": { cuticle: 0.6, shoulder: 0.94, tip: 0.015, taper: 0.88, curve: 0.38, apexY: 0.41, freeEdge: 0.42, freeEdgeSlant: 0 },
   "Oval": { cuticle: 0.74, shoulder: 0.98, tip: 0.56, taper: 0.34, curve: 0.98, apexY: 0.45, freeEdge: 0.2, freeEdgeSlant: 0 },
   "Round": { cuticle: 0.78, shoulder: 0.94, tip: 0.7, taper: 0.08, curve: 1.18, apexY: 0.4, freeEdge: 0.12, freeEdgeSlant: 0 },
-  "Stiletto": { cuticle: 0.58, shoulder: 0.94, tip: 0, taper: 0.96, curve: 0.26, apexY: 0.5, freeEdge: 0.46, freeEdgeSlant: 0 },
+  "Stiletto": { cuticle: 0.58, shoulder: 0.96, tip: 0, taper: 0.94, curve: 0.18, apexY: 0.5, freeEdge: 0.46, freeEdgeSlant: 0, taperStart: 0.52, sidewallHold: 0.94 },
   "Edge": { cuticle: 0.62, shoulder: 0.96, tip: 0.02, taper: 0.9, curve: 0.12, apexY: 0.4, freeEdge: 0.44, freeEdgeSlant: 0 },
   "Lipstick": { cuticle: 0.68, shoulder: 0.98, tip: 0.5, taper: 0.34, curve: 0.2, apexY: 0.43, freeEdge: 0.3, freeEdgeSlant: 0.26 },
   "Flare": { cuticle: 0.72, shoulder: 0.9, tip: 1.16, taper: -0.22, curve: 0.18, apexY: 0.42, freeEdge: 0.28, freeEdgeSlant: 0 },
@@ -164,7 +164,14 @@ function normalizedHalfWidthAtY(shape = "Almond", yValue = 0.5, nail = {}) {
     const eased = Math.sin((t * Math.PI) / 2) ** (0.8 + curveControl * 0.55);
     return cuticle + (shoulder - cuticle) * eased;
   }
-  const t = (y - shoulderY) / (1 - shoulderY);
+  const taperStart = Math.max(shoulderY, p.taperStart ?? shoulderY);
+  if (y <= taperStart) {
+    const t = (y - shoulderY) / Math.max(0.000001, taperStart - shoulderY);
+    const heldShoulder = shoulder * (p.sidewallHold ?? 1);
+    const easedHold = Math.sin((clamp(t, 0, 1) * Math.PI) / 2) ** (1.35 + curveControl * 0.45);
+    return shoulder + (heldShoulder - shoulder) * easedHold;
+  }
+  const t = (y - taperStart) / (1 - taperStart);
   const exponent = clamp(0.82 + p.curve + p.taper * 0.35 + curveControl * 0.7, 0.45, 2.1);
   const tapered = shoulder + (tip - shoulder) * (t ** exponent);
   if (shape === "Edge") return tapered * (1 - 0.07 * Math.max(0, Math.sin(Math.PI * t)));

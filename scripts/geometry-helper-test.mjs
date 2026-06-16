@@ -115,6 +115,15 @@ assert.notEqual(buildNailPath('Coffin', { shape: 'Coffin', taper: 0.1 }), buildN
 assert.notEqual(getNailArchitecture({ shape: 'Almond', apexHeight: 0.1 }).apexYNorm, getNailArchitecture({ shape: 'Almond', apexHeight: 0.9 }).apexYNorm, 'apex height control moves the architecture apex');
 assert(designStudioSource.includes('Shape Debug Overlay') && nailCanvasSource.includes('debugOverlay'), 'hidden developer shape debug overlay can render centerline, apex, sidewalls, cuticle, and free-edge boundaries');
 
+const heroCoffin = getNailShapeMetrics('Coffin', { ...defaultShapeNail, shape: 'Coffin' });
+const heroSquare = getNailShapeMetrics('Square', { ...defaultShapeNail, shape: 'Square' });
+const heroAlmond = getNailShapeMetrics('Almond', { ...defaultShapeNail, shape: 'Almond' });
+const heroStiletto = getNailShapeMetrics('Stiletto', { ...defaultShapeNail, shape: 'Stiletto' });
+assert(heroCoffin.sidewallHalfWidth >= heroCoffin.shoulderHalfWidth * 0.96 && heroCoffin.freeEdgeHalfWidth > heroCoffin.tipHalfWidth * 1.32, 'Hero Coffin holds salon sidewall width longer before the free-edge taper');
+assert(Math.abs(heroSquare.sidewallHalfWidth - heroSquare.shoulderHalfWidth) <= 0.001 && heroSquare.freeEdgeHalfWidth >= heroSquare.shoulderHalfWidth * 0.99, 'Hero Square maintains parallel sidewalls through the free edge');
+assert(heroAlmond.sidewallHalfWidth > 0.4 && heroAlmond.freeEdgeHalfWidth > 0.19 && heroAlmond.freeEdgeHalfWidth < ovalMetrics.freeEdgeHalfWidth, 'Hero Almond uses a softer, fuller taper while staying distinct from Oval');
+assert(heroStiletto.sidewallHalfWidth >= heroStiletto.shoulderHalfWidth * 0.86 && heroStiletto.freeEdgeHalfWidth < heroStiletto.sidewallHalfWidth * 0.45, 'Hero Stiletto keeps width through the upper body, then tapers late to the point');
+
 function multiNailBlueprint(count) {
   return {
     schemaVersion: 1,
