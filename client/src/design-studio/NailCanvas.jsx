@@ -192,6 +192,8 @@ export default function NailCanvas({ nail, layers, selectedLayerId, mode, brush,
   }
 
   const brushCursorRadius = Math.max(3, (brush?.size || 5) * 0.9);
+  const brushCursorLength = Math.max(13, brushCursorRadius * 2.6);
+  const brushCursorWidth = Math.max(3.5, brushCursorRadius * 0.72);
   const canvasCursor = mode === "draw" || mode === "eraser" ? "none" : "default";
 
   return <div style={{ height: "100%", minHeight: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-start", position: "relative" }}>
@@ -206,7 +208,13 @@ export default function NailCanvas({ nail, layers, selectedLayerId, mode, brush,
         <PolishSurface nail={nail} baseLayer={baseLayer} path={path} clipId={clipId} uid={uid}/>
         {artLayers.map(layerNode)}
         {drag?.kind === "drawing" && <g clipPath={`url(#${clipId})`}><path d={strokePath(drag.stroke.points, nail)} fill="none" stroke={drag.stroke.colorHex} strokeWidth={(drag.stroke.width || 0.04) * 100} strokeOpacity={drag.stroke.opacity} strokeLinecap="round" strokeLinejoin="round"/></g>}
-        {cursorPoint && (mode === "draw" || mode === "eraser") && <g pointerEvents="none" aria-hidden="true"><circle cx={cursorPoint.x} cy={cursorPoint.y} r={brushCursorRadius} fill={mode === "eraser" ? "rgba(255,255,255,.42)" : brush.colorHex} fillOpacity={mode === "eraser" ? .55 : .16} stroke={mode === "eraser" ? COLORS.plum : brush.colorHex} strokeWidth="1.8" strokeDasharray={mode === "eraser" ? "4 3" : undefined}/><line x1={cursorPoint.x - brushCursorRadius - 4} y1={cursorPoint.y} x2={cursorPoint.x + brushCursorRadius + 4} y2={cursorPoint.y} stroke={COLORS.plum} strokeOpacity=".35"/><line x1={cursorPoint.x} y1={cursorPoint.y - brushCursorRadius - 4} x2={cursorPoint.x} y2={cursorPoint.y + brushCursorRadius + 4} stroke={COLORS.plum} strokeOpacity=".35"/></g>}
+        {cursorPoint && mode === "draw" && <g pointerEvents="none" aria-hidden="true" transform={`translate(${cursorPoint.x} ${cursorPoint.y}) rotate(-34)`}>
+          <path d={`M ${-brushCursorLength * 0.46} ${-brushCursorWidth * 0.42} L ${brushCursorLength * 0.32} ${-brushCursorWidth * 0.23} Q ${brushCursorLength * 0.55} 0 ${brushCursorLength * 0.32} ${brushCursorWidth * 0.23} L ${-brushCursorLength * 0.46} ${brushCursorWidth * 0.42} Q ${-brushCursorLength * 0.35} 0 ${-brushCursorLength * 0.46} ${-brushCursorWidth * 0.42} Z`} fill={brush.colorHex} fillOpacity=".72" stroke="#2b1024" strokeOpacity=".62" strokeWidth="1.1"/>
+          <path d={`M ${-brushCursorLength * 0.34} 0 L ${brushCursorLength * 0.5} 0`} stroke="#fff" strokeOpacity=".58" strokeWidth="1" strokeLinecap="round"/>
+          <rect x={-brushCursorLength * 0.72} y={-brushCursorWidth * 0.5} width={brushCursorLength * 0.26} height={brushCursorWidth} rx={brushCursorWidth * 0.32} fill="#d7a06a" stroke="#6d3d22" strokeWidth=".9"/>
+          <line x1={-brushCursorLength * 0.88} y1="0" x2={-brushCursorLength * 0.72} y2="0" stroke="#3B1F35" strokeWidth={Math.max(2, brushCursorWidth * 0.48)} strokeLinecap="round"/>
+        </g>}
+        {cursorPoint && mode === "eraser" && <g pointerEvents="none" aria-hidden="true"><circle cx={cursorPoint.x} cy={cursorPoint.y} r={brushCursorRadius} fill="rgba(255,255,255,.55)" stroke={COLORS.plum} strokeWidth="1.8" strokeDasharray="4 3"/><circle cx={cursorPoint.x} cy={cursorPoint.y} r={Math.max(1.5, brushCursorRadius * .22)} fill={COLORS.plum} opacity=".32"/></g>}
         {debugOverlay && <g pointerEvents="none" aria-hidden="true">
           <line x1={architecture.cx} y1={architecture.topY - 6} x2={architecture.cx} y2={architecture.bottomY + 6} stroke="#2563eb" strokeWidth="1.5" strokeDasharray="6 5"/>
           <circle cx={architecture.apex.x} cy={architecture.apex.y} r="5" fill="#f97316" stroke="#fff" strokeWidth="2"/>
