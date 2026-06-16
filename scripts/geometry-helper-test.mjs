@@ -105,7 +105,7 @@ const wideFrench = { ...narrowFrench, data: { ...narrowFrench.data, smileWidth: 
 const narrowData = normalizeFrenchTipData({ ...narrowFrench.data, smileWidth: 0.35 });
 const wideData = normalizeFrenchTipData(wideFrench.data);
 assert.notEqual(narrowData.smileWidth, wideData.smileWidth, 'French Tip width changes normalized layer data and render inputs visibly');
-assert(designStudioSource.includes('Smile width') && propertiesPanelSource.includes('Smile width'), 'French Tip width control is available in main controls and layer properties');
+assert(designStudioSource.includes('Smile width') && propertiesPanelSource.includes('single home for French Tip'), 'French Tip width control stays in the dedicated French Tip Precision home without duplicate layer-property entry points');
 assert(frenchTipRenderingSource.includes('const width = g.width * data.smileWidth') && frenchTipRenderingSource.includes('Q ${g.cx} ${qY} ${right}'), 'French Tip width changes the rendered smile path endpoints');
 assert(frenchTipRenderingSource.includes('getNailFreeEdgeExtent(nail)') && frenchTipRenderingSource.includes('L ${g.right} ${renderBottomY} L ${g.left} ${renderBottomY} Z'), 'French Tip free-edge fill closes against shared smooth silhouette extent to prevent Round/Oval base-color crescents');
 
@@ -328,7 +328,7 @@ assert.equal(tallerFrench.smileCurve, 0.75, 'curve changes are preserved');
 const zeroFrench = normalizeFrenchTipData({ tipHeight: 0.08, smileCurve: 0, smileDepth: 0, smileWidth: 0.25, rotation: 0 });
 assert.equal(zeroFrench.smileCurve, 0, 'zero smile curve survives French Tip normalization');
 assert.equal(zeroFrench.smileDepth, 0, 'zero smile depth survives French Tip normalization');
-assert(propertiesPanelSource.includes('layer.data.smileCurve ?? 0.32') && propertiesPanelSource.includes('layer.data.smileDepth ?? 0.24') && propertiesPanelSource.includes('layer.data.smileWidth ?? 0.82') && propertiesPanelSource.includes('layer.data.tipHeight ?? 0.32') && propertiesPanelSource.includes('layer.data.rotation ?? 0'), 'Properties panel preserves zero-valued French Tip sliders with nullish fallbacks');
+assert(designStudioSource.includes('data.smileCurve ?? 0.32') && designStudioSource.includes('data.smileDepth ?? 0.24') && designStudioSource.includes('data.smileWidth ?? 0.82') && designStudioSource.includes('data.tipHeight ?? 0.32'), 'Dedicated French Tip Precision panel preserves zero-valued French Tip sliders with nullish fallbacks');
 const withFrench = { ...frenchBase, nails: frenchBase.nails.map((n) => n.id === frenchActive.id ? { ...n, layers: [...n.layers, classicFrench] } : n) };
 const handApplied = applyFrenchTipToSlots(withFrench, classicFrench, blueprint.RIGHT_HAND_SLOTS);
 assert.equal(handApplied.nails.filter((n) => n.slot.startsWith('right') && n.layers.some((l) => l.type === 'frenchTip')).length, 5, 'apply to hand adds French Tip to current hand nails');

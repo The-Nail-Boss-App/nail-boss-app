@@ -46,8 +46,10 @@ export default function PropertiesPanel({ layer, onPatch, onDuplicate, onDelete 
             <Range label="Cat Eye Intensity" value={Math.round(polish.catEyeIntensity * 100)} min={0} max={100} onChange={(v) => patchPolish({ catEyeIntensity: v / 100 })} />
           </>}
           {polish.polishType === "Chrome" && <Range label="Chrome Intensity" value={Math.round(polish.chromeIntensity * 100)} min={0} max={100} onChange={(v) => patchPolish({ chromeIntensity: v / 100 })} />}
-          <div style={UI.field}><label style={S.label}>Legacy effect</label><select style={S.input} value={layer.data.effect} onChange={(e) => patchPolish({ effect: e.target.value })}>{EFFECTS.map((effect) => <option key={effect}>{effect}</option>)}</select></div>
-          <Color label="Effect color" value={layer.data.effectColorHex} onChange={(effectColorHex) => onPatch({ data: { ...layer.data, effectColorHex } })} />
+          <details style={{ marginTop: 10, marginBottom: 12 }}><summary style={{ ...UI.sectionTitle, cursor: "pointer", marginBottom: 0 }}>Advanced / Legacy Base Effect</summary><div style={{ marginTop: 10 }}>
+            <div style={UI.field}><label style={S.label}>Legacy effect</label><select style={S.input} value={layer.data.effect} onChange={(e) => patchPolish({ effect: e.target.value })}>{EFFECTS.map((effect) => <option key={effect}>{effect}</option>)}</select></div>
+            <Color label="Effect color" value={layer.data.effectColorHex} onChange={(effectColorHex) => onPatch({ data: { ...layer.data, effectColorHex } })} />
+          </div></details>
         </>;
       })()}
       {isAsset && <>
@@ -70,17 +72,7 @@ export default function PropertiesPanel({ layer, onPatch, onDuplicate, onDelete 
         <Color label="Secondary color" value={layer.data.secondaryColorHex || "#3B1F35"} onChange={(secondaryColorHex) => onPatch({ data: { ...layer.data, secondaryColorHex } })} disabled={disabled} />
         <Range label="Opacity" value={Math.round(layer.opacity * 100)} min={5} max={100} onChange={(v) => onPatch({ opacity: v / 100 })} disabled={disabled} />
       </>}
-      {layer.type === "frenchTip" && <>
-        <div style={UI.field}><label style={S.label}>Style</label><select style={S.input} value={layer.data.style ?? "classic"} disabled={disabled} onChange={(e) => onPatch({ data: { ...layer.data, style: e.target.value } })}>{FRENCH_TIP_STYLES.map((style) => <option key={style} value={style}>{style}</option>)}</select></div>
-        <div style={UI.field}><label style={S.label}>Smile preset</label><select style={S.input} value={layer.data.preset ?? "medium"} disabled={disabled} onChange={(e) => onPatch({ data: { ...layer.data, ...FRENCH_TIP_PRESETS[e.target.value], preset: e.target.value } })}>{Object.keys(FRENCH_TIP_PRESETS).map((preset) => <option key={preset} value={preset}>{preset}</option>)}</select></div>
-        <Color label="Tip color" value={layer.data.colorHex} onChange={(colorHex) => onPatch({ data: { ...layer.data, colorHex } })} disabled={disabled} />
-        <Range label="Tip height" value={Math.round((layer.data.tipHeight ?? 0.32) * 100)} min={8} max={72} onChange={(v) => onPatch({ data: { ...layer.data, tipHeight: v / 100 } })} disabled={disabled} />
-        <Range label="Smile curve" value={Math.round((layer.data.smileCurve ?? 0.32) * 100)} min={0} max={100} onChange={(v) => onPatch({ data: { ...layer.data, smileCurve: v / 100 } })} disabled={disabled} />
-        <Range label="Smile depth" value={Math.round((layer.data.smileDepth ?? 0.24) * 100)} min={0} max={65} onChange={(v) => onPatch({ data: { ...layer.data, smileDepth: v / 100 } })} disabled={disabled} />
-        <Range label="Smile width" value={Math.round((layer.data.smileWidth ?? 0.82) * 100)} min={25} max={100} onChange={(v) => onPatch({ data: { ...layer.data, smileWidth: v / 100 } })} disabled={disabled} />
-        <Range label="Opacity" value={Math.round((layer.opacity ?? 1) * 100)} min={5} max={100} onChange={(v) => onPatch({ opacity: v / 100 })} disabled={disabled} />
-        <Range label="Angle" value={Math.round(layer.data.rotation ?? 0)} min={-45} max={45} onChange={(v) => onPatch({ data: { ...layer.data, rotation: v } })} disabled={disabled} />
-      </>}
+      {layer.type === "frenchTip" && <p style={UI.smallText}>Use the French Tip Precision panel on the left as the single home for French Tip presets, color, shape, and bulk apply controls.</p>}
       {layer.type === "drawing" && <>
         <Range label="Opacity" value={Math.round(layer.opacity * 100)} min={5} max={100} onChange={(v) => onPatch({ opacity: v / 100 })} disabled={disabled} />
         <p style={UI.smallText}>Strokes: {layer.data?.strokes?.length || 0}. Select Draw or Eraser in the top toolbar to edit vector strokes.</p>

@@ -8,7 +8,7 @@ export default function AssetLibrary({ onAddAsset }) {
   const assets = STARTER_ASSETS.filter((asset) => asset.category === category);
   return (
     <section style={{ marginBottom: 18 }}>
-      <div style={UI.sectionTitle}>Assets</div>
+      <div style={UI.sectionTitle}>Nail Art</div>
       <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
         {ASSET_CATEGORIES.map((item) => <button key={item.id} type="button" onClick={() => setCategory(item.id)} style={UI.miniButton(category === item.id)}>{item.label}</button>)}
       </div>
