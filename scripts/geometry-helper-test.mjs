@@ -107,16 +107,20 @@ assert(assetFitsNailSilhouette({ x: 0.95, y: 0.9, scaleX: 0.06, scaleY: 0.06, ro
 assert(isPointInsideNailSilhouette({ x: 0.02, y: 0.98 }, duckNail) && isPointInsideNailSilhouette({ x: 0.98, y: 0.98 }, duckNail), 'Duck drawings, gradients, patterns, and clipped French tips share the expanded full-surface flare geometry');
 assert(frenchTipRenderingSource.includes('L ${g.right} ${renderBottomY} L ${g.left} ${renderBottomY} Z'), 'Duck French tips close across the full normalized flare surface before SVG clipping');
 
+assert(source.includes('halfWidths: maskHalfWidths(LIPSTICK_MASK_BOUNDS)') && source.includes('xBounds: LIPSTICK_MASK_BOUNDS') && source.includes('sharedBoundsMaskPath(m, LIPSTICK_MASK_BOUNDS'), 'Lipstick visual SVG mask and strict-fit geometry share LIPSTICK_MASK_BOUNDS as the source of truth');
+assert(source.includes('halfWidths: maskHalfWidths(DUCK_MASK_BOUNDS)') && source.includes('xBounds: DUCK_MASK_BOUNDS') && source.includes('sharedBoundsMaskPath(m, DUCK_MASK_BOUNDS'), 'Duck visual SVG mask and strict-fit geometry share DUCK_MASK_BOUNDS as the source of truth');
 const lipstickPath = buildNailPath('Lipstick', { ...defaultShapeNail, shape: 'Lipstick' });
-assert(lipstickPath.includes('L 86.72 318') && lipstickPath.includes('L 58.56 289.008'), 'Lipstick has a stronger asymmetric slanted free edge instead of a flat or almond tip');
+assert(/L 168\.64 284\.176 L 63\.68 318/.test(lipstickPath), 'Lipstick has a clearly slanted bottom/free edge with asymmetric lower endpoints');
 const lipstickNail = { ...defaultShapeNail, shape: 'Lipstick' };
+assert(isPointInsideNailSilhouette({ x: 0.08, y: 0.99 }, lipstickNail), 'Lipstick lower-left bound matches the visible mask path');
+assert(isPointInsideNailSilhouette({ x: 0.4, y: 0.98 }, lipstickNail), 'Lipstick lower-right diagonal bound matches the visible mask path');
 const lipstickOutsideLowerRight = { x: 0.72, y: 0.98 };
 const lipstickProjectedLowerRight = projectPointInsideNailSilhouette(lipstickOutsideLowerRight, lipstickNail);
 assert.equal(isPointInsideNailSilhouette(lipstickOutsideLowerRight, lipstickNail), false, 'Lipstick rejects lower-right points outside the slanted visual mask');
 assert(isPointInsideNailSilhouette(lipstickProjectedLowerRight, lipstickNail), 'Lipstick projected lower-right points land inside the visible mask');
-assert(lipstickProjectedLowerRight.x < 0.32, 'Lipstick strict-fit xBounds match the left-closing visual mask');
+assert(lipstickProjectedLowerRight.x < 0.5, 'Lipstick strict-fit xBounds match the diagonal visual mask');
 assert.equal(assetFitsNailSilhouette({ x: 0.72, y: 0.98, scaleX: 0.06, scaleY: 0.06, rotation: 0 }, lipstickNail, { type: 'decal' }), false, 'Lipstick strict-fit rejects decals outside the visual lower-right clip path');
-assert.equal(isPointInsideNailSilhouette({ x: 0.12, y: 0.99 }, lipstickNail), false, 'Lipstick rejects outside-mask lower-edge points below the diagonal cut');
+assert.equal(isPointInsideNailSilhouette({ x: 0.5, y: 0.99 }, lipstickNail), false, 'Lipstick rejects outside diagonal-cut area below the slanted free edge');
 const narrowFrench = frenchTipLayer({ ...defaultShapeNail, shape: 'Oval' }, 'classic', 'medium');
 const wideFrench = { ...narrowFrench, data: { ...narrowFrench.data, smileWidth: 1 } };
 const narrowData = normalizeFrenchTipData({ ...narrowFrench.data, smileWidth: 0.35 });
