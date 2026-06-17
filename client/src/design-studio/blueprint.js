@@ -107,12 +107,13 @@ const HERO_SHAPE_MASKS = {
     path: (m) => `M ${m.cx - m.w * 0.38} ${m.top + m.h * 0.055} C ${m.cx - m.w * 0.31} ${m.top - m.h * 0.014} ${m.cx + m.w * 0.31} ${m.top - m.h * 0.014} ${m.cx + m.w * 0.38} ${m.top + m.h * 0.055} C ${m.cx + m.w * 0.5} ${m.top + m.h * 0.18} ${m.cx + m.w * 0.51} ${m.top + m.h * 0.56} ${m.cx + m.w * 0.42} ${m.top + m.h * 0.78} C ${m.cx + m.w * 0.32} ${m.bottom} ${m.cx + m.w * 0.11} ${m.bottom + m.h * 0.035} ${m.cx} ${m.bottom + m.h * 0.035} C ${m.cx - m.w * 0.11} ${m.bottom + m.h * 0.035} ${m.cx - m.w * 0.32} ${m.bottom} ${m.cx - m.w * 0.42} ${m.top + m.h * 0.78} C ${m.cx - m.w * 0.51} ${m.top + m.h * 0.56} ${m.cx - m.w * 0.5} ${m.top + m.h * 0.18} ${m.cx - m.w * 0.38} ${m.top + m.h * 0.055} Z`,
   },
   Lipstick: {
-    halfWidths: [[0, 0.34], [0.16, 0.49], [0.58, 0.45], [0.86, 0.32], [0.88, 0.293], [1, 0]],
-    xBounds: [[0, 0.16, 0.84], [0.16, 0.01, 0.99], [0.58, 0.05, 0.95], [0.86, 0.18, 0.82], [0.88, 0.16, 0.746], [1, 0.3, 0.3]],
-    path: (m) => `M ${m.cx - m.w * 0.34} ${m.top + m.h * 0.055} C ${m.cx - m.w * 0.28} ${m.top - m.h * 0.012} ${m.cx + m.w * 0.28} ${m.top - m.h * 0.012} ${m.cx + m.w * 0.34} ${m.top + m.h * 0.055} C ${m.cx + m.w * 0.51} ${m.top + m.h * 0.18} ${m.cx + m.w * 0.49} ${m.top + m.h * 0.56} ${m.cx + m.w * 0.32} ${m.top + m.h * 0.86} L ${m.cx - m.w * 0.2} ${m.bottom} L ${m.cx - m.w * 0.34} ${m.top + m.h * 0.88} C ${m.cx - m.w * 0.46} ${m.top + m.h * 0.56} ${m.cx - m.w * 0.51} ${m.top + m.h * 0.18} ${m.cx - m.w * 0.34} ${m.top + m.h * 0.055} Z`,
+    halfWidths: [[0, 0.34], [0.16, 0.49], [0.58, 0.45], [0.84, 0.34], [0.88, 0.35], [1, 0]],
+    xBounds: [[0, 0.16, 0.84], [0.16, 0.01, 0.99], [0.58, 0.05, 0.95], [0.84, 0.18, 0.82], [0.88, 0.02, 0.72], [1, 0.24, 0.24]],
+    path: (m) => `M ${m.cx - m.w * 0.34} ${m.top + m.h * 0.055} C ${m.cx - m.w * 0.28} ${m.top - m.h * 0.012} ${m.cx + m.w * 0.28} ${m.top - m.h * 0.012} ${m.cx + m.w * 0.34} ${m.top + m.h * 0.055} C ${m.cx + m.w * 0.51} ${m.top + m.h * 0.18} ${m.cx + m.w * 0.49} ${m.top + m.h * 0.55} ${m.cx + m.w * 0.32} ${m.top + m.h * 0.84} L ${m.cx - m.w * 0.26} ${m.bottom} L ${m.cx - m.w * 0.48} ${m.top + m.h * 0.88} C ${m.cx - m.w * 0.46} ${m.top + m.h * 0.56} ${m.cx - m.w * 0.51} ${m.top + m.h * 0.18} ${m.cx - m.w * 0.34} ${m.top + m.h * 0.055} Z`,
   },
   Duck: {
     halfWidths: [[0, 0.35], [0.2, 0.44], [0.58, 0.45], [0.82, 0.56], [1, 0.66]],
+    xBounds: [[0, 0.15, 0.85], [0.2, 0.06, 0.94], [0.58, 0.05, 0.95], [0.82, -0.06, 1.06], [1, -0.16, 1.16]],
     path: (m) => `M ${m.cx - m.w * 0.35} ${m.top + m.h * 0.055} C ${m.cx - m.w * 0.29} ${m.top - m.h * 0.012} ${m.cx + m.w * 0.29} ${m.top - m.h * 0.012} ${m.cx + m.w * 0.35} ${m.top + m.h * 0.055} C ${m.cx + m.w * 0.45} ${m.top + m.h * 0.24} ${m.cx + m.w * 0.42} ${m.top + m.h * 0.58} ${m.cx + m.w * 0.56} ${m.top + m.h * 0.82} L ${m.cx + m.w * 0.66} ${m.bottom} L ${m.cx - m.w * 0.66} ${m.bottom} L ${m.cx - m.w * 0.56} ${m.top + m.h * 0.82} C ${m.cx - m.w * 0.42} ${m.top + m.h * 0.58} ${m.cx - m.w * 0.45} ${m.top + m.h * 0.24} ${m.cx - m.w * 0.35} ${m.top + m.h * 0.055} Z`,
   },
 };
