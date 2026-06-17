@@ -118,16 +118,17 @@ function sharedBoundsMaskPath(m, points, { rightEdgeIndex = points.length - 1, l
 const LIPSTICK_MASK_BOUNDS = maskXBounds([
   [0.055, 0.18, 0.82],
   [0.16, 0.06, 0.94],
-  [0.74, 0.06, 0.94],
-  [0.86, 0.06, 0.88],
-  [1, 0.06, 0.42],
+  [0.72, 0.06, 0.94],
+  [0.84, 0.06, 0.9],
+  [0.93, 0.08, 0.62],
+  [1, 0.14, 0.38],
 ]);
 
 const DUCK_MASK_BOUNDS = maskXBounds([
-  [0.055, 0.15, 0.85],
-  [0.2, 0.11, 0.89],
-  [0.58, 0.09, 0.91],
-  [0.82, 0, 1],
+  [0.055, 0.22, 0.78],
+  [0.22, 0.18, 0.82],
+  [0.58, 0.17, 0.83],
+  [0.8, 0.04, 0.96],
   [1, 0, 1],
 ]);
 
@@ -159,7 +160,7 @@ const HERO_SHAPE_MASKS = {
   Lipstick: {
     halfWidths: maskHalfWidths(LIPSTICK_MASK_BOUNDS),
     xBounds: LIPSTICK_MASK_BOUNDS,
-    path: (m) => sharedBoundsMaskPath(m, LIPSTICK_MASK_BOUNDS, { rightEdgeIndex: 3, leftEdgeIndex: 4 }),
+    path: (m) => sharedBoundsMaskPath(m, LIPSTICK_MASK_BOUNDS, { rightEdgeIndex: 4, leftEdgeIndex: 5 }),
   },
   Duck: {
     halfWidths: maskHalfWidths(DUCK_MASK_BOUNDS),

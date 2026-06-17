@@ -99,21 +99,25 @@ assert.equal(getNailFreeEdgeExtent({ ...defaultShapeNail, shape: 'Almond' }).ren
 assert.equal(getNailFreeEdgeExtent({ ...defaultShapeNail, shape: 'Coffin' }).renderBottomY, getNailArchitecture({ ...defaultShapeNail, shape: 'Coffin' }).bottomY, 'Coffin keeps the original French Tip free-edge boundary');
 
 const duckNail = { ...defaultShapeNail, shape: 'Duck' };
+const duckMetrics = getNailShapeMetrics('Duck', duckNail);
+assert(duckMetrics.freeEdgeHalfWidth > duckMetrics.sidewallHalfWidth && duckMetrics.tipHalfWidth > duckMetrics.freeEdgeHalfWidth, 'Duck visible mask keeps a true flared/wide free edge');
+assert(Math.abs(projectPointInsideNailSilhouette({ x: -0.1, y: 0.82 }, duckNail).x - (1 - projectPointInsideNailSilhouette({ x: 1.1, y: 0.82 }, duckNail).x)) <= 0.001, 'Duck flare is symmetrical enough to read as Duck');
 assert(isPointInsideNailSilhouette({ x: 0.01, y: 0.97 }, duckNail), 'Duck accepts points inside the left visible flare edge');
 assert(isPointInsideNailSilhouette({ x: 0.99, y: 0.97 }, duckNail), 'Duck accepts points inside the right visible flare edge');
 assert.equal(isPointInsideNailSilhouette({ x: -0.01, y: 0.97 }, duckNail), false, 'Duck rejects points outside the left visible flare edge');
 assert.equal(isPointInsideNailSilhouette({ x: 1.01, y: 0.97 }, duckNail), false, 'Duck rejects points outside the right visible flare edge');
-assert(assetFitsNailSilhouette({ x: 0.95, y: 0.9, scaleX: 0.06, scaleY: 0.06, rotation: 0 }, duckNail, { type: 'decal' }), 'Duck strict-fit assets can use the full visible flare surface');
+assert(assetFitsNailSilhouette({ x: 0.93, y: 0.9, scaleX: 0.06, scaleY: 0.06, rotation: 0 }, duckNail, { type: 'decal' }), 'Duck strict-fit assets can use the full visible flare surface');
 assert(isPointInsideNailSilhouette({ x: 0.02, y: 0.98 }, duckNail) && isPointInsideNailSilhouette({ x: 0.98, y: 0.98 }, duckNail), 'Duck drawings, gradients, patterns, and clipped French tips share the expanded full-surface flare geometry');
 assert(frenchTipRenderingSource.includes('L ${g.right} ${renderBottomY} L ${g.left} ${renderBottomY} Z'), 'Duck French tips close across the full normalized flare surface before SVG clipping');
 
 assert(source.includes('halfWidths: maskHalfWidths(LIPSTICK_MASK_BOUNDS)') && source.includes('xBounds: LIPSTICK_MASK_BOUNDS') && source.includes('sharedBoundsMaskPath(m, LIPSTICK_MASK_BOUNDS'), 'Lipstick visual SVG mask and strict-fit geometry share LIPSTICK_MASK_BOUNDS as the source of truth');
 assert(source.includes('halfWidths: maskHalfWidths(DUCK_MASK_BOUNDS)') && source.includes('xBounds: DUCK_MASK_BOUNDS') && source.includes('sharedBoundsMaskPath(m, DUCK_MASK_BOUNDS'), 'Duck visual SVG mask and strict-fit geometry share DUCK_MASK_BOUNDS as the source of truth');
 const lipstickPath = buildNailPath('Lipstick', { ...defaultShapeNail, shape: 'Lipstick' });
-assert(/L 168\.64 284\.176 L 63\.68 318/.test(lipstickPath), 'Lipstick has a clearly slanted bottom/free edge with asymmetric lower endpoints');
+assert(/L 135\.36 301\.088 L 73\.92 318/.test(lipstickPath), 'Lipstick has a clearly slanted bottom/free edge with asymmetric lower endpoints');
 const lipstickNail = { ...defaultShapeNail, shape: 'Lipstick' };
-assert(isPointInsideNailSilhouette({ x: 0.08, y: 0.99 }, lipstickNail), 'Lipstick lower-left bound matches the visible mask path');
-assert(isPointInsideNailSilhouette({ x: 0.4, y: 0.98 }, lipstickNail), 'Lipstick lower-right diagonal bound matches the visible mask path');
+assert(isPointInsideNailSilhouette({ x: 0.15, y: 0.99 }, lipstickNail), 'Lipstick preserved lower-left free-edge corner matches the visible mask path');
+assert(isPointInsideNailSilhouette({ x: 0.4, y: 0.98 }, lipstickNail), 'Lipstick lower diagonal bound matches the visible mask path');
+assert.equal(isPointInsideNailSilhouette({ x: 0.08, y: 0.99 }, lipstickNail), false, 'Lipstick opposite free-edge corner is intentionally beveled instead of rounded-square');
 const lipstickOutsideLowerRight = { x: 0.72, y: 0.98 };
 const lipstickProjectedLowerRight = projectPointInsideNailSilhouette(lipstickOutsideLowerRight, lipstickNail);
 assert.equal(isPointInsideNailSilhouette(lipstickOutsideLowerRight, lipstickNail), false, 'Lipstick rejects lower-right points outside the slanted visual mask');
