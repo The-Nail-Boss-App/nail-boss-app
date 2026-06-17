@@ -81,6 +81,56 @@ export function layerSort(a, b) {
   return (a.order ?? 0) - (b.order ?? 0);
 }
 
+
+function maskXBounds(points) {
+  return points.map(([y, left, right]) => [y, left, right]);
+}
+
+function maskHalfWidths(points) {
+  return points.map(([y, left, right]) => [y, (right - left) / 2]);
+}
+
+function svgPointFromBounds(m, y, x) {
+  return { x: m.cx - m.w / 2 + x * m.w, y: m.top + m.h * y };
+}
+
+function sharedBoundsMaskPath(m, points, { rightEdgeIndex = points.length - 1, leftEdgeIndex = points.length - 1 } = {}) {
+  const top = points[0];
+  const rightStart = svgPointFromBounds(m, top[0], top[2]);
+  const leftStart = svgPointFromBounds(m, top[0], top[1]);
+  const topControlLeft = svgPointFromBounds(m, 0 - 0.012, 0.36);
+  const topControlRight = svgPointFromBounds(m, 0 - 0.012, 0.64);
+  const rightCommands = points.slice(1, rightEdgeIndex + 1).map(([y, , right]) => {
+    const point = svgPointFromBounds(m, y, right);
+    return `L ${point.x} ${point.y}`;
+  });
+  const bottomCommands = points.slice(rightEdgeIndex + 1, leftEdgeIndex + 1).map(([y, left]) => {
+    const point = svgPointFromBounds(m, y, left);
+    return `L ${point.x} ${point.y}`;
+  });
+  const leftCommands = points.slice(1, leftEdgeIndex).reverse().map(([y, left]) => {
+    const point = svgPointFromBounds(m, y, left);
+    return `L ${point.x} ${point.y}`;
+  });
+  return `M ${leftStart.x} ${leftStart.y} C ${topControlLeft.x} ${topControlLeft.y} ${topControlRight.x} ${topControlRight.y} ${rightStart.x} ${rightStart.y} ${rightCommands.join(" ")} ${bottomCommands.join(" ")} ${leftCommands.join(" ")} Z`;
+}
+
+const LIPSTICK_MASK_BOUNDS = maskXBounds([
+  [0.055, 0.18, 0.82],
+  [0.16, 0.06, 0.94],
+  [0.74, 0.06, 0.94],
+  [0.86, 0.06, 0.88],
+  [1, 0.06, 0.42],
+]);
+
+const DUCK_MASK_BOUNDS = maskXBounds([
+  [0.055, 0.15, 0.85],
+  [0.2, 0.11, 0.89],
+  [0.58, 0.09, 0.91],
+  [0.82, 0, 1],
+  [1, 0, 1],
+]);
+
 const HERO_SHAPE_MASKS = {
   Almond: {
     halfWidths: [[0, 0.34], [0.14, 0.48], [0.32, 0.5], [0.54, 0.42], [0.74, 0.27], [0.92, 0.08], [1, 0.012]],
@@ -107,14 +157,14 @@ const HERO_SHAPE_MASKS = {
     path: (m) => `M ${m.cx - m.w * 0.38} ${m.top + m.h * 0.055} C ${m.cx - m.w * 0.31} ${m.top - m.h * 0.014} ${m.cx + m.w * 0.31} ${m.top - m.h * 0.014} ${m.cx + m.w * 0.38} ${m.top + m.h * 0.055} C ${m.cx + m.w * 0.5} ${m.top + m.h * 0.18} ${m.cx + m.w * 0.51} ${m.top + m.h * 0.56} ${m.cx + m.w * 0.42} ${m.top + m.h * 0.78} C ${m.cx + m.w * 0.32} ${m.bottom} ${m.cx + m.w * 0.11} ${m.bottom + m.h * 0.035} ${m.cx} ${m.bottom + m.h * 0.035} C ${m.cx - m.w * 0.11} ${m.bottom + m.h * 0.035} ${m.cx - m.w * 0.32} ${m.bottom} ${m.cx - m.w * 0.42} ${m.top + m.h * 0.78} C ${m.cx - m.w * 0.51} ${m.top + m.h * 0.56} ${m.cx - m.w * 0.5} ${m.top + m.h * 0.18} ${m.cx - m.w * 0.38} ${m.top + m.h * 0.055} Z`,
   },
   Lipstick: {
-    halfWidths: [[0, 0.34], [0.16, 0.49], [0.58, 0.45], [0.84, 0.34], [0.88, 0.35], [1, 0]],
-    xBounds: [[0, 0.16, 0.84], [0.16, 0.01, 0.99], [0.58, 0.05, 0.95], [0.84, 0.18, 0.82], [0.88, 0.02, 0.72], [1, 0.24, 0.24]],
-    path: (m) => `M ${m.cx - m.w * 0.34} ${m.top + m.h * 0.055} C ${m.cx - m.w * 0.28} ${m.top - m.h * 0.012} ${m.cx + m.w * 0.28} ${m.top - m.h * 0.012} ${m.cx + m.w * 0.34} ${m.top + m.h * 0.055} C ${m.cx + m.w * 0.51} ${m.top + m.h * 0.18} ${m.cx + m.w * 0.49} ${m.top + m.h * 0.55} ${m.cx + m.w * 0.32} ${m.top + m.h * 0.84} L ${m.cx - m.w * 0.26} ${m.bottom} L ${m.cx - m.w * 0.48} ${m.top + m.h * 0.88} C ${m.cx - m.w * 0.46} ${m.top + m.h * 0.56} ${m.cx - m.w * 0.51} ${m.top + m.h * 0.18} ${m.cx - m.w * 0.34} ${m.top + m.h * 0.055} Z`,
+    halfWidths: maskHalfWidths(LIPSTICK_MASK_BOUNDS),
+    xBounds: LIPSTICK_MASK_BOUNDS,
+    path: (m) => sharedBoundsMaskPath(m, LIPSTICK_MASK_BOUNDS, { rightEdgeIndex: 3, leftEdgeIndex: 4 }),
   },
   Duck: {
-    halfWidths: [[0, 0.35], [0.2, 0.44], [0.58, 0.45], [0.82, 0.56], [1, 0.66]],
-    xBounds: [[0, 0.15, 0.85], [0.2, 0.06, 0.94], [0.58, 0.05, 0.95], [0.82, -0.06, 1.06], [1, -0.16, 1.16]],
-    path: (m) => `M ${m.cx - m.w * 0.35} ${m.top + m.h * 0.055} C ${m.cx - m.w * 0.29} ${m.top - m.h * 0.012} ${m.cx + m.w * 0.29} ${m.top - m.h * 0.012} ${m.cx + m.w * 0.35} ${m.top + m.h * 0.055} C ${m.cx + m.w * 0.45} ${m.top + m.h * 0.24} ${m.cx + m.w * 0.42} ${m.top + m.h * 0.58} ${m.cx + m.w * 0.56} ${m.top + m.h * 0.82} L ${m.cx + m.w * 0.66} ${m.bottom} L ${m.cx - m.w * 0.66} ${m.bottom} L ${m.cx - m.w * 0.56} ${m.top + m.h * 0.82} C ${m.cx - m.w * 0.42} ${m.top + m.h * 0.58} ${m.cx - m.w * 0.45} ${m.top + m.h * 0.24} ${m.cx - m.w * 0.35} ${m.top + m.h * 0.055} Z`,
+    halfWidths: maskHalfWidths(DUCK_MASK_BOUNDS),
+    xBounds: DUCK_MASK_BOUNDS,
+    path: (m) => sharedBoundsMaskPath(m, DUCK_MASK_BOUNDS),
   },
 };
 
