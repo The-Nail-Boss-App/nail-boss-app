@@ -100,7 +100,8 @@ assert.equal(getNailFreeEdgeExtent({ ...defaultShapeNail, shape: 'Coffin' }).ren
 
 const duckNail = { ...defaultShapeNail, shape: 'Duck' };
 const duckMetrics = getNailShapeMetrics('Duck', duckNail);
-assert(duckMetrics.freeEdgeHalfWidth > duckMetrics.sidewallHalfWidth && duckMetrics.tipHalfWidth > duckMetrics.freeEdgeHalfWidth, 'Duck visible mask keeps a true flared/wide free edge');
+assert(duckMetrics.freeEdgeHalfWidth > duckMetrics.sidewallHalfWidth && duckMetrics.tipHalfWidth >= duckMetrics.freeEdgeHalfWidth, 'Duck visual free edge is wider than the upper/body section');
+assert(duckMetrics.shoulderHalfWidth < duckMetrics.sidewallHalfWidth && duckMetrics.tipHalfWidth >= 0.5, 'Duck full flare remains designable from a narrow body into the widest free edge');
 assert(Math.abs(projectPointInsideNailSilhouette({ x: -0.1, y: 0.82 }, duckNail).x - (1 - projectPointInsideNailSilhouette({ x: 1.1, y: 0.82 }, duckNail).x)) <= 0.001, 'Duck flare is symmetrical enough to read as Duck');
 assert(isPointInsideNailSilhouette({ x: 0.01, y: 0.97 }, duckNail), 'Duck accepts points inside the left visible flare edge');
 assert(isPointInsideNailSilhouette({ x: 0.99, y: 0.97 }, duckNail), 'Duck accepts points inside the right visible flare edge');
@@ -112,8 +113,11 @@ assert(frenchTipRenderingSource.includes('L ${g.right} ${renderBottomY} L ${g.le
 
 assert(source.includes('halfWidths: maskHalfWidths(LIPSTICK_MASK_BOUNDS)') && source.includes('xBounds: LIPSTICK_MASK_BOUNDS') && source.includes('sharedBoundsMaskPath(m, LIPSTICK_MASK_BOUNDS'), 'Lipstick visual SVG mask and strict-fit geometry share LIPSTICK_MASK_BOUNDS as the source of truth');
 assert(source.includes('halfWidths: maskHalfWidths(DUCK_MASK_BOUNDS)') && source.includes('xBounds: DUCK_MASK_BOUNDS') && source.includes('sharedBoundsMaskPath(m, DUCK_MASK_BOUNDS'), 'Duck visual SVG mask and strict-fit geometry share DUCK_MASK_BOUNDS as the source of truth');
+assert(source.includes('sideCurveCommands(rightPoints)') && source.includes('sideCurveCommands(leftPoints)'), 'Strict-fit geometry matches the final Duck and Lipstick visible masks while rendering smooth shared bounds');
 const lipstickPath = buildNailPath('Lipstick', { ...defaultShapeNail, shape: 'Lipstick' });
-assert(/L 173\.76 296\.256 L 66\.24 318/.test(lipstickPath), 'Lipstick has a clearly slanted bottom/free edge with asymmetric lower endpoints');
+assert(lipstickPath.includes('173.760 296.256 L 66.24 318'), 'Lipstick diagonal free edge remains intact with asymmetric lower endpoints');
+const lipstickTopSection = lipstickPath.slice(0, lipstickPath.indexOf('173.760 296.256'));
+assert((lipstickTopSection.match(/ C /g) || []).length >= 5 && !lipstickTopSection.includes(' L '), 'Lipstick top/cuticle path is smooth, not angular or polygonal');
 const lipstickNail = { ...defaultShapeNail, shape: 'Lipstick' };
 assert(isPointInsideNailSilhouette({ x: 0.15, y: 0.99 }, lipstickNail), 'Lipstick preserved lower-left free-edge corner matches the visible mask path');
 assert(isPointInsideNailSilhouette({ x: 0.4, y: 0.98 }, lipstickNail), 'Lipstick lower diagonal bound matches the visible mask path');
