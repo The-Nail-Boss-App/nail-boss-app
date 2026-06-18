@@ -1,4 +1,9 @@
-export const SHAPES = ["Almond", "Square", "Coffin", "Stiletto", "Oval", "Round", "Lipstick", "Duck"];
+export const SHAPES = ["Almond", "Square", "Coffin", "Stiletto", "Oval", "Round", "Lipstick"];
+const HIDDEN_SHAPE_FALLBACKS = { Duck: "Square" };
+function normalizeSelectableShape(shape, fallback = "Almond") {
+  if (SHAPES.includes(shape)) return shape;
+  return HIDDEN_SHAPE_FALLBACKS[shape] || fallback;
+}
 export const EFFECTS = ["Solid", "Gradient", "Chrome", "CatEye", "Marble"];
 export const POLISH_TYPES = ["Cream", "Jelly", "Milky", "Matte", "Chrome", "Cat Eye", "Glitter"];
 export const TOP_COATS = ["Gloss", "Matte", "No-Wipe Shine", "Velvet"];
@@ -464,7 +469,7 @@ export function createDefaultBlueprint(design = {}) {
   const nail = {
     id: "nail-1",
     slot: "accent",
-    shape: SHAPES.includes(design.shape) ? design.shape : "Almond",
+    shape: normalizeSelectableShape(design.shape),
     length: clamp(design.length ?? 0.5, 0, 1),
     width: clamp(design.width ?? 0.5, 0, 1),
     ...defaultShapeControls(design),
@@ -576,7 +581,7 @@ function normalizeEditableNail(raw, fallback, index) {
   const nail = {
     id: String(raw.id || `nail-${index + 1}`).trim() || `nail-${index + 1}`,
     slot: raw.slot || "accent",
-    shape: SHAPES.includes(raw.shape) ? raw.shape : fallback.shape,
+    shape: normalizeSelectableShape(raw.shape, fallback.shape),
     length: clamp(raw.length ?? fallback.length, 0, 1),
     width: clamp(raw.width ?? fallback.width, 0, 1),
     ...defaultShapeControls({ ...fallback, ...raw }),
@@ -844,7 +849,7 @@ function defaultNailForSlot(slot, design = {}) {
   return {
     id: `nail-${slot}`,
     slot,
-    shape: SHAPES.includes(design.shape) ? design.shape : "Almond",
+    shape: normalizeSelectableShape(design.shape),
     length: clamp(design.length ?? 0.5, 0, 1),
     width: clamp(design.width ?? 0.5, 0, 1),
     ...defaultShapeControls(design),
