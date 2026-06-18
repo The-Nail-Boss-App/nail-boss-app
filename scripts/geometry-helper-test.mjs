@@ -111,6 +111,13 @@ assert(polishRendererSource.includes('ids.reflection') && polishRendererSource.i
 assert(!nailCanvasSource.includes('stroke="rgba(59,31,53,.45)" strokeWidth="2.5"') && !nailThumbnailSource.includes('stroke="rgba(59,31,53,.45)" strokeWidth="3"'), 'canvas and thumbnails no longer draw the previous hard cartoon outline');
 assert(nailCanvasSource.includes('<PolishSurface nail={nail} baseLayer={baseLayer} path={path}') && nailThumbnailSource.includes('<PolishSurface nail={nail} baseLayer={base} path={path}'), 'NailCanvas, NailThumbnail, and full-set previews share the gel nail surface renderer');
 
+assert(polishRendererSource.includes('data-realism-layer="nail-thickness-depth"') && polishRendererSource.includes('data-realism-layer="free-edge-thickness-rim"'), 'renderer includes nail thickness/depth layer at the free edge');
+assert(polishRendererSource.includes('data-realism-layer="shape-aware-curvature"') && polishRendererSource.includes('data-realism-layer="curvature-shadow"') && polishRendererSource.includes('curveBias'), 'renderer includes shape-aware curvature/shadow layer');
+assert(polishRendererSource.includes('data-realism-layer="soft-reflection-map"') && polishRendererSource.includes('ids.glossBlur'), 'renderer includes soft reflection map/layer');
+assert(assetRenderingSource.includes('data-realism-layer="asset-contact-shadow"') && nailCanvasSource.includes('<AssetContactShadow render={assetRender} uid={uid}/>') && nailThumbnailSource.includes('<AssetContactShadow render={assetRender} uid={clipId}/>'), 'charms, jewels, and decals render with a shared contact shadow layer on canvas and thumbnails');
+assert(assetRenderingSource.includes('data-realism-layer="asset-specular-accent"') && nailCanvasSource.includes('<AssetSpecularAccent layer={layer} render={assetRender}/>') && nailThumbnailSource.includes('<AssetSpecularAccent layer={layer} render={assetRender}/>'), 'jewels and charms render with small supported highlight/accent layers');
+
+
 assert(assetRenderingSource.includes('getNailGeometry(nail)') && source.includes('assetFitsNailSilhouette(transform = {}, nail, layer = {})'), 'assets still strict-fit against nail geometry after shape smoothing');
 
 for (const shape of ['Round', 'Oval']) {
@@ -588,8 +595,8 @@ assert(polishRendererSource.includes('export function PolishDefs({ uid })') && p
 assert(polishRendererSource.includes('polishOpacity'), 'gel renderer still applies existing polish opacity rules to the base color');
 assert(!polishRendererSource.includes('data.chromeIntensity') && !polishRendererSource.includes('data.catEyeAngle') && !polishRendererSource.includes('data.sparkleDensity'), 'flat renderer intentionally omits advanced polish-effect controls from rendering');
 assert(nailCanvasSource.includes('<PolishSurface') && nailThumbnailSource.includes('<PolishSurface'), 'Polish rendering is shared by NailCanvas, thumbnail, hand, and full-set previews');
-assert(propertiesPanelSource.includes('Polish Settings') && propertiesPanelSource.includes('Polish Type') && propertiesPanelSource.includes('Top Coat'), 'Design Studio exposes salon-language Polish Settings controls');
-assert(propertiesPanelSource.includes('polish.polishType === "Glitter"') && propertiesPanelSource.includes('polish.polishType === "Cat Eye"') && propertiesPanelSource.includes('polish.polishType === "Chrome"'), 'Polish Settings only show relevant Glitter, Cat Eye, and Chrome controls');
+assert(propertiesPanelSource.includes('Polish Settings') && propertiesPanelSource.includes('Top Coat') && propertiesPanelSource.includes('Special polish-effect controls stay hidden'), 'Design Studio exposes physical-realism Polish Settings without special effect controls');
+assert(!propertiesPanelSource.includes('polish.polishType === "Glitter"') && !propertiesPanelSource.includes('polish.polishType === "Cat Eye"') && !propertiesPanelSource.includes('polish.polishType === "Chrome"') && !propertiesPanelSource.includes('Legacy effect'), 'special polish effect controls are not reintroduced in the Properties panel');
 assert.deepEqual(POLISH_TYPES, ['Cream', 'Jelly', 'Milky', 'Matte', 'Chrome', 'Cat Eye', 'Glitter'], 'Polish Engine exposes all required polish types');
 const polishDefaultBlueprint = createDefaultBlueprint({ baseColorHex: '#123456' });
 const polishBase = getActiveNail(polishDefaultBlueprint).layers.find((layer) => layer.type === 'base');
