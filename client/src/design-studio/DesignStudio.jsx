@@ -139,7 +139,7 @@ function NailColorSystem({ value, onChange, onApply }) {
       <button type="button" onClick={() => onApply("hand")} style={UI.iconButton(false)}>Current hand</button>
       <button type="button" onClick={() => onApply("all")} style={UI.iconButton(false)}>Full set</button>
     </div>
-    <p style={UI.smallText}>Flat color only for now: no polish effects, realism layers, or new shape artwork.</p>
+    <p style={UI.smallText}>Solid gel preview now includes realistic gloss, apex highlights, sidewall shadows, and free-edge depth.</p>
   </section>;
 }
 
