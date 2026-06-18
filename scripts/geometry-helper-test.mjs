@@ -113,11 +113,11 @@ assert(frenchTipRenderingSource.includes('L ${g.right} ${renderBottomY} L ${g.le
 assert(source.includes('halfWidths: maskHalfWidths(LIPSTICK_MASK_BOUNDS)') && source.includes('xBounds: LIPSTICK_MASK_BOUNDS') && source.includes('sharedBoundsMaskPath(m, LIPSTICK_MASK_BOUNDS'), 'Lipstick visual SVG mask and strict-fit geometry share LIPSTICK_MASK_BOUNDS as the source of truth');
 assert(source.includes('halfWidths: maskHalfWidths(DUCK_MASK_BOUNDS)') && source.includes('xBounds: DUCK_MASK_BOUNDS') && source.includes('sharedBoundsMaskPath(m, DUCK_MASK_BOUNDS'), 'Duck visual SVG mask and strict-fit geometry share DUCK_MASK_BOUNDS as the source of truth');
 const lipstickPath = buildNailPath('Lipstick', { ...defaultShapeNail, shape: 'Lipstick' });
-assert(/L 135\.36 301\.088 L 73\.92 318/.test(lipstickPath), 'Lipstick has a clearly slanted bottom/free edge with asymmetric lower endpoints');
+assert(/L 173\.76 296\.256 L 66\.24 318/.test(lipstickPath), 'Lipstick has a clearly slanted bottom/free edge with asymmetric lower endpoints');
 const lipstickNail = { ...defaultShapeNail, shape: 'Lipstick' };
 assert(isPointInsideNailSilhouette({ x: 0.15, y: 0.99 }, lipstickNail), 'Lipstick preserved lower-left free-edge corner matches the visible mask path');
 assert(isPointInsideNailSilhouette({ x: 0.4, y: 0.98 }, lipstickNail), 'Lipstick lower diagonal bound matches the visible mask path');
-assert.equal(isPointInsideNailSilhouette({ x: 0.08, y: 0.99 }, lipstickNail), false, 'Lipstick opposite free-edge corner is intentionally beveled instead of rounded-square');
+assert(isPointInsideNailSilhouette({ x: 0.08, y: 0.99 }, lipstickNail), 'Lipstick opposite free-edge corner stays sharp, intentional, and usable instead of clipped or rounded off');
 const lipstickOutsideLowerRight = { x: 0.72, y: 0.98 };
 const lipstickProjectedLowerRight = projectPointInsideNailSilhouette(lipstickOutsideLowerRight, lipstickNail);
 assert.equal(isPointInsideNailSilhouette(lipstickOutsideLowerRight, lipstickNail), false, 'Lipstick rejects lower-right points outside the slanted visual mask');
