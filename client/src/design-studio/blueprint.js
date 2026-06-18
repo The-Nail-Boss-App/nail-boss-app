@@ -100,24 +100,21 @@ function sharedBoundsMaskPath(m, points, { rightEdgeIndex = points.length - 1, l
   const leftStart = svgPointFromBounds(m, top[0], top[1]);
   const topControlLeft = svgPointFromBounds(m, 0 - 0.012, 0.36);
   const topControlRight = svgPointFromBounds(m, 0 - 0.012, 0.64);
-  const rightCommands = points.slice(1, rightEdgeIndex + 1).map(([y, , right]) => {
-    const point = svgPointFromBounds(m, y, right);
-    return `L ${point.x} ${point.y}`;
-  });
+  const rightPoints = points.slice(0, rightEdgeIndex + 1).map(([y, , right]) => svgPointFromBounds(m, y, right));
+  const rightCommands = sideCurveCommands(rightPoints);
   const bottomCommands = points.slice(rightEdgeIndex + 1, leftEdgeIndex + 1).map(([y, left]) => {
     const point = svgPointFromBounds(m, y, left);
     return `L ${point.x} ${point.y}`;
   });
-  const leftCommands = points.slice(1, leftEdgeIndex).reverse().map(([y, left]) => {
-    const point = svgPointFromBounds(m, y, left);
-    return `L ${point.x} ${point.y}`;
-  });
+  const leftPoints = points.slice(0, leftEdgeIndex).map(([y, left]) => svgPointFromBounds(m, y, left)).reverse();
+  const leftCommands = sideCurveCommands(leftPoints);
   return `M ${leftStart.x} ${leftStart.y} C ${topControlLeft.x} ${topControlLeft.y} ${topControlRight.x} ${topControlRight.y} ${rightStart.x} ${rightStart.y} ${rightCommands.join(" ")} ${bottomCommands.join(" ")} ${leftCommands.join(" ")} Z`;
 }
 
 const LIPSTICK_MASK_BOUNDS = maskXBounds([
-  [0.055, 0.2, 0.8],
-  [0.16, 0.08, 0.92],
+  [0.055, 0.24, 0.76],
+  [0.12, 0.16, 0.84],
+  [0.24, 0.08, 0.92],
   [0.72, 0.08, 0.92],
   [0.84, 0.08, 0.92],
   [0.91, 0.08, 0.92],
@@ -125,10 +122,11 @@ const LIPSTICK_MASK_BOUNDS = maskXBounds([
 ]);
 
 const DUCK_MASK_BOUNDS = maskXBounds([
-  [0.055, 0.24, 0.76],
-  [0.22, 0.25, 0.75],
+  [0.055, 0.3, 0.7],
+  [0.24, 0.28, 0.72],
   [0.58, 0.22, 0.78],
-  [0.8, 0.04, 0.96],
+  [0.76, 0.1, 0.9],
+  [0.9, 0, 1],
   [1, 0, 1],
 ]);
 
@@ -160,7 +158,7 @@ const HERO_SHAPE_MASKS = {
   Lipstick: {
     halfWidths: maskHalfWidths(LIPSTICK_MASK_BOUNDS),
     xBounds: LIPSTICK_MASK_BOUNDS,
-    path: (m) => sharedBoundsMaskPath(m, LIPSTICK_MASK_BOUNDS, { rightEdgeIndex: 4, leftEdgeIndex: 5 }),
+    path: (m) => sharedBoundsMaskPath(m, LIPSTICK_MASK_BOUNDS, { rightEdgeIndex: 5, leftEdgeIndex: 6 }),
   },
   Duck: {
     halfWidths: maskHalfWidths(DUCK_MASK_BOUNDS),
