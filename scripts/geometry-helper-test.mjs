@@ -49,11 +49,14 @@ const {
 } = blueprint;
 
 
-const heroShapeFamilies = ['Almond', 'Square', 'Coffin', 'Stiletto', 'Oval', 'Round', 'Lipstick', 'Duck'];
+const visibleHeroShapeFamilies = ['Almond', 'Square', 'Coffin', 'Stiletto', 'Oval', 'Round', 'Lipstick'];
+const hiddenLegacyShapeFamilies = ['Duck'];
 const nonHeroShapeFamilies = ['Tapered Square', 'Russian Square', 'Slim Coffin', 'Russian Almond', 'Edge', 'Flare', 'Mountain Peak'];
-assert.deepEqual(SHAPES, heroShapeFamilies, 'Editor shape list exposes exactly the Hero 8 shapes');
-for (const shape of nonHeroShapeFamilies) assert(!SHAPES.includes(shape), `${shape} is not expected in the editor shape list`);
-for (const shape of heroShapeFamilies) {
+assert.deepEqual(SHAPES, visibleHeroShapeFamilies, 'Editor shape list exposes exactly the visible Hero 7 shapes');
+assert(!SHAPES.includes('Duck'), 'Duck is not offered as a visible editor shape selection');
+assert(designStudioSource.includes('>{SHAPES.map((shape) => <option key={shape}>{shape}</option>)}</select>'), 'Design Studio nail shape dropdown is backed by the visible shape list');
+for (const shape of [...nonHeroShapeFamilies, ...hiddenLegacyShapeFamilies]) assert(!SHAPES.includes(shape), `${shape} is not expected in the editor shape list`);
+for (const shape of visibleHeroShapeFamilies) {
   const nail = { shape, length: 0.56, width: 0.52, taper: 0.5, apexHeight: 0.5, sidewallCurve: 0.5, freeEdgeThickness: 0.5 };
   assert(buildNailPath(shape, nail).startsWith('M '), `${shape} returns a renderable nail silhouette path`);
   assert(isPointInsideNailSilhouette({ x: 0.5, y: 0.5 }, nail), `${shape} keeps the centerline inside the nail bed`);
@@ -63,6 +66,31 @@ for (const shape of heroShapeFamilies) {
 }
 
 const defaultShapeNail = { length: 0.56, width: 0.52, taper: 0.5, apexHeight: 0.5, sidewallCurve: 0.5, freeEdgeThickness: 0.5 };
+
+const legacyDuckBlueprint = createDefaultBlueprint({ shape: 'Almond', length: 0.77, width: 0.33, baseColorHex: '#123456' });
+const legacyDuckActive = getActiveNail(legacyDuckBlueprint);
+const normalizedDuckBlueprint = ensureBlueprint({
+  ...legacyDuckBlueprint,
+  nails: [{
+    ...legacyDuckActive,
+    shape: 'Duck',
+    length: 0.77,
+    width: 0.33,
+    layers: [
+      ...legacyDuckActive.layers,
+      assetLayer({ id: 'decal-star', name: 'Star', category: 'decals', defaultColor: '#FFFFFF' }, legacyDuckActive),
+    ],
+  }],
+});
+const normalizedDuckNail = getActiveNail(normalizedDuckBlueprint);
+assert.equal(normalizedDuckNail.shape, 'Square', 'existing saved Duck designs normalize to Square for safe editing and saving');
+assert.equal(normalizedDuckNail.length, 0.77, 'Duck compatibility normalization preserves saved length');
+assert.equal(normalizedDuckNail.width, 0.33, 'Duck compatibility normalization preserves saved width');
+assert(normalizedDuckNail.layers.some((layer) => layer.type === 'decal'), 'Duck compatibility normalization preserves saved layers');
+const normalizedDuckFlat = flatDesignFromBlueprint(normalizedDuckBlueprint, 'Legacy Duck');
+assert.equal(normalizedDuckFlat.shape, 'Square', 'saved Duck designs serialize through the supported Square fallback');
+assert(buildNailPath('Duck', { ...defaultShapeNail, shape: 'Duck' }).startsWith('M '), 'hidden Duck mask code remains renderable for old previews or future reactivation');
+
 const roundMetrics = getNailShapeMetrics('Round', { ...defaultShapeNail, shape: 'Round' });
 const ovalMetrics = getNailShapeMetrics('Oval', { ...defaultShapeNail, shape: 'Oval' });
 const almondMetrics = getNailShapeMetrics('Almond', { ...defaultShapeNail, shape: 'Almond' });
