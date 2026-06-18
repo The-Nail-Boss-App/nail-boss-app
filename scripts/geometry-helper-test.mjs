@@ -104,12 +104,12 @@ assert(!/ L /.test(smoothPath) && (smoothPath.match(/ C /g) || []).length >= 4, 
 assert(nailCanvasSource.includes('const path = buildNailPath(nail.shape, nail);') && nailCanvasSource.includes('<PolishSurface nail={nail} baseLayer={baseLayer} path={path}'), 'polish rendering clips against the shared smooth nail path');
 assert(nailThumbnailSource.includes('const path = buildNailPath(nail.shape, nail);') && nailThumbnailSource.includes('<clipPath id={clipId}><path d={path}/></clipPath>'), 'thumbnails use the same smooth geometry path as the active canvas');
 
-assert(polishRendererSource.includes('export function FlatNailSurfaceRenderer') && polishRendererSource.includes('export const PolishSurface = FlatNailSurfaceRenderer'), 'flat renderer is the shared polish surface implementation');
-assert(polishRendererSource.includes('fill={data.colorHex}') && polishRendererSource.includes('polishOpacity({ ...data, polishType: "Cream" })'), 'flat renderer preserves base polish color and stable cream opacity');
-assert(polishRendererSource.includes('stroke="rgba(59,31,53,.24)"') && polishRendererSource.includes('strokeWidth="1.2"'), 'flat renderer keeps a subtle nail edge without realism layers');
-assert(!polishRendererSource.includes('data-realism-layer='), 'flat renderer intentionally removes realism layer markers');
+assert(polishRendererSource.includes('export function GelNailSurfaceRenderer') && polishRendererSource.includes('export const PolishSurface = GelNailSurfaceRenderer'), 'gel renderer is the shared polish surface implementation');
+assert(polishRendererSource.includes('fill={data.colorHex}') && polishRendererSource.includes('polishOpacity({ ...data, polishType: "Cream" })'), 'gel renderer preserves base polish color and stable cream opacity');
+assert(polishRendererSource.includes('getNailArchitecture(nail)') && polishRendererSource.includes('ids.apex') && polishRendererSource.includes('ids.sidewall') && polishRendererSource.includes('ids.freeEdge'), 'gel renderer adds architecture-aware apex highlights, sidewall shadows, and free-edge depth');
+assert(polishRendererSource.includes('ids.reflection') && polishRendererSource.includes('ids.glossBlur'), 'gel renderer adds subtle gloss/reflection mapping without enabling special effects');
 assert(!nailCanvasSource.includes('stroke="rgba(59,31,53,.45)" strokeWidth="2.5"') && !nailThumbnailSource.includes('stroke="rgba(59,31,53,.45)" strokeWidth="3"'), 'canvas and thumbnails no longer draw the previous hard cartoon outline');
-assert(nailCanvasSource.includes('<PolishSurface nail={nail} baseLayer={baseLayer} path={path}') && nailThumbnailSource.includes('<PolishSurface nail={nail} baseLayer={base} path={path}'), 'NailCanvas, NailThumbnail, and full-set previews share the flat nail surface renderer');
+assert(nailCanvasSource.includes('<PolishSurface nail={nail} baseLayer={baseLayer} path={path}') && nailThumbnailSource.includes('<PolishSurface nail={nail} baseLayer={base} path={path}'), 'NailCanvas, NailThumbnail, and full-set previews share the gel nail surface renderer');
 
 assert(assetRenderingSource.includes('getNailGeometry(nail)') && source.includes('assetFitsNailSilhouette(transform = {}, nail, layer = {})'), 'assets still strict-fit against nail geometry after shape smoothing');
 
@@ -584,8 +584,8 @@ console.log('geometry-helper-test passed');
 
 const polishSource = await readFile(new URL('../client/src/design-studio/polish.js', import.meta.url), 'utf8');
 const polishModule = await import(`data:text/javascript;charset=utf-8,${encodeURIComponent(polishSource)}`);
-assert(polishRendererSource.includes('export function PolishDefs()') && polishRendererSource.includes('return null'), 'flat renderer intentionally removes polish definition gradients and patterns');
-assert(polishRendererSource.includes('polishOpacity'), 'flat renderer still applies existing polish opacity rules to the base color');
+assert(polishRendererSource.includes('export function PolishDefs({ uid })') && polishRendererSource.includes('linearGradient') && polishRendererSource.includes('radialGradient'), 'gel renderer defines subtle gloss/reflection gradients for solid-color realism');
+assert(polishRendererSource.includes('polishOpacity'), 'gel renderer still applies existing polish opacity rules to the base color');
 assert(!polishRendererSource.includes('data.chromeIntensity') && !polishRendererSource.includes('data.catEyeAngle') && !polishRendererSource.includes('data.sparkleDensity'), 'flat renderer intentionally omits advanced polish-effect controls from rendering');
 assert(nailCanvasSource.includes('<PolishSurface') && nailThumbnailSource.includes('<PolishSurface'), 'Polish rendering is shared by NailCanvas, thumbnail, hand, and full-set previews');
 assert(propertiesPanelSource.includes('Polish Settings') && propertiesPanelSource.includes('Polish Type') && propertiesPanelSource.includes('Top Coat'), 'Design Studio exposes salon-language Polish Settings controls');
@@ -648,7 +648,7 @@ assert.equal(polishModule.resolvePolishDataForRender({ colorHex: '#101010', effe
 assert.equal(polishModule.resolvePolishDataForRender({ colorHex: '#101010', effect: 'Marble', effectColorHex: '#FFFFFF' }).polishType, 'Marble', 'legacy Marble base effects keep marble-like rendering when no explicit Polish Type exists');
 assert.equal(polishModule.resolvePolishDataForRender({ colorHex: '#101010', polishType: 'Jelly', effect: 'Chrome', effectColorHex: '#FFFFFF' }).polishType, 'Jelly', 'explicit Polish Type overrides legacy base effects');
 assert(polishRendererSource.includes('resolvePolishDataForRender(baseLayer?.data || {}, nail?.baseColorHex || "#E8A0BF")'), 'PolishSurface uses nail baseColorHex as the no-base-layer polish fallback');
-assert(nailCanvasSource.includes('<PolishDefs nail={nail} baseLayer={baseLayer} uid={uid}/>') && nailThumbnailSource.includes('<PolishDefs nail={nail} baseLayer={base} uid={clipId}/>'), 'NailCanvas, thumbnails, hand previews, and full-set previews can keep passing PolishDefs while it is a flat-renderer no-op');
+assert(nailCanvasSource.includes('<PolishDefs nail={nail} baseLayer={baseLayer} uid={uid}/>') && nailThumbnailSource.includes('<PolishDefs nail={nail} baseLayer={base} uid={clipId}/>'), 'NailCanvas, thumbnails, hand previews, and full-set previews pass shared PolishDefs for gel realism gradients');
 assert.equal(polishModule.resolvePolishDataForRender({}, '#336699').colorHex, '#336699', 'no-base-layer polish render data falls back to nail.baseColorHex instead of default pink');
 assert.equal(polishModule.resolvePolishDataForRender({ colorHex: '#112233', polishType: 'Chrome' }, '#336699').colorHex, '#112233', 'normal base-layer polish color remains authoritative over no-base fallback');
 assert(designStudioSource.includes('function addGradient()') && designStudioSource.includes('function addPattern()') && designStudioSource.includes('Add Gradient') && designStudioSource.includes('Add Pattern'), 'Design Studio keeps clean entry points for creating gradient and pattern layers while the base polish renderer stays flat');
