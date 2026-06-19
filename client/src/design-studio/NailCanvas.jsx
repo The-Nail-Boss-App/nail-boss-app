@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import { COLORS } from "../styles.js";
 import { renderAssetShapes } from "./assets.js";
-import { VIEWBOX, buildNailPath, constrainStrokePoints, getNailArchitecture, getNailGeometry, normalizedToSvg, projectPointInsideNailSilhouette, svgToNormalized, layerSort } from "./blueprint.js";
+import { VIEWBOX, buildNailPath, constrainStrokePoints, getNailArchitecture, getNailGeometry, normalizedToSvg, projectPointInsideNailSilhouette, svgToNormalized, layerSort, normalizeGradientStops } from "./blueprint.js";
 import { AssetContactShadow, AssetSpecularAccent, AssetSurfaceBlend, assetLayerRenderProps } from "./assetRendering.js";
 import { FrenchTipShape } from "./frenchTipRendering.js";
 import { PolishDefs, PolishSurface, SharedPolishRealismLayers } from "./PolishRenderer.jsx";
@@ -25,35 +25,30 @@ function gradientPoints(direction = "vertical", angle = 90) {
 
 function gradientStops(layer) {
   const data = layer.data || {};
-  const colorA = data.colorA || "#FFFFFF";
-  const colorB = data.colorB || "#E8A0BF";
-  const blend = Math.max(0.08, Math.min(0.92, Number.isFinite(Number(data.blendPosition)) ? Number(data.blendPosition) : 0.5));
   const softness = Math.max(0, Math.min(1, Number.isFinite(Number(data.softness)) ? Number(data.softness) : 0.62));
-  const spread = 0.06 + softness * 0.32;
-  const startFade = Math.max(0, blend - spread);
-  const endFade = Math.min(1, blend + spread);
-  return { colorA, colorB, softness, startFade, blend, endFade };
+  const stops = normalizeGradientStops(data);
+  return { stops, softness };
+}
+
+function renderGradientStops(stops, aura = false) {
+  return stops.map((stop, index) => {
+    const offset = `${Math.round(stop.position)}%`;
+    const middleAura = aura && index > 0 && index < stops.length - 1;
+    return <stop key={`${stop.color}-${offset}-${index}`} offset={offset} stopColor={stop.color} stopOpacity={middleAura ? ".82" : undefined}/>;
+  });
 }
 
 export function LayerGradient({ layer, id }) {
   const direction = layer.data?.direction || "vertical";
-  const stops = gradientStops(layer);
+  const { stops } = gradientStops(layer);
   if (direction === "aura") {
-    return <radialGradient id={id} cx="50%" cy="42%" r="64%" data-gradient-mode="center-glow-aura-blend">
-      <stop offset="0%" stopColor={stops.colorA}/>
-      <stop offset={`${Math.round(stops.startFade * 100)}%`} stopColor={stops.colorA} stopOpacity=".96"/>
-      <stop offset={`${Math.round(stops.blend * 100)}%`} stopColor={stops.colorA} stopOpacity=".58"/>
-      <stop offset={`${Math.round(stops.endFade * 100)}%`} stopColor={stops.colorB} stopOpacity=".86"/>
-      <stop offset="100%" stopColor={stops.colorB}/>
+    return <radialGradient id={id} cx="50%" cy="42%" r="64%" data-gradient-mode="center-glow-aura-blend" data-gradient-stop-count={stops.length}>
+      {renderGradientStops(stops, true)}
     </radialGradient>;
   }
   const points = gradientPoints(direction, layer.data?.angle);
-  return <linearGradient id={id} {...points} data-gradient-softness="diffused-salon-ombre">
-    <stop offset="0%" stopColor={stops.colorA}/>
-    <stop offset={`${Math.round(stops.startFade * 100)}%`} stopColor={stops.colorA}/>
-    <stop offset={`${Math.round(stops.blend * 100)}%`} stopColor={stops.colorA} stopOpacity=".64"/>
-    <stop offset={`${Math.round(stops.endFade * 100)}%`} stopColor={stops.colorB}/>
-    <stop offset="100%" stopColor={stops.colorB}/>
+  return <linearGradient id={id} {...points} data-gradient-softness="diffused-salon-ombre" data-gradient-stop-count={stops.length}>
+    {renderGradientStops(stops)}
   </linearGradient>;
 }
 
@@ -70,7 +65,7 @@ export function GradientLayerShape({ layer, nail, baseLayer, path, clipId, uid, 
     {art.polishType === "Milky" && <><rect data-realism-layer="milky-cloudy-ombre-veil" width={VIEWBOX.width} height={VIEWBOX.height} fill="#fff8fb" opacity=".18"/><ellipse cx="120" cy="145" rx="74" ry="118" fill="#fff" opacity=".12" filter={`url(#${filterId})`}/></>}
     {art.polishType === "Matte" && <rect data-realism-layer="matte-low-shine-satin-gradient-blend" width={VIEWBOX.width} height={VIEWBOX.height} fill="#2b1024" opacity=".035"/>}
     <path data-realism-layer="gradient-edge-depth-and-nail-curvature" d={path} fill="none" stroke="#fff" strokeOpacity={art.polishType === "Matte" ? .08 : .18} strokeWidth="1.2"/>
-    <SharedPolishRealismLayers nail={nail} path={path} clipId={clipId} uid={uid} shine={art.shine} colorHex={layer.data?.colorB || art.colorHex} polishType={art.polishType} materialScope="gradient-ombre"/>
+    <SharedPolishRealismLayers nail={nail} path={path} clipId={clipId} uid={uid} shine={art.shine} colorHex={normalizeGradientStops(layer.data || {}).at(-1)?.color || art.colorHex} polishType={art.polishType} materialScope="gradient-ombre"/>
   </g>;
 }
 

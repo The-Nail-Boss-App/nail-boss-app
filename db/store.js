@@ -34,6 +34,7 @@ const SUPPORTED_LAYER_TYPES = ["base", "gradient", "pattern", "drawing", "charm"
 const FRENCH_TIP_STYLES = ["classic", "deep", "angled", "v", "reverse"];
 const GRADIENT_DIRECTIONS = ["vertical", "reverse-vertical", "horizontal", "diagonal", "reverse-diagonal", "aura"];
 const GRADIENT_RANGES = { blendPosition: [0.08, 0.92], softness: [0, 1], angle: [0, 360] };
+const GRADIENT_COLOR_LIMITS = { min: 2, max: 7 };
 const FRENCH_TIP_STYLE_ALIASES = { "v-french": "v" };
 const FRENCH_TIP_PRESETS = ["soft", "medium", "deep"];
 const FRENCH_TIP_RANGES = {
@@ -135,6 +136,20 @@ function assertRangedNumber(value, [min, max], pathLabel) {
   return Number(value);
 }
 
+function clampNumber(value, [min, max], fallback) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.min(max, Math.max(min, parsed));
+}
+
+function cleanHex(value, fallback) {
+  if (typeof value === "string" && HEX_RE.test(value)) {
+    if (value.length === 4) return `#${value[1]}${value[1]}${value[2]}${value[2]}${value[3]}${value[3]}`.toUpperCase();
+    return value.toUpperCase();
+  }
+  return fallback;
+}
+
 function normalizeNailArchitectureControls(nail, pathPrefix) {
   const controls = {};
   for (const [key, range] of Object.entries(NAIL_ARCHITECTURE_CONTROL_RANGES)) {
@@ -166,6 +181,22 @@ function normalizePolishFields(data, pathPrefix) {
   return next;
 }
 
+function normalizeGradientStops(data, colorA, colorB) {
+  const rawStops = Array.isArray(data.gradientStops) && data.gradientStops.length
+    ? data.gradientStops
+    : [{ color: colorA, position: 0 }, { color: colorB, position: 100 }];
+  const cleaned = rawStops.slice(0, GRADIENT_COLOR_LIMITS.max).map((stop, index) => ({
+    color: cleanHex(stop && (stop.color || stop.colorHex), index === 0 ? colorA : colorB),
+    position: clampNumber(stop && stop.position, [0, 100], (index / Math.max(1, rawStops.length - 1)) * 100),
+  })).sort((a, b) => a.position - b.position);
+  while (cleaned.length < GRADIENT_COLOR_LIMITS.min) {
+    cleaned.push({ color: cleaned.length === 0 ? colorA : colorB, position: cleaned.length === 0 ? 0 : 100 });
+  }
+  cleaned[0] = { ...cleaned[0], color: colorA, position: 0 };
+  cleaned[cleaned.length - 1] = { ...cleaned[cleaned.length - 1], color: colorB, position: 100 };
+  return cleaned.map((stop) => ({ color: stop.color, position: Math.round(stop.position) }));
+}
+
 function normalizeGradientData(data, pathPrefix) {
   const direction = data.direction || "vertical";
   if (!GRADIENT_DIRECTIONS.includes(direction)) {
@@ -173,14 +204,17 @@ function normalizeGradientData(data, pathPrefix) {
   }
   assertHex(data.colorA || "#FFFFFF", `${pathPrefix}.data.colorA`);
   assertHex(data.colorB || "#E8A0BF", `${pathPrefix}.data.colorB`);
+  const colorA = cleanHex(data.colorA || "#FFFFFF", "#FFFFFF");
+  const colorB = cleanHex(data.colorB || "#E8A0BF", "#E8A0BF");
   return {
     ...data,
-    colorA: data.colorA || "#FFFFFF",
-    colorB: data.colorB || "#E8A0BF",
+    colorA,
+    colorB,
     direction,
-    blendPosition: Object.prototype.hasOwnProperty.call(data, "blendPosition") ? assertRangedNumber(data.blendPosition, GRADIENT_RANGES.blendPosition, `${pathPrefix}.data.blendPosition`) : 0.5,
-    softness: Object.prototype.hasOwnProperty.call(data, "softness") ? assertRangedNumber(data.softness, GRADIENT_RANGES.softness, `${pathPrefix}.data.softness`) : 0.62,
-    angle: Object.prototype.hasOwnProperty.call(data, "angle") ? assertRangedNumber(data.angle, GRADIENT_RANGES.angle, `${pathPrefix}.data.angle`) : 90,
+    blendPosition: clampNumber(data.blendPosition, GRADIENT_RANGES.blendPosition, 0.5),
+    softness: clampNumber(data.softness, GRADIENT_RANGES.softness, 0.62),
+    angle: clampNumber(data.angle, GRADIENT_RANGES.angle, 90),
+    gradientStops: normalizeGradientStops(data, colorA, colorB),
   };
 }
 
