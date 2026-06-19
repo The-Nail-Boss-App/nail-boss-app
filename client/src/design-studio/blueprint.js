@@ -48,6 +48,44 @@ export function normalizePolishData(data = {}, fallbackColor = "#E8A0BF") {
 }
 export const PATTERNS = ["dots", "stripes", "checker", "french-tip", "glitter", "marble", "camo", "houndstooth", "leopard", "cheetah", "zebra", "cow-print", "snake-print", "tiger-stripe"];
 export const GRADIENT_DIRECTIONS = ["vertical", "reverse-vertical", "horizontal", "diagonal", "reverse-diagonal", "aura"];
+
+export const GRADIENT_COLOR_LIMITS = { min: 2, max: 7 };
+
+export function normalizeGradientStops(data = {}) {
+  const fallbackStart = normalizeHex(data.colorA, "#FFFFFF");
+  const fallbackEnd = normalizeHex(data.colorB, "#E8A0BF");
+  const rawStops = Array.isArray(data.gradientStops) && data.gradientStops.length
+    ? data.gradientStops
+    : [{ color: fallbackStart, position: 0 }, { color: fallbackEnd, position: 100 }];
+  const cleaned = rawStops
+    .slice(0, GRADIENT_COLOR_LIMITS.max)
+    .map((stop, index) => ({
+      color: normalizeHex(stop?.color || stop?.colorHex, index === 0 ? fallbackStart : fallbackEnd),
+      position: clamp(stop?.position ?? (index / Math.max(1, rawStops.length - 1)) * 100, 0, 100),
+    }))
+    .sort((a, b) => a.position - b.position);
+  while (cleaned.length < GRADIENT_COLOR_LIMITS.min) {
+    cleaned.push({ color: cleaned.length === 0 ? fallbackStart : fallbackEnd, position: cleaned.length === 0 ? 0 : 100 });
+  }
+  cleaned[0] = { ...cleaned[0], color: fallbackStart, position: 0 };
+  cleaned[cleaned.length - 1] = { ...cleaned[cleaned.length - 1], color: fallbackEnd, position: 100 };
+  return cleaned.map((stop) => ({ color: stop.color, position: Math.round(stop.position) }));
+}
+
+export function normalizeGradientData(data = {}) {
+  const colorA = normalizeHex(data.colorA, "#FFFFFF");
+  const colorB = normalizeHex(data.colorB, "#E8A0BF");
+  return {
+    ...data,
+    colorA,
+    colorB,
+    direction: GRADIENT_DIRECTIONS.includes(data.direction) ? data.direction : "vertical",
+    blendPosition: clamp(data.blendPosition ?? 0.5, 0.08, 0.92),
+    softness: clamp(data.softness ?? 0.62, 0, 1),
+    angle: clamp(data.angle ?? 90, 0, 360),
+    gradientStops: normalizeGradientStops({ ...data, colorA, colorB }),
+  };
+}
 export const FRENCH_TIP_STYLES = ["classic", "deep", "angled", "v", "reverse"];
 export const FRENCH_TIP_PRESETS = {
   soft: { tipHeight: 0.24, smileCurve: 0.18, smileDepth: 0.14, smileWidth: 0.72, rotation: 0 },
@@ -575,6 +613,7 @@ function normalizeLayerData(layer) {
   const data = { ...(layer.data || {}) };
   if (["charm", "jewel", "decal"].includes(layer.type)) delete data.svg;
   if (layer.type === "frenchTip") return normalizeFrenchTipData(data);
+  if (layer.type === "gradient") return normalizeGradientData(data);
   return data;
 }
 
@@ -746,7 +785,7 @@ export function gradientLayer(nail) {
   return {
     id: uid("gradient"), type: "gradient", name: "Gradient Overlay", visible: true, locked: false, opacity: 0.75, order: 99,
     transform: safeTransform({ x: 0.5, y: 0.5, scaleX: 1, scaleY: 1, rotation: 0 }, nail, "gradient"),
-    data: { colorA: "#FFFFFF", colorB: "#E8A0BF", direction: "vertical", blendPosition: 0.5, softness: 0.62, angle: 90 },
+    data: normalizeGradientData({ colorA: "#FFFFFF", colorB: "#E8A0BF", direction: "vertical", blendPosition: 0.5, softness: 0.62, angle: 90 }),
   };
 }
 
