@@ -2,14 +2,10 @@ import { COLORS } from "../styles.js";
 import { renderAssetShapes } from "./assets.js";
 import { VIEWBOX, buildNailPath, layerSort, slotLabel } from "./blueprint.js";
 import { AssetContactShadow, AssetSpecularAccent, AssetSurfaceBlend, assetLayerRenderProps, isRenderableAssetLayer } from "./assetRendering.js";
-import { ArtRealismDefs, PaintedStroke, artMaterialProfile, strokePath } from "./NailCanvas.jsx";
+import { ArtRealismDefs, PaintedStroke, PatternDefs, artMaterialProfile, strokePath } from "./NailCanvas.jsx";
 import { FrenchTipShape } from "./frenchTipRendering.js";
 import { PolishDefs, PolishSurface } from "./PolishRenderer.jsx";
 
-function MiniPattern({ id, layer }) {
-  const color = layer.data?.colorHex || "#fff";
-  return <pattern id={id} width="28" height="28" patternUnits="userSpaceOnUse"><rect width="28" height="28" fill="transparent"/><circle cx="8" cy="8" r="3" fill={color}/><circle cx="21" cy="21" r="2" fill={color} opacity=".75"/></pattern>;
-}
 
 export default function NailThumbnail({ nail, active = false, onClick }) {
   const clipId = `thumb-clip-${nail.id}`;
@@ -24,7 +20,7 @@ export default function NailThumbnail({ nail, active = false, onClick }) {
         if (layer.type === "frenchTip") return <FrenchTipShape key={layer.id} layer={layer} nail={nail} clipId={clipId} thumbnail/>;
         if (layer.type === "drawing") return <g key={layer.id} clipPath={`url(#${clipId})`} opacity={layer.opacity}>{(layer.data?.strokes || []).map((stroke) => <PaintedStroke key={stroke.id} stroke={stroke} nail={nail} baseLayer={base} uid={clipId} baseColor={base?.data?.colorHex}/>)}</g>;
         if (layer.type === "gradient") return <g key={layer.id} clipPath={`url(#${clipId})`} opacity={layer.opacity}><rect width={VIEWBOX.width} height={VIEWBOX.height} fill={layer.data?.colorB || "#E8A0BF"}/></g>;
-        if (layer.type === "pattern") { const id = `${clipId}-${layer.id}`; const art = artMaterialProfile(base, nail); return <g key={layer.id} clipPath={`url(#${clipId})`} opacity={(layer.opacity ?? 1) * art.artOpacity} data-realism-layer="material-aware-clipped-pattern"><defs><MiniPattern id={id} layer={layer}/></defs><rect width={VIEWBOX.width} height={VIEWBOX.height} fill={`url(#${id})`}/><path d={path} fill="#fff" opacity={art.surfaceHighlight * 0.32}/></g>; }
+        if (layer.type === "pattern") { const id = `${clipId}-${layer.id}`; const art = artMaterialProfile(base, nail); return <g key={layer.id} clipPath={`url(#${clipId})`} opacity={(layer.opacity ?? 1) * art.artOpacity} data-realism-layer="material-aware-clipped-pattern"><defs><PatternDefs id={id} layer={layer}/></defs><rect width={VIEWBOX.width} height={VIEWBOX.height} fill={`url(#${id})`}/><path d={path} fill="#fff" opacity={art.surfaceHighlight * 0.32}/></g>; }
         if (!isRenderableAssetLayer(layer)) return null;
         const assetRender = assetLayerRenderProps(layer, nail, artMaterialProfile(base, nail));
         return <g key={layer.id} clipPath={`url(#${clipId})`} opacity={assetRender.opacity} data-layer-type={layer.type} data-asset-id={assetRender.assetId}>

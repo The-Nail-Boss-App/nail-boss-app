@@ -46,6 +46,7 @@ const {
   FRENCH_TIP_PRESETS,
   ASSET_SIZE_RANGE,
   POLISH_TYPES,
+  PATTERNS,
   clearStalePolishTypeForLegacyEffect,
   normalizePolishData,
   cloneNailDesign,
@@ -135,6 +136,15 @@ assert(assetRenderingSource.includes('data-realism-layer="asset-specular-accent"
 assert(nailCanvasSource.includes('data-realism-layer="painted-stroke-material-aware-opacity"') && nailCanvasSource.includes('paint-contact-shadow') && nailCanvasSource.includes('wet-paint-surface-highlight'), 'drawing strokes render as painted, material-aware surface artwork with contact/depth treatment');
 assert(assetRenderingSource.includes('data-realism-layer="decal-surface-blending"') && assetRenderingSource.includes('surfaceBlendOpacity') && assetRenderingSource.includes('asset-contact-shadow'), 'decals render with material-aware surface blending and contact shadow');
 assert(assetRenderingSource.includes('improved-highlight-depth') && assetRenderingSource.includes('r * 1.28') && assetRenderingSource.includes('asset-specular-accent'), 'charms and jewels render with improved highlight and depth accents');
+
+assert(PATTERNS.includes('camo') && PATTERNS.includes('houndstooth'), 'Pattern options include Camo and Houndstooth');
+assert(nailCanvasSource.includes('case "camo"') && nailCanvasSource.includes('data-pattern="camo"') && nailCanvasSource.includes('C1 3 14 5'), 'Camo renders organic irregular blob pattern content');
+assert(nailCanvasSource.includes('case "houndstooth"') && nailCanvasSource.includes('data-pattern="houndstooth"') && nailCanvasSource.includes('M0 0 H18 V6 L24 0'), 'Houndstooth renders a clipped repeating textile pattern');
+assert(nailCanvasSource.includes('export function PatternDefs') && nailThumbnailSource.includes('import { ArtRealismDefs, PaintedStroke, PatternDefs') && nailThumbnailSource.includes('<PatternDefs id={id} layer={layer}/>'), 'Active canvas and thumbnails share the same pattern rendering');
+assert(nailCanvasSource.includes('patternTransform(layer)') && nailCanvasSource.includes('patternTransform(layer, 35)') && nailCanvasSource.includes('scaleX') && nailCanvasSource.includes('rotation'), 'Pattern rendering respects existing pattern transform controls for position, scale, and rotation');
+for (const patternName of ['dots', 'stripes', 'checker', 'french-tip', 'glitter', 'marble']) assert(PATTERNS.includes(patternName), `${patternName} pattern option still exists`);
+assert.deepEqual(SHAPES, visibleHeroShapeFamilies, 'Hero 7 remains exact while Duck stays hidden');
+
 assert(nailCanvasSource.includes('data-realism-layer="material-aware-clipped-pattern"') && nailThumbnailSource.includes('data-realism-layer="material-aware-clipped-pattern"') && nailCanvasSource.includes('clipPath={`url(#${clipId})`} opacity={(layer.opacity ?? 1) * art.artOpacity}'), 'patterns stay clipped and share material lighting behavior on active canvas and thumbnails');
 assert(nailCanvasSource.includes('data.polishType === "Jelly" ? 0.82') && nailCanvasSource.includes('data.polishType === "Milky" ? 0.88') && nailCanvasSource.includes('data.polishType === "Matte" ? 0.76') && polishRendererSource.includes('data-polish-material={polishType}'), 'Cream/Jelly/Milky/Matte materials continue to drive polish rendering and nail-art blending');
 assert(nailCanvasSource.includes('<PaintedStroke key={stroke.id}') && nailThumbnailSource.includes('<PaintedStroke key={stroke.id}') && nailCanvasSource.includes('<AssetSurfaceBlend layer={layer} render={assetRender}/>') && nailThumbnailSource.includes('<AssetSurfaceBlend layer={layer} render={assetRender}/>'), 'active canvas and thumbnails share the same nail-art realism components');
