@@ -46,7 +46,7 @@ export function normalizePolishData(data = {}, fallbackColor = "#E8A0BF") {
   }
   return normalized;
 }
-export const PATTERNS = ["dots", "stripes", "checker", "french-tip", "glitter", "marble", "camo", "houndstooth"];
+export const PATTERNS = ["dots", "stripes", "checker", "french-tip", "glitter", "marble", "camo", "houndstooth", "leopard", "cheetah", "zebra", "cow-print", "snake-print", "tiger-stripe"];
 export const GRADIENT_DIRECTIONS = ["vertical", "horizontal", "diagonal", "reverse-diagonal"];
 export const FRENCH_TIP_STYLES = ["classic", "deep", "angled", "v", "reverse"];
 export const FRENCH_TIP_PRESETS = {
