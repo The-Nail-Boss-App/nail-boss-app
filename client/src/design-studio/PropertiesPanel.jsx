@@ -1,5 +1,5 @@
 import { COLORS, S } from "../styles.js";
-import { POLISH_TYPES, TOP_COATS, normalizePolishData } from "./blueprint.js";
+import { ASSET_SIZE_RANGE, POLISH_TYPES, TOP_COATS, normalizePolishData } from "./blueprint.js";
 import { PATTERNS, GRADIENT_DIRECTIONS, FRENCH_TIP_PRESETS, FRENCH_TIP_STYLES } from "./blueprint.js";
 import { findAsset } from "./assets.js";
 import { UI } from "./studioStyles.js";
@@ -43,7 +43,7 @@ export default function PropertiesPanel({ layer, onPatch, onDuplicate, onDelete 
       {isAsset && <>
         <Color label="Color" value={layer.data.colorHex || asset?.defaultColor || "#FFFFFF"} onChange={(colorHex) => onPatch({ data: { ...layer.data, colorHex } })} disabled={disabled} />
         <Range label="Opacity" value={Math.round(layer.opacity * 100)} min={5} max={100} onChange={(v) => onPatch({ opacity: v / 100 })} disabled={disabled} />
-        <Range label="Size" value={Math.round(layer.transform.scaleX * 100)} min={6} max={34} onChange={(v) => onPatch({ transform: { ...layer.transform, scaleX: v / 100, scaleY: v / 100 } })} disabled={disabled} />
+        <Range label="Size" value={Math.round(layer.transform.scaleX * 100)} min={Math.round(ASSET_SIZE_RANGE.min * 100)} max={Math.round(ASSET_SIZE_RANGE.max * 100)} onChange={(v) => onPatch({ transform: { ...layer.transform, scaleX: v / 100, scaleY: v / 100 } })} disabled={disabled} />
         <Range label="Rotation" value={Math.round(layer.transform.rotation)} min={-180} max={180} onChange={(v) => onPatch({ transform: { ...layer.transform, rotation: v } })} disabled={disabled} />
         <Range label="X position" value={Math.round(layer.transform.x * 100)} min={0} max={100} onChange={(v) => onPatch({ transform: { ...layer.transform, x: v / 100 } })} disabled={disabled} />
         <Range label="Y position" value={Math.round(layer.transform.y * 100)} min={0} max={100} onChange={(v) => onPatch({ transform: { ...layer.transform, y: v / 100 } })} disabled={disabled} />
