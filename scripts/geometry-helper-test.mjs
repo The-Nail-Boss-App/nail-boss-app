@@ -129,6 +129,13 @@ assert(assetRenderingSource.includes('data-realism-layer="asset-contact-shadow"'
 assert(assetRenderingSource.includes('data-realism-layer="asset-specular-accent"') && nailCanvasSource.includes('<AssetSpecularAccent layer={layer} render={assetRender}/>') && nailThumbnailSource.includes('<AssetSpecularAccent layer={layer} render={assetRender}/>'), 'jewels and charms render with small supported highlight/accent layers');
 
 
+assert(nailCanvasSource.includes('data-realism-layer="painted-stroke-material-aware-opacity"') && nailCanvasSource.includes('paint-contact-shadow') && nailCanvasSource.includes('wet-paint-surface-highlight'), 'drawing strokes render as painted, material-aware surface artwork with contact/depth treatment');
+assert(assetRenderingSource.includes('data-realism-layer="decal-surface-blending"') && assetRenderingSource.includes('surfaceBlendOpacity') && assetRenderingSource.includes('asset-contact-shadow'), 'decals render with material-aware surface blending and contact shadow');
+assert(assetRenderingSource.includes('improved-highlight-depth') && assetRenderingSource.includes('r * 1.28') && assetRenderingSource.includes('asset-specular-accent'), 'charms and jewels render with improved highlight and depth accents');
+assert(nailCanvasSource.includes('data-realism-layer="material-aware-clipped-pattern"') && nailThumbnailSource.includes('data-realism-layer="material-aware-clipped-pattern"') && nailCanvasSource.includes('clipPath={`url(#${clipId})`} opacity={(layer.opacity ?? 1) * art.artOpacity}'), 'patterns stay clipped and share material lighting behavior on active canvas and thumbnails');
+assert(nailCanvasSource.includes('data.polishType === "Jelly" ? 0.82') && nailCanvasSource.includes('data.polishType === "Milky" ? 0.88') && nailCanvasSource.includes('data.polishType === "Matte" ? 0.76') && polishRendererSource.includes('data-polish-material={polishType}'), 'Cream/Jelly/Milky/Matte materials continue to drive polish rendering and nail-art blending');
+assert(nailCanvasSource.includes('<PaintedStroke key={stroke.id}') && nailThumbnailSource.includes('<PaintedStroke key={stroke.id}') && nailCanvasSource.includes('<AssetSurfaceBlend layer={layer} render={assetRender}/>') && nailThumbnailSource.includes('<AssetSurfaceBlend layer={layer} render={assetRender}/>'), 'active canvas and thumbnails share the same nail-art realism components');
+
 assert(assetRenderingSource.includes('getNailGeometry(nail)') && source.includes('assetFitsNailSilhouette(transform = {}, nail, layer = {})'), 'assets still strict-fit against nail geometry after shape smoothing');
 
 for (const shape of ['Round', 'Oval']) {

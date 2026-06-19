@@ -2,9 +2,10 @@ import { useMemo, useRef, useState } from "react";
 import { COLORS } from "../styles.js";
 import { renderAssetShapes } from "./assets.js";
 import { VIEWBOX, buildNailPath, constrainStrokePoints, getNailArchitecture, getNailGeometry, normalizedToSvg, projectPointInsideNailSilhouette, svgToNormalized, layerSort } from "./blueprint.js";
-import { AssetContactShadow, AssetSpecularAccent, assetLayerRenderProps } from "./assetRendering.js";
+import { AssetContactShadow, AssetSpecularAccent, AssetSurfaceBlend, assetLayerRenderProps } from "./assetRendering.js";
 import { FrenchTipShape } from "./frenchTipRendering.js";
 import { PolishDefs, PolishSurface } from "./PolishRenderer.jsx";
+import { polishMaterialProfile, resolvePolishDataForRender } from "./polish.js";
 
 function LayerGradient({ layer, id }) {
   const direction = layer.data.direction || "vertical";
@@ -15,6 +16,36 @@ function LayerGradient({ layer, id }) {
     "reverse-diagonal": { x1: "1", y1: "0", x2: "0", y2: "1" },
   }[direction] || { x1: "0", y1: "0", x2: "0", y2: "1" };
   return <linearGradient id={id} {...points}><stop offset="0%" stopColor={layer.data.colorA || "#fff"}/><stop offset="100%" stopColor={layer.data.colorB || "#E8A0BF"}/></linearGradient>;
+}
+
+export function artMaterialProfile(baseLayer, nail) {
+  const data = resolvePolishDataForRender(baseLayer?.data || {}, nail?.baseColorHex || "#E8A0BF");
+  const material = polishMaterialProfile(data.polishType, data.shine);
+  const artOpacity = data.polishType === "Jelly" ? 0.82 : data.polishType === "Milky" ? 0.88 : data.polishType === "Matte" ? 0.76 : 1;
+  const edgeSoftness = data.polishType === "Milky" ? 0.7 : data.polishType === "Matte" ? 0.45 : data.polishType === "Jelly" ? 0.35 : 0;
+  const surfaceHighlight = data.polishType === "Matte" ? 0.05 : data.polishType === "Jelly" ? 0.2 : data.polishType === "Milky" ? 0.1 : 0.14;
+  return { ...data, material, artOpacity, edgeSoftness, surfaceHighlight };
+}
+
+export function ArtRealismDefs({ uid }) {
+  return <>
+    <filter id={`${uid}-art-soft-edge`} x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="0.55"/></filter>
+    <filter id={`${uid}-paint-contact-blur`} x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="0.85"/></filter>
+  </>;
+}
+
+export function PaintedStroke({ stroke, nail, baseLayer, uid, baseColor }) {
+  const art = artMaterialProfile(baseLayer, nail);
+  const d = strokePath(stroke.points, nail);
+  const width = (stroke.width || 0.04) * 100;
+  const color = stroke.tool === "eraser" ? baseColor : stroke.colorHex;
+  const opacity = (stroke.opacity ?? 1) * art.artOpacity;
+  return <g data-realism-layer="painted-stroke-material-aware-opacity" style={{ mixBlendMode: art.polishType === "Jelly" ? "multiply" : "normal" }}>
+    <path data-realism-layer="paint-contact-shadow" d={d} fill="none" stroke="#1a0815" strokeWidth={width * 1.08} strokeOpacity={0.06 + art.material.depth * 0.05} strokeLinecap="round" strokeLinejoin="round" filter={`url(#${uid}-paint-contact-blur)`}/>
+    {art.edgeSoftness > 0 && <path data-realism-layer="material-softened-paint-edge" d={d} fill="none" stroke={color} strokeWidth={width * 1.12} strokeOpacity={opacity * 0.34} strokeLinecap="round" strokeLinejoin="round" filter={`url(#${uid}-art-soft-edge)`}/>}
+    <path d={d} fill="none" stroke={color} strokeWidth={width} strokeOpacity={opacity} strokeLinecap="round" strokeLinejoin="round" filter={stroke.tool === "soft" ? `url(#${uid}-soft)` : undefined} strokeDasharray={stroke.tool === "glitter" ? "1 9" : undefined}/>
+    <path data-realism-layer="wet-paint-surface-highlight" d={d} fill="none" stroke="#fff" strokeWidth={Math.max(1, width * 0.18)} strokeOpacity={art.surfaceHighlight} strokeLinecap="round" strokeLinejoin="round"/>
+  </g>;
 }
 
 function PatternDefs({ layer, id }) {
@@ -167,22 +198,24 @@ export default function NailCanvas({ nail, layers, selectedLayerId, mode, brush,
     }
     if (layer.type === "pattern") {
       const id = `${uid}-${layer.id}`;
-      return <g key={layer.id} clipPath={`url(#${clipId})`} opacity={layer.opacity} pointerEvents="none"><defs><PatternDefs layer={layer} id={id}/></defs><rect x="0" y="0" width={VIEWBOX.width} height={VIEWBOX.height} fill={`url(#${id})`}/></g>;
+      const art = artMaterialProfile(baseLayer, nail);
+      return <g key={layer.id} clipPath={`url(#${clipId})`} opacity={(layer.opacity ?? 1) * art.artOpacity} data-realism-layer="material-aware-clipped-pattern" pointerEvents="none"><defs><PatternDefs layer={layer} id={id}/></defs><rect x="0" y="0" width={VIEWBOX.width} height={VIEWBOX.height} fill={`url(#${id})`}/><path d={path} fill="#fff" opacity={art.surfaceHighlight * 0.32}/><path d={path} fill="#2b1024" opacity={art.polishType === "Matte" ? 0.035 : 0}/></g>;
     }
     if (layer.type === "frenchTip") {
       return <FrenchTipShape key={layer.id} layer={layer} nail={nail} clipId={clipId}/>;
     }
     if (layer.type === "drawing") {
       return <g key={layer.id} clipPath={`url(#${clipId})`} opacity={layer.opacity} pointerEvents={drawingMode ? "none" : "auto"} onPointerDown={selectOverlay}>
-        {(layer.data?.strokes || []).map((stroke) => <path key={stroke.id} d={strokePath(stroke.points, nail)} fill="none" stroke={stroke.tool === "eraser" ? baseLayer?.data?.colorHex : stroke.colorHex} strokeWidth={(stroke.width || 0.04) * 100} strokeOpacity={stroke.opacity} strokeLinecap="round" strokeLinejoin="round" filter={stroke.tool === "soft" ? `url(#${uid}-soft)` : undefined} strokeDasharray={stroke.tool === "glitter" ? "1 9" : undefined}/>) }
+        {(layer.data?.strokes || []).map((stroke) => <PaintedStroke key={stroke.id} stroke={stroke} nail={nail} baseLayer={baseLayer} uid={uid} baseColor={baseLayer?.data?.colorHex}/>) }
       </g>;
     }
     const p = normalizedToSvg(layer.transform, nail);
     const size = Math.min(geometry.width, geometry.height) * layer.transform.scaleX;
-    const assetRender = assetLayerRenderProps(layer, nail);
+    const assetRender = assetLayerRenderProps(layer, nail, artMaterialProfile(baseLayer, nail));
     const selected = selectedLayerId === layer.id;
     return <g key={layer.id} clipPath={`url(#${clipId})`} opacity={assetRender.opacity} onPointerDown={(e) => pointerDown(e, layer)} style={{ cursor: layer.locked ? "not-allowed" : "grab" }} data-layer-type={layer.type} data-asset-id={assetRender.assetId}>
       <AssetContactShadow render={assetRender} uid={uid}/>
+      <AssetSurfaceBlend layer={layer} render={assetRender}/>
       <g transform={assetRender.innerTransform}>
         {renderAssetShapes(assetRender.assetId, assetRender.colorHex)}
         <AssetSpecularAccent layer={layer} render={assetRender}/>
@@ -202,13 +235,14 @@ export default function NailCanvas({ nail, layers, selectedLayerId, mode, brush,
         <defs>
           <clipPath id={clipId}><path d={path}/></clipPath>
           <filter id={`${uid}-soft`}><feGaussianBlur stdDeviation="1.2"/></filter>
+          <ArtRealismDefs uid={uid}/>
           <filter id={`${uid}-asset-shadow-blur`} x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="2.4"/></filter>
           <PolishDefs nail={nail} baseLayer={baseLayer} uid={uid}/>
         </defs>
         <rect width={VIEWBOX.width} height={VIEWBOX.height} fill="transparent"/>
         <PolishSurface nail={nail} baseLayer={baseLayer} path={path} clipId={clipId} uid={uid}/>
         {artLayers.map(layerNode)}
-        {drag?.kind === "drawing" && <g clipPath={`url(#${clipId})`}><path d={strokePath(drag.stroke.points, nail)} fill="none" stroke={drag.stroke.colorHex} strokeWidth={(drag.stroke.width || 0.04) * 100} strokeOpacity={drag.stroke.opacity} strokeLinecap="round" strokeLinejoin="round"/></g>}
+        {drag?.kind === "drawing" && <g clipPath={`url(#${clipId})`}><path d={strokePath(drag.stroke.points, nail)} fill="none" stroke={drag.stroke.colorHex} strokeWidth={(drag.stroke.width || 0.04) * 100} strokeOpacity={drag.stroke.opacity} strokeLinecap="round" strokeLinejoin="round" data-realism-layer="in-progress-painted-stroke-preview"/></g>}
         {cursorPoint && mode === "draw" && <g pointerEvents="none" aria-hidden="true" transform={`translate(${cursorPoint.x} ${cursorPoint.y}) rotate(-34)`}>
           <path d={`M ${-brushCursorLength * 0.46} ${-brushCursorWidth * 0.42} L ${brushCursorLength * 0.32} ${-brushCursorWidth * 0.23} Q ${brushCursorLength * 0.55} 0 ${brushCursorLength * 0.32} ${brushCursorWidth * 0.23} L ${-brushCursorLength * 0.46} ${brushCursorWidth * 0.42} Q ${-brushCursorLength * 0.35} 0 ${-brushCursorLength * 0.46} ${-brushCursorWidth * 0.42} Z`} fill={brush.colorHex} fillOpacity=".72" stroke="#2b1024" strokeOpacity=".62" strokeWidth="1.1"/>
           <path d={`M ${-brushCursorLength * 0.34} 0 L ${brushCursorLength * 0.5} 0`} stroke="#fff" strokeOpacity=".58" strokeWidth="1" strokeLinecap="round"/>
