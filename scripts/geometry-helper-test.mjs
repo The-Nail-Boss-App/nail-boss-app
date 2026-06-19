@@ -137,11 +137,24 @@ assert(nailCanvasSource.includes('data-realism-layer="painted-stroke-material-aw
 assert(assetRenderingSource.includes('data-realism-layer="decal-surface-blending"') && assetRenderingSource.includes('surfaceBlendOpacity') && assetRenderingSource.includes('asset-contact-shadow'), 'decals render with material-aware surface blending and contact shadow');
 assert(assetRenderingSource.includes('improved-highlight-depth') && assetRenderingSource.includes('r * 1.28') && assetRenderingSource.includes('asset-specular-accent'), 'charms and jewels render with improved highlight and depth accents');
 
-assert(PATTERNS.includes('camo') && PATTERNS.includes('houndstooth'), 'Pattern options include Camo and Houndstooth');
-for (const patternName of ['leopard', 'cheetah', 'zebra', 'cow-print', 'snake-print', 'tiger-stripe']) assert(PATTERNS.includes(patternName), `${patternName} animal print pattern option exists`);
-for (const marker of ['data-animal-print="irregular-rosette-open-centers"', 'data-animal-print="small-solid-irregular-scattered-spots"', 'data-animal-print="flowing-organic-stripe-bands"', 'data-animal-print="large-irregular-organic-patches-negative-space"', 'data-animal-print="scale-like-repeating-organic-diamond-texture"', 'data-animal-print="sharp-organic-stripe-marks-uneven-spacing"']) assert(nailCanvasSource.includes(marker), `Animal print renders via shared PatternDefs marker ${marker}`);
-assert(nailCanvasSource.includes('case "camo"') && nailCanvasSource.includes('data-pattern="camo"') && nailCanvasSource.includes('data-camo-shapes="small-layered-organic-patches-three-tones-less-repetition"') && nailCanvasSource.includes('width="58" height="46"') && nailCanvasSource.includes('fill={accent} opacity=".36"'), 'Camo renders smaller varied organic patch shapes with primary, secondary, and softened accent tones');
-assert(nailCanvasSource.includes('case "houndstooth"') && nailCanvasSource.includes('data-pattern="houndstooth"') && nailCanvasSource.includes('data-houndstooth-shapes="broken-check-tooth-diagonal-extensions"') && nailCanvasSource.includes('width="48" height="48"') && nailCanvasSource.includes('M0 0 H20 L24 6 L31 0'), 'Houndstooth renders larger interlocking tooth/check textile shapes');
+const targetedPatternOptions = ['glitter', 'marble', 'camo', 'houndstooth', 'leopard', 'cheetah', 'zebra', 'cow-print', 'snake-print', 'tiger-stripe'];
+for (const patternName of targetedPatternOptions) assert(PATTERNS.includes(patternName), `${patternName} refined pattern option still exists`);
+for (const marker of [
+  'data-pattern-quality="artist-calibrated-fine-scattered-flecks-dots-crosses-sparkle-points"',
+  'data-pattern-quality="artist-calibrated-soft-flowing-veins-varied-thickness-opacity"',
+  'data-camo-shapes="artist-calibrated-irregular-offset-layered-patches-dense-asymmetric"',
+  'data-houndstooth-shapes="artist-calibrated-broken-check-teeth-diagonal-extensions-textile-rhythm"',
+  'data-animal-print="artist-calibrated-irregular-rosettes-varied-size-accent-dots"',
+  'data-animal-print="artist-calibrated-small-solid-irregular-spots-varied-scale-rotation"',
+  'data-animal-print="artist-calibrated-long-flowing-organic-stripe-bands-natural-spacing"',
+  'data-animal-print="artist-calibrated-large-irregular-patches-strong-negative-space"',
+  'data-animal-print="artist-calibrated-staggered-organic-scale-diamond-texture"',
+  'data-animal-print="artist-calibrated-sharp-tapered-curved-stripe-marks-uneven-spacing"',
+]) assert(nailCanvasSource.includes(marker), `Pattern renderer includes refined preset marker ${marker}`);
+assert(nailCanvasSource.includes('case "glitter"') && nailCanvasSource.includes('h4 M25 14 v4') && nailCanvasSource.includes('l1 2.4 2.5 .9'), 'Glitter renders scattered fine dots, tiny crosses, and sparkle flecks instead of a star-only grid');
+assert(nailCanvasSource.includes('case "marble"') && nailCanvasSource.includes('width="92" height="74"') && nailCanvasSource.includes('strokeWidth="4.4"') && nailCanvasSource.includes('strokeWidth=".9"'), 'Marble renders larger soft flowing veins with varied thickness and opacity');
+assert(nailCanvasSource.includes('case "camo"') && nailCanvasSource.includes('data-pattern="camo"') && nailCanvasSource.includes('width="76" height="61"') && nailCanvasSource.includes('fill={accent} opacity=".36"'), 'Camo renders offset organic patch shapes with primary, secondary, and softened accent tones');
+assert(nailCanvasSource.includes('case "houndstooth"') && nailCanvasSource.includes('data-pattern="houndstooth"') && nailCanvasSource.includes('width="48" height="48"') && nailCanvasSource.includes('M0 0 H20 L24 6 L31 0'), 'Houndstooth renders interlocking broken-check tooth textile shapes');
 assert(nailCanvasSource.includes('export function PatternDefs') && nailThumbnailSource.includes('import { ArtRealismDefs, PaintedStroke, PatternDefs') && nailThumbnailSource.includes('<PatternDefs id={id} layer={layer}/>'), 'Active canvas and thumbnails share the same pattern rendering');
 assert(nailCanvasSource.includes('patternTransform(layer)') && nailCanvasSource.includes('patternTransform(layer, 35)') && nailCanvasSource.includes('scaleX') && nailCanvasSource.includes('rotation'), 'Pattern rendering respects existing pattern transform controls for position, scale, and rotation');
 for (const patternName of ['dots', 'stripes', 'checker', 'french-tip', 'glitter', 'marble']) assert(PATTERNS.includes(patternName), `${patternName} pattern option still exists`);
