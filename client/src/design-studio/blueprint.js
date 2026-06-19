@@ -309,7 +309,9 @@ export function svgToNormalized(point, nail) {
 
 const ASSET_LAYER_TYPES = new Set(["charm", "jewel", "decal"]);
 const NON_ASSET_FULL_SURFACE_TYPES = new Set(["drawing", "pattern", "gradient", "frenchTip"]);
-const ASSET_MIN_SCALE = 0.06;
+export const ASSET_MIN_SCALE = 0.06;
+export const ASSET_MAX_SCALE = 3;
+export const ASSET_SIZE_RANGE = { min: ASSET_MIN_SCALE, max: ASSET_MAX_SCALE };
 
 function roundPoint(point) {
   return { x: Number(point.x.toFixed(6)), y: Number(point.y.toFixed(6)) };
@@ -385,8 +387,7 @@ function fitSearch(transform, nail, layer) {
 
 export function constrainAssetTransform(transform = {}, nail, layer = {}) {
   const layerType = layer.type || layer;
-  const maxScale = layerType === "jewel" ? 0.24 : 0.34;
-  let scale = clamp(Math.max(Math.abs(transform.scaleX ?? 0.18), Math.abs(transform.scaleY ?? 0.18)), ASSET_MIN_SCALE, maxScale);
+  let scale = clamp(Math.max(Math.abs(transform.scaleX ?? 0.18), Math.abs(transform.scaleY ?? 0.18)), ASSET_MIN_SCALE, ASSET_MAX_SCALE);
   let candidate = {
     x: clamp(transform.x ?? 0.5, 0, 1),
     y: clamp(transform.y ?? 0.5, 0, 1),
@@ -395,14 +396,14 @@ export function constrainAssetTransform(transform = {}, nail, layer = {}) {
     rotation: clamp(transform.rotation ?? 0, -180, 180),
   };
   candidate = { ...candidate, ...projectPointInsideNailSilhouette(candidate, nail) };
-  while (scale >= ASSET_MIN_SCALE) {
-    const found = fitSearch(candidate, nail, layerType);
-    if (found) return { ...found, scaleX: Number(scale.toFixed(6)), scaleY: Number(scale.toFixed(6)) };
-    scale *= 0.92;
-    candidate = { ...candidate, scaleX: scale, scaleY: scale };
+  if (assetFitsNailSilhouette(candidate, nail, layerType)) {
+    return { ...candidate, scaleX: Number(scale.toFixed(6)), scaleY: Number(scale.toFixed(6)) };
   }
-  const safeCenter = projectPointInsideNailSilhouette({ x: 0.5, y: 0.5 }, nail);
-  return { ...candidate, ...safeCenter, scaleX: ASSET_MIN_SCALE, scaleY: ASSET_MIN_SCALE };
+
+  // Oversized statement charms/decals intentionally rely on SVG nail clipping.
+  // Keep their anchor point inside the nail surface and preserve user-selected scale
+  // instead of shrinking them back to the old strict-fit maximum.
+  return { ...candidate, scaleX: Number(scale.toFixed(6)), scaleY: Number(scale.toFixed(6)) };
 }
 
 export function constrainStrokePoints(points = [], nail) {
@@ -434,7 +435,7 @@ function legacyRevalidateLayersAfterNailResize(blueprint) {
 
 export function safeTransform(transform = {}, nail, layerType = "asset") {
   if (ASSET_LAYER_TYPES.has(layerType)) return constrainAssetTransform(transform, nail, layerType);
-  const scale = NON_ASSET_FULL_SURFACE_TYPES.has(layerType) ? 1 : clamp(Math.max(Math.abs(transform.scaleX ?? 0.18), Math.abs(transform.scaleY ?? 0.18)), ASSET_MIN_SCALE, 0.34);
+  const scale = NON_ASSET_FULL_SURFACE_TYPES.has(layerType) ? 1 : clamp(Math.max(Math.abs(transform.scaleX ?? 0.18), Math.abs(transform.scaleY ?? 0.18)), ASSET_MIN_SCALE, ASSET_MAX_SCALE);
   return {
     x: clamp(transform.x ?? 0.5, 0, 1),
     y: clamp(transform.y ?? 0.5, 0, 1),
@@ -812,12 +813,14 @@ export function addStrokeToDrawingLayer(blueprint, stroke, tool = "solid", prefe
     const drawing = preferred || nail.layers.find(isReusableDrawingLayer);
     if (drawing) {
       drawingId = drawing.id;
-      return {
-        ...nail,
-        layers: nail.layers.map((layer) => (layer.id === drawing.id
-          ? { ...layer, data: { ...layer.data, tool, strokes: [...(layer.data?.strokes || []), stroke] } }
-          : layer)),
-      };
+      const updatedLayers = nail.layers.map((layer) => (layer.id === drawing.id
+        ? {
+          ...layer,
+          order: preferredLayerId ? layer.order : Math.max(...nail.layers.map((item) => item.order ?? 0)) + 1,
+          data: { ...layer.data, tool, strokes: [...(layer.data?.strokes || []), stroke] },
+        }
+        : layer));
+      return { ...nail, layers: preferredLayerId ? updatedLayers : renumberLayers(updatedLayers) };
     }
     const layer = drawingLayer(nail, tool);
     drawingId = layer.id;

@@ -38,10 +38,13 @@ const {
   getVisibleBaseColor,
   synchronizeBase,
   updateActiveNail,
+  renumberLayers,
+  drawingLayer,
   frenchTipLayer,
   applyFrenchTipToSlots,
   normalizeFrenchTipData,
   FRENCH_TIP_PRESETS,
+  ASSET_SIZE_RANGE,
   POLISH_TYPES,
   clearStalePolishTypeForLegacyEffect,
   normalizePolishData,
@@ -136,7 +139,7 @@ assert(nailCanvasSource.includes('data-realism-layer="material-aware-clipped-pat
 assert(nailCanvasSource.includes('data.polishType === "Jelly" ? 0.82') && nailCanvasSource.includes('data.polishType === "Milky" ? 0.88') && nailCanvasSource.includes('data.polishType === "Matte" ? 0.76') && polishRendererSource.includes('data-polish-material={polishType}'), 'Cream/Jelly/Milky/Matte materials continue to drive polish rendering and nail-art blending');
 assert(nailCanvasSource.includes('<PaintedStroke key={stroke.id}') && nailThumbnailSource.includes('<PaintedStroke key={stroke.id}') && nailCanvasSource.includes('<AssetSurfaceBlend layer={layer} render={assetRender}/>') && nailThumbnailSource.includes('<AssetSurfaceBlend layer={layer} render={assetRender}/>'), 'active canvas and thumbnails share the same nail-art realism components');
 
-assert(assetRenderingSource.includes('getNailGeometry(nail)') && source.includes('assetFitsNailSilhouette(transform = {}, nail, layer = {})'), 'assets still strict-fit against nail geometry after shape smoothing');
+assert(assetRenderingSource.includes('getNailGeometry(nail)') && source.includes('assetFitsNailSilhouette(transform = {}, nail, layer = {})'), 'assets still use nail geometry and clipping helpers after shape smoothing');
 
 for (const shape of ['Round', 'Oval']) {
   const shaped = { ...defaultShapeNail, shape };
@@ -335,6 +338,14 @@ const secondStroke = { ...firstStroke, id: 'second-stroke' };
 const appended = addStrokeToDrawingLayer(recreated.blueprint, secondStroke, 'solid', recreated.layerId);
 assert.equal(getActiveNail(appended.blueprint).layers.filter((layer) => layer.type === 'drawing').length, 1, 'subsequent strokes reuse the editable drawing layer');
 assert.equal(getActiveNail(appended.blueprint).layers.find((layer) => layer.type === 'drawing').data.strokes.length, 2, 'subsequent strokes append without creating duplicate layers');
+const frenchBehindDrawing = updateActiveNail(createDefaultBlueprint(), (activeNail) => {
+  const french = { ...frenchTipLayer(activeNail, 'classic', 'medium'), id: 'french-under-art', order: 2 };
+  const drawing = { ...drawingLayer(activeNail), id: 'drawing-over-french', order: 1, data: { tool: 'solid', strokes: [] } };
+  return { ...activeNail, layers: renumberLayers([activeNail.layers[0], drawing, french]) };
+});
+const drawnOverFrench = addStrokeToDrawingLayer(frenchBehindDrawing, { ...firstStroke, id: 'stroke-over-french' }, 'solid');
+const overFrenchNail = getActiveNail(drawnOverFrench.blueprint);
+assert(overFrenchNail.layers.find((layer) => layer.id === 'drawing-over-french').order > overFrenchNail.layers.find((layer) => layer.id === 'french-under-art').order, 'new drawing strokes render above French Tip layers by default');
 
 const hiddenDrawingBlueprint = updateActiveNail(createDefaultBlueprint(), (activeNail) => ({
   ...activeNail,
@@ -383,14 +394,16 @@ for (const shape of SHAPES) {
   assert.deepEqual(points[0], projected, `${shape} stroke points are constrained deterministically`);
 
   const largeAsset = { type: 'charm' };
-  const constrained = constrainAssetTransform({ x: 0.98, y: 0.98, scaleX: 0.34, scaleY: 0.34, rotation: 38 }, shapedNail, largeAsset);
-  assert(assetFitsNailSilhouette(constrained, shapedNail, largeAsset), `${shape} rotated large asset fits silhouette`);
-  assert(constrained.scaleX <= 0.34 && constrained.scaleX >= 0.06, `${shape} scale stays normalized and bounded`);
+  const constrained = constrainAssetTransform({ x: 0.98, y: 0.98, scaleX: 3, scaleY: 3, rotation: 38 }, shapedNail, largeAsset);
+  assert(isPointInsideNailSilhouette({ x: constrained.x, y: constrained.y }, shapedNail), `${shape} oversized asset anchor stays inside the nail for clipping`);
+  assert.equal(constrained.scaleX, 3, `${shape} preserves enlarged statement asset scale for clipped rendering`);
+  assert(constrained.scaleX <= ASSET_SIZE_RANGE.max && constrained.scaleX >= ASSET_SIZE_RANGE.min, `${shape} scale stays normalized and bounded`);
 }
 
 const stiletto = { ...nail, shape: 'Stiletto' };
 const jewel = { type: 'jewel' };
-assert(assetFitsNailSilhouette(safeTransform({ x: 0.5, y: 0.98, scaleX: 0.22, scaleY: 0.22, rotation: 0 }, stiletto, 'jewel'), stiletto, jewel), 'jewel near stiletto tip is safely repositioned or reduced');
+const stilettoJewelTransform = safeTransform({ x: 0.5, y: 0.98, scaleX: 0.22, scaleY: 0.22, rotation: 0 }, stiletto, 'jewel');
+assert(isPointInsideNailSilhouette({ x: stilettoJewelTransform.x, y: stilettoJewelTransform.y }, stiletto), 'jewel near stiletto tip keeps its anchor clipped inside the nail');
 
 const blueprintDoc = createDefaultBlueprint({ shape: 'Oval', length: 1, width: 1 });
 const active = getActiveNail(blueprintDoc);
@@ -399,8 +412,8 @@ const withLayer = ensureBlueprint({ ...blueprintDoc, nails: [{ ...active, layers
 const resized = revalidateLayersAfterNailResize({ ...withLayer, nails: [{ ...getActiveNail(withLayer), shape: 'Almond', length: 0.15, width: 0.05 }] });
 const resizedNail = getActiveNail(resized);
 const resizedLayer = resizedNail.layers.find((item) => item.type === 'charm');
-assert(assetFitsNailSilhouette(resizedLayer.transform, resizedNail, resizedLayer), 'asset revalidates after shape, length, and width changes');
-assert.equal(quantitySummary(resized).charm, 1, 'quantity hooks count only valid visible charm geometry');
+assert(isPointInsideNailSilhouette({ x: resizedLayer.transform.x, y: resizedLayer.transform.y }, resizedNail), 'asset revalidates anchor after shape, length, and width changes while remaining clipped');
+assert.equal(quantitySummary(resized).charm, assetFitsNailSilhouette(resizedLayer.transform, resizedNail, resizedLayer) ? 1 : 0, 'quantity hooks still require fully visible valid charm geometry');
 
 
 
@@ -508,6 +521,13 @@ assert.equal(blueprint.getNailBySlot(copiedSelected, 'left-index').slot, 'left-i
 const reloadedCopy = blueprint.ensureFullSetBlueprint(JSON.parse(JSON.stringify(copiedSelected)));
 assertCopiedDesignIntegrity(reloadedCopy, 'left-index', 'save and reload preserves copied asset layers');
 assert(nailCanvasSource.includes('layer.type === "gradient"') && nailCanvasSource.includes('layer.type === "pattern"') && nailCanvasSource.includes('layer.type === "frenchTip"') && nailCanvasSource.includes('renderAssetShapes(assetRender.assetId'), 'main canvas renders gradient, pattern, French Tip, and asset layers');
+assert(propertiesPanelSource.includes('ASSET_SIZE_RANGE') && propertiesPanelSource.includes('max={Math.round(ASSET_SIZE_RANGE.max * 100)}'), 'existing asset Size control uses the enlarged shared max range');
+assert.equal(ASSET_SIZE_RANGE.max, 3, 'asset max size supports 300% statement charms, jewels, and decals');
+const oversizedAsset = constrainAssetTransform({ x: 0.5, y: 0.5, scaleX: 3, scaleY: 3, rotation: 0 }, nail, { type: 'decal' });
+assert.equal(oversizedAsset.scaleX, 3, 'resized decal can render larger than the previous 34% max');
+assert(nailThumbnailSource.includes('assetLayerRenderProps(layer, nail') && nailThumbnailSource.includes('renderAssetShapes(assetRender.assetId'), 'thumbnails use the same layer transform renderer for enlarged assets');
+const oversizedSaved = ensureBlueprint({ ...createDefaultBlueprint(), nails: [{ ...getActiveNail(createDefaultBlueprint()), layers: [{ ...getActiveNail(createDefaultBlueprint()).layers[0] }, { id: 'large-decal', type: 'decal', name: 'Large decal', visible: true, locked: false, opacity: 1, order: 1, transform: oversizedAsset, data: { assetId: 'decal-star', colorHex: '#FFFFFF' } }] }] });
+assert.equal(getActiveNail(oversizedSaved).layers.find((layer) => layer.id === 'large-decal').transform.scaleX, 3, 'large asset size persists through blueprint normalization/save-load flow');
 assert(nailThumbnailSource.includes('layer.type === "drawing"') && nailThumbnailSource.includes('layer.type === "gradient"') && nailThumbnailSource.includes('layer.type === "pattern"') && nailThumbnailSource.includes('layer.type === "frenchTip"') && nailThumbnailSource.includes('renderAssetShapes(assetRender.assetId'), 'full-set thumbnails render drawing, gradient, pattern, French Tip, charm, jewel, and decal asset layers');
 assert(!nailCanvasSource.includes('dangerouslySetInnerHTML') && !nailThumbnailSource.includes('dangerouslySetInnerHTML'), 'canvas and thumbnail rendering never inject untrusted inline SVG HTML');
 assert(nailThumbnailSource.includes('layer.visible !== false'), 'thumbnail preview hides hidden layers');
