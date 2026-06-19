@@ -4,18 +4,74 @@ import { renderAssetShapes } from "./assets.js";
 import { VIEWBOX, buildNailPath, constrainStrokePoints, getNailArchitecture, getNailGeometry, normalizedToSvg, projectPointInsideNailSilhouette, svgToNormalized, layerSort } from "./blueprint.js";
 import { AssetContactShadow, AssetSpecularAccent, AssetSurfaceBlend, assetLayerRenderProps } from "./assetRendering.js";
 import { FrenchTipShape } from "./frenchTipRendering.js";
-import { PolishDefs, PolishSurface } from "./PolishRenderer.jsx";
+import { PolishDefs, PolishSurface, SharedPolishRealismLayers } from "./PolishRenderer.jsx";
 import { polishMaterialProfile, resolvePolishDataForRender } from "./polish.js";
 
-function LayerGradient({ layer, id }) {
-  const direction = layer.data.direction || "vertical";
-  const points = {
-    vertical: { x1: "0", y1: "0", x2: "0", y2: "1" },
-    horizontal: { x1: "0", y1: "0", x2: "1", y2: "0" },
-    diagonal: { x1: "0", y1: "0", x2: "1", y2: "1" },
-    "reverse-diagonal": { x1: "1", y1: "0", x2: "0", y2: "1" },
-  }[direction] || { x1: "0", y1: "0", x2: "0", y2: "1" };
-  return <linearGradient id={id} {...points}><stop offset="0%" stopColor={layer.data.colorA || "#fff"}/><stop offset="100%" stopColor={layer.data.colorB || "#E8A0BF"}/></linearGradient>;
+function gradientPoints(direction = "vertical", angle = 90) {
+  if (direction === "aura") return null;
+  const presets = {
+    vertical: 90,
+    "reverse-vertical": 270,
+    horizontal: 0,
+    diagonal: 45,
+    "reverse-diagonal": 135,
+  };
+  const degrees = Number.isFinite(Number(angle)) && !Object.hasOwn(presets, direction) ? Number(angle) : (presets[direction] ?? 90);
+  const radians = (degrees * Math.PI) / 180;
+  const x = Math.cos(radians) * 0.5;
+  const y = Math.sin(radians) * 0.5;
+  return { x1: (0.5 - x).toFixed(3), y1: (0.5 - y).toFixed(3), x2: (0.5 + x).toFixed(3), y2: (0.5 + y).toFixed(3) };
+}
+
+function gradientStops(layer) {
+  const data = layer.data || {};
+  const colorA = data.colorA || "#FFFFFF";
+  const colorB = data.colorB || "#E8A0BF";
+  const blend = Math.max(0.08, Math.min(0.92, Number.isFinite(Number(data.blendPosition)) ? Number(data.blendPosition) : 0.5));
+  const softness = Math.max(0, Math.min(1, Number.isFinite(Number(data.softness)) ? Number(data.softness) : 0.62));
+  const spread = 0.06 + softness * 0.32;
+  const startFade = Math.max(0, blend - spread);
+  const endFade = Math.min(1, blend + spread);
+  return { colorA, colorB, softness, startFade, blend, endFade };
+}
+
+export function LayerGradient({ layer, id }) {
+  const direction = layer.data?.direction || "vertical";
+  const stops = gradientStops(layer);
+  if (direction === "aura") {
+    return <radialGradient id={id} cx="50%" cy="42%" r="64%" data-gradient-mode="center-glow-aura-blend">
+      <stop offset="0%" stopColor={stops.colorA}/>
+      <stop offset={`${Math.round(stops.startFade * 100)}%`} stopColor={stops.colorA} stopOpacity=".96"/>
+      <stop offset={`${Math.round(stops.blend * 100)}%`} stopColor={stops.colorA} stopOpacity=".58"/>
+      <stop offset={`${Math.round(stops.endFade * 100)}%`} stopColor={stops.colorB} stopOpacity=".86"/>
+      <stop offset="100%" stopColor={stops.colorB}/>
+    </radialGradient>;
+  }
+  const points = gradientPoints(direction, layer.data?.angle);
+  return <linearGradient id={id} {...points} data-gradient-softness="diffused-salon-ombre">
+    <stop offset="0%" stopColor={stops.colorA}/>
+    <stop offset={`${Math.round(stops.startFade * 100)}%`} stopColor={stops.colorA}/>
+    <stop offset={`${Math.round(stops.blend * 100)}%`} stopColor={stops.colorA} stopOpacity=".64"/>
+    <stop offset={`${Math.round(stops.endFade * 100)}%`} stopColor={stops.colorB}/>
+    <stop offset="100%" stopColor={stops.colorB}/>
+  </linearGradient>;
+}
+
+export function GradientLayerShape({ layer, nail, baseLayer, path, clipId, uid, thumbnail = false }) {
+  const id = `${uid}-${layer.id}-ombre`;
+  const art = artMaterialProfile(baseLayer, nail);
+  const softness = Math.max(0, Math.min(1, Number(layer.data?.softness ?? 0.62)));
+  const filterId = `${id}-diffusion`;
+  const materialOpacity = (layer.opacity ?? 1) * art.artOpacity;
+  return <g key={layer.id} clipPath={`url(#${clipId})`} opacity={materialOpacity} pointerEvents="none" data-layer-type="gradient" data-gradient-renderer="shared-active-thumbnail-salon-ombre" data-gradient-direction={layer.data?.direction || "vertical"} data-gradient-material={art.polishType}>
+    <defs><LayerGradient layer={layer} id={id}/><filter id={filterId} x="-18%" y="-18%" width="136%" height="136%"><feGaussianBlur stdDeviation={(0.6 + softness * (thumbnail ? 2.6 : 3.8)).toFixed(2)}/></filter></defs>
+    <rect data-realism-layer="soft-diffusion-blur-clipped-gradient-fill" x="-4" y="-4" width={VIEWBOX.width + 8} height={VIEWBOX.height + 8} fill={`url(#${id})`} filter={`url(#${filterId})`}/>
+    {art.polishType === "Jelly" && <rect data-realism-layer="jelly-translucent-glassy-gradient-blend" width={VIEWBOX.width} height={VIEWBOX.height} fill={`url(#${id})`} opacity=".38" style={{ mixBlendMode: "multiply" }}/>}
+    {art.polishType === "Milky" && <><rect data-realism-layer="milky-cloudy-ombre-veil" width={VIEWBOX.width} height={VIEWBOX.height} fill="#fff8fb" opacity=".18"/><ellipse cx="120" cy="145" rx="74" ry="118" fill="#fff" opacity=".12" filter={`url(#${filterId})`}/></>}
+    {art.polishType === "Matte" && <rect data-realism-layer="matte-low-shine-satin-gradient-blend" width={VIEWBOX.width} height={VIEWBOX.height} fill="#2b1024" opacity=".035"/>}
+    <path data-realism-layer="gradient-edge-depth-and-nail-curvature" d={path} fill="none" stroke="#fff" strokeOpacity={art.polishType === "Matte" ? .08 : .18} strokeWidth="1.2"/>
+    <SharedPolishRealismLayers nail={nail} path={path} clipId={clipId} uid={uid} shine={art.shine} colorHex={layer.data?.colorB || art.colorHex} polishType={art.polishType} materialScope="gradient-ombre"/>
+  </g>;
 }
 
 export function artMaterialProfile(baseLayer, nail) {
@@ -212,8 +268,7 @@ export default function NailCanvas({ nail, layers, selectedLayerId, mode, brush,
       onSelectLayer(layer.id);
     };
     if (layer.type === "gradient") {
-      const id = `${uid}-${layer.id}`;
-      return <g key={layer.id} clipPath={`url(#${clipId})`} opacity={layer.opacity} pointerEvents="none"><defs><LayerGradient layer={layer} id={id}/></defs><rect x="0" y="0" width={VIEWBOX.width} height={VIEWBOX.height} fill={`url(#${id})`}/></g>;
+      return <GradientLayerShape key={layer.id} layer={layer} nail={nail} baseLayer={baseLayer} path={path} clipId={clipId} uid={uid}/>;
     }
     if (layer.type === "pattern") {
       const id = `${uid}-${layer.id}`;

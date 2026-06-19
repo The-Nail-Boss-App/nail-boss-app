@@ -47,6 +47,7 @@ const {
   ASSET_SIZE_RANGE,
   POLISH_TYPES,
   PATTERNS,
+  GRADIENT_DIRECTIONS,
   clearStalePolishTypeForLegacyEffect,
   normalizePolishData,
   cloneNailDesign,
@@ -159,7 +160,7 @@ assert(nailCanvasSource.includes('case "glitter"') && nailCanvasSource.includes(
 assert(nailCanvasSource.includes('case "marble"') && nailCanvasSource.includes('width="92" height="74"') && nailCanvasSource.includes('strokeWidth="4.4"') && nailCanvasSource.includes('strokeWidth=".9"'), 'Marble renders larger soft flowing veins with varied thickness and opacity');
 assert(nailCanvasSource.includes('case "camo"') && nailCanvasSource.includes('data-pattern="camo"') && nailCanvasSource.includes('width="86" height="64"') && nailCanvasSource.includes('fill={accent} opacity=".34"'), 'Camo renders flatter overlapping irregular patch shapes with primary, secondary, and softened accent tones');
 assert(nailCanvasSource.includes('case "houndstooth"') && nailCanvasSource.includes('data-pattern="houndstooth"') && nailCanvasSource.includes('width="52" height="52"') && nailCanvasSource.includes('M0 0 H18 L28 12 L38 0'), 'Houndstooth renders interlocking broken-check textile shapes with stronger diagonal tooth extensions');
-assert(nailCanvasSource.includes('export function PatternDefs') && nailThumbnailSource.includes('import { ArtRealismDefs, PaintedStroke, PatternDefs') && nailThumbnailSource.includes('<PatternDefs id={id} layer={layer}/>'), 'Active canvas and thumbnails share the same pattern rendering');
+assert(nailCanvasSource.includes('export function PatternDefs') && nailThumbnailSource.includes('PatternDefs') && nailThumbnailSource.includes('<PatternDefs id={id} layer={layer}/>'), 'Active canvas and thumbnails share the same pattern rendering');
 assert(nailCanvasSource.includes('patternTransform(layer)') && nailCanvasSource.includes('patternTransform(layer, 35)') && nailCanvasSource.includes('scaleX') && nailCanvasSource.includes('rotation'), 'Pattern rendering respects existing pattern transform controls for position, scale, and rotation');
 for (const patternName of ['dots', 'stripes', 'checker', 'french-tip', 'glitter', 'marble']) assert(PATTERNS.includes(patternName), `${patternName} pattern option still exists`);
 assert(nailCanvasSource.includes('clipPath={`url(#${clipId})`}') && nailCanvasSource.includes('patternTransform(layer, -8)') && nailCanvasSource.includes('patternTransform(layer, 8)'), 'Animal prints are clipped and transformable through shared pattern transforms');
@@ -347,7 +348,7 @@ assert(nailCanvasSource.includes('setActiveDrag({ kind: "eraser"') && nailCanvas
 assert(nailCanvasSource.includes('onStageEraseStroke(point)') && !nailCanvasSource.includes('if (mode === "eraser") {\n      onEraseStroke(point);'), 'eraser pointerdown stages a target instead of deleting immediately');
 assert(nailCanvasSource.includes('if (activeDrag.kind === "eraser")') && nailCanvasSource.includes('onEraseStroke(activeDrag.pendingEraseTarget)'), 'matching eraser pointerup commits the staged erase exactly once');
 assert(nailCanvasSource.includes('if (mode === "draw" || mode === "eraser") return;'), 'asset transform pointerMove is guarded during draw and eraser modes');
-assert(nailCanvasSource.includes('pointerEvents="none"><defs><LayerGradient'), 'gradient overlays are canvas-nonblocking in every mode');
+assert(nailCanvasSource.includes('pointerEvents="none" data-layer-type="gradient"') && nailCanvasSource.includes('<defs><LayerGradient'), 'gradient overlays are canvas-nonblocking in every mode');
 assert(nailCanvasSource.includes('pointerEvents="none"><defs><PatternDefs'), 'pattern overlays are canvas-nonblocking in every mode');
 assert(frenchTipRenderingSource.includes('pointerEvents="none" data-layer-type="frenchTip"'), 'French Tip overlays pass pointer events through to underlying canvas artwork');
 assert(!nailCanvasSource.includes('LayerGradient layer={layer} id={id}/></defs><rect') || !nailCanvasSource.includes('onPointerDown={selectOverlay}><defs><LayerGradient'), 'gradient overlay selection is not captured by a full-surface canvas handler');
@@ -749,4 +750,14 @@ assert(polishRendererSource.includes('translucent-colored-glass-gel') && polishR
 assert(polishRendererSource.includes('soft-cloudy-milky-diffusion'), 'Milky keeps an explicit cloudy diffusion veil distinct from Jelly');
 assert.equal(polishModule.resolvePolishDataForRender({}, '#336699').colorHex, '#336699', 'no-base-layer polish render data falls back to nail.baseColorHex instead of default pink');
 assert.equal(polishModule.resolvePolishDataForRender({ colorHex: '#112233', polishType: 'Chrome' }, '#336699').colorHex, '#112233', 'normal base-layer polish color remains authoritative over no-base fallback');
-assert(designStudioSource.includes('function addGradient()') && designStudioSource.includes('function addPattern()') && designStudioSource.includes('Add Gradient') && designStudioSource.includes('Add Pattern'), 'Design Studio keeps clean entry points for creating gradient and pattern layers while the base polish renderer stays flat');
+assert(designStudioSource.includes('function addGradient()') && designStudioSource.includes('function addPattern()') && designStudioSource.includes('Add Ombré / Gradient') && designStudioSource.includes('Add Pattern'), 'Design Studio keeps clean entry points for creating gradient and pattern layers while the base polish renderer stays flat');
+assert.deepEqual(GRADIENT_DIRECTIONS.slice(0, 4), ['vertical', 'reverse-vertical', 'horizontal', 'diagonal'], 'Ombré directions support vertical, reverse vertical, horizontal, and diagonal in the single gradient control');
+assert(GRADIENT_DIRECTIONS.includes('aura') && nailCanvasSource.includes('data-gradient-mode="center-glow-aura-blend"'), 'Center glow/aura ombré blend is implemented as a radial gradient option');
+assert(propertiesPanelSource.includes('Ombré / Gradient') && propertiesPanelSource.includes('Start color') && propertiesPanelSource.includes('End color') && propertiesPanelSource.includes('Blend position') && propertiesPanelSource.includes('Softness / diffusion') && propertiesPanelSource.includes('Angle'), 'Gradient controls expose one nail-tech friendly Ombré / Gradient panel without duplicate entry points');
+assert(source.includes('blendPosition: 0.5') && source.includes('softness: 0.62') && source.includes('angle: 90'), 'New gradient layers persist blend position, softness, and angle defaults for save/load');
+assert(nailCanvasSource.includes('data-realism-layer="soft-diffusion-blur-clipped-gradient-fill"') && nailCanvasSource.includes('feGaussianBlur stdDeviation') && nailCanvasSource.includes('data-gradient-softness="diffused-salon-ombre"'), 'Gradient rendering has softness and diffusion behavior rather than a flat SVG gradient');
+assert(nailCanvasSource.includes('jelly-translucent-glassy-gradient-blend') && nailCanvasSource.includes('milky-cloudy-ombre-veil') && nailCanvasSource.includes('matte-low-shine-satin-gradient-blend') && nailCanvasSource.includes('data-gradient-material={art.polishType}'), 'Gradient rendering respects Cream, Jelly, Milky, and Matte material profiles');
+assert(nailCanvasSource.includes('export function GradientLayerShape') && nailCanvasSource.includes('clipPath={`url(#${clipId})`}') && nailCanvasSource.includes('materialScope="gradient-ombre"'), 'Gradient remains clipped inside the nail silhouette and receives shared curvature realism');
+assert(nailThumbnailSource.includes('<GradientLayerShape key={layer.id} layer={layer} nail={nail} baseLayer={base} path={path} clipId={clipId} uid={clipId} thumbnail/>') && nailCanvasSource.includes('<GradientLayerShape key={layer.id} layer={layer} nail={nail} baseLayer={baseLayer} path={path} clipId={clipId} uid={uid}/>'), 'Active canvas and thumbnails share the same gradient rendering component');
+assert(designStudioSource.includes('function addGradient()') && designStudioSource.match(/Add Ombré \/ Gradient/g)?.length === 1, 'Gradient/ombré entry point exists once and is not duplicated');
+assert(nailCanvasSource.includes('if (layer.type === "frenchTip")') && nailCanvasSource.indexOf('if (layer.type === "gradient")') < nailCanvasSource.indexOf('if (layer.type === "frenchTip")'), 'Gradient layer order remains predictable with French Tip rendering and drawing above French tips intact');

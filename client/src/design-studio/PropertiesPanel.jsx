@@ -49,9 +49,14 @@ export default function PropertiesPanel({ layer, onPatch, onDuplicate, onDelete 
         <Range label="Y position" value={Math.round(layer.transform.y * 100)} min={0} max={100} onChange={(v) => onPatch({ transform: { ...layer.transform, y: v / 100 } })} disabled={disabled} />
       </>}
       {layer.type === "gradient" && <>
-        <Color label="Color A" value={layer.data.colorA} onChange={(colorA) => onPatch({ data: { ...layer.data, colorA } })} disabled={disabled} />
-        <Color label="Color B" value={layer.data.colorB} onChange={(colorB) => onPatch({ data: { ...layer.data, colorB } })} disabled={disabled} />
-        <div style={UI.field}><label style={S.label}>Direction</label><select style={S.input} value={layer.data.direction} disabled={disabled} onChange={(e) => onPatch({ data: { ...layer.data, direction: e.target.value } })}>{GRADIENT_DIRECTIONS.map((direction) => <option key={direction} value={direction}>{direction}</option>)}</select></div>
+        <div style={{ ...UI.sectionTitle, marginTop: 8 }}>Ombré / Gradient</div>
+        <p style={UI.smallText}>Salon-style soft gel blend with clipped diffusion, nail curvature, and material-aware shine.</p>
+        <Color label="Start color" value={layer.data.colorA} onChange={(colorA) => onPatch({ data: { ...layer.data, colorA } })} disabled={disabled} />
+        <Color label="End color" value={layer.data.colorB} onChange={(colorB) => onPatch({ data: { ...layer.data, colorB } })} disabled={disabled} />
+        <div style={UI.field}><label style={S.label}>Blend direction</label><select style={S.input} value={layer.data.direction || "vertical"} disabled={disabled} onChange={(e) => onPatch({ data: { ...layer.data, direction: e.target.value } })}>{GRADIENT_DIRECTIONS.map((direction) => <option key={direction} value={direction}>{direction}</option>)}</select></div>
+        <Range label="Blend position" value={Math.round((layer.data.blendPosition ?? 0.5) * 100)} min={8} max={92} onChange={(v) => onPatch({ data: { ...layer.data, blendPosition: v / 100 } })} disabled={disabled} />
+        <Range label="Softness / diffusion" value={Math.round((layer.data.softness ?? 0.62) * 100)} min={0} max={100} onChange={(v) => onPatch({ data: { ...layer.data, softness: v / 100 } })} disabled={disabled} />
+        <Range label="Angle" value={Math.round(layer.data.angle ?? 90)} min={0} max={360} onChange={(v) => onPatch({ data: { ...layer.data, angle: v } })} disabled={disabled} />
         <Range label="Opacity" value={Math.round(layer.opacity * 100)} min={5} max={100} onChange={(v) => onPatch({ opacity: v / 100 })} disabled={disabled} />
       </>}
       {layer.type === "pattern" && <>
