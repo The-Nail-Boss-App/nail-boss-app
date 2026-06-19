@@ -1,4 +1,5 @@
 import { VIEWBOX, clamp, getNailFreeEdgeExtent, getNailGeometry, normalizeFrenchTipData } from "./blueprint.js";
+import { SharedPolishRealismLayers } from "./PolishRenderer.jsx";
 
 function rotatePath(rotation, cx, cy) {
   return rotation ? `rotate(${rotation} ${cx} ${cy})` : undefined;
@@ -40,7 +41,14 @@ export function FrenchTipShape({ layer, nail, clipId, thumbnail = false }) {
   const data = normalizeFrenchTipData(layer?.data || {});
   const path = frenchTipPath(layer, nail);
   const rotation = data.style === "angled" ? data.rotation || 0 : data.rotation;
-  return <g clipPath={`url(#${clipId})`} opacity={layer.opacity} pointerEvents="none" data-layer-type="frenchTip" data-french-tip-style={data.style}>
-    <path d={path} fill={data.colorHex} transform={rotatePath(rotation, VIEWBOX.cx, getNailGeometry(nail).bottomY)} stroke={thumbnail ? "none" : "rgba(59,31,53,.12)"} strokeWidth={thumbnail ? 0 : 1.5}/>
+  const transform = rotatePath(rotation, VIEWBOX.cx, getNailGeometry(nail).bottomY);
+  const frenchMaterialClipId = `${clipId}-${layer.id}-french-realism-clip`;
+  return <g clipPath={`url(#${clipId})`} opacity={layer.opacity} pointerEvents="none" data-layer-type="frenchTip" data-french-tip-style={data.style} data-realism-renderer="shared-polish-material-engine">
+    <defs><clipPath id={frenchMaterialClipId}><path d={path}/></clipPath></defs>
+    <g transform={transform}>
+      <path d={path} fill={data.colorHex} stroke={thumbnail ? "none" : "rgba(59,31,53,.08)"} strokeWidth={thumbnail ? 0 : 1.1}/>
+      <SharedPolishRealismLayers nail={nail} path={path} clipId={frenchMaterialClipId} uid={clipId} shine={0.74} colorHex={data.colorHex} materialScope="french-tip"/>
+      <path data-realism-layer="top-coat-continuity-seam" d={path} fill="none" stroke="rgba(255,255,255,.18)" strokeWidth={thumbnail ? 0.8 : 1.2}/>
+    </g>
   </g>;
 }
