@@ -32,6 +32,8 @@ const POLISH_NUMBER_RANGES = { shine: [0, 1], transparency: [0, 1], sparkleDensi
 const SUPPORTED_BLUEPRINT_SCHEMA_VERSIONS = [1];
 const SUPPORTED_LAYER_TYPES = ["base", "gradient", "pattern", "drawing", "charm", "decal", "jewel", "frenchTip"];
 const FRENCH_TIP_STYLES = ["classic", "deep", "angled", "v", "reverse"];
+const GRADIENT_DIRECTIONS = ["vertical", "reverse-vertical", "horizontal", "diagonal", "reverse-diagonal", "aura"];
+const GRADIENT_RANGES = { blendPosition: [0.08, 0.92], softness: [0, 1], angle: [0, 360] };
 const FRENCH_TIP_STYLE_ALIASES = { "v-french": "v" };
 const FRENCH_TIP_PRESETS = ["soft", "medium", "deep"];
 const FRENCH_TIP_RANGES = {
@@ -164,6 +166,24 @@ function normalizePolishFields(data, pathPrefix) {
   return next;
 }
 
+function normalizeGradientData(data, pathPrefix) {
+  const direction = data.direction || "vertical";
+  if (!GRADIENT_DIRECTIONS.includes(direction)) {
+    throw new BlueprintValidationError(`${pathPrefix}.data.direction must be one of: ${GRADIENT_DIRECTIONS.join(", ")}`);
+  }
+  assertHex(data.colorA || "#FFFFFF", `${pathPrefix}.data.colorA`);
+  assertHex(data.colorB || "#E8A0BF", `${pathPrefix}.data.colorB`);
+  return {
+    ...data,
+    colorA: data.colorA || "#FFFFFF",
+    colorB: data.colorB || "#E8A0BF",
+    direction,
+    blendPosition: Object.prototype.hasOwnProperty.call(data, "blendPosition") ? assertRangedNumber(data.blendPosition, GRADIENT_RANGES.blendPosition, `${pathPrefix}.data.blendPosition`) : 0.5,
+    softness: Object.prototype.hasOwnProperty.call(data, "softness") ? assertRangedNumber(data.softness, GRADIENT_RANGES.softness, `${pathPrefix}.data.softness`) : 0.62,
+    angle: Object.prototype.hasOwnProperty.call(data, "angle") ? assertRangedNumber(data.angle, GRADIENT_RANGES.angle, `${pathPrefix}.data.angle`) : 90,
+  };
+}
+
 function normalizeFrenchTipData(data, pathPrefix) {
   const style = FRENCH_TIP_STYLE_ALIASES[data.style] || data.style;
   if (!FRENCH_TIP_STYLES.includes(style)) {
@@ -246,7 +266,7 @@ function normalizeLayer(layer, nailIndex, layerIndex, seenLayerIds) {
     }
     assertHex(layer.data.effectColorHex, `${pathPrefix}.data.effectColorHex`);
   }
-  const data = layer.type === "base" ? normalizePolishFields(layer.data, pathPrefix) : layer.type === "frenchTip" ? normalizeFrenchTipData(layer.data, pathPrefix) : { ...layer.data };
+  const data = layer.type === "base" ? normalizePolishFields(layer.data, pathPrefix) : layer.type === "frenchTip" ? normalizeFrenchTipData(layer.data, pathPrefix) : layer.type === "gradient" ? normalizeGradientData(layer.data, pathPrefix) : { ...layer.data };
 
   return {
     id: normalizedLayerId,

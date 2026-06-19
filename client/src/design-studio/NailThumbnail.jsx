@@ -2,7 +2,7 @@ import { COLORS } from "../styles.js";
 import { renderAssetShapes } from "./assets.js";
 import { VIEWBOX, buildNailPath, layerSort, slotLabel } from "./blueprint.js";
 import { AssetContactShadow, AssetSpecularAccent, AssetSurfaceBlend, assetLayerRenderProps, isRenderableAssetLayer } from "./assetRendering.js";
-import { ArtRealismDefs, PaintedStroke, PatternDefs, artMaterialProfile, strokePath } from "./NailCanvas.jsx";
+import { ArtRealismDefs, GradientLayerShape, PaintedStroke, PatternDefs, artMaterialProfile, strokePath } from "./NailCanvas.jsx";
 import { FrenchTipShape } from "./frenchTipRendering.js";
 import { PolishDefs, PolishSurface } from "./PolishRenderer.jsx";
 
@@ -19,7 +19,7 @@ export default function NailThumbnail({ nail, active = false, onClick }) {
       {artLayers.map((layer) => {
         if (layer.type === "frenchTip") return <FrenchTipShape key={layer.id} layer={layer} nail={nail} clipId={clipId} thumbnail/>;
         if (layer.type === "drawing") return <g key={layer.id} clipPath={`url(#${clipId})`} opacity={layer.opacity}>{(layer.data?.strokes || []).map((stroke) => <PaintedStroke key={stroke.id} stroke={stroke} nail={nail} baseLayer={base} uid={clipId} baseColor={base?.data?.colorHex}/>)}</g>;
-        if (layer.type === "gradient") return <g key={layer.id} clipPath={`url(#${clipId})`} opacity={layer.opacity}><rect width={VIEWBOX.width} height={VIEWBOX.height} fill={layer.data?.colorB || "#E8A0BF"}/></g>;
+        if (layer.type === "gradient") return <GradientLayerShape key={layer.id} layer={layer} nail={nail} baseLayer={base} path={path} clipId={clipId} uid={clipId} thumbnail/>;
         if (layer.type === "pattern") { const id = `${clipId}-${layer.id}`; const art = artMaterialProfile(base, nail); return <g key={layer.id} clipPath={`url(#${clipId})`} opacity={(layer.opacity ?? 1) * art.artOpacity} data-realism-layer="material-aware-clipped-pattern"><defs><PatternDefs id={id} layer={layer}/></defs><rect width={VIEWBOX.width} height={VIEWBOX.height} fill={`url(#${id})`}/><path d={path} fill="#fff" opacity={art.surfaceHighlight * 0.32}/></g>; }
         if (!isRenderableAssetLayer(layer)) return null;
         const assetRender = assetLayerRenderProps(layer, nail, artMaterialProfile(base, nail));
