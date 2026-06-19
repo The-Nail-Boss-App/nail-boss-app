@@ -48,17 +48,29 @@ export function PaintedStroke({ stroke, nail, baseLayer, uid, baseColor }) {
   </g>;
 }
 
-function PatternDefs({ layer, id }) {
+function patternTransform(layer, baseRotation = 0) {
+  const transform = layer.transform || {};
+  const x = ((Number.isFinite(transform.x) ? transform.x : 0.5) - 0.5) * VIEWBOX.width;
+  const y = ((Number.isFinite(transform.y) ? transform.y : 0.5) - 0.5) * VIEWBOX.height;
+  const scaleX = Number.isFinite(transform.scaleX) ? Math.max(0.2, transform.scaleX) : 1;
+  const scaleY = Number.isFinite(transform.scaleY) ? Math.max(0.2, transform.scaleY) : 1;
+  const rotation = (Number.isFinite(transform.rotation) ? transform.rotation : 0) + baseRotation;
+  return `translate(${x.toFixed(3)} ${y.toFixed(3)}) rotate(${rotation.toFixed(3)} ${VIEWBOX.cx} ${VIEWBOX.height / 2}) scale(${scaleX.toFixed(3)} ${scaleY.toFixed(3)})`;
+}
+
+export function PatternDefs({ layer, id }) {
   const c = layer.data.colorHex || "#fff";
   const s = layer.data.secondaryColorHex || "#3B1F35";
   switch (layer.data.pattern) {
-    case "stripes": return <pattern id={id} width="18" height="18" patternUnits="userSpaceOnUse" patternTransform="rotate(35)"><rect width="18" height="18" fill="transparent"/><rect width="7" height="18" fill={c}/></pattern>;
-    case "checker": return <pattern id={id} width="24" height="24" patternUnits="userSpaceOnUse"><rect width="24" height="24" fill="transparent"/><rect width="12" height="12" fill={c}/><rect x="12" y="12" width="12" height="12" fill={c}/><rect x="12" width="12" height="12" fill={s} opacity=".25"/><rect y="12" width="12" height="12" fill={s} opacity=".25"/></pattern>;
-    case "french-tip": return <pattern id={id} width="240" height="360" patternUnits="userSpaceOnUse"><rect width="240" height="360" fill="transparent"/><path d="M54 255 Q120 305 186 255 L186 360 L54 360 Z" fill={c}/></pattern>;
-    case "glitter": return <pattern id={id} width="34" height="34" patternUnits="userSpaceOnUse"><rect width="34" height="34" fill="transparent"/><circle cx="7" cy="8" r="2" fill={c}/><circle cx="24" cy="18" r="1.5" fill={c}/><path d="M18 4 l2 5 5 2 -5 2 -2 5 -2 -5 -5 -2 5 -2Z" fill={c} opacity=".85"/></pattern>;
-    case "marble": return <pattern id={id} width="54" height="54" patternUnits="userSpaceOnUse"><rect width="54" height="54" fill="transparent"/><path d="M-8 42 C14 24 19 12 46 -2 M5 57 C22 37 38 34 62 10" stroke={c} strokeWidth="5" opacity=".75" fill="none"/><path d="M3 8 C22 23 31 7 51 26" stroke={s} strokeWidth="2" opacity=".35" fill="none"/></pattern>;
+    case "stripes": return <pattern id={id} width="18" height="18" patternUnits="userSpaceOnUse" patternTransform={patternTransform(layer, 35)}><rect width="18" height="18" fill="transparent"/><rect width="7" height="18" fill={c}/></pattern>;
+    case "checker": return <pattern id={id} width="24" height="24" patternUnits="userSpaceOnUse" patternTransform={patternTransform(layer)}><rect width="24" height="24" fill="transparent"/><rect width="12" height="12" fill={c}/><rect x="12" y="12" width="12" height="12" fill={c}/><rect x="12" width="12" height="12" fill={s} opacity=".25"/><rect y="12" width="12" height="12" fill={s} opacity=".25"/></pattern>;
+    case "french-tip": return <pattern id={id} width="240" height="360" patternUnits="userSpaceOnUse" patternTransform={patternTransform(layer)}><rect width="240" height="360" fill="transparent"/><path d="M54 255 Q120 305 186 255 L186 360 L54 360 Z" fill={c}/></pattern>;
+    case "glitter": return <pattern id={id} width="34" height="34" patternUnits="userSpaceOnUse" patternTransform={patternTransform(layer)}><rect width="34" height="34" fill="transparent"/><circle cx="7" cy="8" r="2" fill={c}/><circle cx="24" cy="18" r="1.5" fill={c}/><path d="M18 4 l2 5 5 2 -5 2 -2 5 -2 -5 -5 -2 5 -2Z" fill={c} opacity=".85"/></pattern>;
+    case "marble": return <pattern id={id} width="54" height="54" patternUnits="userSpaceOnUse" patternTransform={patternTransform(layer)}><rect width="54" height="54" fill="transparent"/><path d="M-8 42 C14 24 19 12 46 -2 M5 57 C22 37 38 34 62 10" stroke={c} strokeWidth="5" opacity=".75" fill="none"/><path d="M3 8 C22 23 31 7 51 26" stroke={s} strokeWidth="2" opacity=".35" fill="none"/></pattern>;
+    case "camo": return <pattern id={id} width="74" height="58" patternUnits="userSpaceOnUse" patternTransform={patternTransform(layer)} data-pattern="camo"><rect width="74" height="58" fill="transparent"/><path d="M-8 13 C1 3 14 5 19 12 C27 7 42 9 43 20 C54 19 67 25 63 37 C58 50 38 47 32 40 C21 48 4 43 7 31 C-1 29 -14 23 -8 13Z" fill={c} opacity=".9"/><path d="M39 -4 C49 0 57 7 56 17 C66 14 78 19 80 30 C82 42 67 48 56 43 C49 52 32 51 28 40 C24 29 35 25 42 24 C34 16 28 4 39 -4Z" fill={s} opacity=".55"/><path d="M10 48 C17 38 29 40 34 47 C39 43 51 45 53 54 C55 64 41 68 33 63 C26 70 11 68 8 58 C2 58 -1 52 10 48Z" fill={c} opacity=".65"/></pattern>;
+    case "houndstooth": return <pattern id={id} width="36" height="36" patternUnits="userSpaceOnUse" patternTransform={patternTransform(layer)} data-pattern="houndstooth"><rect width="36" height="36" fill="transparent"/><path d="M0 0 H18 V6 L24 0 H36 V12 L30 18 H36 V36 H18 V30 L12 36 H0 V24 L6 18 H0 Z" fill={c}/><path d="M18 0 H24 L18 6 Z M30 12 H36 L30 18 Z M0 18 H6 L0 24 Z M12 30 H18 L12 36 Z" fill={s} opacity=".42"/></pattern>;
     case "dots":
-    default: return <pattern id={id} width="26" height="26" patternUnits="userSpaceOnUse"><rect width="26" height="26" fill="transparent"/><circle cx="7" cy="7" r="3.5" fill={c}/><circle cx="20" cy="20" r="2.5" fill={c} opacity=".8"/></pattern>;
+    default: return <pattern id={id} width="26" height="26" patternUnits="userSpaceOnUse" patternTransform={patternTransform(layer)}><rect width="26" height="26" fill="transparent"/><circle cx="7" cy="7" r="3.5" fill={c}/><circle cx="20" cy="20" r="2.5" fill={c} opacity=".8"/></pattern>;
   }
 }
 
