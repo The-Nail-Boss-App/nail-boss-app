@@ -66,6 +66,21 @@ export function normalizePolishData(data = {}, fallbackColor = "#E8A0BF") {
 }
 export function polishOpacity(data = {}) {
   const type = data.polishType || "Cream";
-  const base = type === "Jelly" ? 0.58 : type === "Milky" ? 0.76 : 1;
-  return Math.max(0.05, Math.min(1, base - (data.transparency || 0) * 0.45));
+  const base = type === "Jelly" ? 0.72 : type === "Milky" ? 0.76 : 1;
+  const transparencyImpact = type === "Jelly" ? 0.22 : 0.45;
+  return Math.max(0.05, Math.min(1, base - (data.transparency || 0) * transparencyImpact));
+}
+
+
+export function polishMaterialProfile(polishType = "Cream", shine = 0.62) {
+  if (polishType === "Matte") {
+    return { gloss: 0.035, reflection: 0.045, apex: 0.10, depth: 0.72, edge: 0.50, blur: 2.8, diffusion: 0.035, glass: 0.04, colorPreservation: 0.96 };
+  }
+  if (polishType === "Jelly") {
+    return { gloss: Math.max(0.82, shine), reflection: 0.76, apex: 0.52, depth: 0.90, edge: 0.76, blur: 0.85, diffusion: 0.015, glass: 0.50, colorPreservation: 0.92 };
+  }
+  if (polishType === "Milky") {
+    return { gloss: Math.min(0.56, shine), reflection: 0.32, apex: 0.72, depth: 0.72, edge: 0.52, blur: 1.45, diffusion: 0.44, glass: 0.18, colorPreservation: 0.68 };
+  }
+  return { gloss: shine, reflection: 0.68, apex: 0.56, depth: 0.78, edge: 0.62, blur: 1, diffusion: 0.04, glass: 0.2, colorPreservation: 0.88 };
 }
