@@ -1,5 +1,5 @@
 import { getNailArchitecture } from "./blueprint.js";
-import { polishOpacity, resolvePolishDataForRender } from "./polish.js";
+import { polishMaterialProfile, polishOpacity, resolvePolishDataForRender } from "./polish.js";
 
 function surfaceIds(uid) {
   return {
@@ -113,11 +113,9 @@ export function PolishDefs({ uid }) {
 }
 
 function materialProfile(polishType = "Cream", shine = 0.62) {
-  if (polishType === "Matte") return { gloss: 0.08, reflection: 0.12, apex: 0.24, depth: 0.58, edge: 0.45, blur: 1.9, diffusion: 0.34, glass: 0.12 };
-  if (polishType === "Jelly") return { gloss: Math.max(0.72, shine), reflection: 0.62, apex: 0.62, depth: 0.84, edge: 0.72, blur: 1, diffusion: 0.08, glass: 0.34 };
-  if (polishType === "Milky") return { gloss: Math.min(0.56, shine), reflection: 0.32, apex: 0.72, depth: 0.72, edge: 0.52, blur: 1.45, diffusion: 0.44, glass: 0.18 };
-  return { gloss: shine, reflection: 0.68, apex: 0.56, depth: 0.78, edge: 0.62, blur: 1, diffusion: 0.04, glass: 0.2 };
+  return polishMaterialProfile(polishType, shine);
 }
+
 
 export function SharedPolishRealismLayers({ nail, path, clipId, uid, shine = 0.62, colorHex = "#E8A0BF", polishType = "Cream", materialScope = "base" }) {
   const ids = surfaceIds(uid);
@@ -160,8 +158,8 @@ export function GelNailSurfaceRenderer({ nail, baseLayer, path, clipId, uid }) {
 
   return <g pointerEvents="none">
     <path data-material-layer="base-color" d={path} fill={data.colorHex} opacity={opacity}/>
-    {data.polishType === "Jelly" && <path data-material-layer="jelly-clear-depth" d={path} fill="#ffffff" opacity=".18"/>}
-    {data.polishType === "Milky" && <path data-material-layer="milky-builder-gel-veil" d={path} fill="#fff8fb" opacity=".36"/>}
+    {data.polishType === "Jelly" && <path data-material-layer="jelly-clear-depth translucent-colored-glass-gel" d={path} fill={data.colorHex} opacity=".20"/>}
+    {data.polishType === "Milky" && <path data-material-layer="milky-builder-gel-veil soft-cloudy-milky-diffusion" d={path} fill="#fff8fb" opacity=".36"/>}
     <SharedPolishRealismLayers nail={nail} path={path} clipId={clipId} uid={uid} shine={shine} colorHex={data.colorHex} polishType={data.polishType} materialScope="base-polish"/>
     <path d={path} fill="none" stroke="rgba(59,31,53,.26)" strokeWidth="1.2"/>
     <path d={path} fill="none" stroke="rgba(255,255,255,.42)" strokeWidth=".8"/>
