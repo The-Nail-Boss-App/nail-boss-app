@@ -25,7 +25,7 @@ const VALID_SHAPES = [
   "Mountain Peak",
 ];
 const VALID_EFFECTS = ["Solid", "Gradient", "Chrome", "CatEye", "Marble"];
-const VALID_POLISH_TYPES = ["Cream", "Jelly", "Milky", "Matte", "Chrome", "Cat Eye", "Glitter"];
+const VALID_POLISH_TYPES = ["Cream", "Jelly", "Milky", "Matte"];
 const VALID_TOP_COATS = ["Gloss", "Matte", "No-Wipe Shine", "Velvet"];
 const MEANINGFUL_LEGACY_EFFECTS = ["Gradient", "Chrome", "CatEye", "Marble"];
 const POLISH_NUMBER_RANGES = { shine: [0, 1], transparency: [0, 1], sparkleDensity: [0, 1], sparkleSize: [0, 1], catEyeAngle: [-180, 180], catEyeIntensity: [0, 1], chromeIntensity: [0, 1] };

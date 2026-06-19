@@ -5,7 +5,7 @@ function normalizeSelectableShape(shape, fallback = "Almond") {
   return HIDDEN_SHAPE_FALLBACKS[shape] || fallback;
 }
 export const EFFECTS = ["Solid", "Gradient", "Chrome", "CatEye", "Marble"];
-export const POLISH_TYPES = ["Cream", "Jelly", "Milky", "Matte", "Chrome", "Cat Eye", "Glitter"];
+export const POLISH_TYPES = ["Cream", "Jelly", "Milky", "Matte"];
 export const TOP_COATS = ["Gloss", "Matte", "No-Wipe Shine", "Velvet"];
 export const MEANINGFUL_LEGACY_EFFECTS = ["Gradient", "Chrome", "CatEye", "Marble"];
 export function hasMeaningfulLegacyEffect(data = {}) {

@@ -1,4 +1,4 @@
-export const POLISH_TYPES = ["Cream", "Jelly", "Milky", "Matte", "Chrome", "Cat Eye", "Glitter"];
+export const POLISH_TYPES = ["Cream", "Jelly", "Milky", "Matte"];
 export const TOP_COATS = ["Gloss", "Matte", "No-Wipe Shine", "Velvet"];
 export const POLISH_DEFAULTS = {
   polishType: "Cream",
@@ -13,8 +13,8 @@ export const POLISH_DEFAULTS = {
   chromeIntensity: 0.7,
 };
 const HEX = /^#[0-9a-fA-F]{6}$/;
-export function polishNeeds(type, key) {
-  return (key === "sparkle" && type === "Glitter") || (key === "catEye" && type === "Cat Eye") || (key === "chrome" && type === "Chrome");
+export function polishNeeds() {
+  return false;
 }
 export function clampPolishNumber(value, min, max, fallback) {
   const parsed = Number(value);
@@ -24,9 +24,9 @@ export function clampPolishNumber(value, min, max, fallback) {
 export const LEGACY_EFFECT_POLISH_TYPE = {
   Solid: "Cream",
   Gradient: "Gradient",
-  Chrome: "Chrome",
-  CatEye: "Cat Eye",
-  Marble: "Marble",
+  Chrome: "Cream",
+  CatEye: "Cream",
+  Marble: "Cream",
 };
 export const LEGACY_RENDER_POLISH_TYPES = ["Gradient", "Marble"];
 export function hasExplicitPolishType(data = {}) {

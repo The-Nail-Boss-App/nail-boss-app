@@ -1,5 +1,5 @@
 import { COLORS, S } from "../styles.js";
-import { TOP_COATS, normalizePolishData } from "./blueprint.js";
+import { POLISH_TYPES, TOP_COATS, normalizePolishData } from "./blueprint.js";
 import { PATTERNS, GRADIENT_DIRECTIONS, FRENCH_TIP_PRESETS, FRENCH_TIP_STYLES } from "./blueprint.js";
 import { findAsset } from "./assets.js";
 import { UI } from "./studioStyles.js";
@@ -29,10 +29,11 @@ export default function PropertiesPanel({ layer, onPatch, onDuplicate, onDelete 
       <p style={{ ...UI.smallText, marginBottom: 12 }}>Type: <strong>{layer.type}</strong>{asset ? ` · ${asset.category}` : ""}</p>
       {layer.type === "base" && (() => {
         const polish = normalizePolishData(layer.data);
-        const patchPolish = (patch) => onPatch({ data: normalizePolishData({ ...layer.data, polishType: "Cream", effect: "Solid", ...patch }, layer.data.colorHex) });
+        const patchPolish = (patch) => { const nextType = patch.polishType || polish.polishType; onPatch({ data: normalizePolishData({ ...layer.data, effect: "Solid", topCoat: nextType === "Matte" ? "Matte" : (layer.data.topCoat || "Gloss"), ...patch, polishType: nextType }, layer.data.colorHex) }); };
         return <>
           <div style={{ ...UI.sectionTitle, marginTop: 8 }}>Polish Settings</div>
           <p style={UI.smallText}>Physical realism is rendered automatically from the nail shape, color, shine, and top coat. Special polish-effect controls stay hidden for this milestone.</p>
+          <div style={UI.field}><label style={S.label}>Polish Type</label><select style={S.input} value={polish.polishType} onChange={(e) => patchPolish({ polishType: e.target.value })}>{POLISH_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}</select></div>
           <Color label="Color" value={polish.colorHex} onChange={(colorHex) => patchPolish({ colorHex })} />
           <Range label="Shine" value={Math.round(polish.shine * 100)} min={0} max={100} onChange={(v) => patchPolish({ shine: v / 100 })} />
           <Range label="Transparency" value={Math.round(polish.transparency * 100)} min={0} max={100} onChange={(v) => patchPolish({ transparency: v / 100 })} />

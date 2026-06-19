@@ -50,6 +50,8 @@ import {
   synchronizeBase,
   uid,
   updateActiveNail,
+  POLISH_TYPES,
+  normalizePolishData,
 } from "./blueprint.js";
 
 function Field({ label, children }) {
@@ -127,9 +129,10 @@ function collectDesignPalette(nail) {
 
 const NAIL_COLOR_SWATCHES = ["#F7D7E6", "#E8A0BF", "#C86B8D", "#9D4D72", "#7B2F59", "#FFFFFF", "#F5E8D8", "#2B1024"];
 
-function NailColorSystem({ value, onChange, onApply }) {
+function NailColorSystem({ value, polishType = "Cream", onChange, onPolishTypeChange, onApply }) {
   return <section style={{ border: `1px solid ${COLORS.border}`, borderRadius: 16, padding: 12, marginBottom: 14, background: "#fff" }}>
     <div style={UI.sectionTitle}>Nail Color System</div>
+    <Field label="Polish Type"><select style={S.input} value={polishType} onChange={(e) => onPolishTypeChange(e.target.value)}>{POLISH_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}</select></Field>
     <ColorInput value={value} onChange={onChange}/>
     <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, marginTop: 10 }}>
       {NAIL_COLOR_SWATCHES.map((color) => <button key={color} type="button" aria-label={`Set nail color ${color}`} onClick={() => onChange(color)} style={{ height: 34, borderRadius: 12, border: `2px solid ${value?.toUpperCase() === color ? COLORS.plum : COLORS.border}`, background: color, cursor: "pointer" }}/>) }
@@ -139,7 +142,7 @@ function NailColorSystem({ value, onChange, onApply }) {
       <button type="button" onClick={() => onApply("hand")} style={UI.iconButton(false)}>Current hand</button>
       <button type="button" onClick={() => onApply("all")} style={UI.iconButton(false)}>Full set</button>
     </div>
-    <p style={UI.smallText}>Solid gel preview now includes realistic gloss, apex highlights, sidewall shadows, and free-edge depth.</p>
+    <p style={UI.smallText}>Cream, Jelly, Milky, and Matte each render through the shared material engine with shape-aware depth.</p>
   </section>;
 }
 
@@ -764,7 +767,7 @@ function DesignStudio(_, ref) {
         <Field label="Nail shape"><select style={S.input} value={activeNail.shape} onChange={(e) => updateBase({ shape: e.target.value })}>{SHAPES.map((shape) => <option key={shape}>{shape}</option>)}</select></Field>
         <GeometrySlider label="Nail length" value={activeNail.length} onChange={(length) => updateBase({ length })}/>
         <GeometrySlider label="Nail width" value={activeNail.width} onChange={(width) => updateBase({ width })}/>
-        <NailColorSystem value={baseLayer?.data?.colorHex || activeNail.baseColorHex} onChange={(value) => updateBase({ baseColorHex: normalizeHex(value, baseLayer?.data?.colorHex), polishType: "Cream", effect: "Solid" })} onApply={(scope) => { const targets = scope === "active" ? [activeSlot] : slotsFor(scope); commit(applyBaseToSlots(blueprint, { baseColorHex: getVisibleBaseColor(activeNail), polishType: "Cream", effect: "Solid" }, targets)); }}/>
+        <NailColorSystem value={baseLayer?.data?.colorHex || activeNail.baseColorHex} polishType={normalizePolishData(baseLayer?.data || {}, activeNail.baseColorHex).polishType} onPolishTypeChange={(polishType) => updateBase({ polishType, topCoat: polishType === "Matte" ? "Matte" : "Gloss", effect: "Solid" })} onChange={(value) => updateBase({ baseColorHex: normalizeHex(value, baseLayer?.data?.colorHex), polishType: normalizePolishData(baseLayer?.data || {}, activeNail.baseColorHex).polishType, effect: "Solid" })} onApply={(scope) => { const targets = scope === "active" ? [activeSlot] : slotsFor(scope); const polish = normalizePolishData(baseLayer?.data || {}, activeNail.baseColorHex); commit(applyBaseToSlots(blueprint, { baseColorHex: getVisibleBaseColor(activeNail), polishType: polish.polishType, shine: polish.shine, transparency: polish.transparency, topCoat: polish.topCoat, effect: "Solid" }, targets)); }}/>
         <DesignPalette colors={designPalette}/>
         <p style={UI.smallText}>Hero shape masks are artist-calibrated. Length and width can scale the mask, but they do not redefine the shape family.</p>
         <Field label="Tags"><input style={S.input} value={tagsString} onChange={(e) => updateBase({ tags: e.target.value })} placeholder="bridal, chrome, accent" /></Field>
