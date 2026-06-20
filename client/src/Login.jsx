@@ -24,25 +24,8 @@ export default function Login({ onLogin }) {
       <div style={S.centered}>
         <div style={S.card(420)}>
           {/* Logo */}
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 28 }}>
-            <div style={{
-              background: COLORS.plum,
-              borderRadius: 14,
-              padding: 8,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}>
-              <LogoMark size={32} color="#f5c8e8" />
-            </div>
-            <div>
-              <p style={{ fontSize: 18, fontWeight: 800, color: COLORS.plum, lineHeight: 1.1 }}>
-                AnitaSet
-              </p>
-              <p style={{ fontSize: 12, color: COLORS.textMuted, marginTop: 2 }}>
-                Design. Price. Sell. Grow.
-              </p>
-            </div>
+          <div style={{ display: "flex", alignItems: "center", marginBottom: 28 }}>
+            <LogoMark variant="wordmark" style={{ width: 180 }} />
           </div>
 
           <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 6 }}>

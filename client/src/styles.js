@@ -257,27 +257,24 @@ export function NavItem({ label, icon, active, onClick }) {
 
 // ── Brand logo mark ───────────────────────────────────────────────────────────
 
-export function LogoMark({ size = 36, color = "#f5c8e8" }) {
+export function LogoMark({ size = 36, variant = "icon", style = {} }) {
+  const isWordmark = variant === "wordmark";
+
   return (
-    <svg
-      viewBox="0 0 32 32"
-      width={size} height={size}
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      aria-label="AnitaSet"
-      style={{ color }}
-    >
-      {/* tip-down nail shape */}
-      <path
-        d="M10 4 C10 4 8 10 8 16 C8 23 11 28 16 28 C21 28 24 23 24 16 C24 10 22 4 22 4 Z"
-        fill="currentColor" fillOpacity=".3"
-        stroke="currentColor" strokeWidth="1.5"
-      />
-      <path
-        d="M13 26 C13 26 12 23 12 20 C12 17 13 16 16 16 C19 16 20 17 20 20 C20 23 19 26 19 26"
-        fill="currentColor" fillOpacity=".65"
-      />
-      <circle cx="16" cy="10" r="1.5" fill="currentColor" />
-    </svg>
+    <img
+      src={isWordmark ? "/anitaset-logo.svg" : "/anitaset-icon.svg"}
+      alt="AnitaSet"
+      width={isWordmark ? undefined : size}
+      height={isWordmark ? undefined : size}
+      style={{
+        display: "block",
+        width: isWordmark ? "min(100%, 180px)" : size,
+        height: isWordmark ? "auto" : size,
+        maxWidth: "100%",
+        objectFit: "contain",
+        flexShrink: 0,
+        ...style,
+      }}
+    />
   );
 }
