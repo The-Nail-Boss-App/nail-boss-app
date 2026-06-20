@@ -1,7 +1,7 @@
 import { COLORS, S } from "../styles.js";
 
 export const UI = {
-  shell: { height: "100%", maxHeight: "100%", flex: "1 1 auto", minHeight: 0, display: "flex", flexDirection: "column", background: COLORS.bg, overflow: "hidden" },
+  shell: { height: "100%", minHeight: 0, display: "flex", flexDirection: "column", background: COLORS.bg },
   toolbar: { display: "flex", alignItems: "center", gap: 8, padding: "12px 18px", borderBottom: `1px solid ${COLORS.border}`, background: COLORS.surface, flexWrap: "wrap" },
   layout: {
     flex: 1,
@@ -10,14 +10,11 @@ export const UI = {
     gridTemplateColumns: "minmax(240px, 0.82fr) minmax(380px, 1.35fr) minmax(250px, 0.82fr)",
     gap: 10,
     padding: 10,
-    overflow: "hidden",
-    alignItems: "stretch",
+    overflow: "auto",
+    alignItems: "start",
   },
-  panel: { background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 18, boxShadow: "0 10px 30px rgba(60,20,50,.06)", height: "100%", minHeight: 0, minWidth: 0, overflow: "auto" },
-  canvasPanel: { display: "flex", flexDirection: "column", alignItems: "stretch", height: "100%", minHeight: 0, overflow: "hidden" },
-  canvasStage: { flex: "1 1 auto", minHeight: 0, display: "flex", alignItems: "center", justifyContent: "center", overflow: "auto", background: COLORS.surface },
-  setPreview: { flex: "0 0 auto", maxHeight: "32%", overflow: "auto", borderTop: `1px solid ${COLORS.border}`, padding: "10px 14px", background: "#fff" },
-  stickyPreview: { background: COLORS.surface },
+  panel: { background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 18, boxShadow: "0 10px 30px rgba(60,20,50,.06)", minHeight: 0, minWidth: 0, overflow: "auto" },
+  stickyPreview: { position: "sticky", top: 10, zIndex: 2, background: COLORS.surface },
   panelPad: { padding: 14 },
   sectionTitle: { fontSize: 12, letterSpacing: ".08em", textTransform: "uppercase", color: COLORS.textMuted, fontWeight: 800, marginBottom: 10 },
   miniButton: (active = false) => ({ ...(active ? S.btnSecondary : S.btnGhost), padding: "8px 10px", fontSize: 12, borderColor: active ? COLORS.plum : COLORS.border, color: active ? COLORS.plum : COLORS.textMuted, whiteSpace: "nowrap" }),

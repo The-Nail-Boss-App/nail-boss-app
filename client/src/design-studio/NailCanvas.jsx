@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { COLORS } from "../styles.js";
 import { renderAssetShapes } from "./assets.js";
 import { VIEWBOX, buildNailPath, constrainStrokePoints, getNailArchitecture, getNailGeometry, normalizedToSvg, projectPointInsideNailSilhouette, svgToNormalized, layerSort, normalizeGradientStops } from "./blueprint.js";
@@ -142,8 +142,6 @@ export function strokePath(points = [], nail) {
 
 export default function NailCanvas({ nail, layers, selectedLayerId, mode, brush, notice, debugOverlay = false, onSelectLayer, onTransformLayer, onDrawingStroke, onStageEraseStroke, onEraseStroke }) {
   const svgRef = useRef(null);
-  const stageRef = useRef(null);
-  const [stageHeight, setStageHeight] = useState(null);
   const [drag, setDrag] = useState(null);
   const [cursorPoint, setCursorPoint] = useState(null);
   const dragRef = useRef(null);
@@ -154,22 +152,6 @@ export default function NailCanvas({ nail, layers, selectedLayerId, mode, brush,
   const artLayers = [...layers].filter((layer) => layer.type !== "base" && layer.visible !== false).sort(layerSort);
   const geometry = getNailGeometry(nail);
   const architecture = getNailArchitecture(nail);
-
-  useEffect(() => {
-    const stage = stageRef.current;
-    if (!stage || typeof ResizeObserver === "undefined") return undefined;
-
-    const updateStageHeight = () => setStageHeight(stage.getBoundingClientRect().height);
-    updateStageHeight();
-
-    const observer = new ResizeObserver((entries) => {
-      const entryHeight = entries[0]?.contentRect?.height;
-      setStageHeight(Number.isFinite(entryHeight) ? entryHeight : stage.getBoundingClientRect().height);
-    });
-    observer.observe(stage);
-
-    return () => observer.disconnect();
-  }, []);
 
   function svgPoint(event) {
     const svg = svgRef.current;
@@ -315,10 +297,8 @@ export default function NailCanvas({ nail, layers, selectedLayerId, mode, brush,
   const brushCursorLength = Math.max(13, brushCursorRadius * 2.6);
   const brushCursorWidth = Math.max(3.5, brushCursorRadius * 0.72);
   const canvasCursor = mode === "draw" || mode === "eraser" ? "none" : "default";
-  const canvasCollapsed = stageHeight !== null && stageHeight < 80;
 
-  return <div ref={stageRef} style={{ height: "100%", minHeight: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-start", position: "relative" }}>
-    {canvasCollapsed ? <div role="alert" style={{ margin: 16, padding: "14px 16px", border: "1px solid #f97316", borderRadius: 14, background: "#fff7ed", color: "#9a3412", fontSize: 14, fontWeight: 800 }}>Canvas area collapsed: layout height issue</div> : <>
+  return <div style={{ height: "100%", minHeight: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-start", position: "relative" }}>
     <div style={{ width: "min(54vh, 96%)", maxWidth: 430, aspectRatio: "2 / 3", background: "linear-gradient(180deg,#fff,#fbf1f8)", border: `1px solid ${COLORS.border}`, borderRadius: 28, boxShadow: "inset 0 0 0 12px rgba(255,255,255,.55), 0 18px 50px rgba(60,20,50,.10)", padding: 12 }}>
       <svg ref={svgRef} viewBox={`0 0 ${VIEWBOX.width} ${VIEWBOX.height}`} width="100%" height="100%" role="img" aria-label="Editable single nail canvas" onPointerDown={canvasDown} onPointerMove={(e) => { pointerMove(e); canvasMove(e); }} onPointerUp={finishPointerGesture} onPointerCancel={cancelPointerGesture} onPointerLeave={() => setCursorPoint(null)} style={{ touchAction: "none", userSelect: "none", cursor: canvasCursor }}>
         <defs>
@@ -351,7 +331,6 @@ export default function NailCanvas({ nail, layers, selectedLayerId, mode, brush,
       </svg>
     </div>
     <p style={{ marginTop: 6, color: COLORS.textMuted, fontSize: 13 }}>{selectedLayerId ? "Drag selected artwork inside the strict nail boundary. Use Properties for size and rotation." : "Choose Draw for a visible brush cursor, set nail color, or select a board layer."}</p>
-    </>}
     {notice && <div style={{ position: "absolute", bottom: 18, left: "50%", transform: "translateX(-50%)", background: COLORS.plum, color: "#fff", padding: "10px 14px", borderRadius: 999, fontSize: 12, boxShadow: "0 10px 30px rgba(60,20,50,.2)" }}>{notice}</div>}
   </div>;
 }
