@@ -1,7 +1,7 @@
 import { COLORS, S } from "../styles.js";
 
 export const UI = {
-  shell: { height: "100%", minHeight: 0, display: "flex", flexDirection: "column", background: COLORS.bg },
+  shell: { height: "100dvh", maxHeight: "100dvh", minHeight: 0, display: "flex", flexDirection: "column", background: COLORS.bg, overflow: "hidden" },
   toolbar: { display: "flex", alignItems: "center", gap: 8, padding: "12px 18px", borderBottom: `1px solid ${COLORS.border}`, background: COLORS.surface, flexWrap: "wrap" },
   layout: {
     flex: 1,
@@ -14,6 +14,7 @@ export const UI = {
     alignItems: "stretch",
   },
   panel: { background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 18, boxShadow: "0 10px 30px rgba(60,20,50,.06)", height: "100%", minHeight: 0, minWidth: 0, overflow: "auto" },
+  canvasPanel: { display: "flex", flexDirection: "column", alignItems: "stretch", height: "100%", minHeight: 0, overflow: "hidden" },
   canvasStage: { flex: "1 1 auto", minHeight: 0, display: "flex", alignItems: "center", justifyContent: "center", overflow: "auto", background: COLORS.surface },
   setPreview: { flex: "0 0 auto", maxHeight: "32%", overflow: "auto", borderTop: `1px solid ${COLORS.border}`, padding: "10px 14px", background: "#fff" },
   stickyPreview: { background: COLORS.surface },
