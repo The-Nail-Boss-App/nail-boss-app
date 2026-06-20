@@ -55,14 +55,6 @@ import {
   PATTERNS,
   STARTER_SIGNATURE_LOOKS,
   applySignatureLookToBlueprint,
-  applySignatureLookToSlots,
-  applyNailDesignToSlots,
-  applySetTemplate,
-  COMPOSITION_PRESETS,
-  SET_TEMPLATES,
-  mirrorCurrentHand,
-  mirrorFullSet,
-  slotsForCompositionPreset,
   createSignatureLookFromBlueprint,
   normalizeSignatureLook,
 } from "./blueprint.js";
@@ -76,7 +68,6 @@ const DEFAULT_PANEL_STATE = {
   designDetails: false,
   frenchTip: false,
   fullSetActions: false,
-  setComposition: true,
   developerGeometry: false,
   artTools: true,
   layerEffects: true,
@@ -271,32 +262,6 @@ function SignatureLooksPanel({ looks, selectedId, onSelect, onSave, onApply, onD
   </div>;
 }
 
-function SetCompositionPanel({ presets, templates, selectedSlots, activeSlot, selectedLookName, onSelectPreset, onToggleSlot, onApplyCurrentDesign, onApplySignatureLook, onMirror, onQuickApply, onClearSelected, onApplyTemplate }) {
-  const selectedCount = selectedSlots.length;
-  return <div data-testid="set-composition-panel">
-    <div style={UI.sectionTitle}>Full Set Composition</div>
-    <p style={{ ...UI.smallText, marginTop: 0 }}>Preview target nails, then apply the current design or selected Signature Look to build a set in seconds.</p>
-    <Field label="Composition presets"><select aria-label="Composition presets" style={S.input} defaultValue="custom-selection" onChange={(e) => onSelectPreset(e.target.value)}>{presets.map((preset) => <option key={preset.id} value={preset.id}>{preset.name}</option>)}</select></Field>
-    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 10 }}>
-      <button type="button" style={S.btnSecondary} onClick={onApplyCurrentDesign} disabled={!selectedCount}>Apply current design</button>
-      <button type="button" style={S.btnSecondary} onClick={onApplySignatureLook} disabled={!selectedCount}>Apply {selectedLookName || "Signature Look"}</button>
-    </div>
-    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 10 }}>
-      <button type="button" style={S.btnGhost} onClick={() => onMirror("left-to-right")}>Mirror Left → Right</button>
-      <button type="button" style={S.btnGhost} onClick={() => onMirror("right-to-left")}>Mirror Right → Left</button>
-      <button type="button" style={S.btnGhost} onClick={() => onMirror("current-hand")}>Mirror Current Hand</button>
-      <button type="button" style={S.btnGhost} onClick={() => onMirror("full-set")}>Mirror Full Set</button>
-    </div>
-    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 10 }}>
-      {["thumbs", "rings", "accent", "hand", "all"].map((scope) => <button key={scope} type="button" style={S.btnGhost} onClick={() => onQuickApply(scope)}>Apply to {scope === "all" ? "Both Hands" : scope === "hand" ? "Current Hand" : scope === "accent" ? "Accent Nails" : scope === "rings" ? "Ring Fingers" : "Thumbs"}</button>)}
-      <button type="button" style={S.btnSecondary} onClick={onClearSelected} disabled={!selectedCount}>Clear Selected Nails</button>
-    </div>
-    <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>{FULL_SET_SLOTS.map((slot) => <label key={slot} style={{ fontSize: 11, fontWeight: selectedSlots.includes(slot) ? 800 : 500, color: selectedSlots.includes(slot) ? COLORS.plum : COLORS.textMuted }}><input type="checkbox" checked={selectedSlots.includes(slot)} onChange={() => onToggleSlot(slot)}/> {slotLabel(slot)}</label>)}</div>
-    <Field label="Set templates"><select aria-label="Set templates" style={S.input} defaultValue="" onChange={(e) => e.target.value && onApplyTemplate(e.target.value)}><option value="">Choose editable starter template…</option>{templates.map((template) => <option key={template.id} value={template.id}>{template.name}</option>)}</select></Field>
-    <p style={UI.smallText}>Selected targets: {selectedCount ? selectedSlots.map(slotLabel).join(", ") : "none"}. Active nail: {slotLabel(activeSlot)}.</p>
-  </div>;
-}
-
 function DesignStudio(_, ref) {
   const [designs, setDesigns] = useState([]);
   const [selectedDesignId, setSelectedDesignId] = useState("");
@@ -346,7 +311,6 @@ function DesignStudio(_, ref) {
   const productSummary = useMemo(() => summarizeFullSetAssets(blueprint), [blueprint]);
   const designPalette = useMemo(() => collectDesignPalette(activeNail), [activeNail]);
   const signatureLooks = useMemo(() => [...STARTER_SIGNATURE_LOOKS, ...userSignatureLooks], [userSignatureLooks]);
-  const selectedSignatureLook = signatureLooks.find((look) => look.id === selectedSignatureLookId) || signatureLooks[0];
 
   useEffect(() => { loadDesigns(); }, []);
   useEffect(() => { dirtyRef.current = dirty; blueprintRef.current = blueprint; selectedDesignIdRef.current = selectedDesignId; designNameRef.current = designName; }, [dirty, blueprint, selectedDesignId, designName]);
@@ -875,12 +839,6 @@ function DesignStudio(_, ref) {
 
   function confirmBulk(message) { return window.confirm(message); }
   function copyActiveNail() { setClipboardNail(JSON.parse(JSON.stringify(activeNail))); showNotice("Active nail copied."); }
-  function setCompositionPreset(presetId) { setSelectedSlots(slotsForCompositionPreset(presetId, selectedSlots)); }
-  function applyCurrentDesignToSelected() { if (!selectedSlots.length) { showNotice("Select destination nails before applying the current nail design."); return; } if (!confirmBulk("Apply current nail design to selected nails?")) return; commit(applyNailDesignToSlots(blueprint, activeSlot, selectedSlots), { noticeMessage: "Current design applied to selected nails." }); }
-  function applySelectedSignatureLookToSelected() { if (!selectedSignatureLook) return; if (!selectedSlots.length) { showNotice("Select destination nails before applying a Signature Look."); return; } commit(applySignatureLookToSlots(blueprint, selectedSignatureLook, selectedSlots), { selectLayerId: "base-layer", noticeMessage: "Signature Look applied to selected nails." }); }
-  function mirrorComposition(direction) { if (!confirmBulk("Mirror selected full-set designs?")) return; const next = direction === "left-to-right" ? mirrorHandDesign(blueprint, "left") : direction === "right-to-left" ? mirrorHandDesign(blueprint, "right") : direction === "current-hand" ? mirrorCurrentHand(blueprint) : mirrorFullSet(blueprint); commit(next, { noticeMessage: "Mirrored nails were re-fit where needed." }); }
-  function quickApply(scope) { const targets = scope === "thumbs" ? ["left-thumb", "right-thumb"] : scope === "rings" ? ["left-ring", "right-ring"] : scope === "accent" ? slotsForCompositionPreset("accent-ring-thumb") : slotsFor(scope); setSelectedSlots(targets); if (!confirmBulk("Apply current nail design to this target group?")) return; commit(applyNailDesignToSlots(blueprint, activeSlot, targets), { noticeMessage: "Design applied to target group." }); }
-  function applyTemplate(templateId) { if (!confirmBulk("Apply this editable set template to all nails?")) return; commit(applySetTemplate(blueprint, templateId), { selectLayerId: "base-layer", noticeMessage: "Editable set template applied." }); }
   function pasteToSelected() {
     if (!clipboardNail) { showNotice("Copy the active nail before pasting to selected nails."); return; }
     if (!selectedSlots.length) { showNotice("Select destination nails, then paste copied design."); return; }
@@ -971,7 +929,6 @@ function DesignStudio(_, ref) {
         <CollapsiblePanel id="signatureLooks" title="Signature Looks" open={panelState.signatureLooks} onToggle={togglePanel}>
           <SignatureLooksPanel looks={signatureLooks} selectedId={selectedSignatureLookId} onSelect={setSelectedSignatureLookId} onSave={saveSignatureLook} onApply={applySignatureLook} onDuplicate={duplicateSignatureLook} onRename={renameSignatureLook} onDelete={deleteSignatureLook}/>
         </CollapsiblePanel>
-        <CollapsiblePanel id="setComposition" title="Full Set Composition" open={panelState.setComposition} onToggle={togglePanel}><SetCompositionPanel presets={COMPOSITION_PRESETS} templates={SET_TEMPLATES} selectedSlots={selectedSlots} activeSlot={activeSlot} selectedLookName={selectedSignatureLook?.name} onSelectPreset={setCompositionPreset} onToggleSlot={(slot) => setSelectedSlots((prev) => prev.includes(slot) ? prev.filter((item) => item !== slot) : [...prev, slot])} onApplyCurrentDesign={applyCurrentDesignToSelected} onApplySignatureLook={applySelectedSignatureLookToSelected} onMirror={mirrorComposition} onQuickApply={quickApply} onClearSelected={() => selectedSlots.length ? commit({ ...blueprint, nails: blueprint.nails.map((nail) => selectedSlots.includes(nail.slot) ? resetNailDesign(blueprint, nail.slot).nails.find((item) => item.slot === nail.slot) : nail) }, { selectLayerId: "base-layer", noticeMessage: "Selected nails cleared." }) : showNotice("Select nails to clear.")} onApplyTemplate={applyTemplate}/></CollapsiblePanel>
         <CollapsiblePanel id="designDetails" title="Design Details" open={panelState.designDetails} onToggle={togglePanel}>
           <DesignPalette colors={designPalette}/>
           <Field label="Tags"><input style={S.input} value={tagsString} onChange={(e) => updateBase({ tags: e.target.value })} placeholder="bridal, chrome, accent" /></Field>
@@ -985,9 +942,9 @@ function DesignStudio(_, ref) {
         <p style={UI.smallText}>Strict-fit mode keeps all editable vectors clipped and clamped inside the active nail surface for realistic product-use planning.</p>
       </div></aside>
 
-      <main style={{ ...UI.panel, ...UI.canvasPanel }}>
-        <section style={{ ...UI.canvasStage, borderBottom: `1px solid ${COLORS.border}`, borderTopLeftRadius: 18, borderTopRightRadius: 18 }}><NailCanvas debugOverlay={debugShapeOverlay} nail={activeNail} layers={activeNail.layers} selectedLayerId={selectedLayerId} mode={mode} brush={brush} notice={notice} onSelectLayer={(id) => setSelectedLayerId(id || "")} onTransformLayer={transformLayer} onDrawingStroke={addStroke} onStageEraseStroke={stageEraseStroke} onEraseStroke={eraseStroke}/></section>
-        <FullSetPreview blueprint={blueprint} activeNailId={activeNail.id} selectedSlots={selectedSlots} onSelectSlot={selectSlot} onViewChange={() => dirtyRef.current && void save({ autosave: true, immediate: true })}/>
+      <main style={{ ...UI.panel, display: "flex", flexDirection: "column", alignItems: "stretch", overflow: "visible" }}>
+        <section style={{ ...UI.stickyPreview, borderBottom: `1px solid ${COLORS.border}`, borderTopLeftRadius: 18, borderTopRightRadius: 18 }}><NailCanvas debugOverlay={debugShapeOverlay} nail={activeNail} layers={activeNail.layers} selectedLayerId={selectedLayerId} mode={mode} brush={brush} notice={notice} onSelectLayer={(id) => setSelectedLayerId(id || "")} onTransformLayer={transformLayer} onDrawingStroke={addStroke} onStageEraseStroke={stageEraseStroke} onEraseStroke={eraseStroke}/></section>
+        <FullSetPreview blueprint={blueprint} activeNailId={activeNail.id} onSelectSlot={selectSlot} onViewChange={() => dirtyRef.current && void save({ autosave: true, immediate: true })}/>
       </main>
 
       <aside style={UI.panel}><div style={UI.panelPad}>
