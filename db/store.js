@@ -35,6 +35,7 @@ const FRENCH_TIP_STYLES = ["classic", "deep", "angled", "v", "reverse"];
 const GRADIENT_DIRECTIONS = ["vertical", "reverse-vertical", "horizontal", "diagonal", "reverse-diagonal", "aura"];
 const GRADIENT_RANGES = { blendPosition: [0.08, 0.92], softness: [0, 1], angle: [0, 360] };
 const GRADIENT_COLOR_LIMITS = { min: 2, max: 7 };
+const PATTERNS = ["dots", "stripes", "checker", "french-tip", "glitter", "marble", "camo", "houndstooth", "leopard", "cheetah", "zebra", "cow-print", "snake-print", "tiger-stripe"];
 const FRENCH_TIP_STYLE_ALIASES = { "v-french": "v" };
 const FRENCH_TIP_PRESETS = ["soft", "medium", "deep"];
 const FRENCH_TIP_RANGES = {
@@ -227,6 +228,12 @@ function normalizeFrenchTipData(data, pathPrefix) {
     throw new BlueprintValidationError(`${pathPrefix}.data.preset must be one of: ${FRENCH_TIP_PRESETS.join(", ")}`);
   }
   assertHex(data.colorHex, `${pathPrefix}.data.colorHex`);
+  const fillType = data.fillType === "pattern" ? "pattern" : "solid";
+  const pattern = PATTERNS.includes(data.pattern) ? data.pattern : "dots";
+  const patternColorHex = cleanHex(data.patternColorHex || data.colorHex, data.colorHex);
+  const patternSecondaryColorHex = cleanHex(data.patternSecondaryColorHex || data.secondaryColorHex || "#3B1F35", "#3B1F35");
+  if (Object.prototype.hasOwnProperty.call(data, "patternColorHex")) assertHex(data.patternColorHex, `${pathPrefix}.data.patternColorHex`);
+  if (Object.prototype.hasOwnProperty.call(data, "patternSecondaryColorHex")) assertHex(data.patternSecondaryColorHex, `${pathPrefix}.data.patternSecondaryColorHex`);
   if (Object.prototype.hasOwnProperty.call(data, "opacity")) {
     assertRangedNumber(data.opacity, FRENCH_TIP_RANGES.opacity, `${pathPrefix}.data.opacity`);
   }
@@ -235,6 +242,11 @@ function normalizeFrenchTipData(data, pathPrefix) {
     style,
     preset: data.preset,
     colorHex: data.colorHex,
+    fillType,
+    pattern,
+    patternColorHex,
+    patternSecondaryColorHex,
+    patternScale: clampNumber(data.patternScale, [0.2, 3], 1),
     tipHeight: assertRangedNumber(data.tipHeight, FRENCH_TIP_RANGES.tipHeight, `${pathPrefix}.data.tipHeight`),
     smileCurve: assertRangedNumber(data.smileCurve, FRENCH_TIP_RANGES.smileCurve, `${pathPrefix}.data.smileCurve`),
     smileDepth: assertRangedNumber(data.smileDepth, FRENCH_TIP_RANGES.smileDepth, `${pathPrefix}.data.smileDepth`),

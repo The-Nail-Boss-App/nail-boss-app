@@ -605,6 +605,11 @@ export function normalizeFrenchTipData(data = {}) {
     smileDepth: clamp(data.smileDepth ?? preset.smileDepth, 0, 0.65),
     smileWidth: clamp(data.smileWidth ?? preset.smileWidth, 0.25, 1),
     colorHex: normalizeHex(data.colorHex, "#FFFFFF"),
+    fillType: data.fillType === "pattern" ? "pattern" : "solid",
+    pattern: PATTERNS.includes(data.pattern) ? data.pattern : "dots",
+    patternColorHex: normalizeHex(data.patternColorHex || data.colorHex, "#FFFFFF"),
+    patternSecondaryColorHex: normalizeHex(data.patternSecondaryColorHex || data.secondaryColorHex, "#3B1F35"),
+    patternScale: clamp(data.patternScale ?? 1, 0.2, 3),
     rotation: clamp(data.rotation ?? preset.rotation, -45, 45),
   };
 }
