@@ -51,6 +51,13 @@ const {
   clearStalePolishTypeForLegacyEffect,
   normalizePolishData,
   cloneNailDesign,
+  STARTER_SIGNATURE_LOOKS,
+  createSignatureLookFromBlueprint,
+  applySignatureLookToBlueprint,
+  normalizeSignatureLook,
+  ensureFullSetBlueprint,
+  gradientLayer,
+  patternLayer,
 } = blueprint;
 
 
@@ -784,3 +791,35 @@ assert(frenchTipRenderingSource.includes('data-french-tip-fill="pattern"') && fr
 assert(nailThumbnailSource.includes('<FrenchTipShape key={layer.id} layer={layer} nail={nail} clipId={clipId} thumbnail/>'), 'Pattern French tip renders in thumbnails through shared FrenchTipShape');
 assert(source.includes('fillType: data.fillType === "pattern" ? "pattern" : "solid"') && source.includes('patternScale: clamp(data.patternScale ?? 1, 0.2, 3)'), 'save/load preserves French tip pattern settings');
 assert(nailCanvasSource.includes('if (layer.type === "frenchTip")') && nailCanvasSource.indexOf('if (layer.type === "gradient")') < nailCanvasSource.indexOf('if (layer.type === "frenchTip")'), 'Gradient layer order remains predictable with French Tip rendering and drawing above French tips intact');
+
+
+assert(designStudioSource.includes('data-testid="signature-looks-panel"') && designStudioSource.includes('Signature Looks Library'), 'Signature Looks panel exists in Design Studio');
+assert(designStudioSource.includes('Save active nail') && designStudioSource.includes('Save full set') && designStudioSource.includes('createSignatureLookFromBlueprint(blueprint, name, scope)'), 'user can save current active nail or full set as a Signature Look');
+assert.deepEqual(STARTER_SIGNATURE_LOOKS.map((look) => look.name), ['Classic French', 'Baby Boomer Ombré', 'Pink Aura', 'Zebra French', 'Leopard Accent', 'Matte Black Minimal'], 'starter Signature Looks exist');
+const signatureBase = ensureFullSetBlueprint(createDefaultBlueprint({ shape: 'Oval', length: 0.45, width: 0.44, baseColorHex: '#123456' }));
+const activeForSignature = getActiveNail(signatureBase);
+const customGradient = { ...gradientLayer(activeForSignature), data: blueprint.normalizeGradientData({ colorA: '#111111', colorB: '#EEEEEE', direction: 'aura', gradientStops: [{ color: '#111111', position: 0 }, { color: '#777777', position: 50 }, { color: '#EEEEEE', position: 100 }] }) };
+const customFrench = { ...frenchTipLayer(activeForSignature), data: normalizeFrenchTipData({ fillType: 'pattern', pattern: 'zebra', patternColorHex: '#FFFFFF', patternSecondaryColorHex: '#111111', patternScale: 1.4 }) };
+const customAsset = assetLayer({ category: 'charms', id: 'bow-charm', name: 'Bow Charm', defaultColor: '#FFD1DC' }, activeForSignature);
+const transformedAsset = { ...customAsset, transform: { x: 0.33, y: 0.72, scaleX: 0.24, scaleY: 0.24, rotation: 27 } };
+const signatureSource = updateActiveNail(signatureBase, (nail) => ({ ...nail, shape: 'Coffin', length: 0.72, width: 0.57, baseColorHex: '#ABCDEF', layers: renumberLayers([nail.layers[0], customGradient, customFrench, transformedAsset]) }));
+const savedLook = createSignatureLookFromBlueprint(signatureSource, 'Test Aura French', 'nail');
+assert.equal(savedLook.nail.layers.find((layer) => layer.type === 'gradient').data.gradientStops.length, 3, 'Signature Look preserves gradientStops');
+assert.equal(savedLook.nail.layers.find((layer) => layer.type === 'frenchTip').data.pattern, 'zebra', 'Signature Look preserves French tip pattern settings');
+assert.deepEqual(savedLook.nail.layers.find((layer) => layer.type === 'charm').transform, transformedAsset.transform, 'Signature Look preserves asset size/position/rotation');
+const appliedSelected = applySignatureLookToBlueprint(createDefaultBlueprint({ shape: 'Almond', baseColorHex: '#000000' }), savedLook, 'active');
+assert.equal(getActiveNail(appliedSelected).shape, 'Coffin', 'applying look updates selected nail');
+assert.equal(getActiveNail(appliedSelected).layers.find((layer) => layer.type === 'gradient').data.gradientStops[1].color, '#777777', 'applying look updates active canvas recipe');
+const appliedFullSet = applySignatureLookToBlueprint(ensureFullSetBlueprint(createDefaultBlueprint({ shape: 'Almond' })), savedLook, 'all');
+assert(appliedFullSet.nails.every((nail) => nail.shape === 'Coffin'), 'applying look updates full set');
+assert(nailThumbnailSource.includes('layers={nail.layers}') || nailThumbnailSource.includes('nail.layers'), 'thumbnails update from applied look nail layer data');
+const duplicatedLook = normalizeSignatureLook({ ...savedLook, id: 'duplicate-look', name: `${savedLook.name} copy`, starter: false });
+const renamedLook = normalizeSignatureLook({ ...duplicatedLook, name: 'Renamed Look' });
+const managedLooks = [savedLook, duplicatedLook].map(normalizeSignatureLook).filter((look) => look.id !== duplicatedLook.id);
+assert.equal(duplicatedLook.name, 'Test Aura French copy', 'duplicate Signature Look works');
+assert.equal(renamedLook.name, 'Renamed Look', 'rename Signature Look works');
+assert.equal(managedLooks.length, 1, 'delete Signature Look works');
+const loadedLooks = JSON.parse(JSON.stringify([savedLook])).map(normalizeSignatureLook);
+assert.deepEqual(loadedLooks[0].nail.layers.find((layer) => layer.type === 'charm').transform, transformedAsset.transform, 'save/load preserves Signature Looks');
+assert(designStudioSource.includes('SIGNATURE_LOOKS_STORAGE_KEY') && designStudioSource.includes('window.localStorage.setItem'), 'user-created Signature Looks save/load from localStorage');
+assert.deepEqual(SHAPES, visibleHeroShapeFamilies, 'Hero 7 exact and Duck hidden after Signature Looks changes');

@@ -53,6 +53,10 @@ import {
   POLISH_TYPES,
   normalizePolishData,
   PATTERNS,
+  STARTER_SIGNATURE_LOOKS,
+  applySignatureLookToBlueprint,
+  createSignatureLookFromBlueprint,
+  normalizeSignatureLook,
 } from "./blueprint.js";
 
 function Field({ label, children }) {
@@ -167,6 +171,44 @@ function DesignPalette({ colors }) {
     </div> : <p style={UI.smallText}>Choose polish or artwork colors and they will appear here automatically.</p>}
   </section>;
 }
+const SIGNATURE_LOOKS_STORAGE_KEY = "anitaset.signatureLooks.v1";
+
+function loadStoredSignatureLooks() {
+  if (typeof window === "undefined") return [];
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(SIGNATURE_LOOKS_STORAGE_KEY) || "[]");
+    return Array.isArray(parsed) ? parsed.map(normalizeSignatureLook).filter((look) => !look.starter) : [];
+  } catch {
+    return [];
+  }
+}
+
+function persistSignatureLooks(looks) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(SIGNATURE_LOOKS_STORAGE_KEY, JSON.stringify(looks.filter((look) => !look.starter)));
+}
+
+function SignatureLooksPanel({ looks, selectedId, onSelect, onSave, onApply, onDuplicate, onRename, onDelete }) {
+  const selected = looks.find((look) => look.id === selectedId) || looks[0];
+  return <section data-testid="signature-looks-panel" style={{ border: `1px solid ${COLORS.border}`, borderRadius: 16, padding: 12, marginBottom: 14, background: "#fff" }}>
+    <div style={UI.sectionTitle}>Signature Looks Library</div>
+    <p style={{ ...UI.smallText, marginTop: 0 }}>Save finished recipes, then apply them to one nail or the full set.</p>
+    <Field label="Saved Signature Looks"><select aria-label="Signature Looks" style={S.input} value={selected?.id || ""} onChange={(e) => onSelect(e.target.value)}>{looks.map((look) => <option key={look.id} value={look.id}>{look.name}{look.scope === "full-set" ? " · full set" : ""}</option>)}</select></Field>
+    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 }}>
+      <button type="button" onClick={() => onSave("nail")} style={{ ...S.btnSecondary, padding: "9px 10px" }}>Save active nail</button>
+      <button type="button" onClick={() => onSave("full-set")} style={{ ...S.btnSecondary, padding: "9px 10px" }}>Save full set</button>
+      <button type="button" onClick={() => selected && onApply(selected, "active")} style={UI.iconButton(false, !selected)}>Apply selected nail</button>
+      <button type="button" onClick={() => selected && onApply(selected, "all")} style={UI.iconButton(false, !selected)}>Apply full set</button>
+    </div>
+    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+      <button type="button" onClick={() => selected && onDuplicate(selected)} style={UI.iconButton(false, !selected)}>Duplicate</button>
+      <button type="button" onClick={() => selected && onRename(selected)} style={UI.iconButton(false, !selected || selected.starter)}>Rename</button>
+      <button type="button" onClick={() => selected && onDelete(selected)} style={UI.iconButton(false, !selected || selected.starter)}>Delete</button>
+    </div>
+    <p style={UI.smallText}>Includes starter looks: Classic French, Baby Boomer Ombré, Pink Aura, Zebra French, Leopard Accent, and Matte Black Minimal.</p>
+  </section>;
+}
+
 function DesignStudio(_, ref) {
   const [designs, setDesigns] = useState([]);
   const [selectedDesignId, setSelectedDesignId] = useState("");
@@ -185,6 +227,8 @@ function DesignStudio(_, ref) {
   const [clipboardNail, setClipboardNail] = useState(null);
   const [selectedSlots, setSelectedSlots] = useState([]);
   const [saveStatus, setSaveStatus] = useState("Ready");
+  const [userSignatureLooks, setUserSignatureLooks] = useState(() => loadStoredSignatureLooks());
+  const [selectedSignatureLookId, setSelectedSignatureLookId] = useState(STARTER_SIGNATURE_LOOKS[0]?.id || "");
   const autosaveTimerRef = useRef(null);
   const autosaveSessionRef = useRef(0);
   const editorSessionRef = useRef(0);
@@ -212,6 +256,7 @@ function DesignStudio(_, ref) {
   const activeSlot = activeNail.slot || DEFAULT_ACTIVE_SLOT;
   const productSummary = useMemo(() => summarizeFullSetAssets(blueprint), [blueprint]);
   const designPalette = useMemo(() => collectDesignPalette(activeNail), [activeNail]);
+  const signatureLooks = useMemo(() => [...STARTER_SIGNATURE_LOOKS, ...userSignatureLooks], [userSignatureLooks]);
 
   useEffect(() => { loadDesigns(); }, []);
   useEffect(() => { dirtyRef.current = dirty; blueprintRef.current = blueprint; selectedDesignIdRef.current = selectedDesignId; designNameRef.current = designName; }, [dirty, blueprint, selectedDesignId, designName]);
@@ -752,6 +797,47 @@ function DesignStudio(_, ref) {
   function applyShape(scope) { const targets = slotsFor(scope); if (!confirmBulk("Apply active hero shape, length, and width to these nails?")) return; commit(applyBaseToSlots(blueprint, { shape: activeNail.shape, width: activeNail.width, length: activeNail.length }, targets), { noticeMessage: "Artwork was revalidated after shape changes." }); }
   function resetActive() { if (!confirmBulk("Reset this nail to its base layer only?")) return; commit(resetNailDesign(blueprint, activeSlot), { selectLayerId: "base-layer" }); }
 
+  function updateUserSignatureLooks(updater) {
+    setUserSignatureLooks((prev) => {
+      const next = updater(prev).map(normalizeSignatureLook).filter((look) => !look.starter);
+      persistSignatureLooks(next);
+      return next;
+    });
+  }
+
+  function saveSignatureLook(scope) {
+    const fallback = scope === "full-set" ? `${designName || "Full Set"} Signature` : `${activeSlot} Signature`;
+    const name = window.prompt("Name this Signature Look", fallback);
+    if (!name) return;
+    const look = createSignatureLookFromBlueprint(blueprint, name, scope);
+    updateUserSignatureLooks((prev) => [...prev, look]);
+    setSelectedSignatureLookId(look.id);
+    showNotice("Signature Look saved.");
+  }
+
+  function applySignatureLook(look, scope) {
+    commit(applySignatureLookToBlueprint(blueprint, look, scope), { selectLayerId: "base-layer", noticeMessage: scope === "all" ? "Signature Look applied to full set." : "Signature Look applied to selected nail." });
+  }
+
+  function duplicateSignatureLook(look) {
+    const copy = normalizeSignatureLook({ ...look, id: uid("signature-look"), name: `${look.name} copy`, starter: false });
+    updateUserSignatureLooks((prev) => [...prev, copy]);
+    setSelectedSignatureLookId(copy.id);
+  }
+
+  function renameSignatureLook(look) {
+    if (look.starter) return;
+    const name = window.prompt("Rename Signature Look", look.name);
+    if (!name) return;
+    updateUserSignatureLooks((prev) => prev.map((item) => item.id === look.id ? { ...item, name } : item));
+  }
+
+  function deleteSignatureLook(look) {
+    if (look.starter || !confirmBulk(`Delete ${look.name}?`)) return;
+    updateUserSignatureLooks((prev) => prev.filter((item) => item.id !== look.id));
+    setSelectedSignatureLookId(STARTER_SIGNATURE_LOOKS[0]?.id || "");
+  }
+
   const tagsString = (blueprint.metadata?.tags || []).join(", ");
   const [debugShapeOverlay, setDebugShapeOverlay] = useState(false);
   const statusColor = status.type === "error" ? "#b91c1c" : status.type === "saved" ? COLORS.statusAccepted : status.type === "dirty" ? COLORS.statusChangesRequested : COLORS.textMuted;
@@ -776,9 +862,10 @@ function DesignStudio(_, ref) {
         <GeometrySlider label="Nail width" value={activeNail.width} onChange={(width) => updateBase({ width })}/>
         <NailColorSystem value={baseLayer?.data?.colorHex || activeNail.baseColorHex} polishType={normalizePolishData(baseLayer?.data || {}, activeNail.baseColorHex).polishType} onPolishTypeChange={(polishType) => updateBase({ polishType, topCoat: polishType === "Matte" ? "Matte" : "Gloss", effect: "Solid" })} onChange={(value) => updateBase({ baseColorHex: normalizeHex(value, baseLayer?.data?.colorHex), polishType: normalizePolishData(baseLayer?.data || {}, activeNail.baseColorHex).polishType, effect: "Solid" })} onApply={(scope) => { const targets = scope === "active" ? [activeSlot] : slotsFor(scope); const polish = normalizePolishData(baseLayer?.data || {}, activeNail.baseColorHex); commit(applyBaseToSlots(blueprint, { baseColorHex: getVisibleBaseColor(activeNail), polishType: polish.polishType, shine: polish.shine, transparency: polish.transparency, topCoat: polish.topCoat, effect: "Solid" }, targets)); }}/>
         <DesignPalette colors={designPalette}/>
+        <SignatureLooksPanel looks={signatureLooks} selectedId={selectedSignatureLookId} onSelect={setSelectedSignatureLookId} onSave={saveSignatureLook} onApply={applySignatureLook} onDuplicate={duplicateSignatureLook} onRename={renameSignatureLook} onDelete={deleteSignatureLook}/>
         <p style={UI.smallText}>Hero shape masks are artist-calibrated. Length and width can scale the mask, but they do not redefine the shape family.</p>
         <Field label="Tags"><input style={S.input} value={tagsString} onChange={(e) => updateBase({ tags: e.target.value })} placeholder="bridal, chrome, accent" /></Field>
-        <Field label="Signature Looks"><select style={S.input} value={blueprint.metadata?.styleCategory || "Custom"} onChange={(e) => commit({ ...blueprint, metadata: { ...blueprint.metadata, styleCategory: e.target.value } })}>{STYLE_CATEGORIES.map((category) => <option key={category}>{category}</option>)}</select></Field>
+        <Field label="Style category"><select style={S.input} value={blueprint.metadata?.styleCategory || "Custom"} onChange={(e) => commit({ ...blueprint, metadata: { ...blueprint.metadata, styleCategory: e.target.value } })}>{STYLE_CATEGORIES.map((category) => <option key={category}>{category}</option>)}</select></Field>
         <Field label="Internal notes"><textarea style={{ ...S.input, minHeight: 70 }} value={blueprint.metadata?.internalNotes || ""} onChange={(e) => commit({ ...blueprint, metadata: { ...blueprint.metadata, internalNotes: e.target.value } })} placeholder="Optional artist-only notes" /></Field>
         <Field label="Estimated service price"><input style={S.input} value={blueprint.metadata?.estimatedServicePrice || ""} onChange={(e) => commit({ ...blueprint, metadata: { ...blueprint.metadata, estimatedServicePrice: e.target.value } })} placeholder="Placeholder for later pricing" /></Field>
 
