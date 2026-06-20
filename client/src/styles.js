@@ -79,7 +79,9 @@ export const S = {
   // Full-width page with sidebar
   appShell: {
     display: "flex",
+    height: "100vh",
     minHeight: "100vh",
+    overflow: "hidden",
   },
 
   // Sidebar
@@ -97,9 +99,10 @@ export const S = {
   // Main content area
   mainContent: {
     flex: 1,
+    minHeight: 0,
     display: "flex",
     flexDirection: "column",
-    overflow: "auto",
+    overflow: "hidden",
     background: COLORS.bg,
   },
 

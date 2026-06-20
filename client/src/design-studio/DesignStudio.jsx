@@ -985,8 +985,8 @@ function DesignStudio(_, ref) {
         <p style={UI.smallText}>Strict-fit mode keeps all editable vectors clipped and clamped inside the active nail surface for realistic product-use planning.</p>
       </div></aside>
 
-      <main style={{ ...UI.panel, display: "flex", flexDirection: "column", alignItems: "stretch", overflow: "visible" }}>
-        <section style={{ ...UI.stickyPreview, borderBottom: `1px solid ${COLORS.border}`, borderTopLeftRadius: 18, borderTopRightRadius: 18 }}><NailCanvas debugOverlay={debugShapeOverlay} nail={activeNail} layers={activeNail.layers} selectedLayerId={selectedLayerId} mode={mode} brush={brush} notice={notice} onSelectLayer={(id) => setSelectedLayerId(id || "")} onTransformLayer={transformLayer} onDrawingStroke={addStroke} onStageEraseStroke={stageEraseStroke} onEraseStroke={eraseStroke}/></section>
+      <main style={{ ...UI.panel, display: "flex", flexDirection: "column", alignItems: "stretch", overflow: "hidden" }}>
+        <section style={{ ...UI.canvasStage, borderBottom: `1px solid ${COLORS.border}`, borderTopLeftRadius: 18, borderTopRightRadius: 18 }}><NailCanvas debugOverlay={debugShapeOverlay} nail={activeNail} layers={activeNail.layers} selectedLayerId={selectedLayerId} mode={mode} brush={brush} notice={notice} onSelectLayer={(id) => setSelectedLayerId(id || "")} onTransformLayer={transformLayer} onDrawingStroke={addStroke} onStageEraseStroke={stageEraseStroke} onEraseStroke={eraseStroke}/></section>
         <FullSetPreview blueprint={blueprint} activeNailId={activeNail.id} selectedSlots={selectedSlots} onSelectSlot={selectSlot} onViewChange={() => dirtyRef.current && void save({ autosave: true, immediate: true })}/>
       </main>
 
