@@ -1,8 +1,12 @@
-<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title">
-  <title id="title">AnitaSet icon</title>
-  <rect width="64" height="64" rx="18" fill="#3A1730"/>
-  <path d="M32 9C41 9 48 20.4 48 36.1C48 51.1 40.9 59 32 59C23.1 59 16 51.1 16 36.1C16 20.4 23 9 32 9Z" fill="#F5C8E8" fill-opacity="0.3" stroke="#F5C8E8" stroke-width="3"/>
-  <path d="M25.2 51.6C24.4 47.8 24 44.2 24 41C24 35.1 26.5 32 32 32C37.5 32 40 35.1 40 41C40 44.2 39.6 47.8 38.8 51.6C36.8 53.8 34.6 55 32 55C29.4 55 27.2 53.8 25.2 51.6Z" fill="#F5C8E8"/>
-  <circle cx="32" cy="23" r="3.5" fill="#F5C8E8"/>
-  <path d="M49 10L52 15L57 17L52 19L49 24L46 19L41 17L46 15L49 10Z" fill="#D8A1C6"/>
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">AnitaSet approved compact icon</title>
+  <desc id="desc">Compact app icon derived from the approved AnitaSet colorful nail-letter logo, featuring the decorated A nail.</desc>
+  <rect width="128" height="128" rx="30" fill="#FFF0F8"/>
+  <path d="M64 13C84 13 99 40 99 82C99 111 84 124 64 124C44 124 29 111 29 82C29 40 44 13 64 13Z" fill="#FF77B7" stroke="#7C275C" stroke-width="6"/>
+  <path d="M43 44C58 57 70 58 85 44" stroke="#FFE6F4" stroke-width="8" stroke-linecap="round"/>
+  <path d="M46 107L64 35L82 107" stroke="#FFFFFF" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M53 78H75" stroke="#FFFFFF" stroke-width="12" stroke-linecap="round"/>
+  <circle cx="88" cy="31" r="7" fill="#FFD85C"/>
+  <path d="M26 25L30 33L38 37L30 41L26 49L22 41L14 37L22 33L26 25Z" fill="#55D6A7"/>
+  <path d="M101 57L104 63L110 66L104 69L101 75L98 69L92 66L98 63L101 57Z" fill="#53B7FF"/>
 </svg>

@@ -268,7 +268,7 @@ export function LogoMark({ size = 36, variant = "icon", style = {} }) {
       height={isWordmark ? undefined : size}
       style={{
         display: "block",
-        width: isWordmark ? "min(100%, 180px)" : size,
+        width: isWordmark ? "min(100%, 320px)" : size,
         height: isWordmark ? "auto" : size,
         maxWidth: "100%",
         objectFit: "contain",
