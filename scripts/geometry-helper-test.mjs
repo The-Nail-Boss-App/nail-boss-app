@@ -13,6 +13,16 @@ const polishRendererSource = await readFile(new URL('../client/src/design-studio
 const propertiesPanelSource = await readFile(new URL('../client/src/design-studio/PropertiesPanel.jsx', import.meta.url), 'utf8');
 const blueprint = await import(`data:text/javascript;charset=utf-8,${encodeURIComponent(source)}`);
 
+assert(['Nail Basics', 'Signature Looks', 'Design Details', 'French Tip Precision', 'Full-Set Actions', 'Developer Geometry Tools', 'Art Tools', 'Layer Effects', 'Detail Brush', 'Properties', 'Layers', 'Charms/Jewels/Decals'].every((title) => designStudioSource.includes(`title="${title}"`) || designStudioSource.includes(`>${title}<`) || designStudioSource.includes(`"${title}"`)), 'Design Studio exposes the required collapsible section titles');
+assert(designStudioSource.includes('aria-expanded={open}') && designStudioSource.includes('PANEL_PREFS_STORAGE_KEY') && designStudioSource.includes('localStorage.setItem(PANEL_PREFS_STORAGE_KEY'), 'collapsible panels can expand/collapse and remember panel state');
+assert(designStudioSource.includes('Signature Looks Library') && designStudioSource.includes('Starter Looks') && designStudioSource.includes('User-created Looks'), 'expanded Signature Looks Library exposes starter and custom looks in visible lists');
+assert(['Save active nail as Signature Look', 'Save full set as Signature Look', 'Apply ${look.name} to active nail', 'Apply ${look.name} to full set', 'Duplicate ${look.name}', 'Rename ${look.name}', 'Delete ${look.name}'].every((label) => designStudioSource.includes(label)), 'Signature Look save/apply/duplicate/rename/delete actions are reachable with accessible labels');
+assert(designStudioSource.includes('disabled={look.starter}') && designStudioSource.includes('starter: false'), 'starter Signature Looks are protected while duplicated custom looks are editable');
+assert(designStudioSource.includes('Add Ombré / Gradient') && designStudioSource.includes('Add Pattern') && designStudioSource.includes('PATTERNS.map'), 'gradient and pattern controls remain reachable');
+assert(designStudioSource.includes('Full-Set Actions') && bulkActionsPanelSource.includes('Copy active nail') && bulkActionsPanelSource.includes('Mirror hand'), 'Full-Set Actions remain available with compact labeled actions');
+assert(designStudioSource.includes('French Tip Precision') && designStudioSource.includes('Smile width'), 'French Tip Precision remains available');
+assert(designStudioSource.includes('aria-label={label}') && designStudioSource.includes('title={label}') && bulkActionsPanelSource.includes('aria-label='), 'compact icon buttons provide accessible labels or titles');
+
 const {
   SHAPES,
   addStrokeToDrawingLayer,
