@@ -74,7 +74,6 @@ const DEFAULT_PANEL_STATE = {
   detailBrush: false,
   properties: true,
   layers: true,
-  charmsJewelsDecals: true,
 };
 
 function loadPanelState() {
@@ -233,34 +232,33 @@ function SignatureLooksPanel({ looks, selectedId, onSelect, onSave, onApply, onD
   const selected = looks.find((look) => look.id === selectedId) || looks[0];
   const starterLooks = looks.filter((look) => look.starter);
   const customLooks = looks.filter((look) => !look.starter);
-  const renderLook = (look) => {
-    const active = selected?.id === look.id;
-    return <div key={look.id} style={{ border: `1.5px solid ${active ? COLORS.plum : COLORS.border}`, borderRadius: 12, padding: 8, background: active ? COLORS.roseDim : "#fff" }}>
-      <button type="button" onClick={() => onSelect(look.id)} style={{ width: "100%", textAlign: "left", background: "transparent", border: 0, padding: 0, cursor: "pointer", color: COLORS.text }} title={`Select ${look.name}`}>
-        <strong style={{ fontSize: 13 }}>{look.name}</strong>
-        <span style={{ display: "block", fontSize: 11, color: COLORS.textMuted }}>{look.starter ? "Starter look" : "Custom look"} · {look.scope === "full-set" ? "full set" : "single nail"}</span>
-      </button>
-      <div style={{ ...UI.actionGrid, marginTop: 8 }}>
-        <IconActionButton icon="↙" label={`Apply ${look.name} to active nail`} onClick={() => onApply(look, "active")}/>
-        <IconActionButton icon="⬚" label={`Apply ${look.name} to full set`} onClick={() => onApply(look, "all")}/>
-        <IconActionButton icon="⧉" label={`Duplicate ${look.name}`} onClick={() => onDuplicate(look)}/>
-        <IconActionButton icon="✎" label={`Rename ${look.name}`} disabled={look.starter} onClick={() => onRename(look)}/>
-        <IconActionButton icon="🗑" label={`Delete ${look.name}`} disabled={look.starter} onClick={() => onDelete(look)}/>
-      </div>
-    </div>;
-  };
+  const selectedIsStarter = Boolean(selected?.starter);
   return <div data-testid="signature-looks-panel">
     <div style={UI.sectionTitle}>Signature Looks Library</div>
-    <p style={{ ...UI.smallText, marginTop: 0 }}>Full library with protected starter looks and editable user-created looks.</p>
-    <Field label="Saved Signature Looks"><select aria-label="Signature Looks" style={S.input} value={selected?.id || ""} onChange={(e) => onSelect(e.target.value)}>{looks.map((look) => <option key={look.id} value={look.id}>{look.name}{look.scope === "full-set" ? " · full set" : ""}</option>)}</select></Field>
-    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 10 }}>
-      <button type="button" aria-label="Save active nail as Signature Look" title="Save active nail as Signature Look" onClick={() => onSave("nail")} style={{ ...S.btnSecondary, padding: "9px 10px" }}>💾 Nail</button>
-      <button type="button" aria-label="Save full set as Signature Look" title="Save full set as Signature Look" onClick={() => onSave("full-set")} style={{ ...S.btnSecondary, padding: "9px 10px" }}>💾 Full Set</button>
+    <p style={{ ...UI.smallText, marginTop: 0, marginBottom: 8 }}>Compact grouped dropdown with protected Starter Looks and editable My Looks.</p>
+    <Field label="Saved Signature Looks">
+      <select data-testid="signature-looks-select" aria-label="Signature Looks" style={S.input} value={selected?.id || ""} onChange={(e) => onSelect(e.target.value)}>
+        <optgroup label="Starter Looks">{starterLooks.map((look) => <option key={look.id} value={look.id}>{look.name}{look.scope === "full-set" ? " · full set" : ""}</option>)}</optgroup>
+        <optgroup label="My Looks">{customLooks.length ? customLooks.map((look) => <option key={look.id} value={look.id}>{look.name}{look.scope === "full-set" ? " · full set" : ""}</option>) : <option disabled value="__empty_custom_looks">No saved custom looks</option>}</optgroup>
+      </select>
+    </Field>
+    <div style={{ border: `1px solid ${COLORS.border}`, borderRadius: 12, padding: 8, marginBottom: 8, background: COLORS.roseDim }}>
+      <strong style={{ fontSize: 13 }}>{selected?.name || "Choose a Signature Look"}</strong>
+      <span style={{ display: "block", fontSize: 11, color: COLORS.textMuted }}>{selectedIsStarter ? "Starter look · protected" : "Custom look · editable"}{selected?.scope === "full-set" ? " · full set" : " · single nail"}</span>
     </div>
-    <div style={{ display: "grid", gap: 8 }}>
-      <div><div style={UI.sectionTitle}>Starter Looks</div><div style={{ display: "grid", gap: 8 }}>{starterLooks.map(renderLook)}</div></div>
-      <div><div style={UI.sectionTitle}>User-created Looks</div>{customLooks.length ? <div style={{ display: "grid", gap: 8 }}>{customLooks.map(renderLook)}</div> : <p style={UI.smallText}>No custom looks yet. Duplicate a starter or save the active nail/full set to edit your own library.</p>}</div>
+    <div data-testid="signature-look-primary-actions" style={{ ...UI.actionGrid, gridTemplateColumns: "repeat(4, minmax(40px, 1fr))", marginBottom: 8 }}>
+      <IconActionButton icon="↙" label="Apply selected Signature Look to active nail" disabled={!selected} onClick={() => selected && onApply(selected, "active")}/>
+      <IconActionButton icon="⬚" label="Apply selected Signature Look to full set" disabled={!selected} onClick={() => selected && onApply(selected, "all")}/>
+      <IconActionButton icon="💾" label="Save active nail as Signature Look" onClick={() => onSave("nail")}/>
+      <IconActionButton icon="▣" label="Save full set as Signature Look" onClick={() => onSave("full-set")}/>
     </div>
+    <div data-testid="signature-look-manage-actions" style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+      <span style={{ ...UI.smallText, marginRight: 2 }}>Manage</span>
+      <IconActionButton icon="⧉" label="Duplicate selected Signature Look" disabled={!selected} onClick={() => selected && onDuplicate(selected)}/>
+      <IconActionButton icon="✎" label="Rename selected custom Signature Look" disabled={!selected || selectedIsStarter} onClick={() => selected && onRename(selected)}/>
+      <IconActionButton icon="🗑" label="Delete selected custom Signature Look" disabled={!selected || selectedIsStarter} onClick={() => selected && onDelete(selected)}/>
+    </div>
+    {!customLooks.length && <p style={UI.smallText}>No custom looks yet. Duplicate a starter or save the active nail/full set to edit your own library.</p>}
   </div>;
 }
 
@@ -950,18 +948,14 @@ function DesignStudio(_, ref) {
       </main>
 
       <aside style={UI.panel}><div style={UI.panelPad}>
-        <DesignBoardIntro/>
         <CollapsiblePanel id="artTools" title="Art Tools" open={panelState.artTools} onToggle={togglePanel}>
-          <div style={{ display: "flex", gap: 6, marginBottom: 12 }}><button type="button" aria-pressed={tab === "assets"} aria-label="Show nail art library" onClick={() => setTab("assets")} style={UI.miniButton(tab === "assets")}>Art</button><button type="button" aria-pressed={tab === "layers"} aria-label="Show layers panel" onClick={() => setTab("layers")} style={UI.miniButton(tab === "layers")}>Layers</button><button type="button" aria-pressed={tab === "properties"} aria-label="Show properties panel" onClick={() => setTab("properties")} style={UI.miniButton(tab === "properties")}>Properties</button></div>
-          <AssetLibrary onAddAsset={addAsset}/>
+          <div style={{ display: "flex", gap: 6, marginBottom: 10, flexWrap: "wrap" }}><button type="button" aria-pressed={tab === "assets"} aria-label="Show Charms, Jewels, and Decals art tools" onClick={() => setTab("assets")} style={UI.miniButton(tab === "assets")}>Charms/Jewels/Decals</button><button type="button" aria-pressed={tab === "brush"} aria-label="Show Brush art tools" onClick={() => setTab("brush")} style={UI.miniButton(tab === "brush")}>Brush</button><button type="button" aria-pressed={tab === "effects"} aria-label="Show Layer Effects art tools" onClick={() => setTab("effects")} style={UI.miniButton(tab === "effects")}>Layer Effects</button></div>
+          {tab === "assets" && <AssetLibrary onAddAsset={addAsset}/>}
+          {tab === "brush" && <DrawingToolbar brush={brush} mode={mode} onBrushChange={(patch) => setBrush((prev) => ({ ...prev, ...patch }))}/>}
+          {tab === "effects" && <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}><button type="button" aria-label="Add gradient layer" title="Add gradient layer" onClick={addGradient} style={{ ...S.btnSecondary, padding: "9px 12px" }}>＋ Gradient</button><button type="button" aria-label="Add pattern layer" title="Add pattern layer" onClick={addPattern} style={{ ...S.btnSecondary, padding: "9px 12px" }}>▧ Pattern</button><button type="button" aria-label="Add French tip layer" title="Add French tip layer" onClick={addFrenchTip} style={{ ...S.btnSecondary, padding: "9px 12px" }}>◠ French</button></div>}
         </CollapsiblePanel>
-        <CollapsiblePanel id="layerEffects" title="Layer Effects" open={panelState.layerEffects} onToggle={togglePanel}>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}><button type="button" aria-label="Add gradient layer" title="Add gradient layer" onClick={addGradient} style={{ ...S.btnSecondary, padding: "9px 12px" }}>Add Ombré / Gradient</button><button type="button" aria-label="Add Pattern layer" title="Add Pattern layer" onClick={addPattern} style={{ ...S.btnSecondary, padding: "9px 12px" }}>Add Pattern</button></div><p style={UI.smallText}>Add salon ombré/gradient and pattern overlays as editable layers while the base polish surface stays material-aware.</p>
-        </CollapsiblePanel>
-        <CollapsiblePanel id="detailBrush" title="Detail Brush" open={panelState.detailBrush} onToggle={togglePanel}><DrawingToolbar brush={brush} mode={mode} onBrushChange={(patch) => setBrush((prev) => ({ ...prev, ...patch }))}/></CollapsiblePanel>
         <CollapsiblePanel id="properties" title="Properties" open={panelState.properties} onToggle={togglePanel}><PropertiesPanel layer={selectedLayer} onPatch={(patch) => selectedLayer && patchLayer(selectedLayer.id, patch)} onDuplicate={() => duplicateLayer()} onDelete={() => deleteLayer()}/></CollapsiblePanel>
         <CollapsiblePanel id="layers" title="Layers" open={panelState.layers} onToggle={togglePanel}><LayersPanel layers={activeNail.layers} selectedLayerId={selectedLayerId} onSelect={setSelectedLayerId} onToggleVisible={toggleVisible} onToggleLock={toggleLock} onMove={moveLayer} onDelete={deleteLayer}/></CollapsiblePanel>
-        <CollapsiblePanel id="charmsJewelsDecals" title="Charms/Jewels/Decals" open={panelState.charmsJewelsDecals} onToggle={togglePanel}><AssetLibrary onAddAsset={addAsset}/></CollapsiblePanel>
         <div style={{ marginTop: 12, ...UI.smallText }}>Product-use hook: {productSummary.nailCount} nails, {productSummary.visibleDrawingLayerCount} drawing layers, {productSummary.visibleGradientLayerCount} gradients, {productSummary.visiblePatternLayerCount} patterns, {productSummary.visibleFrenchTipLayerCount} French tips.</div>
       </div></aside>
     </div>
