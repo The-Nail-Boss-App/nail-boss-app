@@ -52,6 +52,7 @@ import {
   updateActiveNail,
   POLISH_TYPES,
   normalizePolishData,
+  PATTERNS,
 } from "./blueprint.js";
 
 function Field({ label, children }) {
@@ -77,7 +78,13 @@ function FrenchTipControls({ layer, onAdd, onPatch, onApply }) {
     <Field label={`Smile curve ${Math.round((data.smileCurve ?? 0.32) * 100)}%`}><input type="range" min="0" max="100" value={Math.round((data.smileCurve ?? 0.32) * 100)} onChange={(e) => onPatch({ smileCurve: Number(e.target.value) / 100 })} style={{ width: "100%" }}/></Field>
     <Field label={`Smile depth ${Math.round((data.smileDepth ?? 0.24) * 100)}%`}><input type="range" min="0" max="65" value={Math.round((data.smileDepth ?? 0.24) * 100)} onChange={(e) => onPatch({ smileDepth: Number(e.target.value) / 100 })} style={{ width: "100%" }}/></Field>
     <Field label={`Smile width ${Math.round((data.smileWidth ?? 0.82) * 100)}%`}><input type="range" min="25" max="100" value={Math.round((data.smileWidth ?? 0.82) * 100)} onChange={(e) => onPatch({ smileWidth: Number(e.target.value) / 100 })} style={{ width: "100%" }}/></Field>
-    <Field label="Tip color"><ColorInput value={data.colorHex || "#FFFFFF"} onChange={(value) => onPatch({ colorHex: normalizeHex(value, "#FFFFFF") })}/></Field>
+    <Field label="Fill Type"><select style={S.input} value={data.fillType || "solid"} onChange={(e) => onPatch({ fillType: e.target.value })}><option value="solid">Solid</option><option value="pattern">Pattern</option></select></Field>
+    {(data.fillType || "solid") === "pattern" ? <>
+      <Field label="Pattern"><select style={S.input} value={data.pattern || "dots"} onChange={(e) => onPatch({ pattern: e.target.value })}>{PATTERNS.map((pattern) => <option key={pattern} value={pattern}>{pattern}</option>)}</select></Field>
+      <Field label="Pattern primary color"><ColorInput value={data.patternColorHex || data.colorHex || "#FFFFFF"} onChange={(value) => onPatch({ patternColorHex: normalizeHex(value, "#FFFFFF") })}/></Field>
+      <Field label="Pattern secondary color"><ColorInput value={data.patternSecondaryColorHex || "#3B1F35"} onChange={(value) => onPatch({ patternSecondaryColorHex: normalizeHex(value, "#3B1F35") })}/></Field>
+      <Field label={`Pattern scale ${Math.round((data.patternScale ?? 1) * 100)}%`}><input type="range" min="20" max="300" value={Math.round((data.patternScale ?? 1) * 100)} onChange={(e) => onPatch({ patternScale: Number(e.target.value) / 100 })} style={{ width: "100%" }}/></Field>
+    </> : <Field label="Tip color"><ColorInput value={data.colorHex || "#FFFFFF"} onChange={(value) => onPatch({ colorHex: normalizeHex(value, "#FFFFFF") })}/></Field>}
     <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}><button type="button" onClick={() => onApply("active")} style={UI.iconButton(false)}>Apply to active nail</button><button type="button" onClick={() => onApply("hand")} style={UI.iconButton(false)}>Apply to current hand</button><button type="button" onClick={() => onApply("all")} style={UI.iconButton(false)}>Apply to all nails</button></div>
     <p style={UI.smallText}>Classic, deep, angled, V-French, and reverse French render as clipped vector layers inside each nail silhouette.</p>
   </section>;
