@@ -25,7 +25,7 @@ export default function Login({ onLogin }) {
         <div style={S.card(420)}>
           {/* Logo */}
           <div style={{ display: "flex", alignItems: "center", marginBottom: 28 }}>
-            <LogoMark variant="wordmark" style={{ width: 180 }} />
+            <LogoMark variant="wordmark" style={{ width: 320 }} />
           </div>
 
           <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 6 }}>
