@@ -1005,6 +1005,76 @@ export function cloneNailDesign(sourceNail, destinationNail) {
   return revalidateNailLayers(next);
 }
 
+
+function signatureLookNail(slot, patch = {}, layers = []) {
+  const nail = defaultNailForSlot(slot, patch);
+  const basePatch = patch.baseData || {};
+  const base = { ...createBaseLayer({ ...nail, ...patch }), data: normalizePolishData({ ...createBaseLayer({ ...nail, ...patch }).data, ...basePatch }, patch.baseColorHex || nail.baseColorHex) };
+  return revalidateNailLayers({ ...nail, ...patch, baseColorHex: normalizeHex(patch.baseColorHex, nail.baseColorHex), layers: renumberLayers([base, ...layers.map((layer, index) => ({ ...layer, order: index + 1 }))]) });
+}
+
+function signatureGradient(nail, data = {}, opacity = 0.75) {
+  return { ...gradientLayer(nail), id: uid("gradient"), opacity, data: normalizeGradientData({ colorA: "#FFFFFF", colorB: "#E8A0BF", ...data }) };
+}
+
+function signaturePattern(nail, pattern, data = {}, opacity = 0.7) {
+  return { ...patternLayer(nail, pattern), id: uid("pattern"), opacity, data: { pattern, colorHex: "#FFFFFF", secondaryColorHex: "#3B1F35", density: 0.5, ...data } };
+}
+
+function signatureFrench(nail, data = {}, opacity = 1) {
+  return { ...frenchTipLayer(nail, data.style || "classic", data.preset || "medium"), id: uid("frenchTip"), opacity, data: normalizeFrenchTipData({ ...data }) };
+}
+
+function signatureAsset(nail, type, name, data, transform, opacity = 1) {
+  return { id: uid(type), type, name, visible: true, locked: false, opacity, order: 99, transform: safeTransform(transform, nail, type), data: { ...data } };
+}
+
+function starterLook(id, name, patch, layerFactory = () => []) {
+  const seed = defaultNailForSlot(DEFAULT_ACTIVE_SLOT, patch);
+  const nail = signatureLookNail(DEFAULT_ACTIVE_SLOT, patch, layerFactory(seed));
+  return { id, name, starter: true, scope: "nail", nail };
+}
+
+export const STARTER_SIGNATURE_LOOKS = [
+  starterLook("starter-classic-french", "Classic French", { shape: "Square", length: 0.54, width: 0.5, baseColorHex: "#F7D7E6", baseData: { polishType: "Cream" } }, (nail) => [signatureFrench(nail, { style: "classic", preset: "medium", colorHex: "#FFFFFF" })]),
+  starterLook("starter-baby-boomer-ombre", "Baby Boomer Ombré", { shape: "Almond", length: 0.66, width: 0.48, baseColorHex: "#F6C9D8", baseData: { polishType: "Milky", transparency: 0.28 } }, (nail) => [signatureGradient(nail, { direction: "vertical", colorA: "#FFFFFF", colorB: "#F6C9D8", gradientStops: [{ color: "#FFFFFF", position: 0 }, { color: "#F8E7ED", position: 42 }, { color: "#F6C9D8", position: 100 }], softness: 0.78 })]),
+  starterLook("starter-pink-aura", "Pink Aura", { shape: "Oval", length: 0.58, width: 0.5, baseColorHex: "#F9DDE8", baseData: { polishType: "Jelly", transparency: 0.38 } }, (nail) => [signatureGradient(nail, { direction: "aura", colorA: "#FFEAF2", colorB: "#FF5EA8", gradientStops: [{ color: "#FFEAF2", position: 0 }, { color: "#FF9BC7", position: 52 }, { color: "#FF5EA8", position: 100 }], softness: 0.86 }, 0.68)]),
+  starterLook("starter-zebra-french", "Zebra French", { shape: "Coffin", length: 0.7, width: 0.52, baseColorHex: "#F5D3E1", baseData: { polishType: "Cream" } }, (nail) => [signatureFrench(nail, { style: "deep", preset: "deep", fillType: "pattern", pattern: "zebra", patternColorHex: "#FFFFFF", patternSecondaryColorHex: "#111111", patternScale: 0.82 })]),
+  starterLook("starter-leopard-accent", "Leopard Accent", { shape: "Almond", length: 0.62, width: 0.48, baseColorHex: "#E7B88F", baseData: { polishType: "Cream" } }, (nail) => [signaturePattern(nail, "leopard", { colorHex: "#6B3B1A", secondaryColorHex: "#1B120D", density: 0.72 }, 0.86), signatureAsset(nail, "jewel", "Gold accent gem", { assetId: "gold-stud", colorHex: "#D4AF37" }, { x: 0.5, y: 0.78, scaleX: 0.12, scaleY: 0.12, rotation: 18 })]),
+  starterLook("starter-matte-black-minimal", "Matte Black Minimal", { shape: "Square", length: 0.5, width: 0.52, baseColorHex: "#111111", baseData: { polishType: "Matte", topCoat: "Matte", shine: 0.08 } }, (nail) => [signatureAsset(nail, "decal", "Minimal gold line", { assetId: "gold-line", colorHex: "#D4AF37" }, { x: 0.5, y: 0.5, scaleX: 0.08, scaleY: 0.42, rotation: 0 }, 0.9)]),
+];
+
+export function normalizeSignatureLook(look = {}) {
+  const name = String(look.name || "Signature Look").trim() || "Signature Look";
+  const scope = look.scope === "full-set" ? "full-set" : "nail";
+  if (scope === "full-set") {
+    const source = ensureFullSetBlueprint({ schemaVersion: 1, canvas: { mode: "full-set", activeNailId: look.nails?.[0]?.id }, nails: look.nails || [] });
+    return { id: String(look.id || uid("signature-look")), name, starter: Boolean(look.starter), scope, nails: source.nails };
+  }
+  const nail = normalizeEditableNail(look.nail || look, defaultNailForSlot(DEFAULT_ACTIVE_SLOT, {}), 0);
+  return { id: String(look.id || uid("signature-look")), name, starter: Boolean(look.starter), scope: "nail", nail };
+}
+
+export function createSignatureLookFromBlueprint(blueprint, name, scope = "nail") {
+  const normalized = ensureFullSetBlueprint(blueprint);
+  if (scope === "full-set") return normalizeSignatureLook({ id: uid("signature-look"), name, scope: "full-set", nails: normalized.nails });
+  return normalizeSignatureLook({ id: uid("signature-look"), name, scope: "nail", nail: getActiveNail(normalized) });
+}
+
+export function applySignatureLookToBlueprint(blueprint, look, scope = "active") {
+  const normalizedLook = normalizeSignatureLook(look);
+  const current = ensureFullSetBlueprint(blueprint);
+  if (scope === "all") {
+    if (normalizedLook.scope === "full-set") {
+      const bySlot = new Map(normalizedLook.nails.map((nail) => [nail.slot, nail]));
+      return { ...current, nails: current.nails.map((nail) => cloneNailDesign(bySlot.get(nail.slot) || normalizedLook.nails[0], nail)) };
+    }
+    return { ...current, nails: current.nails.map((nail) => cloneNailDesign(normalizedLook.nail, nail)) };
+  }
+  const source = normalizedLook.scope === "full-set" ? (normalizedLook.nails.find((nail) => nail.slot === getActiveNail(current).slot) || normalizedLook.nails[0]) : normalizedLook.nail;
+  return updateActiveNail(current, (nail) => cloneNailDesign(source, nail));
+}
+
 export function copyNailToSlots(blueprint, sourceSlot, destinationSlots = []) {
   const source = getNailBySlot(blueprint, sourceSlot);
   if (!source) return blueprint;
