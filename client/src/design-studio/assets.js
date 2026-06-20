@@ -29,6 +29,61 @@ export const STARTER_ASSETS = [
   { id: "decal-sparkle", category: "decals", name: "Sparkle", defaultColor: "#FFFFFF" },
 ];
 
+function GemSparkle({ x = 0, y = 0, size = 1, opacity = 0.95 }) {
+  return <g data-realism-layer="jewel-white-sparkle-reflection" transform={`translate(${x} ${y}) scale(${size})`} opacity={opacity} pointerEvents="none">
+    <path d="M0 -6 L1.6 -1.6 L6 0 L1.6 1.6 L0 6 L-1.6 1.6 L-6 0 L-1.6 -1.6Z" fill="#fff"/>
+    <circle r="1.3" fill="#fff"/>
+  </g>;
+}
+
+function RoundFacetedGem({ color = "#DDF7FF", oval = false }) {
+  const scale = oval ? "scale(.86 1.12)" : undefined;
+  return <g data-asset-renderer="shared-faceted-jewel-renderer" data-jewel-kind={oval ? "oval-faceted-rhinestone" : "round-domed-faceted-rhinestone"} transform={scale}>
+    <circle data-realism-layer="jewel-outer-cut-shape" r="29" fill={color} stroke="#f9feff" strokeWidth="2.6"/>
+    <circle data-realism-layer="jewel-rim-edge-highlight" r="28" fill="none" stroke="#ffffff" strokeWidth="3" opacity=".72"/>
+    <circle data-realism-layer="jewel-inner-glow-color-tint" r="23" fill={color} opacity=".62"/>
+    <path data-realism-layer="round-gem-dome-facet-highlight-marker" d="M0 -27 L13 -13 L26 0 L12 6 L0 28 L-11 6 L-26 0 L-13 -13Z" fill="#ffffff" opacity=".22"/>
+    <path data-realism-layer="jewel-lowlight-shadow-facets" d="M26 0 L12 6 L0 28 L18 18 Z M-26 0 L-11 6 L0 28 L-19 15 Z" fill="#1f3146" opacity=".24"/>
+    <path data-realism-layer="jewel-directional-highlight-facet" d="M-21 -6 L-9 -21 L4 -25 L-2 -4 L-15 7Z" fill="#fff" opacity=".48"/>
+    <g data-realism-layer="jewel-inner-facets" fill="none" stroke="#5c7f9c" strokeWidth="1.35" opacity=".62">
+      <path d="M0 -27 L0 28 M-26 0 L26 0 M-13 -13 L12 6 M13 -13 L-11 6"/>
+      <circle r="13"/>
+    </g>
+    <ellipse data-realism-layer="jewel-glass-refraction-layer" cx="-7" cy="-10" rx="12" ry="7" fill="#fff" opacity=".26" transform="rotate(-24 -7 -10)"/>
+    <GemSparkle x="-12" y="-15" size=".82"/>
+    <GemSparkle x="12" y="8" size=".44" opacity=".68"/>
+  </g>;
+}
+
+function SquareFacetedGem({ color = "#D8E2FF" }) {
+  return <g data-asset-renderer="shared-faceted-jewel-renderer" data-jewel-kind="square-cut-crystal-rhinestone">
+    <rect data-realism-layer="jewel-outer-cut-shape" x="-28" y="-28" width="56" height="56" rx="7" fill={color} stroke="#f9feff" strokeWidth="2.6"/>
+    <rect data-realism-layer="jewel-rim-edge-highlight" x="-25" y="-25" width="50" height="50" rx="5" fill="none" stroke="#fff" strokeWidth="2.5" opacity=".75"/>
+    <path data-realism-layer="square-gem-facet-highlight-marker" d="M-28 -28 L0 -16 L28 -28 L16 0 L28 28 L0 16 L-28 28 L-16 0Z" fill="#fff" opacity=".2"/>
+    <path data-realism-layer="square-gem-lowlight-marker" d="M16 0 L28 28 L0 16 L0 0Z M-16 0 L-28 28 L0 16 L0 0Z" fill="#1f3146" opacity=".25"/>
+    <path data-realism-layer="jewel-directional-highlight-facet" d="M-22 -23 L-3 -15 L-15 2 L-27 -1Z" fill="#fff" opacity=".5"/>
+    <rect data-realism-layer="jewel-inner-glow-color-tint" x="-15" y="-15" width="30" height="30" rx="4" fill={color} opacity=".58"/>
+    <g data-realism-layer="jewel-inner-facets" fill="none" stroke="#5c7198" strokeWidth="1.45" opacity=".66">
+      <path d="M-28 -28 L0 0 L28 -28 M28 28 L0 0 L-28 28 M0 -28 L0 28 M-28 0 L28 0"/>
+      <rect x="-15" y="-15" width="30" height="30" rx="3"/>
+    </g>
+    <path data-realism-layer="jewel-glass-refraction-layer" d="M-12 -18 C-1 -24 12 -17 18 -6 C6 -10 -5 -7 -18 2Z" fill="#fff" opacity=".26"/>
+    <GemSparkle x="-14" y="-16" size=".75"/>
+    <GemSparkle x="14" y="13" size=".42" opacity=".66"/>
+  </g>;
+}
+
+function TeardropFacetedGem({ color = "#E8FBFF" }) {
+  return <g data-asset-renderer="shared-faceted-jewel-renderer" data-jewel-kind="teardrop-cut-crystal">
+    <path data-realism-layer="jewel-outer-cut-shape" d="M0 -35 C25 -6 27 28 0 32 C-27 28 -25 -6 0 -35Z" fill={color} stroke="#f9feff" strokeWidth="2.6"/>
+    <path data-realism-layer="jewel-rim-edge-highlight" d="M0 -30 C20 -5 21 23 0 27 C-21 23 -20 -5 0 -30Z" fill="none" stroke="#fff" strokeWidth="2.2" opacity=".68"/>
+    <path data-realism-layer="jewel-inner-facets" d="M0 -30 L0 27 M0 -30 L13 2 L0 27 L-13 2Z M-20 4 L0 8 L20 4" fill="none" stroke="#5c7f9c" strokeWidth="1.5" opacity=".62"/>
+    <path data-realism-layer="jewel-directional-highlight-facet" d="M-5 -24 C5 -10 8 2 3 13 C-7 3 -12 -9 -5 -24Z" fill="#fff" opacity=".4"/>
+    <path data-realism-layer="jewel-lowlight-shadow-facets" d="M12 3 C18 15 11 26 0 27 L3 13Z" fill="#1f3146" opacity=".22"/>
+    <GemSparkle x="-7" y="-12" size=".7"/>
+  </g>;
+}
+
 export function findAsset(assetId) {
   return STARTER_ASSETS.find((asset) => asset.id === assetId);
 }
@@ -54,17 +109,17 @@ export function renderAssetShapes(assetId, color = "#FFFFFF") {
     case "charm-chain":
       return <><rect x="-38" y="-12" width="36" height="24" rx="12" fill="none" stroke={color} strokeWidth="8"/><rect x="2" y="-12" width="36" height="24" rx="12" fill="none" stroke={color} strokeWidth="8"/><path d="M-5 0 L5 0" stroke={stroke} strokeWidth="3"/></>;
     case "jewel-round":
-      return <><circle r="28" fill={color} stroke={stroke} strokeWidth="2"/><path d="M-18 -8 L0 -25 L18 -8 L11 18 L-11 18Z" fill="none" stroke="#8AA8B8" strokeWidth="2"/><circle cx="-9" cy="-11" r="5" fill="#fff" opacity=".85"/></>;
+      return <RoundFacetedGem color={color}/>;
     case "jewel-oval":
-      return <><ellipse rx="24" ry="32" fill={color} stroke={stroke} strokeWidth="2"/><ellipse rx="12" ry="19" fill="none" stroke="#8AA8B8" strokeWidth="2"/><circle cx="-7" cy="-13" r="5" fill="#fff" opacity=".85"/></>;
+      return <RoundFacetedGem color={color} oval/>;
     case "jewel-teardrop":
-      return <><path d="M0 -34 C24 -4 26 28 0 31 C-26 28 -24 -4 0 -34Z" fill={color} stroke={stroke} strokeWidth="2.5"/><path d="M0 -21 C9 -3 10 15 0 20" fill="none" stroke="#8AA8B8" strokeWidth="2"/></>;
+      return <TeardropFacetedGem color={color}/>;
     case "jewel-square":
-      return <><rect x="-25" y="-25" width="50" height="50" rx="6" fill={color} stroke={stroke} strokeWidth="2.5"/><path d="M-25 -25 L0 0 L25 -25 M25 25 L0 0 L-25 25" stroke="#8AA8B8" strokeWidth="2"/></>;
+      return <SquareFacetedGem color={color}/>;
     case "jewel-pearl":
       return <><circle r="26" fill={color} stroke={stroke} strokeWidth="2"/><circle cx="-9" cy="-11" r="7" fill="#fff" opacity=".9"/><path d="M-15 17 C-2 25 16 17 20 1" stroke="#EADFCB" strokeWidth="3" fill="none"/></>;
     case "jewel-cluster":
-      return <><circle cx="-16" cy="5" r="17" fill={color} stroke={stroke} strokeWidth="2"/><circle cx="11" cy="8" r="20" fill="#E7F7FF" stroke={stroke} strokeWidth="2"/><circle cx="0" cy="-16" r="15" fill="#fff" stroke={stroke} strokeWidth="2" opacity=".9"/></>;
+      return <g data-asset-renderer="shared-faceted-jewel-renderer" data-jewel-kind="crystal-cluster-faceted"><g transform="translate(-16 5) scale(.58)"><RoundFacetedGem color={color}/></g><g transform="translate(11 8) scale(.68)"><RoundFacetedGem color="#E7F7FF"/></g><g transform="translate(0 -16) scale(.52)"><RoundFacetedGem color="#F8FEFF"/></g></g>;
     case "decal-smiley":
       return <><circle r="30" fill={color} stroke={stroke} strokeWidth="3"/><circle cx="-10" cy="-8" r="3" fill={stroke}/><circle cx="10" cy="-8" r="3" fill={stroke}/><path d="M-14 8 Q0 20 14 8" fill="none" stroke={stroke} strokeWidth="4" strokeLinecap="round"/></>;
     case "decal-flame":
