@@ -1,7 +1,7 @@
 import { COLORS, S } from "../styles.js";
 
 export const UI = {
-  shell: { height: "100dvh", maxHeight: "100dvh", minHeight: 0, display: "flex", flexDirection: "column", background: COLORS.bg, overflow: "hidden" },
+  shell: { height: "100%", maxHeight: "100%", flex: "1 1 auto", minHeight: 0, display: "flex", flexDirection: "column", background: COLORS.bg, overflow: "hidden" },
   toolbar: { display: "flex", alignItems: "center", gap: 8, padding: "12px 18px", borderBottom: `1px solid ${COLORS.border}`, background: COLORS.surface, flexWrap: "wrap" },
   layout: {
     flex: 1,
