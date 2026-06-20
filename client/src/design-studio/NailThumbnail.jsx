@@ -7,12 +7,12 @@ import { FrenchTipShape } from "./frenchTipRendering.js";
 import { PolishDefs, PolishSurface } from "./PolishRenderer.jsx";
 
 
-export default function NailThumbnail({ nail, active = false, onClick }) {
+export default function NailThumbnail({ nail, active = false, selected = false, onClick }) {
   const clipId = `thumb-clip-${nail.id}`;
   const base = nail.layers.find((layer) => layer.type === "base");
   const path = buildNailPath(nail.shape, nail);
   const artLayers = nail.layers.filter((layer) => layer.type !== "base" && layer.visible !== false).sort(layerSort);
-  return <button type="button" onClick={onClick} aria-pressed={active} aria-label={`Edit ${slotLabel(nail.slot)} nail`} style={{ border: `2px solid ${active ? COLORS.plum : COLORS.border}`, background: active ? COLORS.roseDim : "#fff", borderRadius: 16, padding: 8, minWidth: 86, cursor: "pointer", boxShadow: active ? "0 10px 24px rgba(90,44,80,.18)" : "none" }}>
+  return <button type="button" onClick={onClick} aria-pressed={active || selected} aria-label={`Edit ${slotLabel(nail.slot)} nail`} style={{ border: `2px solid ${active ? COLORS.plum : selected ? COLORS.statusChangesRequested : COLORS.border}`, background: active ? COLORS.roseDim : selected ? "#FFF3C4" : "#fff", borderRadius: 16, padding: 8, minWidth: 86, cursor: "pointer", boxShadow: active ? "0 10px 24px rgba(90,44,80,.18)" : selected ? "0 0 0 3px rgba(245,158,11,.24)" : "none" }}>
     <svg viewBox={`0 0 ${VIEWBOX.width} ${VIEWBOX.height}`} width="70" height="104" role="img" aria-label={`${slotLabel(nail.slot)} preview`} style={{ display: "block", margin: "0 auto" }}>
       <defs><clipPath id={clipId}><path d={path}/></clipPath><PolishDefs nail={nail} baseLayer={base} uid={clipId}/><filter id={`${clipId}-asset-shadow-blur`} x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="2.2"/></filter><ArtRealismDefs uid={clipId}/></defs>
       <PolishSurface nail={nail} baseLayer={base} path={path} clipId={clipId} uid={clipId}/>
@@ -33,6 +33,6 @@ export default function NailThumbnail({ nail, active = false, onClick }) {
         </g>;
       })}
     </svg>
-    <div style={{ fontSize: 11, fontWeight: 800, color: active ? COLORS.plum : COLORS.textMuted }}>{slotLabel(nail.slot)}</div>
+    <div style={{ fontSize: 11, fontWeight: 800, color: active ? COLORS.plum : COLORS.textMuted }}>{selected ? "✓ " : ""}{slotLabel(nail.slot)}</div>
   </button>;
 }

@@ -70,6 +70,14 @@ const {
   ensureFullSetBlueprint,
   gradientLayer,
   patternLayer,
+  COMPOSITION_PRESETS,
+  SET_TEMPLATES,
+  slotsForCompositionPreset,
+  applyNailDesignToSlots,
+  applySignatureLookToSlots,
+  mirrorCurrentHand,
+  mirrorFullSet,
+  applySetTemplate,
 } = blueprint;
 
 
@@ -191,6 +199,14 @@ assert(nailCanvasSource.includes('patternTransform(layer)') && nailCanvasSource.
 for (const patternName of ['dots', 'stripes', 'checker', 'french-tip', 'glitter', 'marble']) assert(PATTERNS.includes(patternName), `${patternName} pattern option still exists`);
 assert(nailCanvasSource.includes('clipPath={`url(#${clipId})`}') && nailCanvasSource.includes('patternTransform(layer, -8)') && nailCanvasSource.includes('patternTransform(layer, 8)'), 'Animal prints are clipped and transformable through shared pattern transforms');
 assert.deepEqual(SHAPES, visibleHeroShapeFamilies, 'Hero 7 remains exact while Duck stays hidden');
+
+const expectedCompositionPresets = ['All Same', 'Accent Ring Finger', 'Accent Middle Finger', 'Accent Ring + Thumb', 'French Set', 'Alternating Set', 'Every Other Nail', 'Custom Selection'];
+assert.deepEqual(COMPOSITION_PRESETS.map((preset) => preset.name), expectedCompositionPresets, 'composition presets exist with the requested full-set workflows');
+assert.deepEqual(slotsForCompositionPreset('accent-ring'), ['left-ring', 'right-ring'], 'accent nail targeting resolves ring fingers on both hands');
+assert.deepEqual(slotsForCompositionPreset('custom-selection', ['left-thumb', 'bad-slot', 'right-pinky']), ['left-thumb', 'right-pinky'], 'custom selection previews only valid destination nails');
+assert.equal(SET_TEMPLATES.length, 6, 'set templates exist for six editable starter sets');
+assert.deepEqual(SET_TEMPLATES.map((template) => template.name), ['Classic French Set', 'Bridal Set', 'Minimal Nude Set', 'Zebra Accent Set', 'Leopard Accent Set', 'Glam Crystal Accent Set'], 'set template names match requested starters');
+
 
 assert(nailCanvasSource.includes('data-realism-layer="material-aware-clipped-pattern"') && nailThumbnailSource.includes('data-realism-layer="material-aware-clipped-pattern"') && nailCanvasSource.includes('clipPath={`url(#${clipId})`} opacity={(layer.opacity ?? 1) * art.artOpacity}'), 'patterns stay clipped and share material lighting behavior on active canvas and thumbnails');
 assert(nailCanvasSource.includes('data.polishType === "Jelly" ? 0.82') && nailCanvasSource.includes('data.polishType === "Milky" ? 0.88') && nailCanvasSource.includes('data.polishType === "Matte" ? 0.76') && polishRendererSource.includes('data-polish-material={polishType}'), 'Cream/Jelly/Milky/Matte materials continue to drive polish rendering and nail-art blending');
@@ -558,6 +574,8 @@ const mirrored = blueprint.mirrorHandDesign(decorated, 'right');
 assert(mirrored.nails.find((n) => n.slot === 'left-index').layers.some((l) => l.type === 'charm'), 'mirror right hand to left hand copies matching fingers');
 assert.equal(new Set(mirrored.nails.map((n) => n.id)).size, 10, 'mirror preserves unique nail ids');
 
+
+
 const allLayerTypes = ['base', 'drawing', 'gradient', 'pattern', 'charm', 'jewel', 'decal'];
 function typeCounts(nail) { return nail.layers.reduce((counts, layer) => ({ ...counts, [layer.type]: (counts[layer.type] || 0) + 1 }), {}); }
 function assertCopiedDesignIntegrity(doc, slot, message) {
@@ -572,6 +590,24 @@ function assertCopiedDesignIntegrity(doc, slot, message) {
 assertCopiedDesignIntegrity(copiedSelected, 'left-index', 'paste to selected');
 assertCopiedDesignIntegrity(copiedAll, 'left-thumb', 'duplicate all');
 assertCopiedDesignIntegrity(mirrored, 'left-index', 'mirror hand');
+const selectedApplied = applyNailDesignToSlots(decorated, sourceSlot, ['left-middle', 'right-ring']);
+assertCopiedDesignIntegrity(selectedApplied, 'left-middle', 'apply-to-selected');
+assertCopiedDesignIntegrity(selectedApplied, 'right-ring', 'accent nail targeting');
+const signatureSelected = applySignatureLookToSlots(fullSet, STARTER_SIGNATURE_LOOKS.find((look) => look.id === 'starter-zebra-french'), ['left-ring', 'right-ring']);
+assert.equal(signatureSelected.nails.filter((n) => ['left-ring', 'right-ring'].includes(n.slot) && n.layers.some((l) => l.type === 'frenchTip')).length, 2, 'selected Signature Look applies only to selected accent nails');
+const leftMirrored = blueprint.mirrorHandDesign(decorated, 'left');
+assert.equal(blueprint.getNailBySlot(leftMirrored, 'right-thumb').shape, blueprint.getNailBySlot(decorated, 'left-thumb').shape, 'mirror left to right preserves source nail shape');
+const currentHandMirrored = mirrorCurrentHand(decorated);
+assert(currentHandMirrored.nails.find((n) => n.slot === 'left-index').layers.some((l) => l.type === 'charm'), 'mirror current hand mirrors the active right hand to left hand');
+const fullMirrored = mirrorFullSet(decorated);
+assert.equal(fullMirrored.nails.length, 10, 'mirror full set keeps all ten nails');
+const templated = applySetTemplate(fullSet, 'glam-crystal-accent-set');
+assert.equal(templated.metadata.templateEditable, true, 'templates remain editable after applying');
+assert(templated.nails.find((n) => n.slot === 'left-ring').layers.some((l) => l.type === 'jewel'), 'glam crystal template applies accent assets');
+assert(applySetTemplate(fullSet, 'classic-french-set').nails.every((n) => n.layers.some((l) => l.type === 'frenchTip')), 'Classic French Set template applies French tips to all nails');
+assert(applySetTemplate(fullSet, 'zebra-accent-set').nails.find((n) => n.slot === 'left-ring').layers.some((l) => l.type === 'pattern'), 'Zebra Accent Set template preserves pattern layers');
+assert(applySetTemplate(fullSet, 'glam-crystal-accent-set').nails.find((n) => n.slot === 'left-ring').layers.some((l) => l.type === 'gradient'), 'Glam Crystal Accent Set template preserves gradient layers');
+
 assert.equal(JSON.stringify(blueprint.getNailBySlot(decorated, sourceSlot)), originalSourceSnapshot, 'copy helpers do not mutate source nail');
 assert.equal(blueprint.getNailBySlot(copiedSelected, 'left-index').id, blueprint.getNailBySlot(decorated, 'left-index').id, 'paste preserves destination nail id');
 assert.equal(blueprint.getNailBySlot(copiedSelected, 'left-index').slot, 'left-index', 'paste preserves destination slot');
