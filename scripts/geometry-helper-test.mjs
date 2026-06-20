@@ -8,6 +8,7 @@ const assetRenderingSource = await readFile(new URL('../client/src/design-studio
 const bulkActionsPanelSource = await readFile(new URL('../client/src/design-studio/BulkActionsPanel.jsx', import.meta.url), 'utf8');
 const designStudioSource = await readFile(new URL('../client/src/design-studio/DesignStudio.jsx', import.meta.url), 'utf8');
 const frenchTipRenderingSource = await readFile(new URL('../client/src/design-studio/frenchTipRendering.js', import.meta.url), 'utf8');
+const assetsSource = await readFile(new URL('../client/src/design-studio/assets.js', import.meta.url), 'utf8');
 
 const polishRendererSource = await readFile(new URL('../client/src/design-studio/PolishRenderer.jsx', import.meta.url), 'utf8');
 const propertiesPanelSource = await readFile(new URL('../client/src/design-studio/PropertiesPanel.jsx', import.meta.url), 'utf8');
@@ -155,6 +156,13 @@ assert(assetRenderingSource.includes('data-realism-layer="asset-specular-accent"
 assert(nailCanvasSource.includes('data-realism-layer="painted-stroke-material-aware-opacity"') && nailCanvasSource.includes('paint-contact-shadow') && nailCanvasSource.includes('wet-paint-surface-highlight'), 'drawing strokes render as painted, material-aware surface artwork with contact/depth treatment');
 assert(assetRenderingSource.includes('data-realism-layer="decal-surface-blending"') && assetRenderingSource.includes('surfaceBlendOpacity') && assetRenderingSource.includes('asset-contact-shadow'), 'decals render with material-aware surface blending and contact shadow');
 assert(assetRenderingSource.includes('improved-highlight-depth') && assetRenderingSource.includes('r * 1.28') && assetRenderingSource.includes('asset-specular-accent'), 'charms and jewels render with improved highlight and depth accents');
+assert(assetRenderingSource.includes('layer?.type === "jewel" ? 0.24') && assetRenderingSource.includes('data-realism-layer="asset-contact-shadow"'), 'jewel contact shadow renders under jewel');
+assert(assetsSource.includes('data-asset-renderer="shared-faceted-jewel-renderer"') && assetsSource.includes('data-realism-layer="jewel-outer-cut-shape"') && assetsSource.includes('data-realism-layer="jewel-inner-facets"') && assetsSource.includes('data-realism-layer="jewel-directional-highlight-facet"') && assetsSource.includes('data-realism-layer="jewel-lowlight-shadow-facets"') && assetsSource.includes('data-realism-layer="jewel-inner-glow-color-tint"') && assetsSource.includes('data-realism-layer="jewel-glass-refraction-layer"'), 'jewel renderer includes faceted gemstone layers with tint-preserving glass/refraction detail');
+assert(assetsSource.includes('square-gem-facet-highlight-marker') && assetsSource.includes('square-gem-lowlight-marker') && assetsSource.includes('data-jewel-kind="square-cut-crystal-rhinestone"'), 'square gem includes facet/highlight/lowlight markers');
+assert(assetsSource.includes('round-gem-dome-facet-highlight-marker') && assetsSource.includes('round-domed-faceted-rhinestone') && assetsSource.includes('jewel-white-sparkle-reflection'), 'round gem includes dome/facet/highlight markers and sparkle reflection');
+assert(assetsSource.includes('fill={color} opacity=".62"') && assetsSource.includes('fill="#fff" opacity=".48"') && assetsSource.includes('fill="#1f3146" opacity=".24"'), 'jewel color tint preserves independent highlight and lowlight facet contrast');
+assert(nailCanvasSource.includes('<AssetSpecularAccent layer={layer} render={assetRender}/>') && nailThumbnailSource.includes('<AssetSpecularAccent layer={layer} render={assetRender}/>') && nailCanvasSource.includes('renderAssetShapes(assetRender.assetId, assetRender.colorHex)') && nailThumbnailSource.includes('renderAssetShapes(assetRender.assetId, assetRender.colorHex)'), 'active canvas and thumbnails share jewel renderer and specular accents');
+assert(nailCanvasSource.includes('selected-jewel-handles-visible-above-realism'), 'selected jewel handles remain visible above realism layers');
 
 const targetedPatternOptions = ['glitter', 'marble', 'camo', 'houndstooth', 'leopard', 'cheetah', 'zebra', 'cow-print', 'snake-print', 'tiger-stripe'];
 for (const patternName of targetedPatternOptions) assert(PATTERNS.includes(patternName), `${patternName} refined pattern option still exists`);
@@ -577,6 +585,12 @@ assert.equal(oversizedAsset.scaleX, 3, 'resized decal can render larger than the
 assert(nailThumbnailSource.includes('assetLayerRenderProps(layer, nail') && nailThumbnailSource.includes('renderAssetShapes(assetRender.assetId'), 'thumbnails use the same layer transform renderer for enlarged assets');
 const oversizedSaved = ensureBlueprint({ ...createDefaultBlueprint(), nails: [{ ...getActiveNail(createDefaultBlueprint()), layers: [{ ...getActiveNail(createDefaultBlueprint()).layers[0] }, { id: 'large-decal', type: 'decal', name: 'Large decal', visible: true, locked: false, opacity: 1, order: 1, transform: oversizedAsset, data: { assetId: 'decal-star', colorHex: '#FFFFFF' } }] }] });
 assert.equal(getActiveNail(oversizedSaved).layers.find((layer) => layer.id === 'large-decal').transform.scaleX, 3, 'large asset size persists through blueprint normalization/save-load flow');
+const jewelSettingsSaved = ensureBlueprint({ ...createDefaultBlueprint(), nails: [{ ...getActiveNail(createDefaultBlueprint()), layers: [{ ...getActiveNail(createDefaultBlueprint()).layers[0] }, { id: 'settings-jewel', type: 'jewel', name: 'Settings Jewel', visible: true, locked: false, opacity: 0.42, order: 1, transform: { x: 0.47, y: 0.52, scaleX: 0.29, scaleY: 0.29, rotation: 33 }, data: { assetId: 'jewel-square', colorHex: '#7fd5ff' } }] }] });
+const reloadedJewel = getActiveNail(jewelSettingsSaved).layers.find((layer) => layer.id === 'settings-jewel');
+assert.equal(reloadedJewel.opacity, 0.42, 'save/load preserves jewel opacity setting');
+assert.equal(reloadedJewel.transform.scaleX, 0.29, 'save/load preserves jewel size setting');
+assert.equal(reloadedJewel.transform.rotation, 33, 'save/load preserves jewel rotation setting');
+assert.equal(reloadedJewel.data.colorHex, '#7fd5ff', 'save/load preserves jewel color setting');
 assert(nailThumbnailSource.includes('layer.type === "drawing"') && nailThumbnailSource.includes('layer.type === "gradient"') && nailThumbnailSource.includes('layer.type === "pattern"') && nailThumbnailSource.includes('layer.type === "frenchTip"') && nailThumbnailSource.includes('renderAssetShapes(assetRender.assetId'), 'full-set thumbnails render drawing, gradient, pattern, French Tip, charm, jewel, and decal asset layers');
 assert(!nailCanvasSource.includes('dangerouslySetInnerHTML') && !nailThumbnailSource.includes('dangerouslySetInnerHTML'), 'canvas and thumbnail rendering never inject untrusted inline SVG HTML');
 assert(nailThumbnailSource.includes('layer.visible !== false'), 'thumbnail preview hides hidden layers');

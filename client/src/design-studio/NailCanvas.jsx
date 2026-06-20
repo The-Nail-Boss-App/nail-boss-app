@@ -287,9 +287,9 @@ export default function NailCanvas({ nail, layers, selectedLayerId, mode, brush,
       <AssetSurfaceBlend layer={layer} render={assetRender}/>
       <g transform={assetRender.innerTransform}>
         {renderAssetShapes(assetRender.assetId, assetRender.colorHex)}
-        <AssetSpecularAccent layer={layer} render={assetRender}/>
       </g>
-      {selected && <g pointerEvents="none"><rect x={p.x - size / 2} y={p.y - size / 2} width={size} height={size} rx="8" fill="none" stroke={COLORS.plum} strokeWidth="2" strokeDasharray="5 4"/><circle cx={p.x + size / 2} cy={p.y + size / 2} r="5" fill={COLORS.plum}/><path d={`M${p.x} ${p.y - size / 2 - 14} L${p.x} ${p.y - size / 2 - 2}`} stroke={COLORS.plum} strokeWidth="2"/><circle cx={p.x} cy={p.y - size / 2 - 18} r="5" fill="#fff" stroke={COLORS.plum} strokeWidth="2"/></g>}
+      <AssetSpecularAccent layer={layer} render={assetRender}/>
+      {selected && <g data-realism-layer="selected-jewel-handles-visible-above-realism" pointerEvents="none"><rect x={p.x - size / 2} y={p.y - size / 2} width={size} height={size} rx="8" fill="none" stroke={COLORS.plum} strokeWidth="2" strokeDasharray="5 4"/><circle cx={p.x + size / 2} cy={p.y + size / 2} r="5" fill={COLORS.plum}/><path d={`M${p.x} ${p.y - size / 2 - 14} L${p.x} ${p.y - size / 2 - 2}`} stroke={COLORS.plum} strokeWidth="2"/><circle cx={p.x} cy={p.y - size / 2 - 18} r="5" fill="#fff" stroke={COLORS.plum} strokeWidth="2"/></g>}
     </g>;
   }
 
