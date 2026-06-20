@@ -59,6 +59,47 @@ import {
   normalizeSignatureLook,
 } from "./blueprint.js";
 
+
+const PANEL_PREFS_STORAGE_KEY = "anitaset.designStudio.panels.v1";
+
+const DEFAULT_PANEL_STATE = {
+  nailBasics: true,
+  signatureLooks: true,
+  designDetails: false,
+  frenchTip: false,
+  fullSetActions: false,
+  developerGeometry: false,
+  artTools: true,
+  layerEffects: true,
+  detailBrush: false,
+  properties: true,
+  layers: true,
+  charmsJewelsDecals: true,
+};
+
+function loadPanelState() {
+  if (typeof window === "undefined") return DEFAULT_PANEL_STATE;
+  try {
+    return { ...DEFAULT_PANEL_STATE, ...JSON.parse(window.localStorage.getItem(PANEL_PREFS_STORAGE_KEY) || "{}") };
+  } catch {
+    return DEFAULT_PANEL_STATE;
+  }
+}
+
+function CollapsiblePanel({ id, title, open, onToggle, children }) {
+  return <section data-panel-id={id} style={UI.panelSection}>
+    <button type="button" aria-expanded={open} aria-controls={`${id}-panel-body`} aria-label={`${open ? "Collapse" : "Expand"} ${title}`} title={`${open ? "Collapse" : "Expand"} ${title}`} onClick={() => onToggle(id)} style={UI.panelHeader}>
+      <span style={UI.sectionTitle}>{title}</span>
+      <span aria-hidden="true" style={{ fontSize: 16, color: COLORS.plum }}>{open ? "▾" : "▸"}</span>
+    </button>
+    {open && <div id={`${id}-panel-body`} style={UI.panelBody}>{children}</div>}
+  </section>;
+}
+
+function IconActionButton({ label, icon, disabled = false, onClick, active = false }) {
+  return <button type="button" aria-label={label} title={label} disabled={disabled} onClick={onClick} style={UI.iconOnlyButton(active, disabled)}>{icon}<span style={{ position: "absolute", width: 1, height: 1, overflow: "hidden", clip: "rect(0 0 0 0)" }}>{label}</span></button>;
+}
+
 function Field({ label, children }) {
   return <div style={UI.field}><label style={S.label}>{label}</label>{children}</div>;
 }
@@ -190,23 +231,37 @@ function persistSignatureLooks(looks) {
 
 function SignatureLooksPanel({ looks, selectedId, onSelect, onSave, onApply, onDuplicate, onRename, onDelete }) {
   const selected = looks.find((look) => look.id === selectedId) || looks[0];
-  return <section data-testid="signature-looks-panel" style={{ border: `1px solid ${COLORS.border}`, borderRadius: 16, padding: 12, marginBottom: 14, background: "#fff" }}>
+  const starterLooks = looks.filter((look) => look.starter);
+  const customLooks = looks.filter((look) => !look.starter);
+  const renderLook = (look) => {
+    const active = selected?.id === look.id;
+    return <div key={look.id} style={{ border: `1.5px solid ${active ? COLORS.plum : COLORS.border}`, borderRadius: 12, padding: 8, background: active ? COLORS.roseDim : "#fff" }}>
+      <button type="button" onClick={() => onSelect(look.id)} style={{ width: "100%", textAlign: "left", background: "transparent", border: 0, padding: 0, cursor: "pointer", color: COLORS.text }} title={`Select ${look.name}`}>
+        <strong style={{ fontSize: 13 }}>{look.name}</strong>
+        <span style={{ display: "block", fontSize: 11, color: COLORS.textMuted }}>{look.starter ? "Starter look" : "Custom look"} · {look.scope === "full-set" ? "full set" : "single nail"}</span>
+      </button>
+      <div style={{ ...UI.actionGrid, marginTop: 8 }}>
+        <IconActionButton icon="↙" label={`Apply ${look.name} to active nail`} onClick={() => onApply(look, "active")}/>
+        <IconActionButton icon="⬚" label={`Apply ${look.name} to full set`} onClick={() => onApply(look, "all")}/>
+        <IconActionButton icon="⧉" label={`Duplicate ${look.name}`} onClick={() => onDuplicate(look)}/>
+        <IconActionButton icon="✎" label={`Rename ${look.name}`} disabled={look.starter} onClick={() => onRename(look)}/>
+        <IconActionButton icon="🗑" label={`Delete ${look.name}`} disabled={look.starter} onClick={() => onDelete(look)}/>
+      </div>
+    </div>;
+  };
+  return <div data-testid="signature-looks-panel">
     <div style={UI.sectionTitle}>Signature Looks Library</div>
-    <p style={{ ...UI.smallText, marginTop: 0 }}>Save finished recipes, then apply them to one nail or the full set.</p>
+    <p style={{ ...UI.smallText, marginTop: 0 }}>Full library with protected starter looks and editable user-created looks.</p>
     <Field label="Saved Signature Looks"><select aria-label="Signature Looks" style={S.input} value={selected?.id || ""} onChange={(e) => onSelect(e.target.value)}>{looks.map((look) => <option key={look.id} value={look.id}>{look.name}{look.scope === "full-set" ? " · full set" : ""}</option>)}</select></Field>
-    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 }}>
-      <button type="button" onClick={() => onSave("nail")} style={{ ...S.btnSecondary, padding: "9px 10px" }}>Save active nail</button>
-      <button type="button" onClick={() => onSave("full-set")} style={{ ...S.btnSecondary, padding: "9px 10px" }}>Save full set</button>
-      <button type="button" onClick={() => selected && onApply(selected, "active")} style={UI.iconButton(false, !selected)}>Apply selected nail</button>
-      <button type="button" onClick={() => selected && onApply(selected, "all")} style={UI.iconButton(false, !selected)}>Apply full set</button>
+    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 10 }}>
+      <button type="button" aria-label="Save active nail as Signature Look" title="Save active nail as Signature Look" onClick={() => onSave("nail")} style={{ ...S.btnSecondary, padding: "9px 10px" }}>💾 Nail</button>
+      <button type="button" aria-label="Save full set as Signature Look" title="Save full set as Signature Look" onClick={() => onSave("full-set")} style={{ ...S.btnSecondary, padding: "9px 10px" }}>💾 Full Set</button>
     </div>
-    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-      <button type="button" onClick={() => selected && onDuplicate(selected)} style={UI.iconButton(false, !selected)}>Duplicate</button>
-      <button type="button" onClick={() => selected && onRename(selected)} style={UI.iconButton(false, !selected || selected.starter)}>Rename</button>
-      <button type="button" onClick={() => selected && onDelete(selected)} style={UI.iconButton(false, !selected || selected.starter)}>Delete</button>
+    <div style={{ display: "grid", gap: 8 }}>
+      <div><div style={UI.sectionTitle}>Starter Looks</div><div style={{ display: "grid", gap: 8 }}>{starterLooks.map(renderLook)}</div></div>
+      <div><div style={UI.sectionTitle}>User-created Looks</div>{customLooks.length ? <div style={{ display: "grid", gap: 8 }}>{customLooks.map(renderLook)}</div> : <p style={UI.smallText}>No custom looks yet. Duplicate a starter or save the active nail/full set to edit your own library.</p>}</div>
     </div>
-    <p style={UI.smallText}>Includes starter looks: Classic French, Baby Boomer Ombré, Pink Aura, Zebra French, Leopard Accent, and Matte Black Minimal.</p>
-  </section>;
+  </div>;
 }
 
 function DesignStudio(_, ref) {
@@ -228,6 +283,7 @@ function DesignStudio(_, ref) {
   const [selectedSlots, setSelectedSlots] = useState([]);
   const [saveStatus, setSaveStatus] = useState("Ready");
   const [userSignatureLooks, setUserSignatureLooks] = useState(() => loadStoredSignatureLooks());
+  const [panelState, setPanelState] = useState(() => loadPanelState());
   const [selectedSignatureLookId, setSelectedSignatureLookId] = useState(STARTER_SIGNATURE_LOOKS[0]?.id || "");
   const autosaveTimerRef = useRef(null);
   const autosaveSessionRef = useRef(0);
@@ -838,6 +894,14 @@ function DesignStudio(_, ref) {
     setSelectedSignatureLookId(STARTER_SIGNATURE_LOOKS[0]?.id || "");
   }
 
+  function togglePanel(id) {
+    setPanelState((prev) => {
+      const next = { ...prev, [id]: !prev[id] };
+      if (typeof window !== "undefined") window.localStorage.setItem(PANEL_PREFS_STORAGE_KEY, JSON.stringify(next));
+      return next;
+    });
+  }
+
   const tagsString = (blueprint.metadata?.tags || []).join(", ");
   const [debugShapeOverlay, setDebugShapeOverlay] = useState(false);
   const statusColor = status.type === "error" ? "#b91c1c" : status.type === "saved" ? COLORS.statusAccepted : status.type === "dirty" ? COLORS.statusChangesRequested : COLORS.textMuted;
@@ -854,24 +918,30 @@ function DesignStudio(_, ref) {
 
     <div style={UI.layout}>
       <aside style={UI.panel}><div style={UI.panelPad}>
-        <Field label="Design name"><input style={S.input} value={designName} onChange={(e) => { markEdited(); generatedDraftNameRef.current = ""; designNameRef.current = e.target.value; dirtyRef.current = true; setDesignName(e.target.value); setDirty(true); setSaveStatus("Unsaved changes"); scheduleAutosave(); }} placeholder="Milky bow accent" /></Field>
-        <div style={{ display: "flex", gap: 8, marginBottom: 14 }}><button type="button" onClick={newDesign} style={{ ...S.btnSecondary, padding: "10px 12px" }}>New Design</button><button type="button" onClick={save} disabled={saving} style={{ ...S.btnPrimary, padding: "10px 12px", opacity: saving ? .65 : 1 }}>Save</button></div>
-        <Field label="Saved Designs"><select style={S.input} value={selectedDesignId} onChange={(e) => loadDesign(e.target.value)}><option value="">Choose saved design…</option>{designs.map((design) => <option key={design.id} value={design.id}>{design.name}</option>)}</select></Field>
-        <Field label="Nail shape"><select style={S.input} value={activeNail.shape} onChange={(e) => updateBase({ shape: e.target.value })}>{SHAPES.map((shape) => <option key={shape}>{shape}</option>)}</select></Field>
-        <GeometrySlider label="Nail length" value={activeNail.length} onChange={(length) => updateBase({ length })}/>
-        <GeometrySlider label="Nail width" value={activeNail.width} onChange={(width) => updateBase({ width })}/>
-        <NailColorSystem value={baseLayer?.data?.colorHex || activeNail.baseColorHex} polishType={normalizePolishData(baseLayer?.data || {}, activeNail.baseColorHex).polishType} onPolishTypeChange={(polishType) => updateBase({ polishType, topCoat: polishType === "Matte" ? "Matte" : "Gloss", effect: "Solid" })} onChange={(value) => updateBase({ baseColorHex: normalizeHex(value, baseLayer?.data?.colorHex), polishType: normalizePolishData(baseLayer?.data || {}, activeNail.baseColorHex).polishType, effect: "Solid" })} onApply={(scope) => { const targets = scope === "active" ? [activeSlot] : slotsFor(scope); const polish = normalizePolishData(baseLayer?.data || {}, activeNail.baseColorHex); commit(applyBaseToSlots(blueprint, { baseColorHex: getVisibleBaseColor(activeNail), polishType: polish.polishType, shine: polish.shine, transparency: polish.transparency, topCoat: polish.topCoat, effect: "Solid" }, targets)); }}/>
-        <DesignPalette colors={designPalette}/>
-        <SignatureLooksPanel looks={signatureLooks} selectedId={selectedSignatureLookId} onSelect={setSelectedSignatureLookId} onSave={saveSignatureLook} onApply={applySignatureLook} onDuplicate={duplicateSignatureLook} onRename={renameSignatureLook} onDelete={deleteSignatureLook}/>
-        <p style={UI.smallText}>Hero shape masks are artist-calibrated. Length and width can scale the mask, but they do not redefine the shape family.</p>
-        <Field label="Tags"><input style={S.input} value={tagsString} onChange={(e) => updateBase({ tags: e.target.value })} placeholder="bridal, chrome, accent" /></Field>
-        <Field label="Style category"><select style={S.input} value={blueprint.metadata?.styleCategory || "Custom"} onChange={(e) => commit({ ...blueprint, metadata: { ...blueprint.metadata, styleCategory: e.target.value } })}>{STYLE_CATEGORIES.map((category) => <option key={category}>{category}</option>)}</select></Field>
-        <Field label="Internal notes"><textarea style={{ ...S.input, minHeight: 70 }} value={blueprint.metadata?.internalNotes || ""} onChange={(e) => commit({ ...blueprint, metadata: { ...blueprint.metadata, internalNotes: e.target.value } })} placeholder="Optional artist-only notes" /></Field>
-        <Field label="Estimated service price"><input style={S.input} value={blueprint.metadata?.estimatedServicePrice || ""} onChange={(e) => commit({ ...blueprint, metadata: { ...blueprint.metadata, estimatedServicePrice: e.target.value } })} placeholder="Placeholder for later pricing" /></Field>
-
-        <FrenchTipControls layer={activeFrenchTipLayer()} onAdd={addFrenchTip} onPatch={patchFrenchTipData} onApply={applyFrenchTip}/>
-        <BulkActionsPanel activeSlot={activeSlot} clipboard={clipboardNail} selectedSlots={selectedSlots} onToggleSlot={(slot) => setSelectedSlots((prev) => prev.includes(slot) ? prev.filter((item) => item !== slot) : [...prev, slot])} onCopy={copyActiveNail} onPaste={pasteToSelected} onDuplicate={duplicateActive} onMirror={mirrorHand} onApplyBase={applyBase} onApplyShape={applyShape} onReset={resetActive}/>
-        <details style={{ marginBottom: 12 }}><summary style={{ ...UI.smallText, cursor: "pointer" }}>Developer geometry tools</summary><label style={{ ...UI.smallText, display: "flex", gap: 8, alignItems: "center", marginTop: 8 }}><input type="checkbox" checked={debugShapeOverlay} onChange={(e) => setDebugShapeOverlay(e.target.checked)}/> Shape Debug Overlay</label><p style={UI.smallText}>Apex Y: {Math.round(getNailArchitecture(activeNail).apexYNorm * 100)}% · Free edge starts: {Math.round(getNailArchitecture(activeNail).freeEdgeYNorm * 100)}%</p></details><p style={UI.smallText}>Strict-fit mode keeps all editable vectors clipped and clamped inside the active nail surface for realistic product-use planning.</p>
+        <CollapsiblePanel id="nailBasics" title="Nail Basics" open={panelState.nailBasics} onToggle={togglePanel}>
+          <Field label="Design name"><input style={S.input} value={designName} onChange={(e) => { markEdited(); generatedDraftNameRef.current = ""; designNameRef.current = e.target.value; dirtyRef.current = true; setDesignName(e.target.value); setDirty(true); setSaveStatus("Unsaved changes"); scheduleAutosave(); }} placeholder="Milky bow accent" /></Field>
+          <div style={{ display: "flex", gap: 8, marginBottom: 14 }}><button type="button" onClick={newDesign} style={{ ...S.btnSecondary, padding: "10px 12px" }}>New Design</button><button type="button" aria-label="Save design" title="Save design" onClick={save} disabled={saving} style={{ ...S.btnPrimary, padding: "10px 12px", opacity: saving ? .65 : 1 }}>💾 Save</button></div>
+          <Field label="Saved Designs"><select style={S.input} value={selectedDesignId} onChange={(e) => loadDesign(e.target.value)}><option value="">Choose saved design…</option>{designs.map((design) => <option key={design.id} value={design.id}>{design.name}</option>)}</select></Field>
+          <Field label="Nail shape"><select style={S.input} value={activeNail.shape} onChange={(e) => updateBase({ shape: e.target.value })}>{SHAPES.map((shape) => <option key={shape}>{shape}</option>)}</select></Field>
+          <GeometrySlider label="Nail length" value={activeNail.length} onChange={(length) => updateBase({ length })}/>
+          <GeometrySlider label="Nail width" value={activeNail.width} onChange={(width) => updateBase({ width })}/>
+          <NailColorSystem value={baseLayer?.data?.colorHex || activeNail.baseColorHex} polishType={normalizePolishData(baseLayer?.data || {}, activeNail.baseColorHex).polishType} onPolishTypeChange={(polishType) => updateBase({ polishType, topCoat: polishType === "Matte" ? "Matte" : "Gloss", effect: "Solid" })} onChange={(value) => updateBase({ baseColorHex: normalizeHex(value, baseLayer?.data?.colorHex), polishType: normalizePolishData(baseLayer?.data || {}, activeNail.baseColorHex).polishType, effect: "Solid" })} onApply={(scope) => { const targets = scope === "active" ? [activeSlot] : slotsFor(scope); const polish = normalizePolishData(baseLayer?.data || {}, activeNail.baseColorHex); commit(applyBaseToSlots(blueprint, { baseColorHex: getVisibleBaseColor(activeNail), polishType: polish.polishType, shine: polish.shine, transparency: polish.transparency, topCoat: polish.topCoat, effect: "Solid" }, targets)); }}/>
+          <p style={UI.smallText}>Hero shape masks are artist-calibrated. Length and width can scale the mask, but they do not redefine the shape family.</p>
+        </CollapsiblePanel>
+        <CollapsiblePanel id="signatureLooks" title="Signature Looks" open={panelState.signatureLooks} onToggle={togglePanel}>
+          <SignatureLooksPanel looks={signatureLooks} selectedId={selectedSignatureLookId} onSelect={setSelectedSignatureLookId} onSave={saveSignatureLook} onApply={applySignatureLook} onDuplicate={duplicateSignatureLook} onRename={renameSignatureLook} onDelete={deleteSignatureLook}/>
+        </CollapsiblePanel>
+        <CollapsiblePanel id="designDetails" title="Design Details" open={panelState.designDetails} onToggle={togglePanel}>
+          <DesignPalette colors={designPalette}/>
+          <Field label="Tags"><input style={S.input} value={tagsString} onChange={(e) => updateBase({ tags: e.target.value })} placeholder="bridal, chrome, accent" /></Field>
+          <Field label="Style category"><select style={S.input} value={blueprint.metadata?.styleCategory || "Custom"} onChange={(e) => commit({ ...blueprint, metadata: { ...blueprint.metadata, styleCategory: e.target.value } })}>{STYLE_CATEGORIES.map((category) => <option key={category}>{category}</option>)}</select></Field>
+          <Field label="Internal notes"><textarea style={{ ...S.input, minHeight: 70 }} value={blueprint.metadata?.internalNotes || ""} onChange={(e) => commit({ ...blueprint, metadata: { ...blueprint.metadata, internalNotes: e.target.value } })} placeholder="Optional artist-only notes" /></Field>
+          <Field label="Estimated service price"><input style={S.input} value={blueprint.metadata?.estimatedServicePrice || ""} onChange={(e) => commit({ ...blueprint, metadata: { ...blueprint.metadata, estimatedServicePrice: e.target.value } })} placeholder="Placeholder for later pricing" /></Field>
+        </CollapsiblePanel>
+        <CollapsiblePanel id="frenchTip" title="French Tip Precision" open={panelState.frenchTip} onToggle={togglePanel}><FrenchTipControls layer={activeFrenchTipLayer()} onAdd={addFrenchTip} onPatch={patchFrenchTipData} onApply={applyFrenchTip}/></CollapsiblePanel>
+        <CollapsiblePanel id="fullSetActions" title="Full-Set Actions" open={panelState.fullSetActions} onToggle={togglePanel}><BulkActionsPanel activeSlot={activeSlot} clipboard={clipboardNail} selectedSlots={selectedSlots} onToggleSlot={(slot) => setSelectedSlots((prev) => prev.includes(slot) ? prev.filter((item) => item !== slot) : [...prev, slot])} onCopy={copyActiveNail} onPaste={pasteToSelected} onDuplicate={duplicateActive} onMirror={mirrorHand} onApplyBase={applyBase} onApplyShape={applyShape} onReset={resetActive}/></CollapsiblePanel>
+        <CollapsiblePanel id="developerGeometry" title="Developer Geometry Tools" open={panelState.developerGeometry} onToggle={togglePanel}><label style={{ ...UI.smallText, display: "flex", gap: 8, alignItems: "center", marginTop: 8 }}><input type="checkbox" checked={debugShapeOverlay} onChange={(e) => setDebugShapeOverlay(e.target.checked)}/> Shape Debug Overlay</label><p style={UI.smallText}>Apex Y: {Math.round(getNailArchitecture(activeNail).apexYNorm * 100)}% · Free edge starts: {Math.round(getNailArchitecture(activeNail).freeEdgeYNorm * 100)}%</p></CollapsiblePanel>
+        <p style={UI.smallText}>Strict-fit mode keeps all editable vectors clipped and clamped inside the active nail surface for realistic product-use planning.</p>
       </div></aside>
 
       <main style={{ ...UI.panel, display: "flex", flexDirection: "column", alignItems: "stretch", overflow: "visible" }}>
@@ -880,11 +950,20 @@ function DesignStudio(_, ref) {
       </main>
 
       <aside style={UI.panel}><div style={UI.panelPad}>
-        <DesignBoardIntro/><div style={{ display: "flex", gap: 6, marginBottom: 16 }}><button type="button" aria-pressed={tab === "assets"} aria-label="Show nail art library" onClick={() => setTab("assets")} style={UI.miniButton(tab === "assets")}>Art</button><button type="button" aria-pressed={tab === "layers"} aria-label="Show layers panel" onClick={() => setTab("layers")} style={UI.miniButton(tab === "layers")}>Layers</button><button type="button" aria-pressed={tab === "properties"} aria-label="Show properties panel" onClick={() => setTab("properties")} style={UI.miniButton(tab === "properties")}>Properties</button></div>
-        {tab === "assets" && <><AssetLibrary onAddAsset={addAsset}/><section style={{ border: `1px solid ${COLORS.border}`, borderRadius: 16, padding: 12, marginBottom: 18, background: "#fff" }}><div style={UI.sectionTitle}>Layer Effects</div><div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}><button type="button" onClick={addGradient} style={{ ...S.btnSecondary, padding: "9px 12px" }}>Add Ombré / Gradient</button><button type="button" onClick={addPattern} style={{ ...S.btnSecondary, padding: "9px 12px" }}>Add Pattern</button></div><p style={UI.smallText}>Add salon ombré/gradient and pattern overlays as editable layers while the base polish surface stays material-aware.</p></section><DrawingToolbar brush={brush} mode={mode} onBrushChange={(patch) => setBrush((prev) => ({ ...prev, ...patch }))}/></>}
-        {tab === "layers" && <LayersPanel layers={activeNail.layers} selectedLayerId={selectedLayerId} onSelect={setSelectedLayerId} onToggleVisible={toggleVisible} onToggleLock={toggleLock} onMove={moveLayer} onDelete={deleteLayer}/>} 
-        {tab === "properties" && <PropertiesPanel layer={selectedLayer} onPatch={(patch) => selectedLayer && patchLayer(selectedLayer.id, patch)} onDuplicate={() => duplicateLayer()} onDelete={() => deleteLayer()}/>} 
-      <div style={{ marginTop: 12, ...UI.smallText }}>Product-use hook: {productSummary.nailCount} nails, {productSummary.visibleDrawingLayerCount} drawing layers, {productSummary.visibleGradientLayerCount} gradients, {productSummary.visiblePatternLayerCount} patterns, {productSummary.visibleFrenchTipLayerCount} French tips.</div></div></aside>
+        <DesignBoardIntro/>
+        <CollapsiblePanel id="artTools" title="Art Tools" open={panelState.artTools} onToggle={togglePanel}>
+          <div style={{ display: "flex", gap: 6, marginBottom: 12 }}><button type="button" aria-pressed={tab === "assets"} aria-label="Show nail art library" onClick={() => setTab("assets")} style={UI.miniButton(tab === "assets")}>Art</button><button type="button" aria-pressed={tab === "layers"} aria-label="Show layers panel" onClick={() => setTab("layers")} style={UI.miniButton(tab === "layers")}>Layers</button><button type="button" aria-pressed={tab === "properties"} aria-label="Show properties panel" onClick={() => setTab("properties")} style={UI.miniButton(tab === "properties")}>Properties</button></div>
+          <AssetLibrary onAddAsset={addAsset}/>
+        </CollapsiblePanel>
+        <CollapsiblePanel id="layerEffects" title="Layer Effects" open={panelState.layerEffects} onToggle={togglePanel}>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}><button type="button" aria-label="Add gradient layer" title="Add gradient layer" onClick={addGradient} style={{ ...S.btnSecondary, padding: "9px 12px" }}>Add Ombré / Gradient</button><button type="button" aria-label="Add Pattern layer" title="Add Pattern layer" onClick={addPattern} style={{ ...S.btnSecondary, padding: "9px 12px" }}>Add Pattern</button></div><p style={UI.smallText}>Add salon ombré/gradient and pattern overlays as editable layers while the base polish surface stays material-aware.</p>
+        </CollapsiblePanel>
+        <CollapsiblePanel id="detailBrush" title="Detail Brush" open={panelState.detailBrush} onToggle={togglePanel}><DrawingToolbar brush={brush} mode={mode} onBrushChange={(patch) => setBrush((prev) => ({ ...prev, ...patch }))}/></CollapsiblePanel>
+        <CollapsiblePanel id="properties" title="Properties" open={panelState.properties} onToggle={togglePanel}><PropertiesPanel layer={selectedLayer} onPatch={(patch) => selectedLayer && patchLayer(selectedLayer.id, patch)} onDuplicate={() => duplicateLayer()} onDelete={() => deleteLayer()}/></CollapsiblePanel>
+        <CollapsiblePanel id="layers" title="Layers" open={panelState.layers} onToggle={togglePanel}><LayersPanel layers={activeNail.layers} selectedLayerId={selectedLayerId} onSelect={setSelectedLayerId} onToggleVisible={toggleVisible} onToggleLock={toggleLock} onMove={moveLayer} onDelete={deleteLayer}/></CollapsiblePanel>
+        <CollapsiblePanel id="charmsJewelsDecals" title="Charms/Jewels/Decals" open={panelState.charmsJewelsDecals} onToggle={togglePanel}><AssetLibrary onAddAsset={addAsset}/></CollapsiblePanel>
+        <div style={{ marginTop: 12, ...UI.smallText }}>Product-use hook: {productSummary.nailCount} nails, {productSummary.visibleDrawingLayerCount} drawing layers, {productSummary.visibleGradientLayerCount} gradients, {productSummary.visiblePatternLayerCount} patterns, {productSummary.visibleFrenchTipLayerCount} French tips.</div>
+      </div></aside>
     </div>
   </div>;
 }
