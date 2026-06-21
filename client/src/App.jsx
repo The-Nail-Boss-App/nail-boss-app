@@ -1,10 +1,49 @@
-import { useRef, useState } from 'react';
+import { Component, useRef, useState } from 'react';
 import { COLORS, S, LogoMark, NavItem } from './styles';
 import Login from './Login';
 import Dashboard from './Dashboard';
 import DesignStudio from './DesignStudio';
 import Proposals from './Proposals';
-import NailShop from './NailShop';
+
+class ProtectedAppErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { error };
+  }
+
+  componentDidUpdate(prevProps) {
+    if (prevProps.boundaryKey !== this.props.boundaryKey && this.state.error) {
+      this.setState({ error: null });
+    }
+  }
+
+  render() {
+    if (this.state.error) {
+      const message = this.state.error?.message || 'Unknown runtime error';
+
+      return (
+        <div role="alert" style={{ padding: 24, color: COLORS.plum }}>
+          <h1 style={{ margin: '0 0 12px', fontSize: 22 }}>App shell error</h1>
+          <pre style={{
+            margin: 0,
+            whiteSpace: 'pre-wrap',
+            wordBreak: 'break-word',
+            color: COLORS.textMuted,
+            fontFamily: 'inherit',
+          }}>
+            {message}
+          </pre>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
 
 // ── Pages enum ───────────────────────────────────────────
 const PAGES = {
@@ -12,7 +51,6 @@ const PAGES = {
   DASHBOARD: 'dashboard',
   STUDIO: 'studio',
   PROPOSALS: 'proposals',
-  NAIL_SHOP: 'nail_shop',
 };
 
 // ── App Shell ────────────────────────────────────────────
@@ -67,18 +105,6 @@ export default function App() {
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M12 2a5 5 0 0 1 0 10 5 5 0 0 1 0-10z" />
           <path d="M12 12c-4 0-8 2-8 6v2h16v-2c0-4-4-6-8-6z" />
-        </svg>
-      ),
-    },
-    {
-      id: PAGES.NAIL_SHOP,
-      label: 'Nail Shop',
-      icon: (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M4 10h16" />
-          <path d="M5 10l1.5-6h11L19 10" />
-          <path d="M6 10v10h12V10" />
-          <path d="M9 20v-6h6v6" />
         </svg>
       ),
     },
@@ -148,7 +174,6 @@ export default function App() {
     [PAGES.DASHBOARD]: 'Dashboard',
     [PAGES.STUDIO]: 'Design Studio',
     [PAGES.PROPOSALS]: 'Proposals',
-    [PAGES.NAIL_SHOP]: 'Nail Shop',
   };
 
   const topbar = (
@@ -167,40 +192,54 @@ export default function App() {
     switch (page) {
       case PAGES.DASHBOARD:
         return (
-          <Dashboard
-            techName={techName}
-            onStartLook={() => { void navigateTo(PAGES.STUDIO); }}
-            onViewProposals={() => { void navigateTo(PAGES.PROPOSALS); }}
-          />
+          <ProtectedAppErrorBoundary boundaryKey={PAGES.DASHBOARD}>
+            <Dashboard
+              techName={techName}
+              onStartLook={() => { void navigateTo(PAGES.STUDIO); }}
+              onViewProposals={() => { void navigateTo(PAGES.PROPOSALS); }}
+            />
+          </ProtectedAppErrorBoundary>
         );
       case PAGES.STUDIO:
-        return <DesignStudio ref={designStudioRef} />;
+        return (
+          <ProtectedAppErrorBoundary boundaryKey={PAGES.STUDIO}>
+            <DesignStudio ref={designStudioRef} />
+          </ProtectedAppErrorBoundary>
+        );
       case PAGES.PROPOSALS:
-        return <Proposals />;
-      case PAGES.NAIL_SHOP:
-        return <NailShop />;
+        return (
+          <ProtectedAppErrorBoundary boundaryKey={PAGES.PROPOSALS}>
+            <Proposals />
+          </ProtectedAppErrorBoundary>
+        );
       default:
-        return null;
+        return (
+          <ProtectedAppErrorBoundary boundaryKey={PAGES.STUDIO}>
+            <DesignStudio ref={designStudioRef} />
+          </ProtectedAppErrorBoundary>
+        );
     }
   };
 
   // ── Shell layout ──────────────────────────────────────
   return (
-    <div style={S.appShell}>
-      {sidebar}
-      <div style={S.mainContent}>
-        {topbar}
-        {/* Design Studio gets full height for its split-panel layout;
-            other pages scroll normally. */}
-        <div style={{
-          flex: 1,
-          overflow: page === PAGES.STUDIO ? 'hidden' : 'auto',
-          display: 'flex',
-          flexDirection: 'column',
-        }}>
-          {renderPage()}
+    <ProtectedAppErrorBoundary boundaryKey={`shell-${page}`}>
+      <div style={S.appShell}>
+        {sidebar}
+        <div style={S.mainContent}>
+          {topbar}
+          {/* Design Studio gets full height for its split-panel layout;
+              other pages scroll normally. */}
+          <div style={{
+            flex: 1,
+            overflow: page === PAGES.STUDIO ? 'hidden' : 'auto',
+            display: 'flex',
+            flexDirection: 'column',
+          }}>
+            {renderPage()}
+          </div>
         </div>
       </div>
-    </div>
+    </ProtectedAppErrorBoundary>
   );
 }
