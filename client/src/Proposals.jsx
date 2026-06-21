@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { COLORS, S, StatusBadge } from './styles';
+import { generateBlueprintSummary } from './design-studio/blueprint';
 
 const VALID_STATUSES = ['Sent', 'Viewed', 'Accepted', 'ChangesRequested', 'Declined'];
 
@@ -18,6 +19,7 @@ export default function Proposals() {
   const [price, setPrice] = useState('');
   const [notes, setNotes] = useState('');
   const [showForm, setShowForm] = useState(false);
+  const [selectedBlueprintSummary, setSelectedBlueprintSummary] = useState(null);
 
   const fetchAll = async () => {
     setLoading(true);
@@ -40,6 +42,21 @@ export default function Proposals() {
   };
 
   useEffect(() => { fetchAll(); }, []);
+
+  useEffect(() => {
+    if (!selectedDesignId) { setSelectedBlueprintSummary(null); return; }
+    const design = designs.find((item) => item.id === selectedDesignId);
+    fetch(`/api/designs/${selectedDesignId}/blueprint`)
+      .then((res) => res.ok ? res.json() : null)
+      .then((body) => {
+        if (!body?.document) return setSelectedBlueprintSummary(null);
+        const summary = generateBlueprintSummary(body.document, design?.name || '');
+        setSelectedBlueprintSummary(summary);
+        const estimate = summary.pricingSummary.estimatedServicePrice;
+        if (!price && estimate && /^\d+(\.\d{1,2})?$/.test(String(estimate))) setPrice(String(estimate));
+      })
+      .catch(() => setSelectedBlueprintSummary(null));
+  }, [selectedDesignId, designs]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -222,6 +239,16 @@ export default function Proposals() {
       ...S.input,
       cursor: 'pointer',
     },
+    previewBox: {
+      border: `1px solid ${COLORS.border}`,
+      borderRadius: 10,
+      padding: 12,
+      marginBottom: 14,
+      background: '#faf8f7',
+      fontSize: 12,
+      color: COLORS.muted,
+      lineHeight: 1.6,
+    },
   };
 
   return (
@@ -278,6 +305,16 @@ export default function Proposals() {
                 />
               </div>
             </div>
+
+            {selectedBlueprintSummary && (
+              <div style={styles.previewBox}>
+                <strong style={{ color: COLORS.plum }}>Blueprint handoff preview</strong><br />
+                Design: {selectedBlueprintSummary.designSummary.activeShape} · {selectedBlueprintSummary.serviceSummary.serviceType}<br />
+                Materials: {selectedBlueprintSummary.materialsSummary.join(', ') || '—'}<br />
+                Tags: {selectedBlueprintSummary.marketingTags.join(', ') || '—'}<br />
+                Vendor refs: {selectedBlueprintSummary.vendorReferences.length || 0}
+              </div>
+            )}
 
             <div style={styles.row}>
               <div style={styles.field}>
@@ -346,6 +383,7 @@ export default function Proposals() {
                     {shape && <span>{shape} · </span>}
                     <span>Client: <strong>{p.clientName}</strong></span>
                     {p.notes && <span> · {p.notes}</span>}
+                    {p.blueprintSummary?.marketingTags?.length ? <span> · Tags: {p.blueprintSummary.marketingTags.join(', ')}</span> : null}
                   </div>
                 </div>
                 <div style={styles.proposalRight}>

@@ -57,6 +57,7 @@ import {
   applySignatureLookToBlueprint,
   createSignatureLookFromBlueprint,
   normalizeSignatureLook,
+  generateBlueprintSummary,
 } from "./blueprint.js";
 
 
@@ -66,6 +67,7 @@ const DEFAULT_PANEL_STATE = {
   nailBasics: true,
   signatureLooks: true,
   designDetails: false,
+  blueprintPreview: true,
   frenchTip: false,
   fullSetActions: false,
   developerGeometry: false,
@@ -194,6 +196,21 @@ function NailColorSystem({ value, polishType = "Cream", onChange, onPolishTypeCh
       <button type="button" onClick={() => onApply("all")} style={UI.iconButton(false)}>Full set</button>
     </div>
     <p style={UI.smallText}>Cream, Jelly, Milky, and Matte each render through the shared material engine with shape-aware depth.</p>
+  </section>;
+}
+
+function BlueprintPreviewPanel({ summary }) {
+  const section = (title, children) => <div style={{ borderTop: `1px solid ${COLORS.border}`, paddingTop: 10, marginTop: 10 }}><div style={UI.sectionTitle}>{title}</div>{children}</div>;
+  const pill = (text) => <span key={text} style={{ display: "inline-flex", border: `1px solid ${COLORS.border}`, borderRadius: 999, padding: "4px 8px", margin: "3px", fontSize: 11, color: COLORS.textMuted }}>{text}</span>;
+  return <section style={{ border: `1px solid ${COLORS.border}`, borderRadius: 16, padding: 12, marginBottom: 14, background: "#fff" }}>
+    <div style={UI.sectionTitle}>Plain Blueprint Preview</div>
+    <p style={{ ...UI.smallText, marginTop: 0 }}>Simple operational preview only. Final printable/exportable Nail Blueprint design comes later, after the founder provides an inspiration image.</p>
+    {section("Design summary", <p style={UI.smallText}>{summary.designSummary.name || "Untitled"} · {summary.designSummary.styleCategory} · {summary.designSummary.activeShape} · {summary.designSummary.nailCount} nail(s)</p>)}
+    {section("Service summary", <p style={UI.smallText}>{summary.serviceSummary.serviceType} · length {Math.round(summary.serviceSummary.length * 100)}% · width {Math.round(summary.serviceSummary.width * 100)}%</p>)}
+    {section("Pricing summary", <p style={UI.smallText}>Estimate: {summary.pricingSummary.estimatedServicePrice}</p>)}
+    {section("Materials summary", <div>{summary.materialsSummary.map(pill)}</div>)}
+    {section("Marketing tags", <div>{summary.marketingTags.length ? summary.marketingTags.map(pill) : <p style={UI.smallText}>No marketing tags yet.</p>}</div>)}
+    {section("Vendor references", <div>{summary.vendorReferences.length ? summary.vendorReferences.map((ref, index) => pill(`${ref.name} · ${ref.vendor} · ${ref.sku}`)) : <p style={UI.smallText}>No charm, jewel, or decal vendor references yet.</p>}</div>)}
   </section>;
 }
 
@@ -902,6 +919,7 @@ function DesignStudio(_, ref) {
 
   const tagsString = (blueprint.metadata?.tags || []).join(", ");
   const [debugShapeOverlay, setDebugShapeOverlay] = useState(false);
+  const blueprintSummary = useMemo(() => generateBlueprintSummary(blueprint, designName), [blueprint, designName]);
   const statusColor = status.type === "error" ? "#b91c1c" : status.type === "saved" ? COLORS.statusAccepted : status.type === "dirty" ? COLORS.statusChangesRequested : COLORS.textMuted;
 
   return <div style={UI.shell}>
@@ -929,6 +947,7 @@ function DesignStudio(_, ref) {
         <CollapsiblePanel id="signatureLooks" title="Signature Looks" open={panelState.signatureLooks} onToggle={togglePanel}>
           <SignatureLooksPanel looks={signatureLooks} selectedId={selectedSignatureLookId} onSelect={setSelectedSignatureLookId} onSave={saveSignatureLook} onApply={applySignatureLook} onDuplicate={duplicateSignatureLook} onRename={renameSignatureLook} onDelete={deleteSignatureLook}/>
         </CollapsiblePanel>
+        <CollapsiblePanel id="blueprintPreview" title="Blueprint Preview" open={panelState.blueprintPreview} onToggle={togglePanel}><BlueprintPreviewPanel summary={blueprintSummary}/></CollapsiblePanel>
         <CollapsiblePanel id="designDetails" title="Design Details" open={panelState.designDetails} onToggle={togglePanel}>
           <DesignPalette colors={designPalette}/>
           <Field label="Tags"><input style={S.input} value={tagsString} onChange={(e) => updateBase({ tags: e.target.value })} placeholder="bridal, chrome, accent" /></Field>
