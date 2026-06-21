@@ -57,7 +57,6 @@ import {
   applySignatureLookToBlueprint,
   createSignatureLookFromBlueprint,
   normalizeSignatureLook,
-  generateBlueprintSummary,
 } from "./blueprint.js";
 
 
@@ -196,44 +195,6 @@ function NailColorSystem({ value, polishType = "Cream", onChange, onPolishTypeCh
     </div>
     <p style={UI.smallText}>Cream, Jelly, Milky, and Matte each render through the shared material engine with shape-aware depth.</p>
   </section>;
-}
-
-function formatBlueprintList(items, emptyText) {
-  return Array.isArray(items) && items.length ? items.join(", ") : emptyText;
-}
-
-function BlueprintSummaryModal({ summary, error, onClose }) {
-  const unavailable = error || !summary;
-  const row = (label, value) => (
-    <div style={{ borderTop: `1px solid ${COLORS.border}`, paddingTop: 10, marginTop: 10 }}>
-      <div style={UI.sectionTitle}>{label}</div>
-      <p style={{ ...UI.smallText, margin: "4px 0 0" }}>{value || "Not set"}</p>
-    </div>
-  );
-
-  return <div role="presentation" style={{ position: "fixed", inset: 0, zIndex: 40, background: "rgba(43, 16, 36, .28)", display: "flex", alignItems: "center", justifyContent: "center", padding: 18 }}>
-    <section role="dialog" aria-modal="true" aria-labelledby="blueprint-summary-title" style={{ width: "min(520px, 100%)", maxHeight: "82vh", overflow: "auto", borderRadius: 18, border: `1px solid ${COLORS.border}`, background: "#fff", boxShadow: "0 22px 60px rgba(43, 16, 36, .28)", padding: 18 }}>
-      <div style={{ display: "flex", gap: 12, alignItems: "flex-start", justifyContent: "space-between" }}>
-        <div>
-          <h2 id="blueprint-summary-title" style={{ margin: 0, color: COLORS.plum, fontSize: 18 }}>Blueprint Summary</h2>
-          <p style={{ ...UI.smallText, marginTop: 4 }}>Plain manual summary only. No file export or proposal changes.</p>
-        </div>
-        <button type="button" aria-label="Close blueprint summary" onClick={onClose} style={UI.iconButton(false)}>Close</button>
-      </div>
-      {unavailable ? (
-        <p style={{ ...UI.smallText, marginBottom: 0 }}>Blueprint summary unavailable for this design.</p>
-      ) : (
-        <div>
-          {row("Design", `${summary.designSummary?.name || "Not set"} · ${summary.designSummary?.styleCategory || "Not set"} · ${summary.designSummary?.activeShape || "Not set"}`)}
-          {row("Service", `${summary.serviceSummary?.serviceType || "Not set"} · length ${Math.round((summary.serviceSummary?.length ?? 0) * 100)}% · width ${Math.round((summary.serviceSummary?.width ?? 0) * 100)}%`)}
-          {row("Pricing", `Estimate: ${summary.pricingSummary?.estimatedServicePrice || "Not set"} · Proposal: ${summary.pricingSummary?.proposalPrice || "Not set"}`)}
-          {row("Materials", formatBlueprintList(summary.materialsSummary, "No materials listed."))}
-          {row("Marketing Tags", formatBlueprintList(summary.marketingTags, "No marketing tags yet."))}
-          {row("Vendor References", Array.isArray(summary.vendorReferences) && summary.vendorReferences.length ? summary.vendorReferences.map((ref) => `${ref.name || ref.type || "Item"} · ${ref.vendor || "Vendor TBD"} · ${ref.sku || "SKU TBD"}`).join(", ") : "No vendor references yet.")}
-        </div>
-      )}
-    </section>
-  </div>;
 }
 
 function DesignBoardIntro() {
@@ -931,16 +892,6 @@ function DesignStudio(_, ref) {
     setSelectedSignatureLookId(STARTER_SIGNATURE_LOOKS[0]?.id || "");
   }
 
-  function openBlueprintSummary() {
-    try {
-      const summary = generateBlueprintSummary(blueprintRef.current || blueprint, designNameRef.current || designName);
-      if (!summary?.designSummary || !summary?.serviceSummary || !summary?.pricingSummary) throw new Error("Incomplete blueprint summary");
-      setManualBlueprintSummary({ summary, error: false });
-    } catch {
-      setManualBlueprintSummary({ summary: null, error: true });
-    }
-  }
-
   function togglePanel(id) {
     setPanelState((prev) => {
       const next = { ...prev, [id]: !prev[id] };
@@ -954,7 +905,6 @@ function DesignStudio(_, ref) {
   const statusColor = status.type === "error" ? "#b91c1c" : status.type === "saved" ? COLORS.statusAccepted : status.type === "dirty" ? COLORS.statusChangesRequested : COLORS.textMuted;
 
   return <div style={UI.shell}>
-    {manualBlueprintSummary && <BlueprintSummaryModal summary={manualBlueprintSummary.summary} error={manualBlueprintSummary.error} onClose={() => setManualBlueprintSummary(null)}/>}
     <div style={UI.toolbar}>
       <button type="button" onClick={undo} disabled={!canUndo} style={UI.iconButton(false, !canUndo)}>Undo</button>
       <button type="button" onClick={redo} disabled={!canRedo} style={UI.iconButton(false, !canRedo)}>Redo</button>
@@ -968,7 +918,7 @@ function DesignStudio(_, ref) {
       <aside style={UI.panel}><div style={UI.panelPad}>
         <CollapsiblePanel id="nailBasics" title="Nail Basics" open={panelState.nailBasics} onToggle={togglePanel}>
           <Field label="Design name"><input style={S.input} value={designName} onChange={(e) => { markEdited(); generatedDraftNameRef.current = ""; designNameRef.current = e.target.value; dirtyRef.current = true; setDesignName(e.target.value); setDirty(true); setSaveStatus("Unsaved changes"); scheduleAutosave(); }} placeholder="Milky bow accent" /></Field>
-          <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}><button type="button" onClick={newDesign} style={{ ...S.btnSecondary, padding: "10px 12px" }}>New Design</button><button type="button" aria-label="Save design" title="Save design" onClick={save} disabled={saving} style={{ ...S.btnPrimary, padding: "10px 12px", opacity: saving ? .65 : 1 }}>💾 Save</button><button type="button" data-testid="generate-blueprint-summary" onClick={openBlueprintSummary} style={{ ...S.btnSecondary, padding: "10px 12px" }}>Generate Blueprint Summary</button></div>
+          <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}><button type="button" onClick={newDesign} style={{ ...S.btnSecondary, padding: "10px 12px" }}>New Design</button><button type="button" aria-label="Save design" title="Save design" onClick={save} disabled={saving} style={{ ...S.btnPrimary, padding: "10px 12px", opacity: saving ? .65 : 1 }}>💾 Save</button></div>
           <Field label="Saved Designs"><select style={S.input} value={selectedDesignId} onChange={(e) => loadDesign(e.target.value)}><option value="">Choose saved design…</option>{designs.map((design) => <option key={design.id} value={design.id}>{design.name}</option>)}</select></Field>
           <Field label="Nail shape"><select style={S.input} value={activeNail.shape} onChange={(e) => updateBase({ shape: e.target.value })}>{SHAPES.map((shape) => <option key={shape}>{shape}</option>)}</select></Field>
           <GeometrySlider label="Nail length" value={activeNail.length} onChange={(length) => updateBase({ length })}/>
