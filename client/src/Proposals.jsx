@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { COLORS, S, StatusBadge } from './styles';
-import { generateBlueprintSummary } from './design-studio/blueprint';
 
 const VALID_STATUSES = ['Sent', 'Viewed', 'Accepted', 'ChangesRequested', 'Declined'];
 
@@ -19,7 +18,6 @@ export default function Proposals() {
   const [price, setPrice] = useState('');
   const [notes, setNotes] = useState('');
   const [showForm, setShowForm] = useState(false);
-  const [selectedBlueprintSummary, setSelectedBlueprintSummary] = useState(null);
 
   const fetchAll = async () => {
     setLoading(true);
@@ -42,21 +40,6 @@ export default function Proposals() {
   };
 
   useEffect(() => { fetchAll(); }, []);
-
-  useEffect(() => {
-    if (!selectedDesignId) { setSelectedBlueprintSummary(null); return; }
-    const design = designs.find((item) => item.id === selectedDesignId);
-    fetch(`/api/designs/${selectedDesignId}/blueprint`)
-      .then((res) => res.ok ? res.json() : null)
-      .then((body) => {
-        if (!body?.document) return setSelectedBlueprintSummary(null);
-        const summary = generateBlueprintSummary(body.document, design?.name || '');
-        setSelectedBlueprintSummary(summary);
-        const estimate = summary.pricingSummary.estimatedServicePrice;
-        if (!price && estimate && /^\d+(\.\d{1,2})?$/.test(String(estimate))) setPrice(String(estimate));
-      })
-      .catch(() => setSelectedBlueprintSummary(null));
-  }, [selectedDesignId, designs]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -306,15 +289,6 @@ export default function Proposals() {
               </div>
             </div>
 
-            {selectedBlueprintSummary && (
-              <div style={styles.previewBox}>
-                <strong style={{ color: COLORS.plum }}>Blueprint handoff preview</strong><br />
-                Design: {selectedBlueprintSummary.designSummary.activeShape} · {selectedBlueprintSummary.serviceSummary.serviceType}<br />
-                Materials: {selectedBlueprintSummary.materialsSummary.join(', ') || '—'}<br />
-                Tags: {selectedBlueprintSummary.marketingTags.join(', ') || '—'}<br />
-                Vendor refs: {selectedBlueprintSummary.vendorReferences.length || 0}
-              </div>
-            )}
 
             <div style={styles.row}>
               <div style={styles.field}>
