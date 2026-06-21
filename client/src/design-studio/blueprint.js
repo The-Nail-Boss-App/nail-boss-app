@@ -1145,6 +1145,81 @@ export function summarizeFullSetAssets(blueprint) {
   return summary;
 }
 
+function uniqueList(items) {
+  return [...new Set(items.map((item) => String(item || "").trim()).filter(Boolean))];
+}
+
+function countLayerTypes(blueprint) {
+  const counts = {};
+  for (const nail of blueprint?.nails || []) {
+    for (const layer of nail.layers || []) {
+      if (layer.visible === false) continue;
+      counts[layer.type] = (counts[layer.type] || 0) + 1;
+    }
+  }
+  return counts;
+}
+
+export function generateBlueprintSummary(blueprint, designName = "") {
+  const normalized = ensureFullSetBlueprint(blueprint);
+  const activeNail = getActiveNail(normalized) || normalized.nails?.[0] || {};
+  const base = activeNail.layers?.find((layer) => layer.type === "base");
+  const polish = normalizePolishData(base?.data || {}, activeNail.baseColorHex);
+  const layerCounts = countLayerTypes(normalized);
+  const palette = uniqueList((normalized.nails || []).flatMap((nail) => collectDesignPalette(nail)));
+  const assetRefs = [];
+  for (const nail of normalized.nails || []) {
+    for (const layer of nail.layers || []) {
+      if (!["charm", "jewel", "decal"].includes(layer.type) || layer.visible === false) continue;
+      assetRefs.push({
+        type: layer.type,
+        name: layer.name || layer.data?.assetId || layer.type,
+        assetId: layer.data?.assetId || "custom",
+        colorHex: normalizeHex(layer.data?.colorHex, "#FFFFFF"),
+        vendor: layer.data?.vendor || "Vendor TBD",
+        sku: layer.data?.sku || "SKU TBD",
+      });
+    }
+  }
+  const materials = uniqueList([
+    `${polish.polishType || "Cream"} polish ${normalizeHex(polish.colorHex, activeNail.baseColorHex)}`,
+    `${polish.topCoat || "Gloss"} top coat`,
+    layerCounts.gradient ? `${layerCounts.gradient} gradient layer(s)` : "",
+    layerCounts.pattern ? `${layerCounts.pattern} pattern layer(s)` : "",
+    layerCounts.frenchTip ? `${layerCounts.frenchTip} French tip layer(s)` : "",
+    layerCounts.drawing ? `${layerCounts.drawing} hand-painted drawing layer(s)` : "",
+    assetRefs.length ? `${assetRefs.length} charm/jewel/decal placement(s)` : "",
+  ]);
+  const estimatedPrice = normalized.metadata?.estimatedServicePrice || "Not priced yet";
+  const tags = normalizeTags(normalized.metadata?.tags || []);
+  return {
+    schemaVersion: 1,
+    generatedAt: new Date().toISOString(),
+    designSummary: {
+      name: String(designName || normalized.metadata?.name || "Untitled design").trim(),
+      styleCategory: normalized.metadata?.styleCategory || "Custom",
+      activeShape: activeNail.shape || "Almond",
+      nailCount: normalized.nails?.length || 0,
+      palette,
+      notes: normalized.metadata?.internalNotes || "",
+    },
+    serviceSummary: {
+      serviceType: normalized.nails?.length >= 10 ? "Full set" : "Custom nail art",
+      shape: activeNail.shape || "Almond",
+      length: activeNail.length ?? 0.5,
+      width: activeNail.width ?? 0.5,
+      layerCounts,
+    },
+    pricingSummary: {
+      estimatedServicePrice: estimatedPrice,
+      proposalPrice: normalized.metadata?.proposalPrice || "Set during proposal",
+    },
+    materialsSummary: materials,
+    marketingTags: tags,
+    vendorReferences: assetRefs,
+  };
+}
+
 
 export function quantitySummary(blueprint) {
   const nail = getActiveNail(blueprint);

@@ -465,6 +465,72 @@ function flatFieldsFromBlueprint(blueprint) {
   };
 }
 
+function uniqueList(items) {
+  return [...new Set(items.map((item) => String(item || "").trim()).filter(Boolean))];
+}
+
+function generateProposalBlueprintSummary(blueprint, design) {
+  const document = validateAndNormalizeBlueprint(blueprint);
+  const activeNail = getActiveNail(document);
+  const baseLayer = getBaseLayer(activeNail);
+  const baseData = baseLayer && isPlainObject(baseLayer.data) ? baseLayer.data : {};
+  const layerCounts = {};
+  const palette = [];
+  const addColor = (value) => {
+    if (typeof value === "string" && HEX_RE.test(value)) palette.push(cleanHex(value, value));
+  };
+  const vendorReferences = [];
+  for (const nail of document.nails || []) {
+    addColor(nail.baseColorHex);
+    for (const layer of nail.layers || []) {
+      if (layer.visible === false) continue;
+      layerCounts[layer.type] = (layerCounts[layer.type] || 0) + 1;
+      const data = isPlainObject(layer.data) ? layer.data : {};
+      addColor(data.colorHex);
+      addColor(data.effectColorHex);
+      addColor(data.colorA);
+      addColor(data.colorB);
+      if (["charm", "jewel", "decal"].includes(layer.type)) {
+        vendorReferences.push({
+          type: layer.type,
+          name: layer.name || data.assetId || layer.type,
+          assetId: data.assetId || "custom",
+          colorHex: cleanHex(data.colorHex, "#FFFFFF"),
+          vendor: data.vendor || "Vendor TBD",
+          sku: data.sku || "SKU TBD",
+        });
+      }
+    }
+  }
+  const metadata = isPlainObject(document.metadata) ? document.metadata : {};
+  const polishType = baseData.polishType || (MEANINGFUL_LEGACY_EFFECTS.includes(baseData.effect) ? baseData.effect : "Cream");
+  const materialsSummary = uniqueList([
+    `${polishType} polish ${cleanHex(baseData.colorHex || activeNail.baseColorHex, "#E8A0BF")}`,
+    `${baseData.topCoat || "Gloss"} top coat`,
+    layerCounts.gradient ? `${layerCounts.gradient} gradient layer(s)` : "",
+    layerCounts.pattern ? `${layerCounts.pattern} pattern layer(s)` : "",
+    layerCounts.frenchTip ? `${layerCounts.frenchTip} French tip layer(s)` : "",
+    layerCounts.drawing ? `${layerCounts.drawing} hand-painted drawing layer(s)` : "",
+    vendorReferences.length ? `${vendorReferences.length} charm/jewel/decal placement(s)` : "",
+  ]);
+  return {
+    schemaVersion: 1,
+    designSummary: {
+      name: design?.name || "Untitled design",
+      styleCategory: metadata.styleCategory || "Custom",
+      activeShape: activeNail.shape,
+      nailCount: document.nails.length,
+      palette: uniqueList(palette),
+      notes: metadata.internalNotes || "",
+    },
+    serviceSummary: { serviceType: document.nails.length >= 10 ? "Full set" : "Custom nail art", shape: activeNail.shape, length: activeNail.length, width: activeNail.width, layerCounts },
+    pricingSummary: { estimatedServicePrice: metadata.estimatedServicePrice || "Not priced yet" },
+    materialsSummary,
+    marketingTags: normalizeTags(metadata.tags || []),
+    vendorReferences,
+  };
+}
+
 function shouldSimulateBlueprintPersistenceFailure(blueprint) {
   return process.env.NODE_ENV === "test"
     && blueprint
@@ -872,7 +938,9 @@ class PostgresStore {
 
   async populateProposal(proposal) {
     if (!proposal) return null;
-    return { ...proposal, design: await this.getDesign(proposal.designId) };
+    const design = await this.getDesign(proposal.designId);
+    const blueprint = design ? await this.getDesignBlueprint(proposal.designId) : null;
+    return { ...proposal, design, blueprintSummary: blueprint ? generateProposalBlueprintSummary(blueprint.document, design) : null };
   }
 }
 
@@ -1145,7 +1213,9 @@ class FileStore {
 
   async populateProposal(proposal) {
     if (!proposal) return null;
-    return { ...proposal, design: await this.getDesign(proposal.designId) };
+    const design = await this.getDesign(proposal.designId);
+    const blueprint = design ? await this.getDesignBlueprint(proposal.designId) : null;
+    return { ...proposal, design, blueprintSummary: blueprint ? generateProposalBlueprintSummary(blueprint.document, design) : null };
   }
 }
 
