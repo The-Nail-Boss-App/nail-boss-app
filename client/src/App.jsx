@@ -4,7 +4,6 @@ import Login from './Login';
 import Dashboard from './Dashboard';
 import DesignStudio from './DesignStudio';
 import Proposals from './Proposals';
-import NailBlueprints from './NailBlueprints';
 
 // ── Pages enum ───────────────────────────────────────────
 const PAGES = {
@@ -12,12 +11,7 @@ const PAGES = {
   DASHBOARD: 'dashboard',
   STUDIO: 'studio',
   PROPOSALS: 'proposals',
-  NAIL_BLUEPRINTS: 'nail-blueprints',
 };
-
-const protectedPageFromPath = () => (
-  window.location.pathname === '/nail-blueprints' ? PAGES.NAIL_BLUEPRINTS : PAGES.STUDIO
-);
 
 // ── App Shell ────────────────────────────────────────────
 export default function App() {
@@ -27,7 +21,7 @@ export default function App() {
 
   const handleLogin = (name) => {
     setTechName(name);
-    setPage(protectedPageFromPath());
+    setPage(PAGES.STUDIO);
   };
 
   const guardStudioLeave = async () => {
@@ -38,8 +32,6 @@ export default function App() {
   const navigateTo = async (nextPage) => {
     if (nextPage === page) return;
     if (!(await guardStudioLeave())) return;
-    if (nextPage === PAGES.NAIL_BLUEPRINTS) window.history.pushState(null, '', '/nail-blueprints');
-    else if (window.location.pathname === '/nail-blueprints') window.history.pushState(null, '', '/');
     setPage(nextPage);
   };
 
@@ -142,7 +134,6 @@ export default function App() {
     [PAGES.DASHBOARD]: 'Dashboard',
     [PAGES.STUDIO]: 'Design Studio',
     [PAGES.PROPOSALS]: 'Proposals',
-    [PAGES.NAIL_BLUEPRINTS]: 'Nail Blueprints™',
   };
 
   const topbar = (
@@ -171,8 +162,6 @@ export default function App() {
         return <DesignStudio ref={designStudioRef} />;
       case PAGES.PROPOSALS:
         return <Proposals />;
-      case PAGES.NAIL_BLUEPRINTS:
-        return <NailBlueprints />;
       default:
         return null;
     }
