@@ -67,7 +67,6 @@ const DEFAULT_PANEL_STATE = {
   nailBasics: true,
   signatureLooks: true,
   designDetails: false,
-  blueprintPreview: true,
   frenchTip: false,
   fullSetActions: false,
   developerGeometry: false,
@@ -199,19 +198,42 @@ function NailColorSystem({ value, polishType = "Cream", onChange, onPolishTypeCh
   </section>;
 }
 
-function BlueprintPreviewPanel({ summary }) {
-  const section = (title, children) => <div style={{ borderTop: `1px solid ${COLORS.border}`, paddingTop: 10, marginTop: 10 }}><div style={UI.sectionTitle}>{title}</div>{children}</div>;
-  const pill = (text) => <span key={text} style={{ display: "inline-flex", border: `1px solid ${COLORS.border}`, borderRadius: 999, padding: "4px 8px", margin: "3px", fontSize: 11, color: COLORS.textMuted }}>{text}</span>;
-  return <section style={{ border: `1px solid ${COLORS.border}`, borderRadius: 16, padding: 12, marginBottom: 14, background: "#fff" }}>
-    <div style={UI.sectionTitle}>Plain Blueprint Preview</div>
-    <p style={{ ...UI.smallText, marginTop: 0 }}>Simple operational preview only. Final printable/exportable Nail Blueprint design comes later, after the founder provides an inspiration image.</p>
-    {section("Design summary", <p style={UI.smallText}>{summary.designSummary.name || "Untitled"} · {summary.designSummary.styleCategory} · {summary.designSummary.activeShape} · {summary.designSummary.nailCount} nail(s)</p>)}
-    {section("Service summary", <p style={UI.smallText}>{summary.serviceSummary.serviceType} · length {Math.round(summary.serviceSummary.length * 100)}% · width {Math.round(summary.serviceSummary.width * 100)}%</p>)}
-    {section("Pricing summary", <p style={UI.smallText}>Estimate: {summary.pricingSummary.estimatedServicePrice}</p>)}
-    {section("Materials summary", <div>{summary.materialsSummary.map(pill)}</div>)}
-    {section("Marketing tags", <div>{summary.marketingTags.length ? summary.marketingTags.map(pill) : <p style={UI.smallText}>No marketing tags yet.</p>}</div>)}
-    {section("Vendor references", <div>{summary.vendorReferences.length ? summary.vendorReferences.map((ref, index) => pill(`${ref.name} · ${ref.vendor} · ${ref.sku}`)) : <p style={UI.smallText}>No charm, jewel, or decal vendor references yet.</p>}</div>)}
-  </section>;
+function formatBlueprintList(items, emptyText) {
+  return Array.isArray(items) && items.length ? items.join(", ") : emptyText;
+}
+
+function BlueprintSummaryModal({ summary, error, onClose }) {
+  const unavailable = error || !summary;
+  const row = (label, value) => (
+    <div style={{ borderTop: `1px solid ${COLORS.border}`, paddingTop: 10, marginTop: 10 }}>
+      <div style={UI.sectionTitle}>{label}</div>
+      <p style={{ ...UI.smallText, margin: "4px 0 0" }}>{value || "Not set"}</p>
+    </div>
+  );
+
+  return <div role="presentation" style={{ position: "fixed", inset: 0, zIndex: 40, background: "rgba(43, 16, 36, .28)", display: "flex", alignItems: "center", justifyContent: "center", padding: 18 }}>
+    <section role="dialog" aria-modal="true" aria-labelledby="blueprint-summary-title" style={{ width: "min(520px, 100%)", maxHeight: "82vh", overflow: "auto", borderRadius: 18, border: `1px solid ${COLORS.border}`, background: "#fff", boxShadow: "0 22px 60px rgba(43, 16, 36, .28)", padding: 18 }}>
+      <div style={{ display: "flex", gap: 12, alignItems: "flex-start", justifyContent: "space-between" }}>
+        <div>
+          <h2 id="blueprint-summary-title" style={{ margin: 0, color: COLORS.plum, fontSize: 18 }}>Blueprint Summary</h2>
+          <p style={{ ...UI.smallText, marginTop: 4 }}>Plain manual summary only. No file export or proposal changes.</p>
+        </div>
+        <button type="button" aria-label="Close blueprint summary" onClick={onClose} style={UI.iconButton(false)}>Close</button>
+      </div>
+      {unavailable ? (
+        <p style={{ ...UI.smallText, marginBottom: 0 }}>Blueprint summary unavailable for this design.</p>
+      ) : (
+        <div>
+          {row("Design", `${summary.designSummary?.name || "Not set"} · ${summary.designSummary?.styleCategory || "Not set"} · ${summary.designSummary?.activeShape || "Not set"}`)}
+          {row("Service", `${summary.serviceSummary?.serviceType || "Not set"} · length ${Math.round((summary.serviceSummary?.length ?? 0) * 100)}% · width ${Math.round((summary.serviceSummary?.width ?? 0) * 100)}%`)}
+          {row("Pricing", `Estimate: ${summary.pricingSummary?.estimatedServicePrice || "Not set"} · Proposal: ${summary.pricingSummary?.proposalPrice || "Not set"}`)}
+          {row("Materials", formatBlueprintList(summary.materialsSummary, "No materials listed."))}
+          {row("Marketing Tags", formatBlueprintList(summary.marketingTags, "No marketing tags yet."))}
+          {row("Vendor References", Array.isArray(summary.vendorReferences) && summary.vendorReferences.length ? summary.vendorReferences.map((ref) => `${ref.name || ref.type || "Item"} · ${ref.vendor || "Vendor TBD"} · ${ref.sku || "SKU TBD"}`).join(", ") : "No vendor references yet.")}
+        </div>
+      )}
+    </section>
+  </div>;
 }
 
 function DesignBoardIntro() {
@@ -909,6 +931,16 @@ function DesignStudio(_, ref) {
     setSelectedSignatureLookId(STARTER_SIGNATURE_LOOKS[0]?.id || "");
   }
 
+  function openBlueprintSummary() {
+    try {
+      const summary = generateBlueprintSummary(blueprintRef.current || blueprint, designNameRef.current || designName);
+      if (!summary?.designSummary || !summary?.serviceSummary || !summary?.pricingSummary) throw new Error("Incomplete blueprint summary");
+      setManualBlueprintSummary({ summary, error: false });
+    } catch {
+      setManualBlueprintSummary({ summary: null, error: true });
+    }
+  }
+
   function togglePanel(id) {
     setPanelState((prev) => {
       const next = { ...prev, [id]: !prev[id] };
@@ -919,10 +951,10 @@ function DesignStudio(_, ref) {
 
   const tagsString = (blueprint.metadata?.tags || []).join(", ");
   const [debugShapeOverlay, setDebugShapeOverlay] = useState(false);
-  const blueprintSummary = useMemo(() => generateBlueprintSummary(blueprint, designName), [blueprint, designName]);
   const statusColor = status.type === "error" ? "#b91c1c" : status.type === "saved" ? COLORS.statusAccepted : status.type === "dirty" ? COLORS.statusChangesRequested : COLORS.textMuted;
 
   return <div style={UI.shell}>
+    {manualBlueprintSummary && <BlueprintSummaryModal summary={manualBlueprintSummary.summary} error={manualBlueprintSummary.error} onClose={() => setManualBlueprintSummary(null)}/>}
     <div style={UI.toolbar}>
       <button type="button" onClick={undo} disabled={!canUndo} style={UI.iconButton(false, !canUndo)}>Undo</button>
       <button type="button" onClick={redo} disabled={!canRedo} style={UI.iconButton(false, !canRedo)}>Redo</button>
@@ -936,7 +968,7 @@ function DesignStudio(_, ref) {
       <aside style={UI.panel}><div style={UI.panelPad}>
         <CollapsiblePanel id="nailBasics" title="Nail Basics" open={panelState.nailBasics} onToggle={togglePanel}>
           <Field label="Design name"><input style={S.input} value={designName} onChange={(e) => { markEdited(); generatedDraftNameRef.current = ""; designNameRef.current = e.target.value; dirtyRef.current = true; setDesignName(e.target.value); setDirty(true); setSaveStatus("Unsaved changes"); scheduleAutosave(); }} placeholder="Milky bow accent" /></Field>
-          <div style={{ display: "flex", gap: 8, marginBottom: 14 }}><button type="button" onClick={newDesign} style={{ ...S.btnSecondary, padding: "10px 12px" }}>New Design</button><button type="button" aria-label="Save design" title="Save design" onClick={save} disabled={saving} style={{ ...S.btnPrimary, padding: "10px 12px", opacity: saving ? .65 : 1 }}>💾 Save</button></div>
+          <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}><button type="button" onClick={newDesign} style={{ ...S.btnSecondary, padding: "10px 12px" }}>New Design</button><button type="button" aria-label="Save design" title="Save design" onClick={save} disabled={saving} style={{ ...S.btnPrimary, padding: "10px 12px", opacity: saving ? .65 : 1 }}>💾 Save</button><button type="button" data-testid="generate-blueprint-summary" onClick={openBlueprintSummary} style={{ ...S.btnSecondary, padding: "10px 12px" }}>Generate Blueprint Summary</button></div>
           <Field label="Saved Designs"><select style={S.input} value={selectedDesignId} onChange={(e) => loadDesign(e.target.value)}><option value="">Choose saved design…</option>{designs.map((design) => <option key={design.id} value={design.id}>{design.name}</option>)}</select></Field>
           <Field label="Nail shape"><select style={S.input} value={activeNail.shape} onChange={(e) => updateBase({ shape: e.target.value })}>{SHAPES.map((shape) => <option key={shape}>{shape}</option>)}</select></Field>
           <GeometrySlider label="Nail length" value={activeNail.length} onChange={(length) => updateBase({ length })}/>
@@ -947,7 +979,6 @@ function DesignStudio(_, ref) {
         <CollapsiblePanel id="signatureLooks" title="Signature Looks" open={panelState.signatureLooks} onToggle={togglePanel}>
           <SignatureLooksPanel looks={signatureLooks} selectedId={selectedSignatureLookId} onSelect={setSelectedSignatureLookId} onSave={saveSignatureLook} onApply={applySignatureLook} onDuplicate={duplicateSignatureLook} onRename={renameSignatureLook} onDelete={deleteSignatureLook}/>
         </CollapsiblePanel>
-        <CollapsiblePanel id="blueprintPreview" title="Blueprint Preview" open={panelState.blueprintPreview} onToggle={togglePanel}><BlueprintPreviewPanel summary={blueprintSummary}/></CollapsiblePanel>
         <CollapsiblePanel id="designDetails" title="Design Details" open={panelState.designDetails} onToggle={togglePanel}>
           <DesignPalette colors={designPalette}/>
           <Field label="Tags"><input style={S.input} value={tagsString} onChange={(e) => updateBase({ tags: e.target.value })} placeholder="bridal, chrome, accent" /></Field>

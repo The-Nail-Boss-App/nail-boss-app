@@ -115,6 +115,13 @@ assert.equal(modernSummary.vendorReferences[0].vendor, 'Gem Vendor', 'modern sum
 assert.deepEqual(SHAPES, ['Almond', 'Square', 'Coffin', 'Stiletto', 'Oval', 'Round', 'Lipstick'], 'Hero 7 exact during blueprint summary coverage');
 assert(!SHAPES.includes('Duck'), 'Duck remains hidden during blueprint summary coverage');
 assert(!source.includes('Full Set Composition'), 'Full Set Composition is not present in blueprint data layer');
+assert(designStudioSource.includes('Generate Blueprint Summary') && designStudioSource.includes('data-testid="generate-blueprint-summary"'), 'manual Blueprint summary button exists in Design Studio');
+assert(designStudioSource.includes('function openBlueprintSummary()') && designStudioSource.includes('generateBlueprintSummary(blueprintRef.current || blueprint'), 'Blueprint summary generation runs only through the manual click handler');
+assert(designStudioSource.includes('Blueprint summary unavailable for this design.'), 'manual Blueprint summary has safe unavailable fallback copy');
+assert(designStudioSource.includes('Close blueprint summary') && designStudioSource.includes('setManualBlueprintSummary(null)'), 'manual Blueprint summary modal is closable');
+assert(!designStudioSource.includes('BlueprintPreviewPanel') && !designStudioSource.includes('useMemo(() => generateBlueprintSummary') && !designStudioSource.includes('title="Blueprint Preview"'), 'Design Studio does not auto-render a Blueprint preview on load');
+assert(!designStudioSource.toLowerCase().includes('pdf'), 'Design Studio manual Blueprint summary does not add PDF export');
+assert(!designStudioSource.includes('Full Set Composition'), 'Design Studio manual Blueprint summary does not reintroduce Full Set Composition');
 
 const visibleHeroShapeFamilies = ['Almond', 'Square', 'Coffin', 'Stiletto', 'Oval', 'Round', 'Lipstick'];
 const hiddenLegacyShapeFamilies = ['Duck'];
