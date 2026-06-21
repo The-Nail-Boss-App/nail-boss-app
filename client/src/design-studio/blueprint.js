@@ -1149,6 +1149,22 @@ function uniqueList(items) {
   return [...new Set(items.map((item) => String(item || "").trim()).filter(Boolean))];
 }
 
+function collectDesignPalette(nail = {}) {
+  const colors = [nail.baseColorHex];
+  for (const layer of nail.layers || []) {
+    if (!layer || layer.visible === false) continue;
+    const data = layer.data || {};
+    colors.push(data.colorHex, data.effectColorHex, data.colorA, data.colorB, data.patternColorHex, data.patternSecondaryColorHex, data.secondaryColorHex);
+    if (Array.isArray(data.gradientStops)) {
+      colors.push(...data.gradientStops.map((stop) => stop?.color || stop?.colorHex));
+    }
+    if (Array.isArray(data.strokes)) {
+      colors.push(...data.strokes.map((stroke) => stroke?.colorHex));
+    }
+  }
+  return colors.filter((color) => /^#[0-9a-fA-F]{6}$/.test(color || "")).map((color) => color.toUpperCase());
+}
+
 function countLayerTypes(blueprint) {
   const counts = {};
   for (const nail of blueprint?.nails || []) {
@@ -1161,7 +1177,10 @@ function countLayerTypes(blueprint) {
 }
 
 export function generateBlueprintSummary(blueprint, designName = "") {
-  const normalized = ensureFullSetBlueprint(blueprint);
+  const source = blueprint && typeof blueprint === "object" ? blueprint : {};
+  const looksLikeBlueprint = Array.isArray(source.nails) || source.canvas || source.schemaVersion;
+  const designFallback = looksLikeBlueprint ? {} : source;
+  const normalized = ensureFullSetBlueprint(looksLikeBlueprint ? source : null, designFallback);
   const activeNail = getActiveNail(normalized) || normalized.nails?.[0] || {};
   const base = activeNail.layers?.find((layer) => layer.type === "base");
   const polish = normalizePolishData(base?.data || {}, activeNail.baseColorHex);
@@ -1190,18 +1209,18 @@ export function generateBlueprintSummary(blueprint, designName = "") {
     layerCounts.drawing ? `${layerCounts.drawing} hand-painted drawing layer(s)` : "",
     assetRefs.length ? `${assetRefs.length} charm/jewel/decal placement(s)` : "",
   ]);
-  const estimatedPrice = normalized.metadata?.estimatedServicePrice || "Not priced yet";
-  const tags = normalizeTags(normalized.metadata?.tags || []);
+  const estimatedPrice = normalized.metadata?.estimatedServicePrice || "Not set";
+  const tags = normalizeTags(normalized.metadata?.tags || designFallback.tags || []);
   return {
     schemaVersion: 1,
     generatedAt: new Date().toISOString(),
     designSummary: {
-      name: String(designName || normalized.metadata?.name || "Untitled design").trim(),
-      styleCategory: normalized.metadata?.styleCategory || "Custom",
+      name: String(designName || normalized.metadata?.name || designFallback.name || "Not set").trim() || "Not set",
+      styleCategory: normalized.metadata?.styleCategory || designFallback.styleCategory || "Not set",
       activeShape: activeNail.shape || "Almond",
       nailCount: normalized.nails?.length || 0,
       palette,
-      notes: normalized.metadata?.internalNotes || "",
+      notes: normalized.metadata?.internalNotes || designFallback.internalNotes || null,
     },
     serviceSummary: {
       serviceType: normalized.nails?.length >= 10 ? "Full set" : "Custom nail art",
@@ -1212,7 +1231,7 @@ export function generateBlueprintSummary(blueprint, designName = "") {
     },
     pricingSummary: {
       estimatedServicePrice: estimatedPrice,
-      proposalPrice: normalized.metadata?.proposalPrice || "Set during proposal",
+      proposalPrice: normalized.metadata?.proposalPrice || designFallback.proposalPrice || "Not set",
     },
     materialsSummary: materials,
     marketingTags: tags,
