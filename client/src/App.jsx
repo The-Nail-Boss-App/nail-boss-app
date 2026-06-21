@@ -4,6 +4,7 @@ import Login from './Login';
 import Dashboard from './Dashboard';
 import DesignStudio from './DesignStudio';
 import Proposals from './Proposals';
+import NailShop from './NailShop';
 
 // ── Pages enum ───────────────────────────────────────────
 const PAGES = {
@@ -11,6 +12,7 @@ const PAGES = {
   DASHBOARD: 'dashboard',
   STUDIO: 'studio',
   PROPOSALS: 'proposals',
+  NAIL_SHOP: 'nail_shop',
 };
 
 // ── App Shell ────────────────────────────────────────────
@@ -65,6 +67,18 @@ export default function App() {
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M12 2a5 5 0 0 1 0 10 5 5 0 0 1 0-10z" />
           <path d="M12 12c-4 0-8 2-8 6v2h16v-2c0-4-4-6-8-6z" />
+        </svg>
+      ),
+    },
+    {
+      id: PAGES.NAIL_SHOP,
+      label: 'Nail Shop',
+      icon: (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M4 10h16" />
+          <path d="M5 10l1.5-6h11L19 10" />
+          <path d="M6 10v10h12V10" />
+          <path d="M9 20v-6h6v6" />
         </svg>
       ),
     },
@@ -134,6 +148,7 @@ export default function App() {
     [PAGES.DASHBOARD]: 'Dashboard',
     [PAGES.STUDIO]: 'Design Studio',
     [PAGES.PROPOSALS]: 'Proposals',
+    [PAGES.NAIL_SHOP]: 'Nail Shop',
   };
 
   const topbar = (
@@ -162,6 +177,8 @@ export default function App() {
         return <DesignStudio ref={designStudioRef} />;
       case PAGES.PROPOSALS:
         return <Proposals />;
+      case PAGES.NAIL_SHOP:
+        return <NailShop />;
       default:
         return null;
     }
