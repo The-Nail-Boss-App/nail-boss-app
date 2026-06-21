@@ -70,8 +70,51 @@ const {
   ensureFullSetBlueprint,
   gradientLayer,
   patternLayer,
+  generateBlueprintSummary,
 } = blueprint;
 
+
+
+
+const assertBlueprintSummarySafe = (input, label, designName = '') => {
+  let summary;
+  assert.doesNotThrow(() => { summary = generateBlueprintSummary(input, designName); }, `${label} blueprint summary never throws`);
+  assert.equal(typeof summary, 'object', `${label} summary is an object`);
+  assert.equal(summary.schemaVersion, 1, `${label} summary keeps schema version`);
+  assert(summary.designSummary && summary.serviceSummary && summary.pricingSummary, `${label} summary includes design/service/pricing sections`);
+  assert(Array.isArray(summary.materialsSummary), `${label} summary returns materials array`);
+  assert(Array.isArray(summary.marketingTags), `${label} summary returns marketing tags array`);
+  assert(Array.isArray(summary.vendorReferences), `${label} summary returns vendor references array`);
+  assert(!Object.hasOwn(summary, 'fullSetComposition'), `${label} summary does not reintroduce Full Set Composition`);
+  return summary;
+};
+
+assertBlueprintSummarySafe(null, 'empty/default design');
+const legacySummary = assertBlueprintSummarySafe({ name: 'Legacy Saved', shape: 'Duck', baseColorHex: '#123456', tags: 'retro, saved', fullSet: false }, 'legacy saved design');
+assert.equal(legacySummary.designSummary.name, 'Legacy Saved', 'flat legacy design names flow into summary');
+assert.deepEqual(legacySummary.marketingTags, ['retro', 'saved'], 'flat legacy design marketing tags normalize safely');
+assert.equal(legacySummary.serviceSummary.shape, 'Square', 'legacy Duck designs summarize through hidden Square fallback');
+assertBlueprintSummarySafe({ nails: [{ id: 'nail-no-layers', shape: 'Oval', length: 0.4, width: 0.4 }] }, 'missing layers');
+const missingPricing = assertBlueprintSummarySafe({ metadata: { tags: [] }, nails: [{ id: 'nail-no-price', shape: 'Almond', layers: [] }] }, 'missing pricing');
+assert.equal(missingPricing.pricingSummary.estimatedServicePrice, 'Not set', 'missing pricing falls back to Not set');
+const missingVendor = assertBlueprintSummarySafe({ nails: [{ id: 'nail-no-vendor', shape: 'Square', layers: [{ id: 'asset-no-vendor', type: 'charm', name: 'Bow', visible: true, locked: false, opacity: 1, order: 1, transform: { x: 0.5, y: 0.5, scaleX: 0.15, scaleY: 0.15, rotation: 0 }, data: { assetId: 'bow' } }] }] }, 'missing vendor data');
+assert.equal(missingVendor.vendorReferences[0].vendor, 'Vendor TBD', 'missing vendor names receive a safe fallback');
+const missingTags = assertBlueprintSummarySafe({ metadata: {}, nails: [{ id: 'nail-no-tags', shape: 'Round', layers: [] }] }, 'missing marketing tags');
+assert.deepEqual(missingTags.marketingTags, [], 'missing marketing tags return an empty array');
+const modernBase = ensureFullSetBlueprint(createDefaultBlueprint({ name: 'Modern Mix', shape: 'Lipstick', polishType: 'Jelly', baseColorHex: '#AA33CC', tags: ['aura', 'french'], estimatedServicePrice: 125 }));
+const modernActive = getActiveNail(modernBase);
+const modernCharm = { ...assetLayer({ category: 'jewels', id: 'crystal-rhinestone', name: 'Crystal Rhinestone', defaultColor: '#DDF7FF' }, modernActive), data: { assetId: 'crystal-rhinestone', colorHex: '#DDF7FF', vendor: 'Gem Vendor', sku: 'GV-001' } };
+const modernGradient = { ...gradientLayer(modernActive), data: blueprint.normalizeGradientData({ colorA: '#AA33CC', colorB: '#FFFFFF', direction: 'aura', gradientStops: [{ color: '#AA33CC', position: 0 }, { color: '#FFD1DC', position: 45 }, { color: '#FFFFFF', position: 100 }] }) };
+const modernFrench = { ...frenchTipLayer(modernActive), data: normalizeFrenchTipData({ fillType: 'pattern', pattern: 'leopard', patternColorHex: '#111111', patternSecondaryColorHex: '#F6C177' }) };
+const modernPattern = patternLayer(modernActive, 'zebra');
+const modernSummary = assertBlueprintSummarySafe(updateActiveNail(modernBase, (nail) => ({ ...nail, layers: renumberLayers([nail.layers[0], modernGradient, modernFrench, modernPattern, modernCharm]) })), 'current modern design with polish, gradients, French, patterns, jewels/charms');
+assert(modernSummary.materialsSummary.some((item) => item.includes('gradient layer')), 'modern summary includes gradient materials');
+assert(modernSummary.materialsSummary.some((item) => item.includes('French tip layer')), 'modern summary includes French tip materials');
+assert(modernSummary.materialsSummary.some((item) => item.includes('pattern layer')), 'modern summary includes pattern materials');
+assert.equal(modernSummary.vendorReferences[0].vendor, 'Gem Vendor', 'modern summary preserves vendor reference data');
+assert.deepEqual(SHAPES, ['Almond', 'Square', 'Coffin', 'Stiletto', 'Oval', 'Round', 'Lipstick'], 'Hero 7 exact during blueprint summary coverage');
+assert(!SHAPES.includes('Duck'), 'Duck remains hidden during blueprint summary coverage');
+assert(!source.includes('Full Set Composition'), 'Full Set Composition is not present in blueprint data layer');
 
 const visibleHeroShapeFamilies = ['Almond', 'Square', 'Coffin', 'Stiletto', 'Oval', 'Round', 'Lipstick'];
 const hiddenLegacyShapeFamilies = ['Duck'];
