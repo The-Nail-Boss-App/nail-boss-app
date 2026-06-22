@@ -129,6 +129,14 @@ function assertNailShopProfilePersistenceSource() {
   assert(nailShopSource.includes("data-testid=\"cost-engine-breakdown\"") && nailShopSource.includes("Price Breakdown"), "Cost Engine breakdown should render");
   assert(nailShopSource.includes("data-testid=\"cost-engine-reset-button\"") && nailShopSource.includes("Reset Calculation") && nailShopSource.includes("setCostEngineForm(EMPTY_COST_ENGINE_FORM)"), "Cost Engine reset button should reset calculation inputs");
   assert(nailShopSource.includes("Missing modifier") === false && nailShopSource.includes("return 0;"), "missing Cost Engine modifiers should safely resolve to zero");
+  assert(nailShopSource.includes("Policies & Booking Rules") && nailShopSource.includes("data-testid=\"policies-booking-rules-manager\""), "Policies & Booking Rules Manager section should exist");
+  assert(nailShopSource.includes("NAIL_SHOP_POLICIES_STORAGE_KEY") && nailShopSource.includes("nailBoss.nailShop.policies.v1"), "policies should use the required localStorage key");
+  assert(nailShopSource.includes("Deposit Rules") && nailShopSource.includes("Cancellation Policy") && nailShopSource.includes("Appointment Rules") && nailShopSource.includes("Press-On Rules") && nailShopSource.includes("Business Hours") && nailShopSource.includes("Booking Requirements"), "all policies sections should exist");
+  assert(nailShopSource.includes("loadSavedPolicies") && nailShopSource.includes("persistPolicies") && nailShopSource.includes("window.localStorage.setItem(NAIL_SHOP_POLICIES_STORAGE_KEY"), "policies should load from and persist to localStorage");
+  assert(nailShopSource.includes("normalizePolicies(JSON.parse(saved))") && nailShopSource.includes("return normalizePolicies(DEFAULT_POLICIES)"), "malformed policies localStorage should safely fall back to defaults");
+  assert(nailShopSource.includes("data-testid=\"policies-save-button\"") && nailShopSource.includes("Save Policies"), "Save Policies button should exist");
+  assert(nailShopSource.includes("data-testid=\"policies-reset-button\"") && nailShopSource.includes("Reset to Defaults"), "Reset to Defaults button should exist");
+  assert(nailShopSource.includes("normalizePolicyNumber") && nailShopSource.includes("depositPercent: clampPercent"), "policy numeric inputs should be safe and deposit percent clamped");
   assert(appSource.includes("setPage(PAGES.STUDIO)"), "login should still land on Design Studio");
   assert(!nailShopSource.includes("Full Set Composition"), "Full Set Composition should stay absent from Nail Shop");
 }
