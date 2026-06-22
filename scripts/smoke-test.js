@@ -102,6 +102,16 @@ function assertNailShopProfilePersistenceSource() {
   assert(nailShopSource.includes("JSON.parse(saved)") && nailShopSource.includes("catch (error)") && nailShopSource.includes("return DEFAULT_PROFILE"), "malformed localStorage should safely fall back to defaults");
   assert(nailShopSource.includes("Reset to Default") && nailShopSource.includes("persistProfile(DEFAULT_PROFILE)"), "reset should restore defaults and update localStorage");
   assert(nailShopSource.includes("Shop saved."), "saving should show a saved confirmation message");
+  assert(nailShopSource.includes("Service Menu") && nailShopSource.includes("data-testid=\"service-menu-manager\""), "Service Menu section should exist");
+  assert(nailShopSource.includes("NAIL_SHOP_SERVICES_STORAGE_KEY") && nailShopSource.includes("nailBoss.nailShop.services.v1"), "services should use the required localStorage key");
+  assert(nailShopSource.includes("Classic Full Set") && nailShopSource.includes("Fill-In") && nailShopSource.includes("Custom Press-On Set"), "default starter services should exist");
+  assert(nailShopSource.includes("loadSavedServices") && nailShopSource.includes("persistServices") && nailShopSource.includes("window.localStorage.setItem(NAIL_SHOP_SERVICES_STORAGE_KEY"), "services should load from and persist to localStorage");
+  assert(nailShopSource.includes("normalizeServices(JSON.parse(saved))") && nailShopSource.includes("return DEFAULT_SERVICES"), "malformed services localStorage should safely fall back to defaults");
+  assert(nailShopSource.includes("data-testid=\"service-save-button\"") && nailShopSource.includes("Save Service"), "add service controls should exist");
+  assert(nailShopSource.includes("data-testid=\"service-edit-button\"") && nailShopSource.includes("Edit Service"), "edit service controls should exist");
+  assert(nailShopSource.includes("data-testid=\"service-delete-button\"") && nailShopSource.includes("Delete Service") && nailShopSource.includes("window.confirm"), "delete service controls should exist with confirmation");
+  assert(nailShopSource.includes("data-testid=\"service-toggle-button\"") && nailShopSource.includes("data-testid=\"service-status-badge\""), "active/inactive toggle and badge should exist");
+  assert(nailShopSource.includes("normalizePrice") && nailShopSource.includes("Number.isFinite"), "starting price should be numeric-safe");
   assert(appSource.includes("setPage(PAGES.STUDIO)"), "login should still land on Design Studio");
   assert(!nailShopSource.includes("Full Set Composition"), "Full Set Composition should stay absent from Nail Shop");
 }
