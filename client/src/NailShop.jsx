@@ -3,23 +3,31 @@ import { COLORS } from './styles';
 const SECTIONS = [
   {
     title: 'Business Profile',
-    body: 'Shop identity, contact details, and public-facing business information will live here.',
+    body: 'Placeholder for shop identity, contact details, hours, and public-facing business information.',
   },
   {
-    title: 'Service Menu',
-    body: 'Define service categories and appointment offerings for your nail business.',
+    title: 'Featured Designs',
+    body: 'Placeholder for highlighting signature looks and collections that represent the shop brand.',
   },
   {
-    title: 'Pricing Library',
-    body: 'Set reusable pricing references for services, add-ons, and future proposal workflows.',
+    title: 'Gallery',
+    body: 'Placeholder for a future portfolio grid of completed nail sets and inspiration images.',
   },
   {
-    title: 'Policies',
-    body: 'Keep cancellation, deposit, booking, and appointment expectations in one workspace.',
+    title: 'Services',
+    body: 'Placeholder for service categories, appointment types, and future menu organization.',
   },
   {
-    title: 'Business Defaults',
-    body: 'Manage future defaults that help personalize Nail Boss to your shop operations.',
+    title: 'Products',
+    body: 'Placeholder for retail items, recommended aftercare, and product showcases.',
+  },
+  {
+    title: 'Booking',
+    body: 'Placeholder for future appointment availability, booking rules, and client scheduling links.',
+  },
+  {
+    title: 'Shop Customization',
+    body: 'Placeholder for brand styling, layout preferences, and shop-specific display settings.',
   },
 ];
 
@@ -27,17 +35,21 @@ export default function NailShop() {
   return (
     <main style={styles.page} aria-labelledby="nail-shop-title">
       <section style={styles.hero}>
-        <p style={styles.kicker}>Workspace shell</p>
-        <h1 id="nail-shop-title" style={styles.title}>Nail Shop™</h1>
-        <p style={styles.subtitle}>Manage your business profile, services, pricing, policies, and defaults.</p>
+        <p style={styles.kicker}>Business workspace</p>
+        <h1 id="nail-shop-title" style={styles.title}>Nail Shop</h1>
+        <p style={styles.subtitle}>
+          A top-level workspace shell for organizing the future public shop experience. This milestone is
+          structure-only: placeholder cards are ready for later integrations.
+        </p>
       </section>
 
-      <section style={styles.grid} aria-label="Nail Shop sections">
+      <section style={styles.grid} aria-label="Nail Shop workspace sections">
         {SECTIONS.map((section) => (
           <article key={section.title} style={styles.card}>
+            <div style={styles.cardIcon} aria-hidden="true">✦</div>
             <div style={styles.cardHeader}>
               <h2 style={styles.cardTitle}>{section.title}</h2>
-              <span style={styles.badge}>Coming next</span>
+              <span style={styles.badge}>Placeholder</span>
             </div>
             <p style={styles.cardBody}>{section.body}</p>
           </article>
@@ -53,7 +65,7 @@ const styles = {
     padding: '32px',
   },
   hero: {
-    maxWidth: 760,
+    maxWidth: 780,
     marginBottom: 28,
   },
   kicker: {
@@ -74,7 +86,7 @@ const styles = {
     color: COLORS.textMuted,
     fontSize: 16,
     lineHeight: 1.6,
-    maxWidth: 620,
+    maxWidth: 680,
   },
   grid: {
     display: 'grid',
@@ -87,8 +99,19 @@ const styles = {
     border: `1px solid ${COLORS.border}`,
     borderRadius: 18,
     boxShadow: '0 10px 30px rgba(60,20,50,.06)',
-    minHeight: 154,
+    minHeight: 178,
     padding: 22,
+  },
+  cardIcon: {
+    alignItems: 'center',
+    background: COLORS.roseDim,
+    borderRadius: 14,
+    color: COLORS.plum,
+    display: 'inline-flex',
+    height: 34,
+    justifyContent: 'center',
+    marginBottom: 16,
+    width: 34,
   },
   cardHeader: {
     alignItems: 'flex-start',
