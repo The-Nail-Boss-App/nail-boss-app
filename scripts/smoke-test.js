@@ -91,6 +91,21 @@ function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
 
+function assertNailShopProfilePersistenceSource() {
+  const nailShopSource = fs.readFileSync(path.join(__dirname, "..", "client", "src", "NailShop.jsx"), "utf8");
+  const appSource = fs.readFileSync(path.join(__dirname, "..", "client", "src", "App.jsx"), "utf8");
+
+  assert(nailShopSource.includes("export default function NailShop()"), "Nail Shop renders through the NailShop component");
+  assert(nailShopSource.includes("data-testid=\"nail-shop-save\"") && nailShopSource.includes("Save Shop"), "Save Shop button should exist");
+  assert(nailShopSource.includes("NAIL_SHOP_PROFILE_STORAGE_KEY") && nailShopSource.includes("window.localStorage.setItem"), "Nail Shop profile should save to localStorage");
+  assert(nailShopSource.includes("window.localStorage.getItem") && nailShopSource.includes("useState(loadSavedProfile)"), "Nail Shop should load saved profile from localStorage");
+  assert(nailShopSource.includes("JSON.parse(saved)") && nailShopSource.includes("catch (error)") && nailShopSource.includes("return DEFAULT_PROFILE"), "malformed localStorage should safely fall back to defaults");
+  assert(nailShopSource.includes("Reset to Default") && nailShopSource.includes("persistProfile(DEFAULT_PROFILE)"), "reset should restore defaults and update localStorage");
+  assert(nailShopSource.includes("Shop saved."), "saving should show a saved confirmation message");
+  assert(appSource.includes("setPage(PAGES.STUDIO)"), "login should still land on Design Studio");
+  assert(!nailShopSource.includes("Full Set Composition"), "Full Set Composition should stay absent from Nail Shop");
+}
+
 function layeredBlueprint() {
   const layerTypes = ["base", "gradient", "pattern", "drawing", "charm", "decal", "jewel", "frenchTip"];
   return {
@@ -750,6 +765,8 @@ async function runFlow() {
 }
 
 async function main() {
+  assertNailShopProfilePersistenceSource();
+
   if (fs.existsSync(TEST_DB_FILE)) fs.unlinkSync(TEST_DB_FILE);
 
   let serverHandle = startServer();
