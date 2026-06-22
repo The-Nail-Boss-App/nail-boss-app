@@ -122,6 +122,13 @@ function assertNailShopProfilePersistenceSource() {
   assert(nailShopSource.includes("loadSavedPricingLibrary") && nailShopSource.includes("persistPricingLibrary") && nailShopSource.includes("window.localStorage.setItem(NAIL_SHOP_PRICING_LIBRARY_STORAGE_KEY"), "pricing library should persist to localStorage");
   assert(nailShopSource.includes("normalizePricingLibrary(JSON.parse(saved))") && nailShopSource.includes("catch (error)") && nailShopSource.includes("return normalizePricingLibrary()"), "malformed pricing library localStorage should safely fall back to defaults");
   assert(nailShopSource.includes("Suggested Deposit Percent") && nailShopSource.includes("clampPercent") && nailShopSource.includes("data-testid=\"pricing-deposit-percent-input\""), "deposit percent should be present and clamped");
+  assert(nailShopSource.includes("Cost Engine Sandbox™") && nailShopSource.includes("data-testid=\"cost-engine-sandbox\""), "Cost Engine Sandbox section should exist");
+  assert(nailShopSource.includes("data-testid=\"cost-engine-service-select\"") && nailShopSource.includes("normalizedServices.map"), "Cost Engine service selector should load Service Menu data");
+  assert(nailShopSource.includes("normalizedPricingLibrary") && nailShopSource.includes("findModifierAmount") && nailShopSource.includes("calculateCostEngine"), "Cost Engine should load Pricing Library data and calculate from modifiers");
+  assert(nailShopSource.includes("suggestedPrice") && nailShopSource.includes("suggestedDeposit") && nailShopSource.includes("estimatedTime"), "Cost Engine should calculate suggested price, deposit, and estimated time");
+  assert(nailShopSource.includes("data-testid=\"cost-engine-breakdown\"") && nailShopSource.includes("Price Breakdown"), "Cost Engine breakdown should render");
+  assert(nailShopSource.includes("data-testid=\"cost-engine-reset-button\"") && nailShopSource.includes("Reset Calculation") && nailShopSource.includes("setCostEngineForm(EMPTY_COST_ENGINE_FORM)"), "Cost Engine reset button should reset calculation inputs");
+  assert(nailShopSource.includes("Missing modifier") === false && nailShopSource.includes("return 0;"), "missing Cost Engine modifiers should safely resolve to zero");
   assert(appSource.includes("setPage(PAGES.STUDIO)"), "login should still land on Design Studio");
   assert(!nailShopSource.includes("Full Set Composition"), "Full Set Composition should stay absent from Nail Shop");
 }
