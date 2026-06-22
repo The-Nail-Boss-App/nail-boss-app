@@ -801,6 +801,40 @@ async function runFlow() {
   res = await request("GET", `/api/proposals/${proposalId}`);
   assert(res.status === 200, "GET /api/proposals/:id should return 200");
   assert(res.body.design && res.body.design.id === designId, "GET /api/proposals/:id should embed the design");
+  assert(res.body.clientName === "<script>alert(1)</script>" && res.body.price === 75 && res.body.status === "Sent" && res.body.notes === "Smoke proposal", "v1 proposal compatibility fields should remain readable");
+
+  const v2Payload = {
+    designId,
+    clientName: "Snapshot Client",
+    price: 125,
+    notes: "Snapshot proposal",
+    proposalVersion: 2,
+    clientSnapshot: { name: " Snapshot Client ", email: "client@example.com" },
+    shopSnapshot: { shopName: "Nail Boss Studio", bookingLink: "https://example.test/book" },
+    serviceSnapshot: { serviceName: "Gel Full Set", startingPrice: "110", serviceType: "full-set" },
+    priceSnapshot: { suggestedPrice: "125", suggestedDeposit: 25, depositPercent: "20", breakdown: [{ label: "Base", amount: 110 }] },
+    policySnapshot: { depositPolicy: "20% deposit", appointmentRules: { lateWindowMinutes: 10 } },
+    visualSnapshot: { mode: "hero", designName: "Smoke Hero", createdFromRenderer: true },
+    draftSnapshot: { title: "Your custom set", draftText: "Draft only" },
+  };
+  res = await request("POST", "/api/proposals", v2Payload);
+  assert(res.status === 201, "POST /api/proposals should accept v2 snapshot fields");
+  assert(res.body.proposalVersion === 2, "v2 proposal should return proposalVersion 2");
+  assert(res.body.clientSnapshot.name === "Snapshot Client" && res.body.clientSnapshot.contact === "", "v2 client snapshot should normalize missing nested fields safely");
+  assert(res.body.shopSnapshot.phone === "" && res.body.shopSnapshot.bookingLink === "https://example.test/book", "v2 shop snapshot should include safe fallback fields");
+  assert(res.body.serviceSnapshot.startingPrice === 110 && res.body.priceSnapshot.breakdown.length === 1, "v2 numeric and array snapshots should normalize safely");
+  assert(res.body.visualSnapshot.createdFromRenderer === true && res.body.visualSnapshot.fullSetData === null, "v2 visual snapshot should allow renderer placeholder data");
+  assert(Number.isFinite(res.body.createdAt) && Number.isFinite(res.body.updatedAt), "v2 proposals should include createdAt and updatedAt timestamps");
+  const v2ProposalId = res.body.id;
+
+  res = await request("GET", `/api/proposals/${v2ProposalId}`);
+  assert(res.status === 200, "GET /api/proposals/:id should return 200 for v2 proposals");
+  assert(res.body.proposalVersion === 2 && res.body.draftSnapshot.notes === "", "GET /api/proposals/:id should return normalized v2 snapshots");
+
+  res = await request("PATCH", `/api/proposals/${v2ProposalId}/status`, { status: "ChangesRequested" });
+  assert(res.status === 200 && res.body.status === "ChangesRequested", "PATCH /api/proposals/:id/status should still update proposal status");
+  assert(res.body.updatedAt >= res.body.createdAt, "status updates should preserve safe proposal timestamps");
+
 
   res = await request("GET", `/proposal/${proposalId}`);
   assert(res.status === 200, "GET /proposal/:id should return 200");

@@ -264,7 +264,7 @@ app.get("/api/proposals/:id", asyncRoute(async (req, res) => {
 // POST /api/proposals
 // Creates a proposal linked to a design. Initial status is "Sent".
 app.post("/api/proposals", asyncRoute(async (req, res) => {
-  const { designId, clientName, price, notes = "" } = req.body;
+  const { designId, clientName, price, notes = "", proposalVersion, clientSnapshot, shopSnapshot, serviceSnapshot, priceSnapshot, policySnapshot, visualSnapshot, draftSnapshot } = req.body;
 
   if (!designId || typeof designId !== "string") {
     return err(res, 400, "designId is required");
@@ -283,6 +283,7 @@ app.post("/api/proposals", asyncRoute(async (req, res) => {
     return err(res, 400, "price must be a positive number");
   }
 
+  const createdAt = Date.now();
   const proposal = await store.createProposal({
     id: uuidv4(),
     designId,
@@ -290,7 +291,16 @@ app.post("/api/proposals", asyncRoute(async (req, res) => {
     price: parsedPrice,
     status: "Sent",
     notes: typeof notes === "string" ? notes.trim() : "",
-    createdAt: Date.now(),
+    proposalVersion,
+    clientSnapshot,
+    shopSnapshot,
+    serviceSnapshot,
+    priceSnapshot,
+    policySnapshot,
+    visualSnapshot,
+    draftSnapshot,
+    createdAt,
+    updatedAt: createdAt,
   });
 
   return res.status(201).json(proposal);

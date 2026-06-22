@@ -538,6 +538,61 @@ function shouldSimulateBlueprintPersistenceFailure(blueprint) {
     && blueprint.metadata.simulatePersistenceFailure === "smoke-test";
 }
 
+
+function cleanString(value) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function cleanOptionalNumber(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
+function pickSnapshot(input, shape) {
+  const source = isPlainObject(input) ? input : {};
+  return Object.fromEntries(Object.entries(shape).map(([key, type]) => {
+    if (type === "number") return [key, cleanOptionalNumber(source[key])];
+    if (type === "boolean") return [key, Boolean(source[key])];
+    if (type === "array") return [key, Array.isArray(source[key]) ? source[key].map((item) => (isPlainObject(item) ? { ...item } : item)) : []];
+    if (type === "object") return [key, isPlainObject(source[key]) ? { ...source[key] } : null];
+    return [key, cleanString(source[key])];
+  }));
+}
+
+function normalizeProposalSnapshots(input = {}, fallback = {}) {
+  const proposalVersion = Number(input.proposalVersion) === 2 || Number(fallback.proposalVersion) === 2 ? 2 : undefined;
+  if (proposalVersion !== 2) return {};
+
+  const createdAt = Number(input.createdAt || fallback.createdAt || nowMs());
+  const updatedAt = Number(input.updatedAt || fallback.updatedAt || createdAt);
+
+  return {
+    proposalVersion: 2,
+    clientSnapshot: pickSnapshot(input.clientSnapshot || fallback.clientSnapshot, { name: "string", contact: "string", email: "string", phone: "string" }),
+    shopSnapshot: pickSnapshot(input.shopSnapshot || fallback.shopSnapshot, { shopName: "string", tagline: "string", contactEmail: "string", phone: "string", location: "string", website: "string", bookingLink: "string" }),
+    serviceSnapshot: pickSnapshot(input.serviceSnapshot || fallback.serviceSnapshot, { serviceName: "string", category: "string", description: "string", startingPrice: "number", estimatedTime: "string", serviceType: "string" }),
+    priceSnapshot: pickSnapshot(input.priceSnapshot || fallback.priceSnapshot, { suggestedPrice: "number", suggestedDeposit: "number", depositPercent: "number", estimatedTime: "string", breakdown: "array" }),
+    policySnapshot: pickSnapshot(input.policySnapshot || fallback.policySnapshot, { depositPolicy: "string", cancellationPolicy: "string", bookingRequirements: "object", appointmentRules: "object", pressOnRules: "object" }),
+    visualSnapshot: pickSnapshot(input.visualSnapshot || fallback.visualSnapshot, { mode: "string", designName: "string", heroLabel: "string", fullSetData: "object", createdFromRenderer: "boolean" }),
+    draftSnapshot: pickSnapshot(input.draftSnapshot || fallback.draftSnapshot, { title: "string", notes: "string", customMessage: "string", draftText: "string" }),
+    createdAt: Number.isFinite(createdAt) ? createdAt : nowMs(),
+    updatedAt: Number.isFinite(updatedAt) ? updatedAt : (Number.isFinite(createdAt) ? createdAt : nowMs()),
+  };
+}
+
+function normalizeProposalRecord(proposal) {
+  if (!proposal) return null;
+  const createdAt = Number(proposal.createdAt || nowMs());
+  const base = {
+    ...proposal,
+    clientName: cleanString(proposal.clientName),
+    price: Number(proposal.price),
+    notes: typeof proposal.notes === "string" ? proposal.notes : "",
+    createdAt: Number.isFinite(createdAt) ? createdAt : nowMs(),
+  };
+  return { ...base, ...normalizeProposalSnapshots(proposal, base) };
+}
+
 function mapDesign(row) {
   if (!row) return null;
   return {
@@ -557,15 +612,24 @@ function mapDesign(row) {
 
 function mapProposal(row) {
   if (!row) return null;
-  return {
+  return normalizeProposalRecord({
     id: row.id,
     designId: row.design_id,
     clientName: row.client_name,
     price: Number(row.price),
     status: row.status,
     notes: row.notes || "",
+    proposalVersion: row.proposal_version ? Number(row.proposal_version) : undefined,
+    clientSnapshot: row.client_snapshot,
+    shopSnapshot: row.shop_snapshot,
+    serviceSnapshot: row.service_snapshot,
+    priceSnapshot: row.price_snapshot,
+    policySnapshot: row.policy_snapshot,
+    visualSnapshot: row.visual_snapshot,
+    draftSnapshot: row.draft_snapshot,
     createdAt: Number(row.created_at),
-  };
+    updatedAt: Number(row.updated_at ?? row.created_at),
+  });
 }
 
 function mapHistory(row) {
@@ -856,14 +920,15 @@ class PostgresStore {
   }
 
   async createProposal(input) {
+    input = normalizeProposalRecord(input);
     const client = await this.pool.connect();
     try {
       await client.query("BEGIN");
       const result = await client.query(
-        `INSERT INTO proposals (id, design_id, client_name, price, status, notes, created_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)
+        `INSERT INTO proposals (id, design_id, client_name, price, status, notes, proposal_version, client_snapshot, shop_snapshot, service_snapshot, price_snapshot, policy_snapshot, visual_snapshot, draft_snapshot, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9::jsonb, $10::jsonb, $11::jsonb, $12::jsonb, $13::jsonb, $14::jsonb, $15, $16)
          RETURNING *`,
-        [input.id, input.designId, input.clientName, input.price, input.status, input.notes, input.createdAt],
+        [input.id, input.designId, input.clientName, input.price, input.status, input.notes, input.proposalVersion || null, JSON.stringify(input.clientSnapshot || null), JSON.stringify(input.shopSnapshot || null), JSON.stringify(input.serviceSnapshot || null), JSON.stringify(input.priceSnapshot || null), JSON.stringify(input.policySnapshot || null), JSON.stringify(input.visualSnapshot || null), JSON.stringify(input.draftSnapshot || null), input.createdAt, input.updatedAt || input.createdAt],
       );
       await client.query(
         `INSERT INTO proposal_status_history (id, proposal_id, old_status, new_status, note, created_at)
@@ -905,10 +970,10 @@ class PostgresStore {
       if (current.status !== status || note) {
         const result = await client.query(
           `UPDATE proposals
-           SET status = $2, notes = CASE WHEN $3::text <> '' THEN $3 ELSE notes END
+           SET status = $2, notes = CASE WHEN $3::text <> '' THEN $3 ELSE notes END, updated_at = $4
            WHERE id = $1
            RETURNING *`,
-          [id, status, note || ""],
+          [id, status, note || "", nowMs()],
         );
         updated = mapProposal(result.rows[0]);
         await client.query(
@@ -940,7 +1005,7 @@ class PostgresStore {
     if (!proposal) return null;
     const design = await this.getDesign(proposal.designId);
     const blueprint = design ? await this.getDesignBlueprint(proposal.designId) : null;
-    return { ...proposal, design, blueprintSummary: blueprint ? generateProposalBlueprintSummary(blueprint.document, design) : null };
+    return { ...normalizeProposalRecord(proposal), design, blueprintSummary: blueprint ? generateProposalBlueprintSummary(blueprint.document, design) : null };
   }
 }
 
@@ -965,7 +1030,7 @@ class FileStore {
       this.data = {
         designs: (parsed.designs || []).map((design) => ({ ...design, updatedAt: design.updatedAt || design.createdAt })),
         designBlueprints: parsed.designBlueprints || [],
-        proposals: parsed.proposals || [],
+        proposals: (parsed.proposals || []).map((proposal) => normalizeProposalRecord(proposal)),
         proposalStatusHistory: parsed.proposalStatusHistory || [],
       };
       for (const design of this.data.designs) {
@@ -1159,7 +1224,7 @@ class FileStore {
   }
 
   async createProposal(input) {
-    const proposal = { ...input };
+    const proposal = normalizeProposalRecord(input);
     this.data.proposals.push(proposal);
     this.data.proposalStatusHistory.push({
       id: uuidv4(),
@@ -1190,6 +1255,7 @@ class FileStore {
     if (proposal.status !== status || note) {
       const oldStatus = proposal.status;
       proposal.status = status;
+      proposal.updatedAt = nowMs();
       if (note) proposal.notes = note;
       this.data.proposalStatusHistory.push({
         id: uuidv4(),
@@ -1215,7 +1281,7 @@ class FileStore {
     if (!proposal) return null;
     const design = await this.getDesign(proposal.designId);
     const blueprint = design ? await this.getDesignBlueprint(proposal.designId) : null;
-    return { ...proposal, design, blueprintSummary: blueprint ? generateProposalBlueprintSummary(blueprint.document, design) : null };
+    return { ...normalizeProposalRecord(proposal), design, blueprintSummary: blueprint ? generateProposalBlueprintSummary(blueprint.document, design) : null };
   }
 }
 
