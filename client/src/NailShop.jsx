@@ -1,5 +1,20 @@
 import { useState } from 'react';
 import { COLORS } from './styles';
+import FullSetRenderer from './FullSetRenderer';
+
+
+const FULL_SET_RENDERER_SAMPLE = {
+  name: 'Shop Sample Set',
+  nails: {
+    left: [
+      { shape: 'Almond', length: 0.64, width: 0.5, layers: [{ id: 'base', type: 'base', order: 0, data: { colorHex: '#F7C7D9', polishType: 'Jelly' } }, { id: 'aura', type: 'gradient', order: 1, opacity: 0.75, data: { colorA: '#FFFFFF', colorB: '#D96BA6', direction: 'aura' } }] },
+      { shape: 'Coffin', length: 0.7, width: 0.54, layers: [{ id: 'base', type: 'base', order: 0, data: { colorHex: '#E8A0BF', polishType: 'Cream' } }, { id: 'french', type: 'frenchTip', order: 2, data: { colorHex: '#FFFFFF', style: 'classic' } }] },
+      { shape: 'Almond', length: 0.76, width: 0.52, layers: [{ id: 'base', type: 'base', order: 0, data: { colorHex: '#B84E8A', polishType: 'Chrome' } }, { id: 'jewel', type: 'jewel', order: 3, data: { assetId: 'jewel-round', x: 0.5, y: 0.58, scaleX: 0.18, scaleY: 0.18, colorHex: '#FDE68A' } }] },
+      { shape: 'Oval', length: 0.68, width: 0.5, layers: [{ id: 'base', type: 'base', order: 0, data: { colorHex: '#F3A6C8', polishType: 'Milky' } }, { id: 'dots', type: 'pattern', order: 1, opacity: 0.7, data: { pattern: 'dots', colorHex: '#7B2D5F' } }] },
+      { shape: 'Round', length: 0.58, width: 0.48, layers: [{ id: 'base', type: 'base', order: 0, data: { colorHex: '#FFFFFF', polishType: 'Cream' } }, { id: 'decal', type: 'decal', order: 3, data: { assetId: 'decal-sparkle', x: 0.52, y: 0.5, scaleX: 0.2, scaleY: 0.2, colorHex: '#D96BA6' } }] },
+    ],
+  },
+};
 
 const DEFAULT_PROFILE = {
   shopName: 'Nail Boss Studio',
@@ -1021,6 +1036,23 @@ export default function NailShop() {
           </section>
         </section>
 
+
+        <section style={styles.rendererPreviewPanel} aria-label="Full Set Renderer Preview" data-testid="full-set-renderer-preview-section">
+          <div style={styles.panelHeader}>
+            <div>
+              <p style={styles.kicker}>Visual verification only</p>
+              <h2 style={styles.sectionTitle}>Full Set Renderer Preview</h2>
+              <p style={styles.readinessIntro}>Reusable renderer sandbox only. Not connected to proposals, blueprints, storefront products, gallery, or Design Studio state.</p>
+            </div>
+          </div>
+          <div style={styles.rendererPreviewGrid}>
+            <FullSetRenderer designData={FULL_SET_RENDERER_SAMPLE} mode="left" compact />
+            <FullSetRenderer designData={FULL_SET_RENDERER_SAMPLE} mode="right" compact />
+            <FullSetRenderer designData={FULL_SET_RENDERER_SAMPLE} mode="full" compact />
+            <FullSetRenderer designData={FULL_SET_RENDERER_SAMPLE} mode="hero" compact />
+          </div>
+        </section>
+
         <section style={styles.pricingPanel} aria-label="Pricing Library Manager" data-testid="pricing-library-manager">
           <div style={styles.panelHeader}>
             <div>
@@ -1502,6 +1534,18 @@ const styles = {
     justifyContent: 'space-between',
     marginTop: 4,
     paddingTop: 10,
+  },
+  rendererPreviewPanel: {
+    background: COLORS.surface,
+    border: `1px solid ${COLORS.border}`,
+    borderRadius: 20,
+    gridColumn: '1 / -1',
+    padding: 20,
+  },
+  rendererPreviewGrid: {
+    display: 'grid',
+    gap: 16,
+    gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
   },
   pricingPanel: {
     background: COLORS.surface,
