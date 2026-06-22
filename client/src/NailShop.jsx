@@ -76,6 +76,50 @@ const DEFAULT_SERVICES = [
   },
 ];
 
+
+export const NAIL_SHOP_PRICING_LIBRARY_STORAGE_KEY = 'nailBoss.nailShop.pricingLibrary.v1';
+
+const DEFAULT_PRICING_LIBRARY = {
+  lengthPricing: { label: 'Length Pricing', unit: '$', rows: [
+    { id: 'length-medium', name: 'Medium', amount: 0 },
+    { id: 'length-long', name: 'Long', amount: 10 },
+    { id: 'length-xl', name: 'XL', amount: 15 },
+    { id: 'length-xxl', name: 'XXL', amount: 20 },
+  ] },
+  finishPricing: { label: 'Finish Pricing', unit: '$', rows: [
+    { id: 'finish-cream', name: 'Cream', amount: 0 },
+    { id: 'finish-jelly', name: 'Jelly', amount: 5 },
+    { id: 'finish-milky', name: 'Milky', amount: 5 },
+    { id: 'finish-matte', name: 'Matte', amount: 5 },
+    { id: 'finish-chrome', name: 'Chrome', amount: 10 },
+    { id: 'finish-cat-eye', name: 'Cat Eye', amount: 8 },
+    { id: 'finish-marble', name: 'Marble', amount: 12 },
+    { id: 'finish-french-tip', name: 'French Tip', amount: 5 },
+  ] },
+  nailArtPricing: { label: 'Nail Art Pricing', unit: '$', rows: [
+    { id: 'art-basic', name: 'Basic Art', amount: 5 },
+    { id: 'art-advanced', name: 'Advanced Art', amount: 15 },
+    { id: 'art-character', name: 'Character Art', amount: 30 },
+  ] },
+  embellishmentPricing: { label: 'Embellishment Pricing', unit: '$', rows: [
+    { id: 'embellishment-charm', name: 'Charm', amount: 5 },
+    { id: 'embellishment-luxury-charm', name: 'Luxury Charm', amount: 10 },
+    { id: 'embellishment-jewel', name: 'Jewel', amount: 3 },
+    { id: 'embellishment-3d-gel', name: '3D Gel', amount: 10 },
+    { id: 'embellishment-decal-sticker', name: 'Decal / Sticker', amount: 2 },
+  ] },
+  timeAddOns: { label: 'Time Add-Ons', unit: 'min', rows: [
+    { id: 'time-chrome', name: 'Chrome', amount: 15 },
+    { id: 'time-french-tip', name: 'French Tip', amount: 10 },
+    { id: 'time-advanced-art', name: 'Advanced Art', amount: 30 },
+    { id: 'time-character-art', name: 'Character Art', amount: 60 },
+    { id: 'time-charm-placement', name: 'Charm Placement', amount: 10 },
+  ] },
+};
+
+const DEFAULT_DEPOSIT_PERCENT = 50;
+const PRICING_CATEGORY_IDS = Object.keys(DEFAULT_PRICING_LIBRARY);
+
 const EMPTY_SERVICE_FORM = {
   name: '',
   description: '',
@@ -125,6 +169,62 @@ const persistProfile = (profileToSave) => {
 const normalizePrice = (value) => {
   const parsed = Number.parseFloat(value);
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
+};
+
+
+const clampPercent = (value) => {
+  const parsed = Number.parseFloat(value);
+  if (!Number.isFinite(parsed)) return 0;
+  return Math.min(100, Math.max(0, parsed));
+};
+
+const normalizePricingAmount = (value) => {
+  const parsed = Number.parseFloat(value);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
+};
+
+const normalizePricingLibrary = (candidate) => {
+  const source = candidate && typeof candidate === 'object' && !Array.isArray(candidate) ? candidate : {};
+  const savedCategories = source.categories && typeof source.categories === 'object' && !Array.isArray(source.categories) ? source.categories : source;
+  const categories = PRICING_CATEGORY_IDS.reduce((normalized, categoryId) => {
+    const fallback = DEFAULT_PRICING_LIBRARY[categoryId];
+    const rows = Array.isArray(savedCategories[categoryId]?.rows) ? savedCategories[categoryId].rows : fallback.rows;
+    normalized[categoryId] = {
+      ...fallback,
+      rows: rows.map((row, index) => ({
+        id: typeof row?.id === 'string' && row.id.trim() ? row.id : `${categoryId}-${Date.now()}-${index}`,
+        name: typeof row?.name === 'string' ? row.name : fallback.rows[index]?.name || 'New Modifier',
+        amount: normalizePricingAmount(row?.amount),
+      })),
+    };
+    return normalized;
+  }, {});
+
+  return {
+    categories,
+    depositPercent: clampPercent(source.depositPercent ?? DEFAULT_DEPOSIT_PERCENT),
+  };
+};
+
+const loadSavedPricingLibrary = () => {
+  if (typeof window === 'undefined') return normalizePricingLibrary();
+
+  try {
+    const saved = window.localStorage.getItem(NAIL_SHOP_PRICING_LIBRARY_STORAGE_KEY);
+    return saved ? normalizePricingLibrary(JSON.parse(saved)) : normalizePricingLibrary();
+  } catch (error) {
+    return normalizePricingLibrary();
+  }
+};
+
+const persistPricingLibrary = (pricingLibraryToSave) => {
+  if (typeof window === 'undefined') return;
+
+  try {
+    window.localStorage.setItem(NAIL_SHOP_PRICING_LIBRARY_STORAGE_KEY, JSON.stringify(normalizePricingLibrary(pricingLibraryToSave)));
+  } catch (error) {
+    // Keep the manager usable if browser storage is unavailable.
+  }
 };
 
 const normalizeService = (candidate, index = 0) => {
@@ -191,6 +291,8 @@ export default function NailShop() {
   const [serviceForm, setServiceForm] = useState(EMPTY_SERVICE_FORM);
   const [editingServiceId, setEditingServiceId] = useState(null);
   const [serviceMessage, setServiceMessage] = useState('');
+  const [pricingLibrary, setPricingLibrary] = useState(loadSavedPricingLibrary);
+  const [pricingMessage, setPricingMessage] = useState('');
 
   const updateProfile = (field, value) => {
     setSaveMessage('');
@@ -255,6 +357,56 @@ export default function NailShop() {
     setServices(nextServices);
     persistServices(nextServices);
     setServiceMessage('Service status updated.');
+  };
+
+
+  const updatePricingRow = (categoryId, rowId, field, value) => {
+    setPricingMessage('');
+    setPricingLibrary((current) => ({
+      ...current,
+      categories: {
+        ...current.categories,
+        [categoryId]: {
+          ...current.categories[categoryId],
+          rows: current.categories[categoryId].rows.map((row) => (row.id === rowId ? { ...row, [field]: value } : row)),
+        },
+      },
+    }));
+  };
+
+  const addPricingRow = (categoryId) => {
+    setPricingMessage('');
+    setPricingLibrary((current) => ({
+      ...current,
+      categories: {
+        ...current.categories,
+        [categoryId]: {
+          ...current.categories[categoryId],
+          rows: [...current.categories[categoryId].rows, { id: `${categoryId}-${Date.now()}`, name: 'New Modifier', amount: 0 }],
+        },
+      },
+    }));
+  };
+
+  const deletePricingRow = (categoryId, rowId) => {
+    setPricingMessage('');
+    setPricingLibrary((current) => ({
+      ...current,
+      categories: {
+        ...current.categories,
+        [categoryId]: {
+          ...current.categories[categoryId],
+          rows: current.categories[categoryId].rows.filter((row) => row.id !== rowId),
+        },
+      },
+    }));
+  };
+
+  const savePricingLibrary = () => {
+    const normalized = normalizePricingLibrary(pricingLibrary);
+    setPricingLibrary(normalized);
+    persistPricingLibrary(normalized);
+    setPricingMessage('Pricing library saved.');
   };
 
   const primaryColor = safeColor(profile.primaryColor, DEFAULT_PROFILE.primaryColor);
@@ -427,6 +579,51 @@ export default function NailShop() {
               </article>
             ))}
           </div>
+        </section>
+
+
+        <section style={styles.pricingPanel} aria-label="Pricing Library Manager" data-testid="pricing-library-manager">
+          <div style={styles.panelHeader}>
+            <div>
+              <p style={styles.kicker}>Pricing Library</p>
+              <h2 style={styles.sectionTitle}>Manage reusable pricing modifiers</h2>
+            </div>
+            <button type="button" onClick={savePricingLibrary} style={styles.saveButton} data-testid="pricing-library-save-button">
+              Save Pricing Library
+            </button>
+          </div>
+
+          {pricingMessage && <div style={styles.saveMessage} role="status" data-testid="pricing-library-message">{pricingMessage}</div>}
+
+          <div style={styles.pricingCategoryGrid}>
+            {PRICING_CATEGORY_IDS.map((categoryId) => {
+              const category = pricingLibrary.categories[categoryId];
+              return (
+                <section key={categoryId} style={styles.pricingCategory} data-testid="pricing-library-category">
+                  <div style={styles.pricingCategoryHeader}>
+                    <h3 style={styles.serviceName}>{category.label}</h3>
+                    <button type="button" onClick={() => addPricingRow(categoryId)} style={styles.smallButton} data-testid="pricing-add-modifier-button">Add Modifier</button>
+                  </div>
+                  {category.rows.map((row) => (
+                    <div key={row.id} style={styles.pricingRow} data-testid="pricing-modifier-row">
+                      <input value={row.name} onChange={(event) => updatePricingRow(categoryId, row.id, 'name', event.target.value)} aria-label={`${category.label} modifier name`} style={styles.input} />
+                      <label style={styles.amountField}>
+                        <span style={styles.amountPrefix}>{category.unit === '$' ? '$' : ''}</span>
+                        <input value={row.amount} onChange={(event) => updatePricingRow(categoryId, row.id, 'amount', event.target.value)} inputMode="decimal" aria-label={`${row.name || category.label} amount`} style={styles.input} />
+                        <span style={styles.amountSuffix}>{category.unit === 'min' ? 'min' : ''}</span>
+                      </label>
+                      <button type="button" onClick={() => deletePricingRow(categoryId, row.id)} style={styles.deleteButton} data-testid="pricing-delete-modifier-button">Delete Modifier</button>
+                    </div>
+                  ))}
+                </section>
+              );
+            })}
+          </div>
+
+          <label style={styles.depositField}>
+            <span style={styles.label}>Suggested Deposit Percent</span>
+            <input value={pricingLibrary.depositPercent} onChange={(event) => setPricingLibrary((current) => ({ ...current, depositPercent: event.target.value }))} inputMode="decimal" style={styles.input} data-testid="pricing-deposit-percent-input" />
+          </label>
         </section>
 
         <aside style={styles.previewPanel} aria-label="Live storefront preview" data-testid="nail-shop-preview">
@@ -689,6 +886,62 @@ const styles = {
     fontWeight: 800,
     padding: '13px 18px',
     width: '100%',
+  },
+
+  pricingPanel: {
+    background: COLORS.surface,
+    border: `1px solid ${COLORS.border}`,
+    borderRadius: 22,
+    boxShadow: '0 10px 30px rgba(60,20,50,.06)',
+    display: 'grid',
+    gap: 16,
+    gridColumn: '1 / -1',
+    padding: 22,
+  },
+  pricingCategoryGrid: {
+    display: 'grid',
+    gap: 14,
+    gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+  },
+  pricingCategory: {
+    background: COLORS.roseDim,
+    border: `1px solid ${COLORS.border}`,
+    borderRadius: 18,
+    display: 'grid',
+    gap: 10,
+    padding: 16,
+  },
+  pricingCategoryHeader: {
+    alignItems: 'center',
+    display: 'flex',
+    gap: 10,
+    justifyContent: 'space-between',
+  },
+  pricingRow: {
+    alignItems: 'center',
+    display: 'grid',
+    gap: 8,
+    gridTemplateColumns: 'minmax(120px, 1fr) minmax(90px, 120px) auto',
+  },
+  amountField: {
+    alignItems: 'center',
+    display: 'grid',
+    gap: 4,
+    gridTemplateColumns: 'auto 1fr auto',
+  },
+  amountPrefix: {
+    color: COLORS.textMuted,
+    fontWeight: 800,
+  },
+  amountSuffix: {
+    color: COLORS.textMuted,
+    fontSize: 12,
+    fontWeight: 800,
+  },
+  depositField: {
+    display: 'grid',
+    gap: 7,
+    maxWidth: 320,
   },
   servicePanel: {
     background: COLORS.surface,
