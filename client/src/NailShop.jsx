@@ -120,6 +120,26 @@ const DEFAULT_PRICING_LIBRARY = {
 const DEFAULT_DEPOSIT_PERCENT = 50;
 const PRICING_CATEGORY_IDS = Object.keys(DEFAULT_PRICING_LIBRARY);
 
+
+const COST_ENGINE_LENGTH_OPTIONS = ['Medium', 'Long', 'XL', 'XXL'];
+const COST_ENGINE_FINISH_OPTIONS = ['Cream', 'Jelly', 'Milky', 'Matte', 'Chrome', 'Cat Eye', 'Marble', 'French Tip'];
+const COST_ENGINE_ART_OPTIONS = ['None', 'Basic Art', 'Advanced Art', 'Character Art'];
+const COST_ENGINE_EMBELLISHMENTS = [
+  { id: 'charm', label: 'Charm', rowName: 'Charm' },
+  { id: 'luxuryCharm', label: 'Luxury Charm', rowName: 'Luxury Charm' },
+  { id: 'jewel', label: 'Jewel', rowName: 'Jewel' },
+  { id: 'threeDGel', label: '3D Gel', rowName: '3D Gel' },
+  { id: 'decalSticker', label: 'Decal / Sticker', rowName: 'Decal / Sticker' },
+];
+
+const EMPTY_COST_ENGINE_FORM = {
+  serviceId: '',
+  length: 'Medium',
+  finish: 'Cream',
+  artLevel: 'None',
+  embellishments: COST_ENGINE_EMBELLISHMENTS.reduce((counts, item) => ({ ...counts, [item.id]: 0 }), {}),
+};
+
 const EMPTY_SERVICE_FORM = {
   name: '',
   description: '',
@@ -269,6 +289,61 @@ const persistServices = (servicesToSave) => {
   }
 };
 
+
+const parseMinutes = (value) => {
+  if (typeof value === 'number') return Number.isFinite(value) && value >= 0 ? value : 0;
+  if (typeof value !== 'string') return 0;
+  const parsed = Number.parseFloat(value);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
+};
+
+const formatMoney = (value) => normalizePrice(value).toFixed(2).replace(/\.00$/, '');
+
+const findModifierAmount = (pricingLibrary, categoryId, name) => {
+  const rows = pricingLibrary?.categories?.[categoryId]?.rows;
+  if (!Array.isArray(rows)) return 0;
+  const row = rows.find((candidate) => candidate?.name === name);
+  return normalizePricingAmount(row?.amount);
+};
+
+const calculateCostEngine = (form, services, pricingLibrary) => {
+  const service = services.find((candidate) => candidate.id === form.serviceId) || services[0] || normalizeService();
+  const breakdown = [{ label: 'Base Service', amount: normalizePrice(service.startingPrice) }];
+  let suggestedPrice = breakdown[0].amount;
+  let estimatedTime = parseMinutes(service.estimatedTime);
+
+  const addPriceModifier = (label, categoryId, name, multiplier = 1) => {
+    const amount = findModifierAmount(pricingLibrary, categoryId, name) * multiplier;
+    if (amount > 0) breakdown.push({ label, amount });
+    suggestedPrice += amount;
+  };
+
+  addPriceModifier(`${form.length} Length`, 'lengthPricing', form.length);
+  addPriceModifier(form.finish, 'finishPricing', form.finish);
+  if (form.artLevel !== 'None') addPriceModifier(form.artLevel, 'nailArtPricing', form.artLevel);
+
+  COST_ENGINE_EMBELLISHMENTS.forEach((item) => {
+    const count = Math.max(0, Number.parseInt(form.embellishments[item.id], 10) || 0);
+    addPriceModifier(`${count} ${item.label}${count === 1 ? '' : 's'}`, 'embellishmentPricing', item.rowName, count);
+  });
+
+  estimatedTime += findModifierAmount(pricingLibrary, 'timeAddOns', form.finish);
+  if (form.artLevel !== 'None') estimatedTime += findModifierAmount(pricingLibrary, 'timeAddOns', form.artLevel);
+  const charmCount = Math.max(0, Number.parseInt(form.embellishments.charm, 10) || 0);
+  estimatedTime += findModifierAmount(pricingLibrary, 'timeAddOns', 'Charm Placement') * charmCount;
+
+  const depositPercent = clampPercent(pricingLibrary?.depositPercent ?? DEFAULT_DEPOSIT_PERCENT);
+
+  return {
+    service,
+    breakdown,
+    suggestedPrice,
+    suggestedDeposit: suggestedPrice * (depositPercent / 100),
+    estimatedTime,
+    depositPercent,
+  };
+};
+
 const serviceToForm = (service) => ({
   name: service.name,
   description: service.description,
@@ -293,6 +368,7 @@ export default function NailShop() {
   const [serviceMessage, setServiceMessage] = useState('');
   const [pricingLibrary, setPricingLibrary] = useState(loadSavedPricingLibrary);
   const [pricingMessage, setPricingMessage] = useState('');
+  const [costEngineForm, setCostEngineForm] = useState(EMPTY_COST_ENGINE_FORM);
 
   const updateProfile = (field, value) => {
     setSaveMessage('');
@@ -407,6 +483,27 @@ export default function NailShop() {
     setPricingLibrary(normalized);
     persistPricingLibrary(normalized);
     setPricingMessage('Pricing library saved.');
+  };
+
+  const normalizedServices = normalizeServices(services);
+  const normalizedPricingLibrary = normalizePricingLibrary(pricingLibrary);
+  const costEngineServiceId = costEngineForm.serviceId || normalizedServices[0]?.id || '';
+  const costEngineCalculation = calculateCostEngine({ ...costEngineForm, serviceId: costEngineServiceId }, normalizedServices, normalizedPricingLibrary);
+
+  const updateCostEngineField = (field, value) => {
+    setCostEngineForm((current) => ({ ...current, [field]: value }));
+  };
+
+  const updateCostEngineEmbellishment = (field, value) => {
+    const count = Math.max(0, Number.parseInt(value, 10) || 0);
+    setCostEngineForm((current) => ({
+      ...current,
+      embellishments: { ...current.embellishments, [field]: count },
+    }));
+  };
+
+  const resetCostEngine = () => {
+    setCostEngineForm(EMPTY_COST_ENGINE_FORM);
   };
 
   const primaryColor = safeColor(profile.primaryColor, DEFAULT_PROFILE.primaryColor);
@@ -581,6 +678,68 @@ export default function NailShop() {
           </div>
         </section>
 
+
+        <section style={styles.costEnginePanel} aria-label="Cost Engine Sandbox" data-testid="cost-engine-sandbox">
+          <div style={styles.panelHeader}>
+            <div>
+              <p style={styles.kicker}>Cost Engine Sandbox™</p>
+              <h2 style={styles.sectionTitle}>Suggested pricing calculator</h2>
+            </div>
+            <button type="button" onClick={resetCostEngine} style={styles.resetButton} data-testid="cost-engine-reset-button">
+              Reset Calculation
+            </button>
+          </div>
+
+          <div style={styles.costEngineGrid}>
+            <label style={styles.field}>
+              <span style={styles.label}>Service</span>
+              <select value={costEngineServiceId} onChange={(event) => updateCostEngineField('serviceId', event.target.value)} style={styles.input} data-testid="cost-engine-service-select">
+                {normalizedServices.map((service) => <option key={service.id} value={service.id}>{service.name}</option>)}
+              </select>
+            </label>
+            <label style={styles.field}>
+              <span style={styles.label}>Length</span>
+              <select value={costEngineForm.length} onChange={(event) => updateCostEngineField('length', event.target.value)} style={styles.input} data-testid="cost-engine-length-select">
+                {COST_ENGINE_LENGTH_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}
+              </select>
+            </label>
+            <label style={styles.field}>
+              <span style={styles.label}>Finish</span>
+              <select value={costEngineForm.finish} onChange={(event) => updateCostEngineField('finish', event.target.value)} style={styles.input} data-testid="cost-engine-finish-select">
+                {COST_ENGINE_FINISH_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}
+              </select>
+            </label>
+            <label style={styles.field}>
+              <span style={styles.label}>Art Level</span>
+              <select value={costEngineForm.artLevel} onChange={(event) => updateCostEngineField('artLevel', event.target.value)} style={styles.input} data-testid="cost-engine-art-select">
+                {COST_ENGINE_ART_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}
+              </select>
+            </label>
+          </div>
+
+          <div style={styles.embellishmentGrid} aria-label="Embellishments">
+            {COST_ENGINE_EMBELLISHMENTS.map((item) => (
+              <label key={item.id} style={styles.field}>
+                <span style={styles.label}>{item.label} count</span>
+                <input type="number" min="0" value={costEngineForm.embellishments[item.id]} onChange={(event) => updateCostEngineEmbellishment(item.id, event.target.value)} style={styles.input} data-testid={`cost-engine-${item.id}-count`} />
+              </label>
+            ))}
+          </div>
+
+          <div style={styles.costEngineResults}>
+            <div style={styles.resultCard} data-testid="cost-engine-suggested-price"><span>Suggested Price</span><strong>${formatMoney(costEngineCalculation.suggestedPrice)}</strong></div>
+            <div style={styles.resultCard} data-testid="cost-engine-suggested-deposit"><span>Suggested Deposit ({costEngineCalculation.depositPercent}%)</span><strong>${costEngineCalculation.suggestedDeposit.toFixed(2)}</strong></div>
+            <div style={styles.resultCard} data-testid="cost-engine-estimated-time"><span>Estimated Time</span><strong>{costEngineCalculation.estimatedTime} min</strong></div>
+          </div>
+
+          <section style={styles.breakdownCard} aria-label="Price Breakdown" data-testid="cost-engine-breakdown">
+            <h3 style={styles.serviceName}>Price Breakdown</h3>
+            {costEngineCalculation.breakdown.map((item) => (
+              <div key={item.label} style={styles.breakdownRow}><span>{item.label}</span><span>${formatMoney(item.amount)}</span></div>
+            ))}
+            <div style={styles.breakdownTotal}><span>Total</span><span>${formatMoney(costEngineCalculation.suggestedPrice)}</span></div>
+          </section>
+        </section>
 
         <section style={styles.pricingPanel} aria-label="Pricing Library Manager" data-testid="pricing-library-manager">
           <div style={styles.panelHeader}>
@@ -888,6 +1047,68 @@ const styles = {
     width: '100%',
   },
 
+
+  costEnginePanel: {
+    background: COLORS.surface,
+    border: `1px solid ${COLORS.border}`,
+    borderRadius: 22,
+    boxShadow: '0 10px 30px rgba(60,20,50,.06)',
+    display: 'grid',
+    gap: 16,
+    gridColumn: '1 / -1',
+    padding: 22,
+  },
+  costEngineGrid: {
+    display: 'grid',
+    gap: 14,
+    gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))',
+  },
+  embellishmentGrid: {
+    borderTop: `1px solid ${COLORS.border}`,
+    display: 'grid',
+    gap: 14,
+    gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))',
+    paddingTop: 16,
+  },
+  costEngineResults: {
+    display: 'grid',
+    gap: 12,
+    gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))',
+  },
+  resultCard: {
+    background: COLORS.roseDim,
+    border: `1px solid ${COLORS.border}`,
+    borderRadius: 16,
+    color: COLORS.text,
+    display: 'grid',
+    gap: 6,
+    padding: 16,
+  },
+  breakdownCard: {
+    background: '#fff',
+    border: `1px solid ${COLORS.border}`,
+    borderRadius: 18,
+    display: 'grid',
+    gap: 8,
+    padding: 16,
+  },
+  breakdownRow: {
+    alignItems: 'center',
+    color: COLORS.textMuted,
+    display: 'flex',
+    fontSize: 14,
+    justifyContent: 'space-between',
+  },
+  breakdownTotal: {
+    alignItems: 'center',
+    borderTop: `1px solid ${COLORS.border}`,
+    color: COLORS.text,
+    display: 'flex',
+    fontWeight: 800,
+    justifyContent: 'space-between',
+    marginTop: 4,
+    paddingTop: 10,
+  },
   pricingPanel: {
     background: COLORS.surface,
     border: `1px solid ${COLORS.border}`,
