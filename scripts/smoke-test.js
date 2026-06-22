@@ -150,6 +150,12 @@ function assertNailShopProfilePersistenceSource() {
   assert(fullSetRendererSource.includes("FullSetRenderer") && fullSetRendererHelperSource.includes("normalizeFullSetDesign"), "FullSetRenderer engine and helpers should exist");
   assert(fullSetRendererSource.includes("data-testid={`full-set-renderer-${renderMode}`}") && fullSetRendererHelperSource.includes("FULL_SET_RENDER_MODES = ['left', 'right', 'full', 'hero']"), "left, right, full, and hero render modes should be supported");
   assert(fullSetRendererHelperSource.includes("normalizeFullSetNail") && fullSetRendererHelperSource.includes("normalizeLayers") && fullSetRendererHelperSource.includes("DEFAULT_COLORS"), "missing full set data should safely fall back to placeholder nails");
+  assert(fullSetRendererHelperSource.includes("HAND_SLOTS = ['thumb', 'index', 'middle', 'ring', 'pinky']"), "full set fallback should define Thumb, Index, Middle, Ring, and Pinky slots");
+  assert(["Thumb", "Index", "Middle", "Ring", "Pinky"].every((label) => fullSetRendererHelperSource.includes(label)), "full set renderer should preserve visible finger labels for both hands");
+  assert(fullSetRendererSource.includes("nails: [...normalized.left, ...normalized.right]"), "Hero View should render all 10 normalized nails without slicing thumbs or pinkies");
+  assert(!fullSetRendererSource.includes("slice(0, 7)") && !fullSetRendererSource.includes(".slice(1)"), "Hero 7 exact regression should stay removed");
+  assert(fullSetRendererSource.includes("flexWrap: 'nowrap'") && fullSetRendererSource.includes("overflow: 'visible'"), "Hero View should use a horizontal showcase layout without clipping the full set");
+  assert(fullSetRendererHelperSource.includes("flatNails.slice(0, HAND_SLOTS.length)") && fullSetRendererHelperSource.includes("flatNails.slice(HAND_SLOTS.length, HAND_SLOTS.length * 2)"), "flat full-set data should normalize into 5 left nails and 5 right nails");
   assert(fullSetRendererSource.includes("NailThumbnail") && fullSetRendererSource.includes("./design-studio/NailThumbnail"), "FullSetRenderer should reuse the existing thumbnail renderer");
   assert(nailShopSource.includes("Full Set Renderer Preview") && nailShopSource.includes("full-set-renderer-preview-section"), "Nail Shop should include a visual-only Full Set Renderer Preview section");
   assert(!nailShopSource.includes("Full Set Composition"), "Full Set Composition should stay absent from Nail Shop");

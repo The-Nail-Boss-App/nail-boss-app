@@ -2,6 +2,13 @@ import { normalizePolishData } from './design-studio/blueprint';
 
 export const FULL_SET_RENDER_MODES = ['left', 'right', 'full', 'hero'];
 export const HAND_SLOTS = ['thumb', 'index', 'middle', 'ring', 'pinky'];
+export const HAND_SLOT_LABELS = {
+  thumb: 'Thumb',
+  index: 'Index',
+  middle: 'Middle',
+  ring: 'Ring',
+  pinky: 'Pinky',
+};
 
 const DEFAULT_SHAPE = 'Almond';
 const DEFAULT_LENGTH = 0.62;
@@ -41,6 +48,7 @@ export function normalizeFullSetNail(candidate = {}, slot = 'index', hand = 'lef
     id: candidate.id || `${hand}-${slot}`,
     hand,
     slot,
+    label: candidate.label || HAND_SLOT_LABELS[slot] || slot,
     shape: candidate.shape || DEFAULT_SHAPE,
     length: normalizeNumber(candidate.length, DEFAULT_LENGTH),
     width: normalizeNumber(candidate.width, DEFAULT_WIDTH),
@@ -54,11 +62,20 @@ const nailsFromMap = (items, hand) => HAND_SLOTS.map((slot, index) => normalizeF
 export function normalizeFullSetDesign(designData = {}) {
   const source = designData && typeof designData === 'object' ? designData : {};
   const nails = source.nails && typeof source.nails === 'object' ? source.nails : source;
+  const flatNails = Array.isArray(source.nails) ? source.nails : (Array.isArray(source) ? source : null);
   const leftSource = nails.left || nails.leftHand || nails.leftHandNails;
   const rightSource = nails.right || nails.rightHand || nails.rightHandNails;
 
-  const left = Array.isArray(leftSource) ? nailsFromArray(leftSource, 'left') : nailsFromMap(leftSource, 'left');
-  const right = Array.isArray(rightSource) ? nailsFromArray(rightSource, 'right') : nailsFromMap(rightSource, 'right');
+  const left = Array.isArray(leftSource)
+    ? nailsFromArray(leftSource, 'left')
+    : flatNails
+      ? nailsFromArray(flatNails.slice(0, HAND_SLOTS.length), 'left')
+      : nailsFromMap(leftSource, 'left');
+  const right = Array.isArray(rightSource)
+    ? nailsFromArray(rightSource, 'right')
+    : flatNails
+      ? nailsFromArray(flatNails.slice(HAND_SLOTS.length, HAND_SLOTS.length * 2), 'right')
+      : nailsFromMap(rightSource, 'right');
 
   return {
     id: source.id || 'full-set-renderer-design',

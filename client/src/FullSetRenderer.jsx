@@ -10,8 +10,16 @@ const MODE_LABELS = {
 };
 
 function RenderedNail({ nail, hero = false }) {
+  const handLabel = nail.hand === 'left' ? 'Left hand' : 'Right hand';
+  const nailLabel = `${handLabel} ${nail.label || nail.slot}`;
+
   return (
-    <div style={hero ? styles.heroNail : styles.nailSlot} data-testid="full-set-renderer-nail">
+    <div
+      style={hero ? styles.heroNail : styles.nailSlot}
+      aria-label={nailLabel}
+      title={nailLabel}
+      data-testid="full-set-renderer-nail"
+    >
       <NailThumbnail nail={nail} />
     </div>
   );
@@ -32,7 +40,7 @@ export default function FullSetRenderer({ designData, mode = 'full', title, comp
   const renderMode = FULL_SET_RENDER_MODES.includes(mode) ? mode : 'full';
   const normalized = normalizeFullSetDesign(designData);
   const hands = getFullSetRenderHands(normalized, renderMode === 'hero' ? 'full' : renderMode);
-  const heroHand = { id: 'hero', label: 'Hero full set', nails: [...normalized.left.slice(1), ...normalized.right.slice(1)].slice(0, 7) };
+  const heroHand = { id: 'hero', label: 'Hero full set', nails: [...normalized.left, ...normalized.right] };
 
   return (
     <section style={{ ...styles.shell, ...(compact ? styles.compactShell : {}) }} aria-label={MODE_LABELS[renderMode]} data-testid={`full-set-renderer-${renderMode}`}>
@@ -69,8 +77,8 @@ const styles = {
   handTitle: { color: COLORS.text, fontSize: 13, margin: '0 0 10px' },
   nailRow: { alignItems: 'end', display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center' },
   nailSlot: { transform: 'scale(.9)', transformOrigin: 'center bottom' },
-  heroStage: { background: 'radial-gradient(circle at center, #fff 0%, #fff2f8 62%, #f7d9e8 100%)', borderRadius: 24, padding: '24px 12px' },
-  heroHand: { margin: '0 auto', maxWidth: 760 },
-  heroNailRow: { alignItems: 'end', display: 'flex', flexWrap: 'wrap', gap: 4, justifyContent: 'center' },
-  heroNail: { filter: 'drop-shadow(0 14px 18px rgba(90,44,80,.16))', transform: 'scale(1.05)', transformOrigin: 'center bottom' },
+  heroStage: { background: 'radial-gradient(circle at center, #fff 0%, #fff2f8 62%, #f7d9e8 100%)', borderRadius: 24, overflow: 'visible', padding: '24px 12px' },
+  heroHand: { margin: '0 auto', maxWidth: 960, overflow: 'visible', width: '100%' },
+  heroNailRow: { alignItems: 'end', display: 'flex', flexWrap: 'nowrap', gap: 4, justifyContent: 'center', overflow: 'visible' },
+  heroNail: { filter: 'drop-shadow(0 14px 18px rgba(90,44,80,.16))', flex: '0 1 72px', minWidth: 0, transform: 'scale(clamp(.74, 1.6vw, 1.05))', transformOrigin: 'center bottom' },
 };
