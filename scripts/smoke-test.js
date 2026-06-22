@@ -137,6 +137,13 @@ function assertNailShopProfilePersistenceSource() {
   assert(nailShopSource.includes("data-testid=\"policies-save-button\"") && nailShopSource.includes("Save Policies"), "Save Policies button should exist");
   assert(nailShopSource.includes("data-testid=\"policies-reset-button\"") && nailShopSource.includes("Reset to Defaults"), "Reset to Defaults button should exist");
   assert(nailShopSource.includes("normalizePolicyNumber") && nailShopSource.includes("depositPercent: clampPercent"), "policy numeric inputs should be safe and deposit percent clamped");
+  assert(nailShopSource.includes("Proposal Readiness™") && nailShopSource.includes(`data-testid="proposal-readiness-section"`), "Proposal Readiness section should exist");
+  assert(nailShopSource.includes(`data-testid="proposal-readiness-checklist"`) && nailShopSource.includes(`data-testid="proposal-readiness-card"`), "readiness checklist should exist");
+  assert(nailShopSource.includes(`data-testid="proposal-readiness-overall-status"`) && nailShopSource.includes("Proposal Ready") && nailShopSource.includes("Needs Setup"), "overall readiness status should exist");
+  assert(nailShopSource.includes(`data-testid="proposal-draft-summary-preview"`) && nailShopSource.includes("Proposal Draft Summary"), "draft summary preview should exist");
+  assert(nailShopSource.includes(`data-testid="proposal-copy-summary-button"`) && nailShopSource.includes("Copy Summary"), "copy summary button should exist");
+  assert(nailShopSource.includes("navigator.clipboard?.writeText") && nailShopSource.includes("Clipboard unavailable"), "copy summary should fail safely when clipboard API is unavailable");
+  assert(nailShopSource.includes("buildProposalReadiness") && nailShopSource.includes("buildProposalDraftSummary"), "proposal readiness helpers should derive from Nail Shop data only");
   assert(appSource.includes("setPage(PAGES.STUDIO)"), "login should still land on Design Studio");
   assert(!nailShopSource.includes("Full Set Composition"), "Full Set Composition should stay absent from Nail Shop");
 }

@@ -462,6 +462,102 @@ const calculateCostEngine = (form, services, pricingLibrary) => {
   };
 };
 
+
+const hasText = (value) => typeof value === 'string' && value.trim().length > 0;
+
+const describeDepositPolicy = (policies) => {
+  const depositRules = normalizePolicies(policies).depositRules;
+  if (depositRules.fullPaymentRequired) return 'Full payment is required to book.';
+  return `${depositRules.depositPercent}% deposit required; minimum deposit $${formatMoney(depositRules.minimumDepositAmount)}.`;
+};
+
+const describeCancellationPolicy = (policies) => {
+  const cancellationPolicy = normalizePolicies(policies).cancellationPolicy;
+  if (cancellationPolicy.window === 'Custom Policy Text') {
+    return cancellationPolicy.customText.trim() || 'Custom cancellation policy not added yet.';
+  }
+  return `${cancellationPolicy.window} cancellation notice requested.`;
+};
+
+const describeBookingRequirements = (policies) => {
+  const requirements = normalizePolicies(policies).bookingRequirements;
+  const enabled = [
+    requirements.depositRequired ? 'deposit required' : '',
+    requirements.consultationRequired ? 'consultation required' : '',
+    requirements.sizingRequired ? 'sizing required' : '',
+    requirements.approvalRequired ? 'artist approval required' : '',
+  ].filter(Boolean);
+  return enabled.length ? enabled.join(', ') : 'No booking requirements selected yet.';
+};
+
+const buildProposalDraftSummary = ({ profile, calculation, policies }) => {
+  const normalizedProfile = normalizeProfile(profile);
+  const normalizedPolicies = normalizePolicies(policies);
+  const contact = [normalizedProfile.contactEmail, normalizedProfile.phone].filter(hasText).join(' / ') || 'Business contact not added yet';
+
+  return [
+    'Proposal Draft Summary (internal preview only)',
+    `Shop name: ${friendly(normalizedProfile.shopName, 'Shop name not added yet')}`,
+    `Selected service: ${friendly(calculation.service?.name || '', 'No service selected yet')}`,
+    `Suggested price: $${formatMoney(calculation.suggestedPrice)}`,
+    `Suggested deposit: $${calculation.suggestedDeposit.toFixed(2)}`,
+    `Estimated time: ${calculation.estimatedTime ? `${calculation.estimatedTime} min` : 'Estimated time not available yet'}`,
+    `Deposit policy: ${describeDepositPolicy(normalizedPolicies)}`,
+    `Cancellation policy: ${describeCancellationPolicy(normalizedPolicies)}`,
+    `Booking requirements: ${describeBookingRequirements(normalizedPolicies)}`,
+    `Business contact: ${contact}`,
+  ].join('\n');
+};
+
+const buildProposalReadiness = ({ profile, services, pricingLibrary, calculation, policies }) => {
+  const normalizedProfile = normalizeProfile(profile);
+  const normalizedServices = normalizeServices(services);
+  const normalizedPricingLibrary = normalizePricingLibrary(pricingLibrary);
+  const normalizedPolicies = normalizePolicies(policies);
+  const activeServices = normalizedServices.filter((service) => service.active);
+  const modifierCount = PRICING_CATEGORY_IDS.reduce((count, categoryId) => (
+    count + (normalizedPricingLibrary.categories[categoryId]?.rows || []).filter((row) => hasText(row.name)).length
+  ), 0);
+  const bookingRequirements = describeBookingRequirements(normalizedPolicies);
+  const checklist = [
+    {
+      id: 'business-profile',
+      label: 'Business Profile',
+      ready: hasText(normalizedProfile.shopName) && (hasText(normalizedProfile.contactEmail) || hasText(normalizedProfile.phone)),
+      detail: 'Ready when shop name plus email or phone exists.',
+    },
+    {
+      id: 'service-menu',
+      label: 'Service Menu',
+      ready: activeServices.length > 0,
+      detail: 'Ready when at least one active service exists.',
+    },
+    {
+      id: 'pricing-library',
+      label: 'Pricing Library',
+      ready: modifierCount > 0 && normalizedPricingLibrary.depositPercent >= 0 && normalizedPricingLibrary.depositPercent <= 100,
+      detail: 'Ready when pricing modifiers exist and deposit percent is valid.',
+    },
+    {
+      id: 'cost-engine',
+      label: 'Cost Engine',
+      ready: Boolean(calculation.service?.id) && calculation.suggestedPrice > 0 && calculation.suggestedDeposit >= 0 && calculation.estimatedTime > 0,
+      detail: 'Ready when current sandbox calculation has service, suggested price, deposit, and estimated time.',
+    },
+    {
+      id: 'policies',
+      label: 'Policies',
+      ready: Boolean(normalizedPolicies.depositRules) && hasText(describeCancellationPolicy(normalizedPolicies)) && hasText(bookingRequirements),
+      detail: 'Ready when deposit rules, cancellation policy, and booking requirements exist.',
+    },
+  ];
+
+  return {
+    checklist,
+    ready: checklist.every((item) => item.ready),
+  };
+};
+
 const serviceToForm = (service) => ({
   name: service.name,
   description: service.description,
@@ -489,6 +585,7 @@ export default function NailShop() {
   const [costEngineForm, setCostEngineForm] = useState(EMPTY_COST_ENGINE_FORM);
   const [policies, setPolicies] = useState(loadSavedPolicies);
   const [policiesMessage, setPoliciesMessage] = useState('');
+  const [proposalCopyMessage, setProposalCopyMessage] = useState('');
 
   const updateProfile = (field, value) => {
     setSaveMessage('');
@@ -649,6 +746,14 @@ export default function NailShop() {
   const normalizedPricingLibrary = normalizePricingLibrary(pricingLibrary);
   const costEngineServiceId = costEngineForm.serviceId || normalizedServices[0]?.id || '';
   const costEngineCalculation = calculateCostEngine({ ...costEngineForm, serviceId: costEngineServiceId }, normalizedServices, normalizedPricingLibrary);
+  const proposalReadiness = buildProposalReadiness({
+    profile,
+    services: normalizedServices,
+    pricingLibrary: normalizedPricingLibrary,
+    calculation: costEngineCalculation,
+    policies,
+  });
+  const proposalDraftSummary = buildProposalDraftSummary({ profile, calculation: costEngineCalculation, policies });
 
   const updateCostEngineField = (field, value) => {
     setCostEngineForm((current) => ({ ...current, [field]: value }));
@@ -664,6 +769,21 @@ export default function NailShop() {
 
   const resetCostEngine = () => {
     setCostEngineForm(EMPTY_COST_ENGINE_FORM);
+  };
+
+  const copyProposalSummary = async () => {
+    setProposalCopyMessage('');
+    if (typeof navigator === 'undefined' || !navigator.clipboard?.writeText) {
+      setProposalCopyMessage('Clipboard unavailable. You can manually select and copy the summary.');
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(proposalDraftSummary);
+      setProposalCopyMessage('Proposal draft summary copied.');
+    } catch (error) {
+      setProposalCopyMessage('Copy failed safely. You can manually select and copy the summary.');
+    }
   };
 
   const primaryColor = safeColor(profile.primaryColor, DEFAULT_PROFILE.primaryColor);
@@ -1011,6 +1131,51 @@ export default function NailShop() {
               <label style={styles.toggleLabel}><input type="checkbox" checked={policies.bookingRequirements.sizingRequired} onChange={(event) => updatePolicySection('bookingRequirements', 'sizingRequired', event.target.checked)} data-testid="policies-sizing-required" />Sizing Required</label>
               <label style={styles.toggleLabel}><input type="checkbox" checked={policies.bookingRequirements.approvalRequired} onChange={(event) => updatePolicySection('bookingRequirements', 'approvalRequired', event.target.checked)} data-testid="policies-approval-required" />Approval Required</label>
             </div>
+          </section>
+        </section>
+
+
+        <section style={styles.proposalReadinessPanel} aria-label="Proposal Readiness" data-testid="proposal-readiness-section">
+          <div style={styles.panelHeader}>
+            <div>
+              <p style={styles.kicker}>Proposal Readiness™</p>
+              <h2 style={styles.sectionTitle}>Proposal-ready setup summary</h2>
+              <p style={styles.readinessIntro}>
+                Internal-only readiness check for future professional proposals. This does not create a proposal,
+                send anything externally, or connect to Proposals, Design Studio, or Blueprint.
+              </p>
+            </div>
+            <span style={proposalReadiness.ready ? styles.readyBadge : styles.needsSetupBadge} data-testid="proposal-readiness-overall-status">
+              {proposalReadiness.ready ? 'Proposal Ready' : 'Needs Setup'}
+            </span>
+          </div>
+
+          <div style={styles.readinessChecklist} data-testid="proposal-readiness-checklist">
+            {proposalReadiness.checklist.map((item) => (
+              <article key={item.id} style={styles.readinessCard} data-testid="proposal-readiness-card">
+                <div style={styles.readinessCardHeader}>
+                  <h3 style={styles.serviceName}>{item.label}</h3>
+                  <span style={item.ready ? styles.readyBadge : styles.needsSetupBadge}>
+                    {item.ready ? 'Ready' : 'Needs Setup'}
+                  </span>
+                </div>
+                <p style={styles.serviceMeta}>{item.detail}</p>
+              </article>
+            ))}
+          </div>
+
+          <section style={styles.draftSummaryCard} aria-label="Proposal Draft Summary preview" data-testid="proposal-draft-summary-preview">
+            <div style={styles.panelHeader}>
+              <div>
+                <p style={styles.kicker}>Internal preview</p>
+                <h3 style={styles.serviceName}>Proposal Draft Summary</h3>
+              </div>
+              <button type="button" onClick={copyProposalSummary} style={styles.saveButton} data-testid="proposal-copy-summary-button">
+                Copy Summary
+              </button>
+            </div>
+            {proposalCopyMessage && <div style={styles.saveMessage} role="status" data-testid="proposal-copy-message">{proposalCopyMessage}</div>}
+            <pre style={styles.summaryPreview}>{proposalDraftSummary}</pre>
           </section>
         </section>
 
@@ -1430,6 +1595,81 @@ const styles = {
     display: 'grid',
     gap: 12,
     gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+  },
+  proposalReadinessPanel: {
+    background: COLORS.surface,
+    border: `1px solid ${COLORS.border}`,
+    borderRadius: 22,
+    boxShadow: '0 10px 30px rgba(60,20,50,.06)',
+    display: 'grid',
+    gap: 16,
+    gridColumn: '1 / -1',
+    padding: 22,
+  },
+  readinessIntro: {
+    color: COLORS.textMuted,
+    fontSize: 14,
+    lineHeight: 1.5,
+    margin: '8px 0 0',
+    maxWidth: 720,
+  },
+  readinessChecklist: {
+    display: 'grid',
+    gap: 12,
+    gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))',
+  },
+  readinessCard: {
+    background: COLORS.roseDim,
+    border: `1px solid ${COLORS.border}`,
+    borderRadius: 18,
+    display: 'grid',
+    gap: 8,
+    padding: 16,
+  },
+  readinessCardHeader: {
+    alignItems: 'flex-start',
+    display: 'flex',
+    gap: 10,
+    justifyContent: 'space-between',
+  },
+  readyBadge: {
+    background: '#dcfce7',
+    border: '1px solid #86efac',
+    borderRadius: 999,
+    color: '#166534',
+    fontSize: 11,
+    fontWeight: 800,
+    padding: '6px 10px',
+    whiteSpace: 'nowrap',
+  },
+  needsSetupBadge: {
+    background: '#fff7ed',
+    border: '1px solid #fed7aa',
+    borderRadius: 999,
+    color: '#9a3412',
+    fontSize: 11,
+    fontWeight: 800,
+    padding: '6px 10px',
+    whiteSpace: 'nowrap',
+  },
+  draftSummaryCard: {
+    background: '#fff',
+    border: `1px solid ${COLORS.border}`,
+    borderRadius: 18,
+    display: 'grid',
+    gap: 12,
+    padding: 16,
+  },
+  summaryPreview: {
+    background: COLORS.roseDim,
+    border: `1px solid ${COLORS.border}`,
+    borderRadius: 16,
+    color: COLORS.text,
+    font: '13px/1.6 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+    margin: 0,
+    overflowX: 'auto',
+    padding: 16,
+    whiteSpace: 'pre-wrap',
   },
   servicePanel: {
     background: COLORS.surface,
