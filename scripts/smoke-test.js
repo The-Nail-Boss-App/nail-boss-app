@@ -112,6 +112,16 @@ function assertNailShopProfilePersistenceSource() {
   assert(nailShopSource.includes("data-testid=\"service-delete-button\"") && nailShopSource.includes("Delete Service") && nailShopSource.includes("window.confirm"), "delete service controls should exist with confirmation");
   assert(nailShopSource.includes("data-testid=\"service-toggle-button\"") && nailShopSource.includes("data-testid=\"service-status-badge\""), "active/inactive toggle and badge should exist");
   assert(nailShopSource.includes("normalizePrice") && nailShopSource.includes("Number.isFinite"), "starting price should be numeric-safe");
+  assert(nailShopSource.includes("Pricing Library") && nailShopSource.includes("data-testid=\"pricing-library-manager\""), "Pricing Library section should exist");
+  assert(nailShopSource.includes("NAIL_SHOP_PRICING_LIBRARY_STORAGE_KEY") && nailShopSource.includes("nailBoss.nailShop.pricingLibrary.v1"), "pricing library should use the required localStorage key");
+  assert(nailShopSource.includes("Length Pricing") && nailShopSource.includes("Finish Pricing") && nailShopSource.includes("Nail Art Pricing") && nailShopSource.includes("Embellishment Pricing") && nailShopSource.includes("Time Add-Ons"), "default pricing categories should exist");
+  assert(nailShopSource.includes("Medium") && nailShopSource.includes("French Tip") && nailShopSource.includes("Character Art") && nailShopSource.includes("Luxury Charm") && nailShopSource.includes("Charm Placement"), "default modifier rows should exist");
+  assert(nailShopSource.includes("data-testid=\"pricing-add-modifier-button\"") && nailShopSource.includes("Add Modifier"), "add modifier controls should exist");
+  assert(nailShopSource.includes("data-testid=\"pricing-delete-modifier-button\"") && nailShopSource.includes("Delete Modifier"), "delete modifier controls should exist");
+  assert(nailShopSource.includes("data-testid=\"pricing-library-save-button\"") && nailShopSource.includes("Save Pricing Library"), "Save Pricing Library button should exist");
+  assert(nailShopSource.includes("loadSavedPricingLibrary") && nailShopSource.includes("persistPricingLibrary") && nailShopSource.includes("window.localStorage.setItem(NAIL_SHOP_PRICING_LIBRARY_STORAGE_KEY"), "pricing library should persist to localStorage");
+  assert(nailShopSource.includes("normalizePricingLibrary(JSON.parse(saved))") && nailShopSource.includes("catch (error)") && nailShopSource.includes("return normalizePricingLibrary()"), "malformed pricing library localStorage should safely fall back to defaults");
+  assert(nailShopSource.includes("Suggested Deposit Percent") && nailShopSource.includes("clampPercent") && nailShopSource.includes("data-testid=\"pricing-deposit-percent-input\""), "deposit percent should be present and clamped");
   assert(appSource.includes("setPage(PAGES.STUDIO)"), "login should still land on Design Studio");
   assert(!nailShopSource.includes("Full Set Composition"), "Full Set Composition should stay absent from Nail Shop");
 }
