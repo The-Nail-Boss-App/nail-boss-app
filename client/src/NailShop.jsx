@@ -164,6 +164,16 @@ const EMPTY_SERVICE_FORM = {
   active: true,
 };
 
+const EMPTY_PROPOSAL_DRAFT_FORM = {
+  clientName: '',
+  clientContact: '',
+  proposalTitle: '',
+  proposalNotes: '',
+  serviceType: '',
+  proposedDate: '',
+  customMessage: '',
+};
+
 
 export const NAIL_SHOP_POLICIES_STORAGE_KEY = 'nailBoss.nailShop.policies.v1';
 
@@ -505,6 +515,58 @@ const describeBookingRequirements = (policies) => {
   return enabled.length ? enabled.join(', ') : 'No booking requirements selected yet.';
 };
 
+const getProposalDraftData = ({ profile, calculation, policies, form = EMPTY_PROPOSAL_DRAFT_FORM }) => {
+  const normalizedProfile = normalizeProfile(profile);
+  const normalizedPolicies = normalizePolicies(policies);
+  const selectedServiceName = calculation.service?.name?.trim() || '';
+  const serviceType = form.serviceType?.trim() || selectedServiceName;
+  const suggestedPrice = calculation.suggestedPrice > 0 ? `$${formatMoney(calculation.suggestedPrice)}` : 'Pricing unavailable';
+  const suggestedDeposit = calculation.suggestedDeposit > 0 ? `$${calculation.suggestedDeposit.toFixed(2)}` : 'Pricing unavailable';
+  const estimatedTime = calculation.estimatedTime > 0 ? `${calculation.estimatedTime} min` : 'Pricing unavailable';
+  const depositPolicy = hasText(describeDepositPolicy(normalizedPolicies)) ? describeDepositPolicy(normalizedPolicies) : 'Policy not set';
+  const cancellationPolicy = hasText(describeCancellationPolicy(normalizedPolicies)) ? describeCancellationPolicy(normalizedPolicies) : 'Policy not set';
+  const bookingRequirements = hasText(describeBookingRequirements(normalizedPolicies)) ? describeBookingRequirements(normalizedPolicies) : 'Policy not set';
+
+  return {
+    clientName: form.clientName?.trim() || 'Client not set',
+    clientContact: form.clientContact?.trim() || 'Client not set',
+    proposalTitle: form.proposalTitle?.trim() || `Draft proposal for ${serviceType || 'Service not selected'}`,
+    proposalNotes: form.proposalNotes?.trim() || 'What’s included not added yet.',
+    serviceType: serviceType || 'Service not selected',
+    selectedService: selectedServiceName || 'Service not selected',
+    proposedDate: form.proposedDate?.trim() || 'Turnaround not set',
+    customMessage: form.customMessage?.trim() || 'No custom message added.',
+    shopName: normalizedProfile.shopName?.trim() || 'Shop name not added yet',
+    businessContact: [normalizedProfile.contactEmail, normalizedProfile.phone].filter(hasText).join(' / ') || 'Business contact not added yet',
+    suggestedPrice,
+    suggestedDeposit,
+    estimatedTime,
+    depositPolicy,
+    cancellationPolicy,
+    bookingRequirements,
+  };
+};
+
+const formatProposalDraftText = (draftData) => ([
+  'Internal Proposal Draft — not sent, saved, or converted to a proposal record.',
+  `Client: ${draftData.clientName}`,
+  `Client contact: ${draftData.clientContact}`,
+  `Proposal title: ${draftData.proposalTitle}`,
+  `Shop name: ${draftData.shopName}`,
+  `Business contact: ${draftData.businessContact}`,
+  `Selected service: ${draftData.selectedService}`,
+  `Service type: ${draftData.serviceType}`,
+  `Suggested price: ${draftData.suggestedPrice}`,
+  `Suggested deposit: ${draftData.suggestedDeposit}`,
+  `Estimated time: ${draftData.estimatedTime}`,
+  `Proposed date / turnaround: ${draftData.proposedDate}`,
+  `Deposit policy: ${draftData.depositPolicy}`,
+  `Cancellation policy: ${draftData.cancellationPolicy}`,
+  `Booking requirements: ${draftData.bookingRequirements}`,
+  `Notes / what’s included: ${draftData.proposalNotes}`,
+  `Custom message: ${draftData.customMessage}`,
+]).join('\n');
+
 const buildProposalDraftSummary = ({ profile, calculation, policies }) => {
   const normalizedProfile = normalizeProfile(profile);
   const normalizedPolicies = normalizePolicies(policies);
@@ -601,6 +663,9 @@ export default function NailShop() {
   const [policies, setPolicies] = useState(loadSavedPolicies);
   const [policiesMessage, setPoliciesMessage] = useState('');
   const [proposalCopyMessage, setProposalCopyMessage] = useState('');
+  const [proposalDraftForm, setProposalDraftForm] = useState(EMPTY_PROPOSAL_DRAFT_FORM);
+  const [generatedProposalDraft, setGeneratedProposalDraft] = useState(null);
+  const [proposalDraftMessage, setProposalDraftMessage] = useState('');
   const [activeSection, setActiveSection] = useState('profile');
 
   const updateProfile = (field, value) => {
@@ -770,6 +835,9 @@ export default function NailShop() {
     policies,
   });
   const proposalDraftSummary = buildProposalDraftSummary({ profile, calculation: costEngineCalculation, policies });
+  const liveProposalDraftData = getProposalDraftData({ profile, calculation: costEngineCalculation, policies, form: proposalDraftForm });
+  const proposalDraftPreviewData = generatedProposalDraft || liveProposalDraftData;
+  const proposalDraftText = formatProposalDraftText(proposalDraftPreviewData);
 
   const updateCostEngineField = (field, value) => {
     setCostEngineForm((current) => ({ ...current, [field]: value }));
@@ -785,6 +853,40 @@ export default function NailShop() {
 
   const resetCostEngine = () => {
     setCostEngineForm(EMPTY_COST_ENGINE_FORM);
+  };
+
+  const updateProposalDraftForm = (field, value) => {
+    setProposalDraftMessage('');
+    setProposalCopyMessage('');
+    setProposalDraftForm((current) => ({ ...current, [field]: value }));
+  };
+
+  const generateProposalDraft = () => {
+    setGeneratedProposalDraft(liveProposalDraftData);
+    setProposalDraftMessage('Draft generated locally. Nothing was sent or saved.');
+    setProposalCopyMessage('');
+  };
+
+  const resetProposalDraft = () => {
+    setProposalDraftForm(EMPTY_PROPOSAL_DRAFT_FORM);
+    setGeneratedProposalDraft(null);
+    setProposalDraftMessage('Draft reset.');
+    setProposalCopyMessage('');
+  };
+
+  const copyProposalDraftText = async () => {
+    setProposalCopyMessage('');
+    if (typeof navigator === 'undefined' || !navigator.clipboard?.writeText) {
+      setProposalCopyMessage('Clipboard unavailable. You can manually select and copy the draft text.');
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(proposalDraftText);
+      setProposalCopyMessage('Draft text copied.');
+    } catch (error) {
+      setProposalCopyMessage('Copy failed safely. You can manually select and copy the draft text.');
+    }
   };
 
   const copyProposalSummary = async () => {
@@ -812,6 +914,7 @@ export default function NailShop() {
     { id: 'costEngine', label: 'Cost Engine' },
     { id: 'policies', label: 'Policies' },
     { id: 'proposalReadiness', label: 'Proposal Readiness' },
+    { id: 'proposalDraft', label: 'Proposal Draft' },
     { id: 'fullSetRenderer', label: 'Full Set Renderer' },
   ];
 
@@ -1236,6 +1339,49 @@ export default function NailShop() {
               <label style={styles.toggleLabel}><input type="checkbox" checked={policies.bookingRequirements.sizingRequired} onChange={(event) => updatePolicySection('bookingRequirements', 'sizingRequired', event.target.checked)} data-testid="policies-sizing-required" />Sizing Required</label>
               <label style={styles.toggleLabel}><input type="checkbox" checked={policies.bookingRequirements.approvalRequired} onChange={(event) => updatePolicySection('bookingRequirements', 'approvalRequired', event.target.checked)} data-testid="policies-approval-required" />Approval Required</label>
             </div>
+          </section>
+        </section>
+        )}
+
+
+        {activeSection === 'proposalDraft' && (
+        <section style={styles.proposalDraftPanel} aria-label="Proposal Draft Generator" data-testid="proposal-draft-section">
+          <div style={styles.panelHeader}>
+            <div>
+              <p style={styles.kicker}>Internal draft only</p>
+              <h2 style={styles.sectionTitle}>Proposal Draft Generator</h2>
+              <p style={styles.readinessIntro}>Assemble a local-only proposal draft from Nail Shop data. This does not send, save, create proposal records, call proposal APIs, or connect to Design Studio or Blueprint.</p>
+            </div>
+            <span style={styles.needsSetupBadge}>Not sent</span>
+          </div>
+
+          {proposalDraftMessage && <div style={styles.saveMessage} role="status" data-testid="proposal-draft-message">{proposalDraftMessage}</div>}
+          {proposalCopyMessage && <div style={styles.saveMessage} role="status" data-testid="proposal-draft-copy-message">{proposalCopyMessage}</div>}
+
+          <div style={styles.proposalDraftGrid}>
+            <label style={styles.field}><span style={styles.label}>Client Name</span><input value={proposalDraftForm.clientName} onChange={(event) => updateProposalDraftForm('clientName', event.target.value)} style={styles.input} data-testid="proposal-draft-client-name" /></label>
+            <label style={styles.field}><span style={styles.label}>Client Email or Phone</span><input value={proposalDraftForm.clientContact} onChange={(event) => updateProposalDraftForm('clientContact', event.target.value)} style={styles.input} data-testid="proposal-draft-client-contact" /></label>
+            <label style={styles.field}><span style={styles.label}>Proposal Title</span><input value={proposalDraftForm.proposalTitle} onChange={(event) => updateProposalDraftForm('proposalTitle', event.target.value)} style={styles.input} data-testid="proposal-draft-title" /></label>
+            <label style={styles.field}><span style={styles.label}>Service Type</span><input value={proposalDraftForm.serviceType} onChange={(event) => updateProposalDraftForm('serviceType', event.target.value)} placeholder={proposalDraftPreviewData.selectedService} style={styles.input} data-testid="proposal-draft-service-type" /></label>
+            <label style={styles.field}><span style={styles.label}>Proposed Date / Turnaround</span><input value={proposalDraftForm.proposedDate} onChange={(event) => updateProposalDraftForm('proposedDate', event.target.value)} style={styles.input} data-testid="proposal-draft-proposed-date" /></label>
+            <label style={styles.fullField}><span style={styles.label}>Proposal Notes / What’s Included</span><textarea value={proposalDraftForm.proposalNotes} onChange={(event) => updateProposalDraftForm('proposalNotes', event.target.value)} rows={4} style={{ ...styles.input, ...styles.serviceTextarea }} data-testid="proposal-draft-notes" /></label>
+            <label style={styles.fullField}><span style={styles.label}>Optional custom message</span><textarea value={proposalDraftForm.customMessage} onChange={(event) => updateProposalDraftForm('customMessage', event.target.value)} rows={3} style={{ ...styles.input, ...styles.serviceTextarea }} data-testid="proposal-draft-custom-message" /></label>
+          </div>
+
+          <div style={styles.headerActions}>
+            <button type="button" onClick={generateProposalDraft} style={styles.saveButton} data-testid="proposal-draft-generate-button">Generate Draft</button>
+            <button type="button" onClick={copyProposalDraftText} style={styles.smallButton} data-testid="proposal-draft-copy-button">Copy Draft Text</button>
+            <button type="button" onClick={resetProposalDraft} style={styles.resetButton} data-testid="proposal-draft-reset-button">Reset Draft</button>
+          </div>
+
+          <section style={styles.draftSummaryCard} aria-label="Proposal Draft Preview" data-testid="proposal-draft-preview">
+            <div>
+              <p style={styles.kicker}>Full Set Hero Preview</p>
+              <div style={styles.rendererHeroShowcase} data-testid="proposal-draft-full-set-hero-preview">
+                <FullSetRenderer designData={FULL_SET_RENDERER_SAMPLE} mode="hero" compact />
+              </div>
+            </div>
+            <pre style={styles.summaryPreview} data-testid="proposal-draft-text-preview">{proposalDraftText}</pre>
           </section>
         </section>
         )}
@@ -1731,6 +1877,21 @@ const styles = {
     display: 'grid',
     gap: 12,
     gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+  },
+  proposalDraftPanel: {
+    background: COLORS.surface,
+    border: `1px solid ${COLORS.border}`,
+    borderRadius: 22,
+    boxShadow: '0 10px 30px rgba(60,20,50,.06)',
+    display: 'grid',
+    gap: 16,
+    gridColumn: '1 / -1',
+    padding: 22,
+  },
+  proposalDraftGrid: {
+    display: 'grid',
+    gap: 14,
+    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
   },
   proposalReadinessPanel: {
     background: COLORS.surface,
