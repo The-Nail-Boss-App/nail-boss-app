@@ -601,6 +601,7 @@ export default function NailShop() {
   const [policies, setPolicies] = useState(loadSavedPolicies);
   const [policiesMessage, setPoliciesMessage] = useState('');
   const [proposalCopyMessage, setProposalCopyMessage] = useState('');
+  const [activeSection, setActiveSection] = useState('profile');
 
   const updateProfile = (field, value) => {
     setSaveMessage('');
@@ -804,6 +805,16 @@ export default function NailShop() {
   const primaryColor = safeColor(profile.primaryColor, DEFAULT_PROFILE.primaryColor);
   const accentColor = safeColor(profile.accentColor, DEFAULT_PROFILE.accentColor);
 
+  const shopSections = [
+    { id: 'profile', label: 'Profile' },
+    { id: 'services', label: 'Services' },
+    { id: 'pricing', label: 'Pricing Library' },
+    { id: 'costEngine', label: 'Cost Engine' },
+    { id: 'policies', label: 'Policies' },
+    { id: 'proposalReadiness', label: 'Proposal Readiness' },
+    { id: 'fullSetRenderer', label: 'Full Set Renderer' },
+  ];
+
   const preview = {
     shopName: friendly(profile.shopName, 'Your nail shop name'),
     tagline: friendly(profile.tagline, 'Add a tagline to welcome clients.'),
@@ -829,6 +840,57 @@ export default function NailShop() {
       </section>
 
       <section style={styles.workspace} aria-label="Nail Shop profile customization">
+        <aside style={styles.previewPanel} aria-label="Live storefront preview" data-testid="nail-shop-preview">
+          <div style={{ ...styles.previewHero, background: primaryColor }}>
+            <div style={{ ...styles.previewBadge, color: primaryColor, background: accentColor }}>
+              Live Preview
+            </div>
+            <h2 style={styles.previewTitle}>{preview.shopName}</h2>
+            <p style={styles.previewTagline}>{preview.tagline}</p>
+          </div>
+
+          <div style={styles.previewBody}>
+            <section>
+              <h3 style={styles.previewHeading}>About</h3>
+              <p style={styles.previewText}>{preview.about}</p>
+            </section>
+
+            <section style={styles.previewCard}>
+              <h3 style={styles.previewHeading}>Contact</h3>
+              <p style={styles.previewLine}>Email: {preview.contactEmail}</p>
+              <p style={styles.previewLine}>Phone: {preview.phone}</p>
+              <p style={styles.previewLine}>Area: {preview.location}</p>
+            </section>
+
+            <section style={styles.previewCard}>
+              <h3 style={styles.previewHeading}>Social links</h3>
+              <p style={styles.previewLine}>Instagram: {preview.instagram}</p>
+              <p style={styles.previewLine}>TikTok: {preview.tiktok}</p>
+              <p style={styles.previewLine}>Website: {preview.website}</p>
+            </section>
+
+            <button type="button" style={{ ...styles.bookingButton, background: accentColor, color: primaryColor }}>
+              {preview.bookingLink}
+            </button>
+          </div>
+        </aside>
+
+        <nav style={styles.sectionTabs} aria-label="Nail Shop sections" data-testid="nail-shop-section-tabs">
+          {shopSections.map((section) => (
+            <button
+              key={section.id}
+              type="button"
+              onClick={() => setActiveSection(section.id)}
+              style={activeSection === section.id ? styles.activeTab : styles.sectionTab}
+              aria-pressed={activeSection === section.id}
+              data-testid={`nail-shop-tab-${section.id}`}
+            >
+              {section.label}
+            </button>
+          ))}
+        </nav>
+
+        {activeSection === 'profile' && (
         <form style={styles.editor} aria-label="Edit storefront profile">
           <div style={styles.panelHeader}>
             <div>
@@ -901,7 +963,9 @@ export default function NailShop() {
             ))}
           </div>
         </form>
+        )}
 
+        {activeSection === 'services' && (
         <section style={styles.servicePanel} aria-label="Service Menu Manager" data-testid="service-menu-manager">
           <div style={styles.panelHeader}>
             <div>
@@ -972,8 +1036,9 @@ export default function NailShop() {
             ))}
           </div>
         </section>
+        )}
 
-
+        {activeSection === 'costEngine' && (
         <section style={styles.costEnginePanel} aria-label="Cost Engine Sandbox" data-testid="cost-engine-sandbox">
           <div style={styles.panelHeader}>
             <div>
@@ -1035,8 +1100,9 @@ export default function NailShop() {
             <div style={styles.breakdownTotal}><span>Total</span><span>${formatMoney(costEngineCalculation.suggestedPrice)}</span></div>
           </section>
         </section>
+        )}
 
-
+        {activeSection === 'fullSetRenderer' && (
         <section style={styles.rendererPreviewPanel} aria-label="Full Set Renderer Preview" data-testid="full-set-renderer-preview-section">
           <div style={styles.panelHeader}>
             <div>
@@ -1045,14 +1111,20 @@ export default function NailShop() {
               <p style={styles.readinessIntro}>Reusable renderer sandbox only. Not connected to proposals, blueprints, storefront products, gallery, or Design Studio state.</p>
             </div>
           </div>
-          <div style={styles.rendererPreviewGrid}>
-            <FullSetRenderer designData={FULL_SET_RENDERER_SAMPLE} mode="left" compact />
-            <FullSetRenderer designData={FULL_SET_RENDERER_SAMPLE} mode="right" compact />
-            <FullSetRenderer designData={FULL_SET_RENDERER_SAMPLE} mode="full" compact />
+          <div style={styles.rendererHeroShowcase}>
             <FullSetRenderer designData={FULL_SET_RENDERER_SAMPLE} mode="hero" compact />
           </div>
+          <div style={styles.rendererHandRow} data-testid="full-set-renderer-horizontal-hands">
+            <FullSetRenderer designData={FULL_SET_RENDERER_SAMPLE} mode="left" compact />
+            <FullSetRenderer designData={FULL_SET_RENDERER_SAMPLE} mode="right" compact />
+          </div>
+          <div style={styles.rendererSupportingPreview}>
+            <FullSetRenderer designData={FULL_SET_RENDERER_SAMPLE} mode="full" compact />
+          </div>
         </section>
+        )}
 
+        {activeSection === 'pricing' && (
         <section style={styles.pricingPanel} aria-label="Pricing Library Manager" data-testid="pricing-library-manager">
           <div style={styles.panelHeader}>
             <div>
@@ -1096,8 +1168,9 @@ export default function NailShop() {
             <input value={pricingLibrary.depositPercent} onChange={(event) => setPricingLibrary((current) => ({ ...current, depositPercent: event.target.value }))} inputMode="decimal" style={styles.input} data-testid="pricing-deposit-percent-input" />
           </label>
         </section>
+        )}
 
-
+        {activeSection === 'policies' && (
         <section style={styles.policiesPanel} aria-label="Policies & Booking Rules Manager" data-testid="policies-booking-rules-manager">
           <div style={styles.panelHeader}>
             <div>
@@ -1165,8 +1238,9 @@ export default function NailShop() {
             </div>
           </section>
         </section>
+        )}
 
-
+        {activeSection === 'proposalReadiness' && (
         <section style={styles.proposalReadinessPanel} aria-label="Proposal Readiness" data-testid="proposal-readiness-section">
           <div style={styles.panelHeader}>
             <div>
@@ -1210,41 +1284,7 @@ export default function NailShop() {
             <pre style={styles.summaryPreview}>{proposalDraftSummary}</pre>
           </section>
         </section>
-
-        <aside style={styles.previewPanel} aria-label="Live storefront preview" data-testid="nail-shop-preview">
-          <div style={{ ...styles.previewHero, background: primaryColor }}>
-            <div style={{ ...styles.previewBadge, color: primaryColor, background: accentColor }}>
-              Live Preview
-            </div>
-            <h2 style={styles.previewTitle}>{preview.shopName}</h2>
-            <p style={styles.previewTagline}>{preview.tagline}</p>
-          </div>
-
-          <div style={styles.previewBody}>
-            <section>
-              <h3 style={styles.previewHeading}>About</h3>
-              <p style={styles.previewText}>{preview.about}</p>
-            </section>
-
-            <section style={styles.previewCard}>
-              <h3 style={styles.previewHeading}>Contact</h3>
-              <p style={styles.previewLine}>Email: {preview.contactEmail}</p>
-              <p style={styles.previewLine}>Phone: {preview.phone}</p>
-              <p style={styles.previewLine}>Area: {preview.location}</p>
-            </section>
-
-            <section style={styles.previewCard}>
-              <h3 style={styles.previewHeading}>Social links</h3>
-              <p style={styles.previewLine}>Instagram: {preview.instagram}</p>
-              <p style={styles.previewLine}>TikTok: {preview.tiktok}</p>
-              <p style={styles.previewLine}>Website: {preview.website}</p>
-            </section>
-
-            <button type="button" style={{ ...styles.bookingButton, background: accentColor, color: primaryColor }}>
-              {preview.bookingLink}
-            </button>
-          </div>
-        </aside>
+        )}
       </section>
     </main>
   );
@@ -1283,9 +1323,15 @@ const styles = {
   workspace: {
     alignItems: 'start',
     display: 'grid',
-    gap: 22,
-    gridTemplateColumns: 'minmax(320px, 1.2fr) minmax(300px, .8fr)',
+    gap: 18,
+    gridTemplateColumns: '1fr',
     maxWidth: 1180,
+  },
+  visibleSection: {
+    display: 'block',
+  },
+  hiddenSection: {
+    display: 'none',
   },
   editor: {
     background: COLORS.surface,
@@ -1409,6 +1455,8 @@ const styles = {
     border: `1px solid ${COLORS.border}`,
     borderRadius: 24,
     boxShadow: '0 18px 42px rgba(60,20,50,.1)',
+    display: 'grid',
+    gridTemplateColumns: 'minmax(280px, .9fr) minmax(320px, 1.1fr)',
     overflow: 'hidden',
   },
   previewHero: {
@@ -1463,6 +1511,36 @@ const styles = {
     lineHeight: 1.5,
     margin: '0 0 5px',
     overflowWrap: 'anywhere',
+  },
+  sectionTabs: {
+    background: COLORS.surface,
+    border: `1px solid ${COLORS.border}`,
+    borderRadius: 20,
+    boxShadow: '0 10px 30px rgba(60,20,50,.05)',
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: 10,
+    padding: 12,
+  },
+  sectionTab: {
+    background: '#fff',
+    border: `1px solid ${COLORS.border}`,
+    borderRadius: 999,
+    color: COLORS.plum,
+    cursor: 'pointer',
+    fontSize: 13,
+    fontWeight: 800,
+    padding: '10px 14px',
+  },
+  activeTab: {
+    background: COLORS.plum,
+    border: `1px solid ${COLORS.plum}`,
+    borderRadius: 999,
+    color: '#fff',
+    cursor: 'pointer',
+    fontSize: 13,
+    fontWeight: 800,
+    padding: '10px 14px',
   },
   bookingButton: {
     border: 'none',
@@ -1542,10 +1620,24 @@ const styles = {
     gridColumn: '1 / -1',
     padding: 20,
   },
-  rendererPreviewGrid: {
+  rendererHeroShowcase: {
+    background: COLORS.roseDim,
+    border: `1px solid ${COLORS.border}`,
+    borderRadius: 20,
+    marginBottom: 16,
+    padding: 16,
+  },
+  rendererHandRow: {
     display: 'grid',
     gap: 16,
-    gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+    gridTemplateColumns: 'repeat(2, minmax(260px, 1fr))',
+    marginBottom: 16,
+  },
+  rendererSupportingPreview: {
+    background: '#fff',
+    border: `1px solid ${COLORS.border}`,
+    borderRadius: 18,
+    padding: 14,
   },
   pricingPanel: {
     background: COLORS.surface,
@@ -1722,7 +1814,7 @@ const styles = {
     boxShadow: '0 10px 30px rgba(60,20,50,.06)',
     display: 'grid',
     gap: 16,
-    gridColumn: '1 / 2',
+    gridColumn: '1 / -1',
     padding: 22,
   },
   serviceCount: {
