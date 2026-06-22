@@ -94,6 +94,7 @@ function assert(condition, message) {
 function assertNailShopProfilePersistenceSource() {
   const nailShopSource = fs.readFileSync(path.join(__dirname, "..", "client", "src", "NailShop.jsx"), "utf8");
   const appSource = fs.readFileSync(path.join(__dirname, "..", "client", "src", "App.jsx"), "utf8");
+  const proposalsSource = fs.readFileSync(path.join(__dirname, "..", "client", "src", "Proposals.jsx"), "utf8");
 
   assert(nailShopSource.includes("export default function NailShop()"), "Nail Shop renders through the NailShop component");
   assert(nailShopSource.includes("data-testid=\"nail-shop-save\"") && nailShopSource.includes("Save Shop"), "Save Shop button should exist");
@@ -155,6 +156,10 @@ function assertNailShopProfilePersistenceSource() {
   assert(nailShopSource.includes("setGeneratedProposalDraft(liveProposalDraftData)") && nailShopSource.includes("Nothing was sent or saved"), "Generate Draft should only create local preview state");
   assert(nailShopSource.includes("navigator.clipboard?.writeText") && nailShopSource.includes("Clipboard unavailable"), "copy summary and draft text should fail safely when clipboard API is unavailable");
   assert(nailShopSource.includes("buildProposalReadiness") && nailShopSource.includes("buildProposalDraftSummary"), "proposal readiness helpers should derive from Nail Shop data only");
+  assert(proposalsSource.includes("buildProposalV2Snapshots") && proposalsSource.includes("proposalVersion: 2"), "proposal creation should build v2 snapshot payloads");
+  assert(proposalsSource.includes(`data-testid="proposal-create-snapshot-preview"`) && proposalsSource.includes("Internal preview"), "proposal create form should show an internal text-only snapshot preview");
+  assert(proposalsSource.includes("NAIL_SHOP_PROFILE_STORAGE_KEY") && proposalsSource.includes("NAIL_SHOP_SERVICES_STORAGE_KEY") && proposalsSource.includes("NAIL_SHOP_PRICING_LIBRARY_STORAGE_KEY") && proposalsSource.includes("NAIL_SHOP_POLICIES_STORAGE_KEY"), "proposal v2 snapshots should derive from available Nail Shop local data");
+  assert(proposalsSource.includes("Client not set") && proposalsSource.includes("Service not selected") && proposalsSource.includes("Pricing unavailable") && proposalsSource.includes("Policy not set"), "proposal create missing-data fallbacks should exist");
   assert(appSource.includes("setPage(PAGES.STUDIO)"), "login should still land on Design Studio");
   const fullSetRendererSource = fs.readFileSync(path.join(__dirname, "..", "client", "src", "FullSetRenderer.jsx"), "utf8");
   const fullSetRendererHelperSource = fs.readFileSync(path.join(__dirname, "..", "client", "src", "fullSetRenderer.js"), "utf8");

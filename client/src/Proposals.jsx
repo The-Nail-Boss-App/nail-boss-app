@@ -3,6 +3,145 @@ import { COLORS, S, StatusBadge } from './styles';
 
 const VALID_STATUSES = ['Sent', 'Viewed', 'Accepted', 'ChangesRequested', 'Declined'];
 
+const NAIL_SHOP_PROFILE_STORAGE_KEY = 'nailBoss.nailShop.profile.v1';
+const NAIL_SHOP_SERVICES_STORAGE_KEY = 'nailBoss.nailShop.services.v1';
+const NAIL_SHOP_PRICING_LIBRARY_STORAGE_KEY = 'nailBoss.nailShop.pricingLibrary.v1';
+const NAIL_SHOP_POLICIES_STORAGE_KEY = 'nailBoss.nailShop.policies.v1';
+
+const FALLBACKS = {
+  client: 'Client not set',
+  service: 'Service not selected',
+  price: 'Pricing unavailable',
+  policy: 'Policy not set',
+};
+
+const readStoredObject = (key, fallback) => {
+  if (typeof window === 'undefined') return fallback;
+  try {
+    const saved = window.localStorage.getItem(key);
+    if (!saved) return fallback;
+    const parsed = JSON.parse(saved);
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : fallback;
+  } catch (error) {
+    return fallback;
+  }
+};
+
+const readStoredArray = (key) => {
+  if (typeof window === 'undefined') return [];
+  try {
+    const saved = window.localStorage.getItem(key);
+    const parsed = saved ? JSON.parse(saved) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    return [];
+  }
+};
+
+const textOrFallback = (value, fallback) => (typeof value === 'string' && value.trim() ? value.trim() : fallback);
+const numberOrNull = (value) => {
+  const parsed = Number.parseFloat(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const describeDepositPolicy = (policies) => {
+  const rules = policies?.depositRules && typeof policies.depositRules === 'object' ? policies.depositRules : null;
+  if (!rules) return FALLBACKS.policy;
+  if (rules.fullPaymentRequired) return 'Full payment is required to book.';
+  const percent = numberOrNull(rules.depositPercent);
+  const minimum = numberOrNull(rules.minimumDepositAmount);
+  if (percent === null && minimum === null) return FALLBACKS.policy;
+  return `${percent ?? 0}% deposit required; minimum deposit $${minimum ?? 0}.`;
+};
+
+const describeCancellationPolicy = (policies) => {
+  const cancellation = policies?.cancellationPolicy && typeof policies.cancellationPolicy === 'object' ? policies.cancellationPolicy : null;
+  if (!cancellation) return FALLBACKS.policy;
+  if (cancellation.window === 'Custom Policy Text') return textOrFallback(cancellation.customText, FALLBACKS.policy);
+  return textOrFallback(cancellation.window, FALLBACKS.policy);
+};
+
+const getNailShopSnapshotSource = () => {
+  const profile = readStoredObject(NAIL_SHOP_PROFILE_STORAGE_KEY, {});
+  const services = readStoredArray(NAIL_SHOP_SERVICES_STORAGE_KEY);
+  const pricingLibrary = readStoredObject(NAIL_SHOP_PRICING_LIBRARY_STORAGE_KEY, {});
+  const policies = readStoredObject(NAIL_SHOP_POLICIES_STORAGE_KEY, {});
+  const service = services.find((candidate) => candidate?.active !== false) || services[0] || {};
+  return { profile, service, pricingLibrary, policies };
+};
+
+const buildProposalV2Snapshots = ({ clientName, price, notes, design }) => {
+  const { profile, service, pricingLibrary, policies } = getNailShopSnapshotSource();
+  const parsedPrice = numberOrNull(price);
+  const servicePrice = numberOrNull(service.startingPrice);
+  const depositPercent = numberOrNull(pricingLibrary.depositPercent);
+  const deposit = parsedPrice !== null && depositPercent !== null ? parsedPrice * (depositPercent / 100) : null;
+  const serviceName = textOrFallback(service.name, FALLBACKS.service);
+  const displayPrice = parsedPrice !== null ? parsedPrice : servicePrice;
+  const estimatedTime = textOrFallback(service.estimatedTime, FALLBACKS.service);
+  const designName = textOrFallback(design?.name, 'Untitled design');
+
+  return {
+    proposalVersion: 2,
+    clientSnapshot: {
+      name: textOrFallback(clientName, FALLBACKS.client),
+      contact: '',
+      email: '',
+      phone: '',
+    },
+    shopSnapshot: {
+      shopName: textOrFallback(profile.shopName, FALLBACKS.policy),
+      tagline: textOrFallback(profile.tagline, ''),
+      contactEmail: textOrFallback(profile.contactEmail, ''),
+      phone: textOrFallback(profile.phone, ''),
+      location: textOrFallback(profile.location, ''),
+      website: textOrFallback(profile.website, ''),
+      bookingLink: textOrFallback(profile.bookingLink, ''),
+    },
+    serviceSnapshot: {
+      serviceName,
+      category: textOrFallback(service.category, ''),
+      description: textOrFallback(service.description, ''),
+      startingPrice: servicePrice,
+      estimatedTime,
+      serviceType: textOrFallback(service.category, FALLBACKS.service),
+    },
+    priceSnapshot: {
+      suggestedPrice: displayPrice,
+      suggestedDeposit: deposit,
+      depositPercent,
+      estimatedTime,
+      breakdown: displayPrice === null ? [] : [{ label: serviceName, amount: displayPrice }],
+    },
+    policySnapshot: {
+      depositPolicy: describeDepositPolicy(policies),
+      cancellationPolicy: describeCancellationPolicy(policies),
+      bookingRequirements: policies.bookingRequirements && typeof policies.bookingRequirements === 'object' ? policies.bookingRequirements : null,
+      appointmentRules: policies.appointmentRules && typeof policies.appointmentRules === 'object' ? policies.appointmentRules : null,
+      pressOnRules: policies.pressOnRules && typeof policies.pressOnRules === 'object' ? policies.pressOnRules : null,
+    },
+    visualSnapshot: {
+      mode: 'legacy-design',
+      designName,
+      heroLabel: designName,
+      fullSetData: null,
+      createdFromRenderer: false,
+    },
+    draftSnapshot: {
+      title: `Proposal for ${textOrFallback(clientName, FALLBACKS.client)}`,
+      notes: typeof notes === 'string' ? notes.trim() : '',
+      customMessage: '',
+      draftText: typeof notes === 'string' ? notes.trim() : '',
+    },
+  };
+};
+
+const formatMoney = (value, fallback = FALLBACKS.price) => {
+  const parsed = numberOrNull(value);
+  return parsed === null ? fallback : `$${parsed.toFixed(2)}`;
+};
+
+
 export default function Proposals() {
   const [proposals, setProposals] = useState([]);
   const [designs, setDesigns] = useState([]);
@@ -18,6 +157,9 @@ export default function Proposals() {
   const [price, setPrice] = useState('');
   const [notes, setNotes] = useState('');
   const [showForm, setShowForm] = useState(false);
+
+  const selectedDesign = designs.find((design) => design.id === selectedDesignId) || null;
+  const proposalSnapshotPreview = buildProposalV2Snapshots({ clientName, price, notes, design: selectedDesign });
 
   const fetchAll = async () => {
     setLoading(true);
@@ -61,6 +203,12 @@ export default function Proposals() {
           clientName: clientName.trim(),
           price: priceNum,
           notes: notes.trim(),
+          ...buildProposalV2Snapshots({
+            clientName: clientName.trim(),
+            price: priceNum,
+            notes: notes.trim(),
+            design: selectedDesign,
+          }),
         }),
       });
       if (!res.ok) {
@@ -313,6 +461,15 @@ export default function Proposals() {
                   onChange={(e) => setNotes(e.target.value)}
                 />
               </div>
+            </div>
+
+            <div style={styles.previewBox} data-testid="proposal-create-snapshot-preview">
+              <strong>Internal preview</strong><br />
+              Shop: {proposalSnapshotPreview.shopSnapshot.shopName}<br />
+              Service: {proposalSnapshotPreview.serviceSnapshot.serviceName}<br />
+              Price: {formatMoney(proposalSnapshotPreview.priceSnapshot.suggestedPrice)}<br />
+              Deposit: {formatMoney(proposalSnapshotPreview.priceSnapshot.suggestedDeposit, FALLBACKS.policy)}<br />
+              Time: {proposalSnapshotPreview.priceSnapshot.estimatedTime}
             </div>
 
             <div style={styles.formActions}>
