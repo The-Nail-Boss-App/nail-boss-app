@@ -34,18 +34,62 @@ const BRAND_FIELDS = [
   { id: 'accentColor', label: 'Accent Color' },
 ];
 
+export const NAIL_SHOP_PROFILE_STORAGE_KEY = 'nailBoss.nailShop.profile.v1';
+
+const PROFILE_FIELD_IDS = [...PROFILE_FIELDS, ...BRAND_FIELDS].map((field) => field.id);
+
 const friendly = (value, placeholder) => value.trim() || placeholder;
 const safeColor = (value, fallback) => (/^#[0-9A-F]{6}$/i.test(value) ? value : fallback);
 
+const normalizeProfile = (candidate) => {
+  if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) return DEFAULT_PROFILE;
+
+  return PROFILE_FIELD_IDS.reduce((normalized, fieldId) => ({
+    ...normalized,
+    [fieldId]: typeof candidate[fieldId] === 'string' ? candidate[fieldId] : DEFAULT_PROFILE[fieldId],
+  }), { ...DEFAULT_PROFILE });
+};
+
+const loadSavedProfile = () => {
+  if (typeof window === 'undefined') return DEFAULT_PROFILE;
+
+  try {
+    const saved = window.localStorage.getItem(NAIL_SHOP_PROFILE_STORAGE_KEY);
+    return saved ? normalizeProfile(JSON.parse(saved)) : DEFAULT_PROFILE;
+  } catch (error) {
+    return DEFAULT_PROFILE;
+  }
+};
+
+const persistProfile = (profileToSave) => {
+  if (typeof window === 'undefined') return;
+
+  try {
+    window.localStorage.setItem(NAIL_SHOP_PROFILE_STORAGE_KEY, JSON.stringify(normalizeProfile(profileToSave)));
+  } catch (error) {
+    // Keep the editor usable if browser storage is unavailable.
+  }
+};
+
 export default function NailShop() {
-  const [profile, setProfile] = useState(DEFAULT_PROFILE);
+  const [profile, setProfile] = useState(loadSavedProfile);
+  const [saveMessage, setSaveMessage] = useState('');
 
   const updateProfile = (field, value) => {
+    setSaveMessage('');
     setProfile((current) => ({ ...current, [field]: value }));
+  };
+
+  const saveProfile = () => {
+    persistProfile(profile);
+    setProfile((current) => normalizeProfile(current));
+    setSaveMessage('Shop saved.');
   };
 
   const resetProfile = () => {
     setProfile(DEFAULT_PROFILE);
+    persistProfile(DEFAULT_PROFILE);
+    setSaveMessage('Shop reset to defaults.');
   };
 
   const primaryColor = safeColor(profile.primaryColor, DEFAULT_PROFILE.primaryColor);
@@ -71,7 +115,7 @@ export default function NailShop() {
         <h1 id="nail-shop-title" style={styles.title}>Nail Shop</h1>
         <p style={styles.subtitle}>
           Start shaping a public-facing storefront profile for your nail business. This is frontend-only
-          customization using local page state, so it is safe to experiment without saving changes to a backend.
+          customization saved to this browser with localStorage, so it is safe to experiment without saving changes to a backend.
         </p>
       </section>
 
@@ -82,10 +126,21 @@ export default function NailShop() {
               <p style={styles.kicker}>Profile details</p>
               <h2 style={styles.sectionTitle}>Customize your storefront</h2>
             </div>
-            <button type="button" onClick={resetProfile} style={styles.resetButton} data-testid="nail-shop-reset">
-              Reset to default
-            </button>
+            <div style={styles.headerActions}>
+              <button type="button" onClick={saveProfile} style={styles.saveButton} data-testid="nail-shop-save">
+                Save Shop
+              </button>
+              <button type="button" onClick={resetProfile} style={styles.resetButton} data-testid="nail-shop-reset">
+                Reset to Default
+              </button>
+            </div>
           </div>
+
+          {saveMessage && (
+            <div style={styles.saveMessage} role="status" data-testid="nail-shop-save-message">
+              {saveMessage}
+            </div>
+          )}
 
           <div style={styles.fieldGrid}>
             {PROFILE_FIELDS.map((field) => (
@@ -233,6 +288,23 @@ const styles = {
     fontSize: 22,
     margin: 0,
   },
+  headerActions: {
+    alignItems: 'center',
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: 10,
+    justifyContent: 'flex-end',
+  },
+  saveButton: {
+    background: COLORS.plum,
+    border: `1px solid ${COLORS.plum}`,
+    borderRadius: 999,
+    color: '#fff',
+    cursor: 'pointer',
+    fontWeight: 700,
+    padding: '10px 14px',
+    whiteSpace: 'nowrap',
+  },
   resetButton: {
     background: COLORS.roseDim,
     border: `1px solid ${COLORS.border}`,
@@ -242,6 +314,16 @@ const styles = {
     fontWeight: 700,
     padding: '10px 14px',
     whiteSpace: 'nowrap',
+  },
+  saveMessage: {
+    background: '#f0fdf4',
+    border: '1px solid #86efac',
+    borderRadius: 12,
+    color: '#166534',
+    fontSize: 13,
+    fontWeight: 700,
+    marginBottom: 16,
+    padding: '10px 12px',
   },
   fieldGrid: {
     display: 'grid',
