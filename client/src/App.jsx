@@ -4,6 +4,7 @@ import Login from './Login';
 import Dashboard from './Dashboard';
 import DesignStudio from './DesignStudio';
 import Proposals from './Proposals';
+import NailShop from './NailShop';
 
 class ProtectedAppErrorBoundary extends Component {
   constructor(props) {
@@ -51,6 +52,7 @@ const PAGES = {
   DASHBOARD: 'dashboard',
   STUDIO: 'studio',
   PROPOSALS: 'proposals',
+  NAIL_SHOP: 'nail-shop',
 };
 
 // ── App Shell ────────────────────────────────────────────
@@ -120,6 +122,17 @@ export default function App() {
         </svg>
       ),
     },
+    {
+      id: PAGES.NAIL_SHOP,
+      label: 'Nail Shop',
+      icon: (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M3 9l9-7 9 7" />
+          <path d="M5 10v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V10" />
+          <path d="M9 22V12h6v10" />
+        </svg>
+      ),
+    },
   ];
 
   // ── Sidebar ───────────────────────────────────────────
@@ -174,6 +187,7 @@ export default function App() {
     [PAGES.DASHBOARD]: 'Dashboard',
     [PAGES.STUDIO]: 'Design Studio',
     [PAGES.PROPOSALS]: 'Proposals',
+    [PAGES.NAIL_SHOP]: 'Nail Shop',
   };
 
   const topbar = (
@@ -210,6 +224,12 @@ export default function App() {
         return (
           <ProtectedAppErrorBoundary boundaryKey={PAGES.PROPOSALS}>
             <Proposals />
+          </ProtectedAppErrorBoundary>
+        );
+      case PAGES.NAIL_SHOP:
+        return (
+          <ProtectedAppErrorBoundary boundaryKey={PAGES.NAIL_SHOP}>
+            <NailShop />
           </ProtectedAppErrorBoundary>
         );
       default:
