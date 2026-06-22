@@ -149,6 +149,49 @@ const EMPTY_SERVICE_FORM = {
   active: true,
 };
 
+
+export const NAIL_SHOP_POLICIES_STORAGE_KEY = 'nailBoss.nailShop.policies.v1';
+
+const BUSINESS_DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+const CANCELLATION_WINDOWS = ['24 Hours', '48 Hours', '72 Hours', 'Custom Policy Text'];
+
+const DEFAULT_POLICIES = {
+  depositRules: {
+    depositPercent: 25,
+    minimumDepositAmount: 20,
+    fullPaymentRequired: false,
+  },
+  cancellationPolicy: {
+    window: '24 Hours',
+    customText: '',
+  },
+  appointmentRules: {
+    gracePeriodMinutes: 10,
+    maxReschedules: 1,
+    noShowFee: 25,
+  },
+  pressOnRules: {
+    processingTimeDays: 5,
+    rushOrderFee: 15,
+    pickupAvailable: true,
+    shippingAvailable: true,
+  },
+  businessHours: BUSINESS_DAYS.reduce((hours, day) => ({
+    ...hours,
+    [day]: {
+      open: !['Saturday', 'Sunday'].includes(day),
+      openTime: '09:00',
+      closeTime: '17:00',
+    },
+  }), {}),
+  bookingRequirements: {
+    depositRequired: true,
+    consultationRequired: false,
+    sizingRequired: false,
+    approvalRequired: false,
+  },
+};
+
 export const NAIL_SHOP_PROFILE_STORAGE_KEY = 'nailBoss.nailShop.profile.v1';
 
 const PROFILE_FIELD_IDS = [...PROFILE_FIELDS, ...BRAND_FIELDS].map((field) => field.id);
@@ -201,6 +244,81 @@ const clampPercent = (value) => {
 const normalizePricingAmount = (value) => {
   const parsed = Number.parseFloat(value);
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
+};
+
+
+const normalizePolicyNumber = (value) => {
+  const parsed = Number.parseFloat(value);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
+};
+
+const normalizePolicies = (candidate) => {
+  const source = candidate && typeof candidate === 'object' && !Array.isArray(candidate) ? candidate : {};
+  const depositRules = source.depositRules && typeof source.depositRules === 'object' && !Array.isArray(source.depositRules) ? source.depositRules : {};
+  const cancellationPolicy = source.cancellationPolicy && typeof source.cancellationPolicy === 'object' && !Array.isArray(source.cancellationPolicy) ? source.cancellationPolicy : {};
+  const appointmentRules = source.appointmentRules && typeof source.appointmentRules === 'object' && !Array.isArray(source.appointmentRules) ? source.appointmentRules : {};
+  const pressOnRules = source.pressOnRules && typeof source.pressOnRules === 'object' && !Array.isArray(source.pressOnRules) ? source.pressOnRules : {};
+  const businessHours = source.businessHours && typeof source.businessHours === 'object' && !Array.isArray(source.businessHours) ? source.businessHours : {};
+  const bookingRequirements = source.bookingRequirements && typeof source.bookingRequirements === 'object' && !Array.isArray(source.bookingRequirements) ? source.bookingRequirements : {};
+
+  return {
+    depositRules: {
+      depositPercent: clampPercent(depositRules.depositPercent ?? DEFAULT_POLICIES.depositRules.depositPercent),
+      minimumDepositAmount: normalizePolicyNumber(depositRules.minimumDepositAmount ?? DEFAULT_POLICIES.depositRules.minimumDepositAmount),
+      fullPaymentRequired: typeof depositRules.fullPaymentRequired === 'boolean' ? depositRules.fullPaymentRequired : DEFAULT_POLICIES.depositRules.fullPaymentRequired,
+    },
+    cancellationPolicy: {
+      window: CANCELLATION_WINDOWS.includes(cancellationPolicy.window) ? cancellationPolicy.window : DEFAULT_POLICIES.cancellationPolicy.window,
+      customText: typeof cancellationPolicy.customText === 'string' ? cancellationPolicy.customText : DEFAULT_POLICIES.cancellationPolicy.customText,
+    },
+    appointmentRules: {
+      gracePeriodMinutes: normalizePolicyNumber(appointmentRules.gracePeriodMinutes ?? DEFAULT_POLICIES.appointmentRules.gracePeriodMinutes),
+      maxReschedules: normalizePolicyNumber(appointmentRules.maxReschedules ?? DEFAULT_POLICIES.appointmentRules.maxReschedules),
+      noShowFee: normalizePolicyNumber(appointmentRules.noShowFee ?? DEFAULT_POLICIES.appointmentRules.noShowFee),
+    },
+    pressOnRules: {
+      processingTimeDays: normalizePolicyNumber(pressOnRules.processingTimeDays ?? DEFAULT_POLICIES.pressOnRules.processingTimeDays),
+      rushOrderFee: normalizePolicyNumber(pressOnRules.rushOrderFee ?? DEFAULT_POLICIES.pressOnRules.rushOrderFee),
+      pickupAvailable: typeof pressOnRules.pickupAvailable === 'boolean' ? pressOnRules.pickupAvailable : DEFAULT_POLICIES.pressOnRules.pickupAvailable,
+      shippingAvailable: typeof pressOnRules.shippingAvailable === 'boolean' ? pressOnRules.shippingAvailable : DEFAULT_POLICIES.pressOnRules.shippingAvailable,
+    },
+    businessHours: BUSINESS_DAYS.reduce((normalized, day) => {
+      const hours = businessHours[day] && typeof businessHours[day] === 'object' && !Array.isArray(businessHours[day]) ? businessHours[day] : {};
+      normalized[day] = {
+        open: typeof hours.open === 'boolean' ? hours.open : DEFAULT_POLICIES.businessHours[day].open,
+        openTime: typeof hours.openTime === 'string' ? hours.openTime : DEFAULT_POLICIES.businessHours[day].openTime,
+        closeTime: typeof hours.closeTime === 'string' ? hours.closeTime : DEFAULT_POLICIES.businessHours[day].closeTime,
+      };
+      return normalized;
+    }, {}),
+    bookingRequirements: {
+      depositRequired: typeof bookingRequirements.depositRequired === 'boolean' ? bookingRequirements.depositRequired : DEFAULT_POLICIES.bookingRequirements.depositRequired,
+      consultationRequired: typeof bookingRequirements.consultationRequired === 'boolean' ? bookingRequirements.consultationRequired : DEFAULT_POLICIES.bookingRequirements.consultationRequired,
+      sizingRequired: typeof bookingRequirements.sizingRequired === 'boolean' ? bookingRequirements.sizingRequired : DEFAULT_POLICIES.bookingRequirements.sizingRequired,
+      approvalRequired: typeof bookingRequirements.approvalRequired === 'boolean' ? bookingRequirements.approvalRequired : DEFAULT_POLICIES.bookingRequirements.approvalRequired,
+    },
+  };
+};
+
+const loadSavedPolicies = () => {
+  if (typeof window === 'undefined') return normalizePolicies(DEFAULT_POLICIES);
+
+  try {
+    const saved = window.localStorage.getItem(NAIL_SHOP_POLICIES_STORAGE_KEY);
+    return saved ? normalizePolicies(JSON.parse(saved)) : normalizePolicies(DEFAULT_POLICIES);
+  } catch (error) {
+    return normalizePolicies(DEFAULT_POLICIES);
+  }
+};
+
+const persistPolicies = (policiesToSave) => {
+  if (typeof window === 'undefined') return;
+
+  try {
+    window.localStorage.setItem(NAIL_SHOP_POLICIES_STORAGE_KEY, JSON.stringify(normalizePolicies(policiesToSave)));
+  } catch (error) {
+    // Keep the manager usable if browser storage is unavailable.
+  }
 };
 
 const normalizePricingLibrary = (candidate) => {
@@ -369,6 +487,8 @@ export default function NailShop() {
   const [pricingLibrary, setPricingLibrary] = useState(loadSavedPricingLibrary);
   const [pricingMessage, setPricingMessage] = useState('');
   const [costEngineForm, setCostEngineForm] = useState(EMPTY_COST_ENGINE_FORM);
+  const [policies, setPolicies] = useState(loadSavedPolicies);
+  const [policiesMessage, setPoliciesMessage] = useState('');
 
   const updateProfile = (field, value) => {
     setSaveMessage('');
@@ -483,6 +603,46 @@ export default function NailShop() {
     setPricingLibrary(normalized);
     persistPricingLibrary(normalized);
     setPricingMessage('Pricing library saved.');
+  };
+
+
+  const updatePolicySection = (section, field, value) => {
+    setPoliciesMessage('');
+    setPolicies((current) => ({
+      ...current,
+      [section]: {
+        ...current[section],
+        [field]: value,
+      },
+    }));
+  };
+
+  const updateBusinessHours = (day, field, value) => {
+    setPoliciesMessage('');
+    setPolicies((current) => ({
+      ...current,
+      businessHours: {
+        ...current.businessHours,
+        [day]: {
+          ...current.businessHours[day],
+          [field]: value,
+        },
+      },
+    }));
+  };
+
+  const savePolicies = () => {
+    const normalized = normalizePolicies(policies);
+    setPolicies(normalized);
+    persistPolicies(normalized);
+    setPoliciesMessage('Policies saved.');
+  };
+
+  const resetPolicies = () => {
+    const defaults = normalizePolicies(DEFAULT_POLICIES);
+    setPolicies(defaults);
+    persistPolicies(defaults);
+    setPoliciesMessage('Policies reset to defaults.');
   };
 
   const normalizedServices = normalizeServices(services);
@@ -783,6 +943,75 @@ export default function NailShop() {
             <span style={styles.label}>Suggested Deposit Percent</span>
             <input value={pricingLibrary.depositPercent} onChange={(event) => setPricingLibrary((current) => ({ ...current, depositPercent: event.target.value }))} inputMode="decimal" style={styles.input} data-testid="pricing-deposit-percent-input" />
           </label>
+        </section>
+
+
+        <section style={styles.policiesPanel} aria-label="Policies & Booking Rules Manager" data-testid="policies-booking-rules-manager">
+          <div style={styles.panelHeader}>
+            <div>
+              <p style={styles.kicker}>Policies & Booking Rules</p>
+              <h2 style={styles.sectionTitle}>Define how your shop operates</h2>
+            </div>
+            <div style={styles.headerActions}>
+              <button type="button" onClick={savePolicies} style={styles.saveButton} data-testid="policies-save-button">Save Policies</button>
+              <button type="button" onClick={resetPolicies} style={styles.resetButton} data-testid="policies-reset-button">Reset to Defaults</button>
+            </div>
+          </div>
+
+          {policiesMessage && <div style={styles.saveMessage} role="status" data-testid="policies-message">{policiesMessage}</div>}
+
+          <div style={styles.policyGrid}>
+            <section style={styles.policyCard}>
+              <h3 style={styles.serviceName}>Deposit Rules</h3>
+              <label style={styles.field}><span style={styles.label}>Deposit Percent</span><input value={policies.depositRules.depositPercent} onChange={(event) => updatePolicySection('depositRules', 'depositPercent', event.target.value)} inputMode="decimal" style={styles.input} data-testid="policies-deposit-percent" /></label>
+              <label style={styles.field}><span style={styles.label}>Minimum Deposit Amount</span><input value={policies.depositRules.minimumDepositAmount} onChange={(event) => updatePolicySection('depositRules', 'minimumDepositAmount', event.target.value)} inputMode="decimal" style={styles.input} data-testid="policies-minimum-deposit" /></label>
+              <label style={styles.toggleLabel}><input type="checkbox" checked={policies.depositRules.fullPaymentRequired} onChange={(event) => updatePolicySection('depositRules', 'fullPaymentRequired', event.target.checked)} data-testid="policies-full-payment-required" />Full Payment Required</label>
+            </section>
+
+            <section style={styles.policyCard}>
+              <h3 style={styles.serviceName}>Cancellation Policy</h3>
+              <label style={styles.field}><span style={styles.label}>Cancellation Window</span><select value={policies.cancellationPolicy.window} onChange={(event) => updatePolicySection('cancellationPolicy', 'window', event.target.value)} style={styles.input} data-testid="policies-cancellation-window">{CANCELLATION_WINDOWS.map((option) => <option key={option} value={option}>{option}</option>)}</select></label>
+              <label style={styles.fullField}><span style={styles.label}>Custom Policy Text</span><textarea value={policies.cancellationPolicy.customText} onChange={(event) => updatePolicySection('cancellationPolicy', 'customText', event.target.value)} rows={4} style={{ ...styles.input, ...styles.serviceTextarea }} data-testid="policies-custom-cancellation-text" /></label>
+            </section>
+
+            <section style={styles.policyCard}>
+              <h3 style={styles.serviceName}>Appointment Rules</h3>
+              <label style={styles.field}><span style={styles.label}>Grace Period Minutes</span><input value={policies.appointmentRules.gracePeriodMinutes} onChange={(event) => updatePolicySection('appointmentRules', 'gracePeriodMinutes', event.target.value)} inputMode="numeric" style={styles.input} data-testid="policies-grace-period" /></label>
+              <label style={styles.field}><span style={styles.label}>Max Reschedules</span><input value={policies.appointmentRules.maxReschedules} onChange={(event) => updatePolicySection('appointmentRules', 'maxReschedules', event.target.value)} inputMode="numeric" style={styles.input} data-testid="policies-max-reschedules" /></label>
+              <label style={styles.field}><span style={styles.label}>No-Show Fee</span><input value={policies.appointmentRules.noShowFee} onChange={(event) => updatePolicySection('appointmentRules', 'noShowFee', event.target.value)} inputMode="decimal" style={styles.input} data-testid="policies-no-show-fee" /></label>
+            </section>
+
+            <section style={styles.policyCard}>
+              <h3 style={styles.serviceName}>Press-On Rules</h3>
+              <label style={styles.field}><span style={styles.label}>Processing Time (days)</span><input value={policies.pressOnRules.processingTimeDays} onChange={(event) => updatePolicySection('pressOnRules', 'processingTimeDays', event.target.value)} inputMode="numeric" style={styles.input} data-testid="policies-processing-time" /></label>
+              <label style={styles.field}><span style={styles.label}>Rush Order Fee</span><input value={policies.pressOnRules.rushOrderFee} onChange={(event) => updatePolicySection('pressOnRules', 'rushOrderFee', event.target.value)} inputMode="decimal" style={styles.input} data-testid="policies-rush-order-fee" /></label>
+              <label style={styles.toggleLabel}><input type="checkbox" checked={policies.pressOnRules.pickupAvailable} onChange={(event) => updatePolicySection('pressOnRules', 'pickupAvailable', event.target.checked)} data-testid="policies-pickup-available" />Pickup Available</label>
+              <label style={styles.toggleLabel}><input type="checkbox" checked={policies.pressOnRules.shippingAvailable} onChange={(event) => updatePolicySection('pressOnRules', 'shippingAvailable', event.target.checked)} data-testid="policies-shipping-available" />Shipping Available</label>
+            </section>
+          </div>
+
+          <section style={styles.policyCard}>
+            <h3 style={styles.serviceName}>Business Hours</h3>
+            <div style={styles.businessHoursGrid}>
+              {BUSINESS_DAYS.map((day) => (
+                <div key={day} style={styles.businessHoursRow} data-testid="policies-business-hours-row">
+                  <label style={styles.toggleLabel}><input type="checkbox" checked={policies.businessHours[day].open} onChange={(event) => updateBusinessHours(day, 'open', event.target.checked)} data-testid={`policies-${day.toLowerCase()}-open`} />{day}</label>
+                  <input type="time" value={policies.businessHours[day].openTime} onChange={(event) => updateBusinessHours(day, 'openTime', event.target.value)} disabled={!policies.businessHours[day].open} aria-label={`${day} open time`} style={styles.input} />
+                  <input type="time" value={policies.businessHours[day].closeTime} onChange={(event) => updateBusinessHours(day, 'closeTime', event.target.value)} disabled={!policies.businessHours[day].open} aria-label={`${day} close time`} style={styles.input} />
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section style={styles.policyCard}>
+            <h3 style={styles.serviceName}>Booking Requirements</h3>
+            <div style={styles.requirementsGrid}>
+              <label style={styles.toggleLabel}><input type="checkbox" checked={policies.bookingRequirements.depositRequired} onChange={(event) => updatePolicySection('bookingRequirements', 'depositRequired', event.target.checked)} data-testid="policies-deposit-required" />Deposit Required</label>
+              <label style={styles.toggleLabel}><input type="checkbox" checked={policies.bookingRequirements.consultationRequired} onChange={(event) => updatePolicySection('bookingRequirements', 'consultationRequired', event.target.checked)} data-testid="policies-consultation-required" />Consultation Required</label>
+              <label style={styles.toggleLabel}><input type="checkbox" checked={policies.bookingRequirements.sizingRequired} onChange={(event) => updatePolicySection('bookingRequirements', 'sizingRequired', event.target.checked)} data-testid="policies-sizing-required" />Sizing Required</label>
+              <label style={styles.toggleLabel}><input type="checkbox" checked={policies.bookingRequirements.approvalRequired} onChange={(event) => updatePolicySection('bookingRequirements', 'approvalRequired', event.target.checked)} data-testid="policies-approval-required" />Approval Required</label>
+            </div>
+          </section>
         </section>
 
         <aside style={styles.previewPanel} aria-label="Live storefront preview" data-testid="nail-shop-preview">
@@ -1163,6 +1392,44 @@ const styles = {
     display: 'grid',
     gap: 7,
     maxWidth: 320,
+  },
+  policiesPanel: {
+    background: COLORS.surface,
+    border: `1px solid ${COLORS.border}`,
+    borderRadius: 22,
+    boxShadow: '0 10px 30px rgba(60,20,50,.06)',
+    display: 'grid',
+    gap: 16,
+    gridColumn: '1 / -1',
+    padding: 22,
+  },
+  policyGrid: {
+    display: 'grid',
+    gap: 14,
+    gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+  },
+  policyCard: {
+    background: COLORS.roseDim,
+    border: `1px solid ${COLORS.border}`,
+    borderRadius: 18,
+    display: 'grid',
+    gap: 12,
+    padding: 16,
+  },
+  businessHoursGrid: {
+    display: 'grid',
+    gap: 10,
+  },
+  businessHoursRow: {
+    alignItems: 'center',
+    display: 'grid',
+    gap: 10,
+    gridTemplateColumns: 'minmax(130px, 1fr) minmax(110px, 140px) minmax(110px, 140px)',
+  },
+  requirementsGrid: {
+    display: 'grid',
+    gap: 12,
+    gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
   },
   servicePanel: {
     background: COLORS.surface,
