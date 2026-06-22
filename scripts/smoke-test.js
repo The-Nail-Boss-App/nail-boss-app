@@ -145,6 +145,13 @@ function assertNailShopProfilePersistenceSource() {
   assert(nailShopSource.includes("navigator.clipboard?.writeText") && nailShopSource.includes("Clipboard unavailable"), "copy summary should fail safely when clipboard API is unavailable");
   assert(nailShopSource.includes("buildProposalReadiness") && nailShopSource.includes("buildProposalDraftSummary"), "proposal readiness helpers should derive from Nail Shop data only");
   assert(appSource.includes("setPage(PAGES.STUDIO)"), "login should still land on Design Studio");
+  const fullSetRendererSource = fs.readFileSync(path.join(__dirname, "..", "client", "src", "FullSetRenderer.jsx"), "utf8");
+  const fullSetRendererHelperSource = fs.readFileSync(path.join(__dirname, "..", "client", "src", "fullSetRenderer.js"), "utf8");
+  assert(fullSetRendererSource.includes("FullSetRenderer") && fullSetRendererHelperSource.includes("normalizeFullSetDesign"), "FullSetRenderer engine and helpers should exist");
+  assert(fullSetRendererSource.includes("data-testid={`full-set-renderer-${renderMode}`}") && fullSetRendererHelperSource.includes("FULL_SET_RENDER_MODES = ['left', 'right', 'full', 'hero']"), "left, right, full, and hero render modes should be supported");
+  assert(fullSetRendererHelperSource.includes("normalizeFullSetNail") && fullSetRendererHelperSource.includes("normalizeLayers") && fullSetRendererHelperSource.includes("DEFAULT_COLORS"), "missing full set data should safely fall back to placeholder nails");
+  assert(fullSetRendererSource.includes("NailThumbnail") && fullSetRendererSource.includes("./design-studio/NailThumbnail"), "FullSetRenderer should reuse the existing thumbnail renderer");
+  assert(nailShopSource.includes("Full Set Renderer Preview") && nailShopSource.includes("full-set-renderer-preview-section"), "Nail Shop should include a visual-only Full Set Renderer Preview section");
   assert(!nailShopSource.includes("Full Set Composition"), "Full Set Composition should stay absent from Nail Shop");
 }
 
