@@ -33,8 +33,40 @@ assert.equal(themedBlueprint.designSnapshot.designName, 'Sample Content', 'theme
 assert.equal(themedBlueprint.designSnapshot.designId, 'sample-design', 'createBlueprintFromDesign uses the selected design id');
 assert.equal(themedBlueprint.designSnapshot.jewels[0], 'crystal', 'createBlueprintFromDesign extracts real selected design jewels');
 assert.equal(themedBlueprint.designSnapshot.fullSetData.nails.left[0].shape, 'Almond', 'selected design full-set data is stored in blueprint snapshot');
+const metadataDesign = {
+  id: 'metadata-design',
+  name: 'Metadata Set',
+  nails: [
+    { shape: 'Coffin', length: 0.82, width: 0.44, baseColorHex: '#112233', layers: [
+      { type: 'base', data: { colorHex: '#112233', polishType: 'Jelly', effect: 'Chrome' } },
+      { type: 'gradient', data: { colorA: '#112233', colorB: '#445566', direction: 'aura', gradientStops: [{ color: '#112233' }, { color: '#445566' }] } },
+      { type: 'pattern', data: { pattern: 'marble', patternColorHex: '#778899' } },
+      { type: 'frenchTip', data: { style: 'deep', tipColorHex: '#ffffff' } },
+      { type: 'charm', data: { assetId: 'bow-gold' } },
+      { type: 'jewel', data: { assetId: 'crystal' } },
+      { type: 'decal', data: { assetId: 'star-decal' } },
+    ] },
+  ],
+};
+const metadataBlueprint = engine.createBlueprintFromDesign(metadataDesign);
+assert.equal(metadataBlueprint.designSnapshot.shape, 'Coffin', 'createBlueprintFromDesign extracts shape from saved design nails');
+assert.equal(metadataBlueprint.designSnapshot.baseColor, '#112233', 'createBlueprintFromDesign extracts base color');
+assert(metadataBlueprint.designSnapshot.palette.includes('#445566'), 'createBlueprintFromDesign extracts gradient colors into palette');
+assert(metadataBlueprint.designSnapshot.effects.some((effect) => /Gradient aura/.test(effect)), 'createBlueprintFromDesign extracts gradient effects');
+assert(metadataBlueprint.designSnapshot.chrome, 'createBlueprintFromDesign flags chrome effects');
+assert(metadataBlueprint.designSnapshot.marble, 'createBlueprintFromDesign flags marble pattern effects');
+assert.equal(metadataBlueprint.designSnapshot.charmCount, 1, 'createBlueprintFromDesign counts charms');
+assert.equal(metadataBlueprint.designSnapshot.jewelCount, 1, 'createBlueprintFromDesign counts jewels');
+assert.equal(metadataBlueprint.designSnapshot.decalCount, 1, 'createBlueprintFromDesign counts decals');
+assert.equal(metadataBlueprint.designSnapshot.layerCount, 7, 'createBlueprintFromDesign extracts layer count');
+assert.equal(metadataBlueprint.designSnapshot.artLevel, 'Detailed', 'createBlueprintFromDesign extracts art level');
+
 const malformedBlueprint = engine.createBlueprintFromDesign(null, { title: 'Malformed Safe Blueprint' });
 assert.equal(malformedBlueprint.title, 'Malformed Safe Blueprint', 'malformed design data falls back safely');
+assert.equal(malformedBlueprint.designSnapshot.shape, 'Unknown Shape', 'malformed design shape fallback is explicit');
+assert.equal(malformedBlueprint.designSnapshot.length, 'Unknown Length', 'malformed design length fallback is explicit');
+assert.deepEqual(malformedBlueprint.designSnapshot.effects, ['No Effects'], 'malformed design effect fallback is explicit');
+assert(!engineSource.includes('Not specified'), 'no Not specified placeholders remain in blueprint metadata helpers');
 
 assert(shopSource.includes('data-testid="blueprint-theme-builder-controls"'), 'Blueprint Engine Preview exposes theme builder controls');
 assert(shopSource.includes('data-testid="saved-design-selector"'), 'saved design selector exists');
@@ -59,3 +91,5 @@ assert(!proposalsSource.includes('blueprint-theme-builder-controls'), 'Proposals
 const hero7 = blueprintSource.match(/export const SHAPES = \[(.*?)\]/s)?.[1]?.replace(/['"\s]/g, '').split(',').filter(Boolean);
 assert.deepEqual(hero7, ['Almond', 'Square', 'Coffin', 'Stiletto', 'Oval', 'Round', 'Lipstick'], 'Hero 7 exact');
 assert(!hero7.includes('Duck'), 'Duck hidden from visible shape list');
+
+assert(!shopSource.includes('Full Set Composition'), 'Full Set Composition remains absent');

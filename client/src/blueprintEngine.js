@@ -54,6 +54,23 @@ const designLayerValues = (design, predicate, mapper) => uniqueList(
 const uniqueList = (items) => [...new Set(list(items).map((item) => String(item || '').trim()).filter(Boolean))];
 
 const safeThemeId = (input) => text(input).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || DEFAULT_THEME.themeId;
+
+export const DESIGN_METADATA_FIELD_PATHS = {
+  shape: ['design.shape', 'design.nails[].shape', 'design.fullSetData.nails[].shape', 'design.blueprint.nails[].shape'],
+  length: ['design.length', 'design.nails[].length', 'design.fullSetData.nails[].length', 'design.blueprint.nails[].length'],
+  width: ['design.width', 'design.nails[].width', 'design.fullSetData.nails[].width', 'design.blueprint.nails[].width'],
+  baseColor: ['design.baseColorHex', 'design.nails[].baseColorHex', 'design.nails[].layers[type=base].data.colorHex'],
+  secondaryColors: ['layer.data.effectColorHex', 'layer.data.patternColorHex', 'layer.data.patternSecondaryColorHex', 'layer.data.secondaryColorHex', 'layer.data.gradientStops[].color'],
+  gradients: ['design.nails[].layers[type=gradient].data', 'layer.data.colorA', 'layer.data.colorB', 'layer.data.gradientStops[]', 'layer.data.direction'],
+  polishEffects: ['design.effect', 'design.polishType', 'design.nails[].layers[type=base].data.effect', 'layer.data.polishType', 'layer.data.topCoat'],
+  frenchTips: ['design.nails[].layers[type=frenchTip].data.style', 'layer.data.preset', 'layer.data.tipColorHex'],
+  patterns: ['design.nails[].layers[type=pattern].data.pattern', 'layer.data.patternColorHex', 'layer.data.patternSecondaryColorHex'],
+  charms: ['design.nails[].layers[type=charm].data.assetId'],
+  jewels: ['design.nails[].layers[type=jewel].data.assetId'],
+  decals: ['design.nails[].layers[type=decal].data.assetId'],
+  layers: ['design.nails[].layers[]', 'layer.type', 'layer.visible', 'layer.data'],
+};
+
 const safeColor = (value, fallback) => (/^#[0-9a-f]{6}$/i.test(String(value || '')) ? String(value).toLowerCase() : fallback);
 
 export function getDefaultBlueprintThemes() {
@@ -119,9 +136,13 @@ export function normalizeBlueprint(input) {
       fullSetData: design.fullSetData || design.nails || source.fullSetData || { nails: [] },
       shape: text(design.shape, 'Mixed'), length: text(design.length, 'Custom'), width: text(design.width, 'Custom'),
       colors: list(design.colors), effects: list(design.effects), charms: list(design.charms), jewels: list(design.jewels), decals: list(design.decals),
+      baseColor: text(design.baseColor), secondaryColors: list(design.secondaryColors), palette: list(design.palette),
+      polishTypes: list(design.polishTypes), gradients: list(design.gradients), chrome: Boolean(design.chrome), catEye: Boolean(design.catEye), marble: Boolean(design.marble), frenchTips: list(design.frenchTips), patterns: list(design.patterns),
+      charmCount: Number(design.charmCount) || 0, jewelCount: Number(design.jewelCount) || 0, decalCount: Number(design.decalCount) || 0, layerCount: Number(design.layerCount) || 0, artLayerCount: Number(design.artLayerCount) || 0,
+      artLevel: text(design.artLevel, 'Minimal'), artSummary: text(design.artSummary, 'No Effects'), effectsUsed: list(design.effectsUsed),
     },
     pricingGuidance: { suggestedPrice: numberOrNull(pricing.suggestedPrice), suggestedDeposit: numberOrNull(pricing.suggestedDeposit), estimatedTime: text(pricing.estimatedTime, 'Not estimated'), breakdown: isObject(pricing.breakdown) ? pricing.breakdown : {} },
-    materials: { colors: list(materials.colors), products: list(materials.products), vendorReferences: list(materials.vendorReferences) },
+    materials: { colors: list(materials.colors), effects: list(materials.effects), products: list(materials.products), vendorReferences: list(materials.vendorReferences) },
     tags: list(source.tags), difficulty: text(source.difficulty, 'Not rated'), collectionName: text(source.collectionName),
     theme: normalizeBlueprintTheme(source.theme),
     visibility: ['private', 'portfolio', 'gallery-ready'].includes(source.visibility) ? source.visibility : 'private',
@@ -162,28 +183,104 @@ export function duplicateBlueprintLibraryRecord(blueprint) {
   });
 }
 
+const collectLayerColors = (layer) => {
+  const data = isObject(layer?.data) ? layer.data : {};
+  return uniqueList([
+    data.colorHex,
+    data.effectColorHex,
+    data.colorA,
+    data.colorB,
+    data.patternColorHex,
+    data.patternSecondaryColorHex,
+    data.secondaryColorHex,
+    ...list(data.gradientStops).map((stop) => stop?.color || stop?.colorHex),
+    ...list(data.strokes).map((stroke) => stroke?.colorHex),
+  ]).filter((color) => /^#[0-9a-f]{6}$/i.test(color));
+};
+
+const collectDesignMetadata = (design) => {
+  const source = isObject(design) ? design : {};
+  const nails = flattenDesignNails(source);
+  const layers = nails.flatMap((nail) => list(nail?.layers).filter((layer) => layer?.visible !== false));
+  const baseLayers = layers.filter((layer) => layer?.type === 'base');
+  const typeCount = (type) => layers.filter((layer) => layer?.type === type).length;
+  const layerLabels = (type, fallback) => uniqueList(layers
+    .filter((layer) => layer?.type === type)
+    .map((layer) => layer?.data?.label || layer?.data?.assetId || layer?.data?.pattern || layer?.data?.style || layer?.data?.preset || fallback));
+  const shapes = uniqueList([source.shape, ...nails.map((nail) => nail?.shape)]);
+  const lengths = uniqueList([source.length, ...nails.map((nail) => nail?.length)]);
+  const widths = uniqueList([source.width, ...nails.map((nail) => nail?.width)]);
+  const baseColors = uniqueList([source.baseColorHex, ...nails.map((nail) => nail?.baseColorHex), ...baseLayers.flatMap(collectLayerColors)]);
+  const palette = uniqueList([...baseColors, ...layers.flatMap(collectLayerColors), ...list(source.colors)]);
+  const gradientLabels = uniqueList(layers.filter((layer) => layer?.type === 'gradient').map((layer) => layer?.data?.direction ? `Gradient ${layer.data.direction}` : 'Gradient'));
+  const polishTypes = uniqueList([source.polishType, ...baseLayers.map((layer) => layer?.data?.polishType)]);
+  const baseEffects = uniqueList([source.effect, ...baseLayers.map((layer) => layer?.data?.effect)].filter((effect) => effect && effect !== 'Solid'));
+  const effectTypes = uniqueList([
+    ...baseEffects,
+    ...gradientLabels,
+    ...layerLabels('pattern', 'Pattern'),
+    ...layerLabels('frenchTip', 'French tip'),
+    ...layers.filter((layer) => ['drawing'].includes(layer?.type)).map(() => 'Hand-painted art'),
+  ]);
+  const charmLabels = layerLabels('charm', 'Charm');
+  const jewelLabels = layerLabels('jewel', 'Jewel');
+  const decalLabels = layerLabels('decal', 'Decal');
+  const artLayerCount = layers.filter((layer) => !['base', 'charm', 'jewel', 'decal'].includes(layer?.type)).length;
+  const embellishmentCount = typeCount('charm') + typeCount('jewel') + typeCount('decal');
+  const artSummaryParts = uniqueList([
+    typeCount('gradient') ? `${typeCount('gradient')} gradient` : '',
+    typeCount('pattern') ? `${typeCount('pattern')} pattern` : '',
+    typeCount('frenchTip') ? `${typeCount('frenchTip')} french tip` : '',
+    typeCount('drawing') ? `${typeCount('drawing')} drawing` : '',
+    embellishmentCount ? `${embellishmentCount} embellishment` : '',
+  ]);
+
+  return {
+    shape: shapes.join(', ') || 'Unknown Shape',
+    length: lengths.join(', ') || 'Unknown Length',
+    width: widths.join(', ') || 'Unknown Width',
+    baseColor: baseColors[0] || '',
+    secondaryColors: palette.slice(baseColors.length),
+    palette,
+    colors: palette,
+    effects: effectTypes.length ? effectTypes : ['No Effects'],
+    polishTypes,
+    gradients: gradientLabels,
+    chrome: baseEffects.some((effect) => /chrome/i.test(effect)),
+    catEye: baseEffects.some((effect) => /cat\s*eye|cateye/i.test(effect)),
+    marble: [...baseEffects, ...layerLabels('pattern', '')].some((effect) => /marble/i.test(effect)),
+    frenchTips: layerLabels('frenchTip', 'French tip'),
+    patterns: layerLabels('pattern', 'Pattern'),
+    charms: charmLabels.length ? charmLabels : ['No Embellishments'],
+    jewels: jewelLabels.length ? jewelLabels : ['No Embellishments'],
+    decals: decalLabels.length ? decalLabels : ['No Embellishments'],
+    charmCount: typeCount('charm'),
+    jewelCount: typeCount('jewel'),
+    decalCount: typeCount('decal'),
+    layerCount: layers.length,
+    artLayerCount,
+    artLevel: artLayerCount + embellishmentCount >= 8 ? 'Advanced' : artLayerCount + embellishmentCount >= 3 ? 'Detailed' : artLayerCount + embellishmentCount > 0 ? 'Simple' : 'Minimal',
+    artSummary: artSummaryParts.length ? artSummaryParts.join(', ') : 'No Effects',
+    effectsUsed: effectTypes.length ? effectTypes : ['No Effects'],
+  };
+};
+
 export function createBlueprintFromDesign(design, options = {}) {
   const source = isObject(design) ? design : {};
   const fullSetData = firstDefined(source.fullSetData, source.fullSet, source.blueprint, source.nails ? { nails: source.nails } : source);
-  const extractedColors = designLayerValues(source, (layer) => layer?.data?.colorHex || layer?.data?.colorA || layer?.data?.colorB, (layer) => layer?.data?.colorHex || layer?.data?.colorA || layer?.data?.colorB);
-  const extractedEffects = designLayerValues(source, (layer) => layer?.type && layer.type !== 'base', (layer) => layer?.data?.label || layer?.data?.pattern || layer?.data?.style || layer.type);
-  const extractedCharms = designLayerValues(source, (layer) => layer?.type === 'charm', (layer) => layer?.data?.assetId || 'Charm');
-  const extractedJewels = designLayerValues(source, (layer) => layer?.type === 'jewel', (layer) => layer?.data?.assetId || 'Jewel');
-  const extractedDecals = designLayerValues(source, (layer) => layer?.type === 'decal', (layer) => layer?.data?.assetId || 'Decal');
+  const metadata = collectDesignMetadata(source);
   const designSnapshot = {
     ...source,
     ...(options.designSnapshot || {}),
     designId: firstDefined(source.id, source.designId),
     designName: firstDefined(source.name, source.designName),
     fullSetData,
-    shape: firstDefined(source.shape, options.designSnapshot?.shape),
-    length: firstDefined(source.length, options.designSnapshot?.length),
-    width: firstDefined(source.width, options.designSnapshot?.width),
-    colors: uniqueList(firstDefined(source.colors, options.designSnapshot?.colors, extractedColors)),
-    effects: uniqueList(firstDefined(source.effects, options.designSnapshot?.effects, extractedEffects)),
-    charms: uniqueList(firstDefined(source.charms, options.designSnapshot?.charms, extractedCharms)),
-    jewels: uniqueList(firstDefined(source.jewels, options.designSnapshot?.jewels, extractedJewels)),
-    decals: uniqueList(firstDefined(source.decals, options.designSnapshot?.decals, extractedDecals)),
+    ...metadata,
+    colors: uniqueList(firstDefined(source.colors, options.designSnapshot?.colors, metadata.colors)),
+    effects: uniqueList(firstDefined(source.effects, options.designSnapshot?.effects, metadata.effects)),
+    charms: uniqueList(firstDefined(source.charms, options.designSnapshot?.charms, metadata.charms)),
+    jewels: uniqueList(firstDefined(source.jewels, options.designSnapshot?.jewels, metadata.jewels)),
+    decals: uniqueList(firstDefined(source.decals, options.designSnapshot?.decals, metadata.decals)),
   };
 
   return normalizeBlueprint({
@@ -193,7 +290,7 @@ export function createBlueprintFromDesign(design, options = {}) {
     designName: designSnapshot.designName,
     designSnapshot,
     pricingGuidance: options.pricingGuidance,
-    materials: options.materials || { colors: designSnapshot.colors },
+    materials: options.materials || { colors: designSnapshot.colors, products: [], vendorReferences: [], effects: designSnapshot.effectsUsed || designSnapshot.effects },
     theme: options.theme,
   });
 }
