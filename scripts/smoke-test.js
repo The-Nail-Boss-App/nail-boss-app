@@ -106,6 +106,20 @@ function assertNailShopProfilePersistenceSource() {
   assert(nailShopSource.includes("Blueprint Engine Preview") && nailShopSource.includes('data-testid="blueprint-engine-preview-section"'), "Blueprint Engine Preview should exist in Nail Shop");
   assert(nailShopSource.includes('data-testid="blueprint-theme-selector"') && nailShopSource.includes('data-testid="blueprint-theme-preview-card"'), "Blueprint Theme selector and themed preview should exist");
   assert(nailShopSource.includes("Preview only") && nailShopSource.includes("does not publish to Gallery or Marketplace") && nailShopSource.includes("connect to Proposals") && nailShopSource.includes("connect to Design Studio"), "Blueprint Engine Preview should clearly stay local and unpublished");
+  assert(nailShopSource.includes("Blueprint Library") && nailShopSource.includes('data-testid={`nail-shop-tab-${section.id}`}'), "Blueprint Library tab exists");
+  assert(nailShopSource.includes("BLUEPRINT_LIBRARY_STORAGE_KEY") && nailShopSource.includes("anitaset.blueprintLibrary.v1"), "Blueprint Library should use required localStorage key");
+  assert(nailShopSource.includes("loadSavedBlueprintLibrary") && nailShopSource.includes("persistBlueprintLibrary") && nailShopSource.includes("window.localStorage.setItem(BLUEPRINT_LIBRARY_STORAGE_KEY"), "Blueprint Library should load from and persist to localStorage");
+  assert(nailShopSource.includes("normalizeBlueprintLibrary(JSON.parse(saved))") && nailShopSource.includes("return []"), "malformed localStorage fallback exists for Blueprint Library");
+  assert(nailShopSource.includes('data-testid="blueprint-save-button"') && nailShopSource.includes('data-testid="blueprint-library-save-button"') && nailShopSource.includes("Save Blueprint"), "Save Blueprint button exists");
+  assert(nailShopSource.includes("createBlueprintLibraryRecord(sampleBlueprint") && nailShopSource.includes("theme: selectedBlueprintTheme") && nailShopSource.includes("collectionName: selectedBlueprintTheme.collectionLabel"), "saved blueprint includes content and theme");
+  assert(nailShopSource.includes('data-testid="blueprint-library-grid"') && nailShopSource.includes('data-testid="blueprint-library-card"'), "library grid exists");
+  assert(nailShopSource.includes('data-testid="blueprint-library-search"') && nailShopSource.includes("Search title, collection, tags"), "Blueprint Library search exists");
+  assert(nailShopSource.includes('data-testid="blueprint-library-filter"') && ["All", "Private", "Portfolio", "Gallery Ready"].every((label) => nailShopSource.includes(label)), "Blueprint Library filters exist");
+  assert(nailShopSource.includes('data-testid="blueprint-library-sort"') && ["Newest", "Oldest", "Recently Updated", "Title A-Z"].every((label) => nailShopSource.includes(label)), "Blueprint Library sort exists");
+  assert(nailShopSource.includes('data-testid="blueprint-library-duplicate-button"') && nailShopSource.includes("duplicateBlueprintLibraryRecord"), "duplicate action exists");
+  assert(nailShopSource.includes('data-testid="blueprint-library-rename-button"') && nailShopSource.includes("window.prompt('Rename Blueprint'"), "rename action exists");
+  assert(nailShopSource.includes('data-testid="blueprint-library-delete-button"') && nailShopSource.includes("window.confirm('Delete this local Blueprint?"), "delete action exists with safe confirmation");
+  assert(nailShopSource.includes("Blueprint Library is private and local-only for now. It does not publish to Gallery, Marketplace, or Proposals."), "Blueprint Library preview-only guardrail copy exists");
 
   assert(nailShopSource.includes("export default function NailShop()"), "Nail Shop renders through the NailShop component");
   assert(nailShopSource.includes("data-testid=\"nail-shop-save\"") && nailShopSource.includes("Save Shop"), "Save Shop button should exist");
