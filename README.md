@@ -42,6 +42,15 @@ Allowed proposal statuses are preserved:
 - `ChangesRequested`
 - `Declined`
 
+### Blueprint Engine and Theme Builder status
+
+Milestone 4A and 4B are complete in the Nail Shop preview surface:
+
+- **4A Blueprint Engine + Default Themes:** the frontend exposes a local Blueprint Engine preview that normalizes blueprint content, keeps design content separate from presentation, and ships default themes for Classic, Luxury, Editorial, Bridal, Summer, Holiday, Goth, Mermaid, Cheetah, and Minimal looks.
+- **4B Blueprint Theme Builder:** the Nail Shop Blueprint Engine section includes preview-only controls for changing the selected theme foundation, collection branding, theme name, colors, typography style, and accent style without publishing to Gallery or Marketplace, creating backend blueprint records, or connecting to Proposals or Design Studio.
+
+The Blueprint Theme Builder is intentionally preview-only: theme edits are held in component state, are not saved to localStorage, and do not mutate the underlying blueprint content signature.
+
 ### Nail Blueprint foundation
 
 Milestone 3 adds a structured Nail Blueprint alongside the existing flat design fields. The blueprint is the durable editing document for future Canva-style single-nail and full-set tools, while the legacy fields remain the compatibility layer for saved-design cards, proposal creation, and public proposal rendering.
