@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { COLORS } from './styles';
 import FullSetRenderer from './FullSetRenderer';
 import { buildBlueprintPreviewSummary, createBlueprintFromDesign, createBlueprintLibraryRecord, createCustomBlueprintTheme, duplicateBlueprintLibraryRecord, getBlueprintContentSignature, getDefaultBlueprintThemes, normalizeBlueprintLibrary, normalizeBlueprintTheme } from './blueprintEngine';
@@ -721,6 +721,7 @@ export default function NailShop() {
   const [blueprintLibrarySort, setBlueprintLibrarySort] = useState('newest');
   const [selectedLibraryBlueprintId, setSelectedLibraryBlueprintId] = useState(null);
   const [blueprintLibraryMessage, setBlueprintLibraryMessage] = useState('');
+  const [blueprintLibraryMessageType, setBlueprintLibraryMessageType] = useState('success');
 
   const updateProfile = (field, value) => {
     setSaveMessage('');
@@ -934,6 +935,15 @@ export default function NailShop() {
       return Date.parse(b.createdAt) - Date.parse(a.createdAt);
     });
 
+  useEffect(() => {
+    if (!blueprintLibraryMessage) return undefined;
+    const timeoutId = window.setTimeout(() => {
+      setBlueprintLibraryMessage('');
+      setBlueprintLibraryMessageType('success');
+    }, 5000);
+    return () => window.clearTimeout(timeoutId);
+  }, [blueprintLibraryMessage]);
+
   const updateBlueprintThemeOverride = (field, value) => {
     setBlueprintThemeOverrides((current) => ({ ...current, [field]: value }));
   };
@@ -965,14 +975,22 @@ export default function NailShop() {
       theme: selectedBlueprintTheme,
     });
     const nextLibrary = normalizeBlueprintLibrary([record, ...normalizedBlueprintLibrary]);
-    setBlueprintLibrary(nextLibrary);
-    persistBlueprintLibrary(nextLibrary);
-    setSelectedLibraryBlueprintId(record.blueprintId);
-    setBlueprintLibraryMessage('Blueprint saved locally.');
+
+    try {
+      persistBlueprintLibrary(nextLibrary);
+      setBlueprintLibrary(nextLibrary);
+      setSelectedLibraryBlueprintId(record.blueprintId);
+      setBlueprintLibraryMessageType('success');
+      setBlueprintLibraryMessage(`Blueprint saved to Library: ${record.title}.`);
+    } catch (error) {
+      setBlueprintLibraryMessageType('error');
+      setBlueprintLibraryMessage('Blueprint could not be saved. Check browser storage and try again.');
+    }
   };
 
   const selectLibraryBlueprint = (blueprintId) => {
     setSelectedLibraryBlueprintId(blueprintId);
+    setBlueprintLibraryMessageType('success');
     setBlueprintLibraryMessage('Blueprint opened locally. No publishing or proposal connection occurred.');
   };
 
@@ -982,6 +1000,7 @@ export default function NailShop() {
     setBlueprintLibrary(nextLibrary);
     persistBlueprintLibrary(nextLibrary);
     setSelectedLibraryBlueprintId(duplicate.blueprintId);
+    setBlueprintLibraryMessageType('success');
     setBlueprintLibraryMessage('Blueprint duplicated locally.');
   };
 
@@ -993,6 +1012,7 @@ export default function NailShop() {
     )));
     setBlueprintLibrary(nextLibrary);
     persistBlueprintLibrary(nextLibrary);
+    setBlueprintLibraryMessageType('success');
     setBlueprintLibraryMessage('Blueprint renamed locally.');
   };
 
@@ -1002,6 +1022,7 @@ export default function NailShop() {
     setBlueprintLibrary(nextLibrary);
     persistBlueprintLibrary(nextLibrary);
     if (selectedLibraryBlueprintId === blueprintId) setSelectedLibraryBlueprintId(null);
+    setBlueprintLibraryMessageType('success');
     setBlueprintLibraryMessage('Blueprint deleted locally.');
   };
 
@@ -1544,6 +1565,12 @@ export default function NailShop() {
             <button type="button" style={styles.secondaryButton} onClick={resetBlueprintThemeBuilder} data-testid="blueprint-theme-reset">Reset to default theme</button>
             <button type="button" style={styles.saveButton} onClick={saveSampleBlueprintToLibrary} data-testid="blueprint-save-button">Save Blueprint</button>
           </div>
+          {blueprintLibraryMessage && (
+            <div style={blueprintLibraryMessageType === 'error' ? styles.errorMessage : styles.successMessage} role="status" data-testid="blueprint-save-confirmation">
+              <span>{blueprintLibraryMessage}</span>
+              <button type="button" style={styles.inlineDismissButton} onClick={() => setBlueprintLibraryMessage('')} aria-label="Dismiss Blueprint save message">Dismiss</button>
+            </div>
+          )}
 
           <article style={{ ...styles.blueprintThemeCard, background: `${blueprintAccent.pattern}, ${selectedBlueprintTheme.backgroundColor}`, color: selectedBlueprintTheme.textColor, borderColor: selectedBlueprintTheme.accentColor, borderRadius: blueprintAccent.borderRadius, boxShadow: blueprintAccent.boxShadow }} data-testid="blueprint-theme-preview-card" data-content-signature={blueprintContentSignature}>
             <div style={{ ...styles.blueprintCoverStrip, background: selectedBlueprintTheme.accentColor }} data-testid="blueprint-cover-style" />
@@ -1575,7 +1602,12 @@ export default function NailShop() {
             </div>
             <button type="button" style={styles.saveButton} onClick={saveSampleBlueprintToLibrary} data-testid="blueprint-library-save-button">Save Blueprint</button>
           </div>
-          {blueprintLibraryMessage && <p style={styles.successMessage}>{blueprintLibraryMessage}</p>}
+          {blueprintLibraryMessage && (
+            <div style={blueprintLibraryMessageType === 'error' ? styles.errorMessage : styles.successMessage} role="status" data-testid="blueprint-save-confirmation">
+              <span>{blueprintLibraryMessage}</span>
+              <button type="button" style={styles.inlineDismissButton} onClick={() => setBlueprintLibraryMessage('')} aria-label="Dismiss Blueprint save message">Dismiss</button>
+            </div>
+          )}
           <div style={styles.blueprintBuilderGrid} data-testid="blueprint-library-controls">
             <label style={styles.depositField}><span style={styles.label}>Search</span><input style={styles.input} value={blueprintLibrarySearch} onChange={(event) => setBlueprintLibrarySearch(event.target.value)} placeholder="Search title, collection, tags" data-testid="blueprint-library-search" /></label>
             <label style={styles.depositField}><span style={styles.label}>Filter</span><select style={styles.input} value={blueprintLibraryFilter} onChange={(event) => setBlueprintLibraryFilter(event.target.value)} data-testid="blueprint-library-filter"><option value="all">All</option><option value="private">Private</option><option value="portfolio">Portfolio</option><option value="gallery-ready">Gallery Ready</option></select></label>
@@ -1804,6 +1836,34 @@ const styles = {
     color: '#166534',
     fontSize: 13,
     fontWeight: 700,
+    marginBottom: 16,
+    padding: '10px 12px',
+  },
+  successMessage: {
+    alignItems: 'center',
+    background: '#f0fdf4',
+    border: '1px solid #86efac',
+    borderRadius: 12,
+    color: '#166534',
+    display: 'flex',
+    fontSize: 13,
+    fontWeight: 700,
+    gap: 12,
+    justifyContent: 'space-between',
+    marginBottom: 16,
+    padding: '10px 12px',
+  },
+  errorMessage: {
+    alignItems: 'center',
+    background: '#fef2f2',
+    border: '1px solid #fca5a5',
+    borderRadius: 12,
+    color: '#991b1b',
+    display: 'flex',
+    fontSize: 13,
+    fontWeight: 700,
+    gap: 12,
+    justifyContent: 'space-between',
     marginBottom: 16,
     padding: '10px 12px',
   },
@@ -2074,6 +2134,14 @@ const styles = {
     display: 'grid',
     gap: 10,
     gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+  },
+  inlineDismissButton: {
+    background: 'transparent',
+    border: 'none',
+    color: 'inherit',
+    cursor: 'pointer',
+    fontWeight: 800,
+    textDecoration: 'underline',
   },
   blueprintLibraryGrid: {
     display: 'grid',
