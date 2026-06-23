@@ -95,6 +95,17 @@ function assertNailShopProfilePersistenceSource() {
   const nailShopSource = fs.readFileSync(path.join(__dirname, "..", "client", "src", "NailShop.jsx"), "utf8");
   const appSource = fs.readFileSync(path.join(__dirname, "..", "client", "src", "App.jsx"), "utf8");
   const proposalsSource = fs.readFileSync(path.join(__dirname, "..", "client", "src", "Proposals.jsx"), "utf8");
+  const blueprintEngineSource = fs.readFileSync(path.join(__dirname, "..", "client", "src", "blueprintEngine.js"), "utf8");
+
+
+  assert(blueprintEngineSource.includes("export function createBlueprintFromDesign") && blueprintEngineSource.includes("export function normalizeBlueprint") && blueprintEngineSource.includes("export function normalizeBlueprintTheme"), "Blueprint Engine helper exports should exist");
+  assert(blueprintEngineSource.includes("export function getDefaultBlueprintThemes") && ["Classic", "Luxury", "Editorial", "Bridal", "Summer", "Holiday", "Goth", "Mermaid", "Cheetah", "Minimal"].every((theme) => blueprintEngineSource.includes(theme)), "default Blueprint Themes should exist");
+  assert(blueprintEngineSource.includes("export function buildBlueprintPreviewSummary") && blueprintEngineSource.includes("designSnapshot") && blueprintEngineSource.includes("pricingGuidance"), "Blueprint preview summary should derive from normalized Blueprint content");
+  assert(blueprintEngineSource.includes("normalizeBlueprintTheme(source.theme)") && blueprintEngineSource.includes("pricingGuidance: { suggestedPrice") && blueprintEngineSource.includes("designSnapshot: {"), "Blueprint theme normalization should not mutate designSnapshot or pricingGuidance");
+  assert(blueprintEngineSource.includes("isObject(input) ? input : {}") && blueprintEngineSource.includes("DEFAULT_THEME") && blueprintEngineSource.includes("safeColor"), "malformed Blueprint and theme input should safely fall back");
+  assert(nailShopSource.includes("Blueprint Engine Preview") && nailShopSource.includes('data-testid="blueprint-engine-preview-section"'), "Blueprint Engine Preview should exist in Nail Shop");
+  assert(nailShopSource.includes('data-testid="blueprint-theme-selector"') && nailShopSource.includes('data-testid="blueprint-theme-preview-card"'), "Blueprint Theme selector and themed preview should exist");
+  assert(nailShopSource.includes("Preview only") && nailShopSource.includes("does not publish to Gallery or Marketplace") && nailShopSource.includes("connect to Proposals") && nailShopSource.includes("connect to Design Studio"), "Blueprint Engine Preview should clearly stay local and unpublished");
 
   assert(nailShopSource.includes("export default function NailShop()"), "Nail Shop renders through the NailShop component");
   assert(nailShopSource.includes("data-testid=\"nail-shop-save\"") && nailShopSource.includes("Save Shop"), "Save Shop button should exist");

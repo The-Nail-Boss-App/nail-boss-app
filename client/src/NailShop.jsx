@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { COLORS } from './styles';
 import FullSetRenderer from './FullSetRenderer';
+import { buildBlueprintPreviewSummary, createBlueprintFromDesign, getDefaultBlueprintThemes, normalizeBlueprintTheme } from './blueprintEngine';
 
 
 const FULL_SET_RENDERER_SAMPLE = {
@@ -667,6 +668,7 @@ export default function NailShop() {
   const [generatedProposalDraft, setGeneratedProposalDraft] = useState(null);
   const [proposalDraftMessage, setProposalDraftMessage] = useState('');
   const [activeSection, setActiveSection] = useState('profile');
+  const [selectedBlueprintThemeId, setSelectedBlueprintThemeId] = useState('classic');
 
   const updateProfile = (field, value) => {
     setSaveMessage('');
@@ -838,6 +840,29 @@ export default function NailShop() {
   const liveProposalDraftData = getProposalDraftData({ profile, calculation: costEngineCalculation, policies, form: proposalDraftForm });
   const proposalDraftPreviewData = generatedProposalDraft || liveProposalDraftData;
   const proposalDraftText = formatProposalDraftText(proposalDraftPreviewData);
+  const blueprintThemes = getDefaultBlueprintThemes();
+  const selectedBlueprintTheme = normalizeBlueprintTheme(blueprintThemes.find((theme) => theme.themeId === selectedBlueprintThemeId));
+  const sampleBlueprint = createBlueprintFromDesign(FULL_SET_RENDERER_SAMPLE, {
+    title: 'Shop Sample Blueprint',
+    creatorSnapshot: {
+      creatorName: friendly(profile.shopName, 'Nail Boss Creator'),
+      shopName: friendly(profile.shopName, 'Nail Boss Studio'),
+      contact: friendly(profile.contactEmail, 'Contact not set'),
+      location: friendly(profile.location, 'Location not set'),
+    },
+    pricingGuidance: {
+      suggestedPrice: costEngineCalculation.suggestedPrice,
+      suggestedDeposit: costEngineCalculation.suggestedDeposit,
+      estimatedTime: costEngineCalculation.estimatedTime ? `${costEngineCalculation.estimatedTime} min` : 'Not estimated',
+      breakdown: costEngineCalculation.breakdown,
+    },
+    materials: { colors: ['Blush jelly', 'White cream', 'Gold jewel'], products: [], vendorReferences: [] },
+    tags: ['preview-only', 'blueprint-engine', 'sample-set'],
+    difficulty: 'Intermediate',
+    collectionName: selectedBlueprintTheme.collectionLabel,
+    theme: selectedBlueprintTheme,
+  });
+  const blueprintPreviewSummary = buildBlueprintPreviewSummary(sampleBlueprint);
 
   const updateCostEngineField = (field, value) => {
     setCostEngineForm((current) => ({ ...current, [field]: value }));
@@ -916,6 +941,7 @@ export default function NailShop() {
     { id: 'proposalReadiness', label: 'Proposal Readiness' },
     { id: 'proposalDraft', label: 'Proposal Draft' },
     { id: 'fullSetRenderer', label: 'Full Set Renderer' },
+    { id: 'blueprintEngine', label: 'Blueprint Engine' },
   ];
 
   const preview = {
@@ -1344,6 +1370,40 @@ export default function NailShop() {
         )}
 
 
+
+        {activeSection === 'blueprintEngine' && (
+        <section style={styles.blueprintPreviewPanel} aria-label="Blueprint Engine Preview" data-testid="blueprint-engine-preview-section">
+          <div style={styles.panelHeader}>
+            <div>
+              <p style={styles.kicker}>Blueprint Engine Preview</p>
+              <h2 style={styles.sectionTitle}>Blueprint = Content • Blueprint Theme = Presentation</h2>
+              <p style={styles.readinessIntro}>Preview only. This does not publish to Gallery or Marketplace, create backend blueprint records, connect to Proposals, or connect to Design Studio.</p>
+            </div>
+            <span style={styles.needsSetupBadge}>Not published</span>
+          </div>
+
+          <label style={styles.depositField}>
+            <span style={styles.label}>Blueprint Theme</span>
+            <select value={selectedBlueprintThemeId} onChange={(event) => setSelectedBlueprintThemeId(event.target.value)} style={styles.input} data-testid="blueprint-theme-selector">
+              {blueprintThemes.map((theme) => <option key={theme.themeId} value={theme.themeId}>{theme.themeName}</option>)}
+            </select>
+          </label>
+
+          <article style={{ ...styles.blueprintThemeCard, background: selectedBlueprintTheme.backgroundColor, color: selectedBlueprintTheme.textColor, borderColor: selectedBlueprintTheme.accentColor }} data-testid="blueprint-theme-preview-card">
+            <div style={{ ...styles.previewBadge, background: selectedBlueprintTheme.accentColor, color: selectedBlueprintTheme.primaryColor }}>{blueprintPreviewSummary.themeLine}</div>
+            <h3 style={{ ...styles.blueprintPreviewTitle, color: selectedBlueprintTheme.primaryColor }}>{blueprintPreviewSummary.title}</h3>
+            <p style={styles.serviceMeta}>{blueprintPreviewSummary.creatorLine}</p>
+            <p style={styles.serviceDescription}>{blueprintPreviewSummary.designLine}</p>
+            <div style={styles.blueprintSummaryGrid} data-testid="blueprint-preview-summary">
+              <span><strong>Pricing:</strong> {blueprintPreviewSummary.priceLine}</span>
+              <span><strong>Visibility:</strong> {blueprintPreviewSummary.visibilityLine}</span>
+              <span><strong>Tags:</strong> {blueprintPreviewSummary.tagLine}</span>
+              <span><strong>Accent:</strong> {selectedBlueprintTheme.accentStyle}</span>
+            </div>
+          </article>
+        </section>
+        )}
+
         {activeSection === 'proposalDraft' && (
         <section style={styles.proposalDraftPanel} aria-label="Proposal Draft Generator" data-testid="proposal-draft-section">
           <div style={styles.panelHeader}>
@@ -1758,6 +1818,33 @@ const styles = {
     justifyContent: 'space-between',
     marginTop: 4,
     paddingTop: 10,
+  },
+  blueprintPreviewPanel: {
+    background: COLORS.surface,
+    border: `1px solid ${COLORS.border}`,
+    borderRadius: 22,
+    boxShadow: '0 10px 30px rgba(60,20,50,.06)',
+    display: 'grid',
+    gap: 16,
+    gridColumn: '1 / -1',
+    padding: 22,
+  },
+  blueprintThemeCard: {
+    border: '2px solid',
+    borderRadius: 22,
+    display: 'grid',
+    gap: 12,
+    padding: 22,
+  },
+  blueprintPreviewTitle: {
+    fontSize: 28,
+    lineHeight: 1.1,
+    margin: 0,
+  },
+  blueprintSummaryGrid: {
+    display: 'grid',
+    gap: 10,
+    gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
   },
   rendererPreviewPanel: {
     background: COLORS.surface,
