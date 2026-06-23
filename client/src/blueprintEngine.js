@@ -32,6 +32,26 @@ const list = (value) => (Array.isArray(value) ? value.filter((item) => item !== 
 const numberOrNull = (value) => (Number.isFinite(Number(value)) ? Number(value) : null);
 const timestamp = (value) => (Number.isNaN(Date.parse(value)) ? new Date().toISOString() : new Date(value).toISOString());
 const clone = (value) => JSON.parse(JSON.stringify(value));
+const firstDefined = (...values) => values.find((value) => value !== undefined && value !== null);
+
+const flattenDesignNails = (design) => {
+  const source = isObject(design) ? design : {};
+  const fullSetData = firstDefined(source.fullSetData, source.fullSet, source.blueprint, source);
+  const nails = fullSetData?.nails;
+  if (Array.isArray(nails)) return nails;
+  if (isObject(nails)) return [...list(nails.left), ...list(nails.right), ...list(nails.leftHand), ...list(nails.rightHand)];
+  if (Array.isArray(fullSetData)) return fullSetData;
+  return [];
+};
+
+const designLayerValues = (design, predicate, mapper) => uniqueList(
+  flattenDesignNails(design)
+    .flatMap((nail) => list(nail?.layers))
+    .filter(predicate)
+    .map(mapper),
+);
+
+const uniqueList = (items) => [...new Set(list(items).map((item) => String(item || '').trim()).filter(Boolean))];
 
 const safeThemeId = (input) => text(input).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || DEFAULT_THEME.themeId;
 const safeColor = (value, fallback) => (/^#[0-9a-f]{6}$/i.test(String(value || '')) ? String(value).toLowerCase() : fallback);
@@ -144,7 +164,38 @@ export function duplicateBlueprintLibraryRecord(blueprint) {
 
 export function createBlueprintFromDesign(design, options = {}) {
   const source = isObject(design) ? design : {};
-  return normalizeBlueprint({ ...options, title: options.title || source.name || source.designName, designSnapshot: { ...source, ...(options.designSnapshot || {}), designId: source.id || source.designId, designName: source.name || source.designName, fullSetData: source.fullSetData || source.nails || source }, pricingGuidance: options.pricingGuidance, materials: options.materials, theme: options.theme });
+  const fullSetData = firstDefined(source.fullSetData, source.fullSet, source.blueprint, source.nails ? { nails: source.nails } : source);
+  const extractedColors = designLayerValues(source, (layer) => layer?.data?.colorHex || layer?.data?.colorA || layer?.data?.colorB, (layer) => layer?.data?.colorHex || layer?.data?.colorA || layer?.data?.colorB);
+  const extractedEffects = designLayerValues(source, (layer) => layer?.type && layer.type !== 'base', (layer) => layer?.data?.label || layer?.data?.pattern || layer?.data?.style || layer.type);
+  const extractedCharms = designLayerValues(source, (layer) => layer?.type === 'charm', (layer) => layer?.data?.assetId || 'Charm');
+  const extractedJewels = designLayerValues(source, (layer) => layer?.type === 'jewel', (layer) => layer?.data?.assetId || 'Jewel');
+  const extractedDecals = designLayerValues(source, (layer) => layer?.type === 'decal', (layer) => layer?.data?.assetId || 'Decal');
+  const designSnapshot = {
+    ...source,
+    ...(options.designSnapshot || {}),
+    designId: firstDefined(source.id, source.designId),
+    designName: firstDefined(source.name, source.designName),
+    fullSetData,
+    shape: firstDefined(source.shape, options.designSnapshot?.shape),
+    length: firstDefined(source.length, options.designSnapshot?.length),
+    width: firstDefined(source.width, options.designSnapshot?.width),
+    colors: uniqueList(firstDefined(source.colors, options.designSnapshot?.colors, extractedColors)),
+    effects: uniqueList(firstDefined(source.effects, options.designSnapshot?.effects, extractedEffects)),
+    charms: uniqueList(firstDefined(source.charms, options.designSnapshot?.charms, extractedCharms)),
+    jewels: uniqueList(firstDefined(source.jewels, options.designSnapshot?.jewels, extractedJewels)),
+    decals: uniqueList(firstDefined(source.decals, options.designSnapshot?.decals, extractedDecals)),
+  };
+
+  return normalizeBlueprint({
+    ...options,
+    title: options.title || source.name || source.designName,
+    designId: designSnapshot.designId,
+    designName: designSnapshot.designName,
+    designSnapshot,
+    pricingGuidance: options.pricingGuidance,
+    materials: options.materials || { colors: designSnapshot.colors },
+    theme: options.theme,
+  });
 }
 
 export function buildBlueprintPreviewSummary(blueprint) {
