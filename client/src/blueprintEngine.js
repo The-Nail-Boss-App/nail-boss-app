@@ -34,7 +34,7 @@ const timestamp = (value) => (Number.isNaN(Date.parse(value)) ? new Date().toISO
 const clone = (value) => JSON.parse(JSON.stringify(value));
 
 const safeThemeId = (input) => text(input).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || DEFAULT_THEME.themeId;
-const safeColor = (value, fallback) => (/^#[0-9a-f]{6}$/i.test(String(value || '')) ? value : fallback);
+const safeColor = (value, fallback) => (/^#[0-9a-f]{6}$/i.test(String(value || '')) ? String(value).toLowerCase() : fallback);
 
 export function getDefaultBlueprintThemes() {
   return clone(DEFAULT_BLUEPRINT_THEMES);
@@ -55,6 +55,30 @@ export function normalizeBlueprintTheme(input) {
     season: text(source.season, matchedDefault.season),
     collectionLabel: text(source.collectionLabel, matchedDefault.collectionLabel),
   };
+}
+
+export function createCustomBlueprintTheme(baseTheme, overrides = {}) {
+  const base = normalizeBlueprintTheme(baseTheme);
+  return normalizeBlueprintTheme({
+    ...base,
+    ...overrides,
+    themeId: overrides.themeId || `custom-${base.themeId}`,
+    themeName: overrides.themeName || `${base.themeName} Custom`,
+  });
+}
+
+export function getBlueprintContentSignature(blueprint) {
+  const normalized = normalizeBlueprint(blueprint);
+  return JSON.stringify({
+    title: normalized.title,
+    creatorSnapshot: normalized.creatorSnapshot,
+    designSnapshot: normalized.designSnapshot,
+    pricingGuidance: normalized.pricingGuidance,
+    materials: normalized.materials,
+    tags: normalized.tags,
+    difficulty: normalized.difficulty,
+    visibility: normalized.visibility,
+  });
 }
 
 export function normalizeBlueprint(input) {
