@@ -110,6 +110,38 @@ export function normalizeBlueprint(input) {
   };
 }
 
+export function normalizeBlueprintLibrary(input) {
+  const records = Array.isArray(input) ? input : [];
+  return records.map((record) => normalizeBlueprint(record));
+}
+
+export function createBlueprintLibraryRecord(blueprint, options = {}) {
+  const now = new Date().toISOString();
+  return normalizeBlueprint({
+    ...clone(blueprint || {}),
+    ...options,
+    blueprintId: options.blueprintId || `blueprint-${Date.now()}`,
+    createdAt: options.createdAt || now,
+    updatedAt: options.updatedAt || now,
+    theme: normalizeBlueprintTheme(options.theme || blueprint?.theme),
+  });
+}
+
+export function duplicateBlueprintLibraryRecord(blueprint) {
+  const normalized = normalizeBlueprint(blueprint);
+  const now = new Date().toISOString();
+  return normalizeBlueprint({
+    ...clone(normalized),
+    blueprintId: `blueprint-${Date.now()}`,
+    title: `${normalized.title} Copy`,
+    createdAt: now,
+    updatedAt: now,
+    theme: clone(normalized.theme),
+    designSnapshot: clone(normalized.designSnapshot),
+    pricingGuidance: clone(normalized.pricingGuidance),
+  });
+}
+
 export function createBlueprintFromDesign(design, options = {}) {
   const source = isObject(design) ? design : {};
   return normalizeBlueprint({ ...options, title: options.title || source.name || source.designName, designSnapshot: { ...source, ...(options.designSnapshot || {}), designId: source.id || source.designId, designName: source.name || source.designName, fullSetData: source.fullSetData || source.nails || source }, pricingGuidance: options.pricingGuidance, materials: options.materials, theme: options.theme });
