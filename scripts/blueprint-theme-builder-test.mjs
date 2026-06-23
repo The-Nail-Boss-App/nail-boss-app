@@ -13,7 +13,7 @@ assert(defaults.length >= 10, 'default themes remain available');
 assert(defaults.some((theme) => theme.themeId === 'classic'), 'Classic default theme remains');
 assert(defaults.some((theme) => theme.themeId === 'minimal'), 'Minimal default theme remains');
 
-const design = { id: 'sample-design', name: 'Sample Content', shape: 'Almond', length: 'Medium', colors: ['Blush'] };
+const design = { id: 'sample-design', name: 'Sample Content', shape: 'Almond', length: 'Medium', colors: ['Blush'], nails: { left: [{ shape: 'Almond', length: 0.7, width: 0.5, layers: [{ type: 'base', data: { colorHex: '#f7c7d9', polishType: 'Jelly' } }, { type: 'jewel', data: { assetId: 'crystal' } }] }] } };
 const contentTheme = engine.normalizeBlueprintTheme(defaults[0]);
 const customTheme = engine.createCustomBlueprintTheme(contentTheme, {
   themeName: 'Custom Cover',
@@ -30,8 +30,20 @@ const themedBlueprint = engine.createBlueprintFromDesign(design, { title: 'Conte
 assert.equal(engine.getBlueprintContentSignature(contentBlueprint), engine.getBlueprintContentSignature(themedBlueprint), 'content unchanged when theme presentation changes');
 assert.notDeepEqual(contentBlueprint.theme, themedBlueprint.theme, 'theme presentation changes are isolated to theme');
 assert.equal(themedBlueprint.designSnapshot.designName, 'Sample Content', 'theme changes do not mutate design content');
+assert.equal(themedBlueprint.designSnapshot.designId, 'sample-design', 'createBlueprintFromDesign uses the selected design id');
+assert.equal(themedBlueprint.designSnapshot.jewels[0], 'crystal', 'createBlueprintFromDesign extracts real selected design jewels');
+assert.equal(themedBlueprint.designSnapshot.fullSetData.nails.left[0].shape, 'Almond', 'selected design full-set data is stored in blueprint snapshot');
+const malformedBlueprint = engine.createBlueprintFromDesign(null, { title: 'Malformed Safe Blueprint' });
+assert.equal(malformedBlueprint.title, 'Malformed Safe Blueprint', 'malformed design data falls back safely');
 
 assert(shopSource.includes('data-testid="blueprint-theme-builder-controls"'), 'Blueprint Engine Preview exposes theme builder controls');
+assert(shopSource.includes('data-testid="saved-design-selector"'), 'saved design selector exists');
+assert(shopSource.includes('No saved designs available yet. Create a design in Design Studio first.'), 'no saved design fallback message exists');
+assert(shopSource.includes("fetch('/api/designs')"), 'Blueprint Engine uses /api/designs as saved design data source');
+assert(shopSource.includes('selected-design-blueprint-hero-preview'), 'FullSetRenderer hero preview renders for selected design Blueprint');
+assert(shopSource.includes('sample/demo Blueprint fallback'), 'sample/demo fallback is clearly labeled');
+assert(shopSource.includes('<strong>Design:</strong> {blueprint.designSnapshot.designName}'), 'library card shows design-derived Blueprint info');
+assert(shopSource.includes('<strong>Design Name:</strong> {selectedLibraryBlueprint.designSnapshot.designName}'), 'detail view shows design-derived Blueprint info');
 assert(shopSource.includes('data-testid="blueprint-cover-style"'), 'Blueprint cover styles visibly affect preview presentation');
 assert(shopSource.includes('type="color"'), 'custom color controls are present');
 assert(shopSource.includes('blueprint-typography-style'), 'typography style control is present');

@@ -682,6 +682,16 @@ const buildProposalReadiness = ({ profile, services, pricingLibrary, calculation
 };
 
 
+
+const normalizeSavedDesignsResponse = (payload) => {
+  if (Array.isArray(payload)) return payload.filter((item) => item && typeof item === 'object');
+  if (Array.isArray(payload?.designs)) return payload.designs.filter((item) => item && typeof item === 'object');
+  if (Array.isArray(payload?.data)) return payload.data.filter((item) => item && typeof item === 'object');
+  return [];
+};
+
+const getDesignSelectLabel = (design) => friendly(design?.name || design?.designName || design?.title, 'Untitled saved design');
+
 const formatBlueprintDate = (value) => {
   const parsed = Date.parse(value);
   if (Number.isNaN(parsed)) return 'Date unavailable';
@@ -776,6 +786,9 @@ export default function NailShop() {
   const [selectedLibraryBlueprintId, setSelectedLibraryBlueprintId] = useState(null);
   const [blueprintLibraryMessage, setBlueprintLibraryMessage] = useState('');
   const [blueprintLibraryMessageType, setBlueprintLibraryMessageType] = useState('success');
+  const [savedDesigns, setSavedDesigns] = useState([]);
+  const [savedDesignsStatus, setSavedDesignsStatus] = useState('loading');
+  const [selectedSavedDesignId, setSelectedSavedDesignId] = useState('');
 
   const updateProfile = (field, value) => {
     setSaveMessage('');
@@ -952,8 +965,9 @@ export default function NailShop() {
   const selectedBlueprintTheme = createCustomBlueprintTheme(selectedDefaultBlueprintTheme, blueprintThemeOverrides);
   const blueprintTypography = BLUEPRINT_TYPOGRAPHY_STYLES[selectedBlueprintTheme.typographyStyle] || BLUEPRINT_TYPOGRAPHY_STYLES[selectedDefaultBlueprintTheme.typographyStyle] || BLUEPRINT_TYPOGRAPHY_STYLES['polished serif'];
   const blueprintAccent = BLUEPRINT_ACCENT_STYLES[selectedBlueprintTheme.accentStyle] || BLUEPRINT_ACCENT_STYLES[selectedDefaultBlueprintTheme.accentStyle] || BLUEPRINT_ACCENT_STYLES['soft frame'];
+  const selectedSavedDesign = savedDesigns.find((design) => String(design.id || design.designId) === selectedSavedDesignId) || null;
   const sampleBlueprint = createBlueprintFromDesign(FULL_SET_RENDERER_SAMPLE, {
-    title: 'Shop Sample Blueprint',
+    title: 'Shop Sample Blueprint (Sample/Demo)',
     creatorSnapshot: {
       creatorName: friendly(profile.shopName, 'Nail Boss Creator'),
       shopName: friendly(profile.shopName, 'Nail Boss Studio'),
@@ -967,13 +981,33 @@ export default function NailShop() {
       breakdown: costEngineCalculation.breakdown,
     },
     materials: { colors: ['Blush jelly', 'White cream', 'Gold jewel'], products: [], vendorReferences: [] },
-    tags: ['preview-only', 'blueprint-engine', 'sample-set'],
+    tags: ['preview-only', 'blueprint-engine', 'sample-demo-set'],
     difficulty: 'Intermediate',
     collectionName: selectedBlueprintTheme.collectionLabel,
     theme: selectedBlueprintTheme,
   });
-  const blueprintPreviewSummary = buildBlueprintPreviewSummary(sampleBlueprint);
-  const blueprintContentSignature = getBlueprintContentSignature(sampleBlueprint);
+  const designBlueprint = selectedSavedDesign ? createBlueprintFromDesign(selectedSavedDesign, {
+    title: `${getDesignSelectLabel(selectedSavedDesign)} Blueprint`,
+    creatorSnapshot: {
+      creatorName: friendly(profile.shopName, 'Nail Boss Creator'),
+      shopName: friendly(profile.shopName, 'Nail Boss Studio'),
+      contact: friendly(profile.contactEmail, 'Contact not set'),
+      location: friendly(profile.location, 'Location not set'),
+    },
+    pricingGuidance: {
+      suggestedPrice: costEngineCalculation.suggestedPrice,
+      suggestedDeposit: costEngineCalculation.suggestedDeposit,
+      estimatedTime: costEngineCalculation.estimatedTime ? `${costEngineCalculation.estimatedTime} min` : 'Not estimated',
+      breakdown: costEngineCalculation.breakdown,
+    },
+    tags: ['design-derived', 'blueprint-engine'],
+    difficulty: 'Not rated',
+    collectionName: selectedBlueprintTheme.collectionLabel,
+    theme: selectedBlueprintTheme,
+  }) : null;
+  const activeBlueprintPreview = designBlueprint || sampleBlueprint;
+  const blueprintPreviewSummary = buildBlueprintPreviewSummary(activeBlueprintPreview);
+  const blueprintContentSignature = getBlueprintContentSignature(activeBlueprintPreview);
   const normalizedBlueprintLibrary = normalizeBlueprintLibrary(blueprintLibrary);
   const selectedLibraryBlueprint = normalizedBlueprintLibrary.find((blueprint) => blueprint.blueprintId === selectedLibraryBlueprintId) || null;
   const selectedBlueprintDetail = selectedLibraryBlueprint ? buildBlueprintDetailSections(selectedLibraryBlueprint) : null;
@@ -990,6 +1024,28 @@ export default function NailShop() {
       if (blueprintLibrarySort === 'title') return a.title.localeCompare(b.title);
       return Date.parse(b.createdAt) - Date.parse(a.createdAt);
     });
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadSavedDesigns = async () => {
+      setSavedDesignsStatus('loading');
+      try {
+        const response = await fetch('/api/designs');
+        if (!response.ok) throw new Error('Unable to load saved designs');
+        const records = normalizeSavedDesignsResponse(await response.json());
+        if (cancelled) return;
+        setSavedDesigns(records);
+        setSavedDesignsStatus('ready');
+        setSelectedSavedDesignId((current) => (records.some((design) => String(design.id || design.designId) === current) ? current : ''));
+      } catch (error) {
+        if (cancelled) return;
+        setSavedDesigns([]);
+        setSavedDesignsStatus('error');
+      }
+    };
+    loadSavedDesigns();
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     if (!blueprintLibraryMessage) return undefined;
@@ -1023,11 +1079,12 @@ export default function NailShop() {
     setBlueprintThemeOverrides({});
   };
 
-  const saveSampleBlueprintToLibrary = () => {
-    const record = createBlueprintLibraryRecord(sampleBlueprint, {
-      title: sampleBlueprint.title,
+  const saveBlueprintToLibrary = () => {
+    const blueprintToSave = activeBlueprintPreview;
+    const record = createBlueprintLibraryRecord(blueprintToSave, {
+      title: blueprintToSave.title,
       collectionName: selectedBlueprintTheme.collectionLabel,
-      visibility: sampleBlueprint.visibility,
+      visibility: blueprintToSave.visibility,
       theme: selectedBlueprintTheme,
     });
     const nextLibrary = normalizeBlueprintLibrary([record, ...normalizedBlueprintLibrary]);
@@ -1037,7 +1094,7 @@ export default function NailShop() {
       setBlueprintLibrary(nextLibrary);
       setSelectedLibraryBlueprintId(record.blueprintId);
       setBlueprintLibraryMessageType('success');
-      setBlueprintLibraryMessage(`Blueprint saved to Library: ${record.title}.`);
+      setBlueprintLibraryMessage(`Blueprint saved to Library: ${record.title}${selectedSavedDesign ? ` from ${getDesignSelectLabel(selectedSavedDesign)}` : ' (sample/demo fallback)'}.`);
     } catch (error) {
       setBlueprintLibraryMessageType('error');
       setBlueprintLibraryMessage('Blueprint could not be saved. Check browser storage and try again.');
@@ -1609,6 +1666,18 @@ export default function NailShop() {
 
           <div style={styles.blueprintBuilderGrid} data-testid="blueprint-theme-builder-controls">
             <label style={styles.depositField}>
+              <span style={styles.label}>Saved Design Source</span>
+              <select value={selectedSavedDesignId} onChange={(event) => setSelectedSavedDesignId(event.target.value)} style={styles.input} data-testid="saved-design-selector">
+                <option value="">Use sample/demo Blueprint fallback</option>
+                {savedDesigns.map((design) => {
+                  const designId = String(design.id || design.designId || '');
+                  return designId ? <option key={designId} value={designId}>{getDesignSelectLabel(design)}</option> : null;
+                })}
+              </select>
+              {savedDesignsStatus === 'ready' && savedDesigns.length === 0 && <span style={styles.serviceMeta} data-testid="no-saved-designs-message">No saved designs available yet. Create a design in Design Studio first.</span>}
+              {savedDesignsStatus === 'error' && <span style={styles.serviceMeta} data-testid="saved-designs-malformed-message">Saved designs could not be loaded safely. Using sample/demo Blueprint fallback.</span>}
+            </label>
+            <label style={styles.depositField}>
               <span style={styles.label}>Default Theme Foundation</span>
               <select value={selectedBlueprintThemeId} onChange={(event) => selectBlueprintTheme(event.target.value)} style={styles.input} data-testid="blueprint-theme-selector">
                 {blueprintThemes.map((theme) => <option key={theme.themeId} value={theme.themeId}>{theme.themeName}</option>)}
@@ -1625,8 +1694,13 @@ export default function NailShop() {
             <label style={styles.depositField}><span style={styles.label}>Typography Style</span><select style={styles.input} value={selectedBlueprintTheme.typographyStyle} onChange={(event) => updateBlueprintThemeOverride('typographyStyle', event.target.value)} data-testid="blueprint-typography-style">{Object.keys(BLUEPRINT_TYPOGRAPHY_STYLES).map((style) => <option key={style}>{style}</option>)}</select></label>
             <label style={styles.depositField}><span style={styles.label}>Accent Style</span><select style={styles.input} value={selectedBlueprintTheme.accentStyle} onChange={(event) => updateBlueprintThemeOverride('accentStyle', event.target.value)} data-testid="blueprint-accent-style">{Object.keys(BLUEPRINT_ACCENT_STYLES).map((style) => <option key={style}>{style}</option>)}</select></label>
             <button type="button" style={styles.secondaryButton} onClick={resetBlueprintThemeBuilder} data-testid="blueprint-theme-reset">Reset to default theme</button>
-            <button type="button" style={styles.saveButton} onClick={saveSampleBlueprintToLibrary} data-testid="blueprint-save-button">Save Blueprint</button>
+            <button type="button" style={styles.saveButton} onClick={saveBlueprintToLibrary} data-testid="blueprint-save-button">Save Blueprint</button>
           </div>
+
+          <section style={styles.blueprintHeroPreview} aria-label="Selected Design Full Set Preview" data-testid="selected-design-blueprint-hero-preview">
+            <h3 style={styles.cardTitle}>{selectedSavedDesign ? `Design-derived preview: ${getDesignSelectLabel(selectedSavedDesign)}` : 'Sample/demo Blueprint fallback preview'}</h3>
+            <FullSetRenderer designData={activeBlueprintPreview.designSnapshot.fullSetData} mode="hero" compact />
+          </section>
           {blueprintLibraryMessage && (
             <div style={blueprintLibraryMessageType === 'error' ? styles.errorMessage : styles.successMessage} role="status" data-testid="blueprint-save-confirmation">
               <span>{blueprintLibraryMessage}</span>
@@ -1662,7 +1736,7 @@ export default function NailShop() {
               <p style={styles.readinessIntro}>Blueprint Library is private and local-only for now. It does not publish to Gallery, Marketplace, or Proposals.</p>
               <p style={styles.serviceMeta}>localStorage key: {BLUEPRINT_LIBRARY_STORAGE_KEY}</p>
             </div>
-            <button type="button" style={styles.saveButton} onClick={saveSampleBlueprintToLibrary} data-testid="blueprint-library-save-button">Save Blueprint</button>
+            <button type="button" style={styles.saveButton} onClick={saveBlueprintToLibrary} data-testid="blueprint-library-save-button">Save Blueprint</button>
           </div>
           {blueprintLibraryMessage && (
             <div style={blueprintLibraryMessageType === 'error' ? styles.errorMessage : styles.successMessage} role="status" data-testid="blueprint-save-confirmation">
@@ -1686,6 +1760,8 @@ export default function NailShop() {
                     <span><strong>Theme:</strong> {selectedLibraryBlueprint.theme.themeName || 'Theme unavailable'}</span>
                     <span><strong>Creator:</strong> {selectedLibraryBlueprint.creatorSnapshot.creatorName || 'Unknown creator'}</span>
                     <span><strong>Created:</strong> {formatBlueprintDate(selectedLibraryBlueprint.createdAt)}</span>
+                    <span><strong>Design:</strong> {selectedLibraryBlueprint.designSnapshot.designName}</span>
+                    <span><strong>Design ID:</strong> {selectedLibraryBlueprint.designSnapshot.designId}</span>
                   </div>
                 </div>
                 <div style={styles.headerActions}>
@@ -1710,6 +1786,8 @@ export default function NailShop() {
                 <section style={styles.blueprintDetailSection} data-testid="blueprint-detail-design-info">
                   <h3 style={styles.cardTitle}>Design Information</h3>
                   <div style={styles.blueprintSummaryGrid}>
+                    <span><strong>Design Name:</strong> {selectedLibraryBlueprint.designSnapshot.designName}</span>
+                    <span><strong>Design ID:</strong> {selectedLibraryBlueprint.designSnapshot.designId}</span>
                     <span><strong>Shape:</strong> {selectedBlueprintDetail.shape}</span>
                     <span><strong>Length:</strong> {selectedBlueprintDetail.length}</span>
                     <span><strong>Width:</strong> {selectedBlueprintDetail.width}</span>
@@ -1782,9 +1860,11 @@ export default function NailShop() {
                     <span style={{ ...styles.previewBadge, background: theme.accentColor, color: theme.primaryColor, borderRadius: accent.badgeRadius }}>{theme.themeName}</span>
                     <h3 style={{ ...styles.blueprintPreviewTitle, ...typography, color: theme.primaryColor }}>{blueprint.title}</h3>
                     <p style={styles.serviceMeta}>{summary.designLine}</p>
+                    <FullSetRenderer designData={blueprint.designSnapshot.fullSetData} mode="hero" compact />
                   </button>
                   <p style={styles.serviceMeta}>{summary.creatorLine}</p>
                   <div style={styles.blueprintSummaryGrid}>
+                    <span><strong>Design:</strong> {blueprint.designSnapshot.designName}</span>
                     <span><strong>Theme:</strong> {theme.themeName}</span>
                     <span><strong>Collection:</strong> {blueprint.collectionName || theme.collectionLabel}</span>
                     <span><strong>Visibility:</strong> {blueprint.visibility}</span>
