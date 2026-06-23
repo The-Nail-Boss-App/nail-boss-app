@@ -61,6 +61,39 @@ assert.equal(metadataBlueprint.designSnapshot.decalCount, 1, 'createBlueprintFro
 assert.equal(metadataBlueprint.designSnapshot.layerCount, 7, 'createBlueprintFromDesign extracts layer count');
 assert.equal(metadataBlueprint.designSnapshot.artLevel, 'Detailed', 'createBlueprintFromDesign extracts art level');
 
+
+const fullSetArtworkDesign = {
+  id: 'artwork-design',
+  name: 'Artwork Extraction Set',
+  baseColorHex: '#FFA21F',
+  blueprint: {
+    schemaVersion: 1,
+    document: {
+      schemaVersion: 1,
+      nails: [
+        { slot: 'left-thumb', shape: 'Almond', length: 0.74, width: 0.48, layers: [
+          { type: 'base', visible: true, data: { colorHex: '#FFA21F', polishType: 'Cream' } },
+          { kind: 'french-tip', visible: true, name: 'White French Tip', data: { tipColorHex: '#FFFFFF' } },
+          { category: 'charm', assetType: 'charm', assetId: 'heart-charm', visible: true, name: 'Heart Charm' },
+          { type: 'jewel', visible: true, data: { assetId: 'cuticle-crystal' } },
+          { kind: 'gem', visible: true, name: 'Cuticle Gem Dot' },
+          { type: 'pattern', visible: true, data: { pattern: 'sparkle star', patternColorHex: '#FFFFFF' } },
+        ] },
+      ],
+    },
+  },
+};
+const artworkBlueprint = engine.createBlueprintFromDesign(fullSetArtworkDesign);
+assert.equal(artworkBlueprint.designSnapshot.baseColor, '#FFA21F', 'saved full-set artwork extraction keeps orange base color');
+assert(artworkBlueprint.designSnapshot.effects.some((effect) => /French Tip/i.test(effect)) || artworkBlueprint.designSnapshot.frenchTips.some((tip) => /French Tip/i.test(tip)), 'saved full-set artwork extraction detects French Tip');
+assert(artworkBlueprint.designSnapshot.effects.some((effect) => /sparkle|star|pattern/i.test(effect)) || artworkBlueprint.designSnapshot.patterns.some((pattern) => /sparkle|star/i.test(pattern)), 'saved full-set artwork extraction detects sparkle/star pattern');
+assert(artworkBlueprint.designSnapshot.charmCount >= 1, 'saved full-set artwork extraction counts heart charm');
+assert(artworkBlueprint.designSnapshot.jewelCount >= 2, 'saved full-set artwork extraction counts jewel/gem dots');
+assert(artworkBlueprint.designSnapshot.layerCount > 0, 'saved full-set artwork extraction counts visible art layers');
+assert.notEqual(artworkBlueprint.designSnapshot.artSummary, 'No Effects', 'saved full-set artwork extraction writes an art summary');
+assert(!JSON.stringify(artworkBlueprint.designSnapshot).includes('Not specified'), 'saved full-set artwork extraction avoids Not specified placeholders');
+assert(engine.collectDesignLayers(fullSetArtworkDesign).some((layer) => layer._sourcePath.includes('design.blueprint.nails')), 'collector discovers artwork under /api/designs/:id/blueprint document nails');
+
 const malformedBlueprint = engine.createBlueprintFromDesign(null, { title: 'Malformed Safe Blueprint' });
 assert.equal(malformedBlueprint.title, 'Malformed Safe Blueprint', 'malformed design data falls back safely');
 assert.equal(malformedBlueprint.designSnapshot.shape, 'Unknown Shape', 'malformed design shape fallback is explicit');
@@ -72,6 +105,7 @@ assert(shopSource.includes('data-testid="blueprint-theme-builder-controls"'), 'B
 assert(shopSource.includes('data-testid="saved-design-selector"'), 'saved design selector exists');
 assert(shopSource.includes('No saved designs available yet. Create a design in Design Studio first.'), 'no saved design fallback message exists');
 assert(shopSource.includes("fetch('/api/designs')"), 'Blueprint Engine uses /api/designs as saved design data source');
+assert(shopSource.includes("fetch(`/api/designs/${selectedSavedDesignId}/blueprint`)"), 'Blueprint Engine loads selected saved design blueprint artwork document');
 assert(shopSource.includes('selected-design-blueprint-hero-preview'), 'FullSetRenderer hero preview renders for selected design Blueprint');
 assert(shopSource.includes('sample/demo Blueprint fallback'), 'sample/demo fallback is clearly labeled');
 assert(shopSource.includes('<strong>Design:</strong> {blueprint.designSnapshot.designName}'), 'library card shows design-derived Blueprint info');

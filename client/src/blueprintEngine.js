@@ -36,7 +36,8 @@ const firstDefined = (...values) => values.find((value) => value !== undefined &
 
 const flattenDesignNails = (design) => {
   const source = isObject(design) ? design : {};
-  const fullSetData = firstDefined(source.fullSetData, source.fullSet, source.blueprint, source);
+  const blueprintDocument = isObject(source.document) ? source.document : isObject(source.blueprint?.document) ? source.blueprint.document : source.blueprint;
+  const fullSetData = firstDefined(source.fullSetData, source.fullSet, blueprintDocument, source);
   const nails = fullSetData?.nails;
   if (Array.isArray(nails)) return nails;
   if (isObject(nails)) return [...list(nails.left), ...list(nails.right), ...list(nails.leftHand), ...list(nails.rightHand)];
@@ -52,6 +53,95 @@ const designLayerValues = (design, predicate, mapper) => uniqueList(
 );
 
 const uniqueList = (items) => [...new Set(list(items).map((item) => String(item || '').trim()).filter(Boolean))];
+
+
+const lowerTokens = (value) => {
+  if (value === null || value === undefined) return '';
+  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') return String(value).toLowerCase();
+  if (Array.isArray(value)) return value.map(lowerTokens).join(' ');
+  if (isObject(value)) return Object.values(value).map(lowerTokens).join(' ');
+  return '';
+};
+
+const includesAnyToken = (value, patterns) => patterns.some((pattern) => pattern.test(lowerTokens(value)));
+const titleCase = (value, fallback) => text(String(value || '').replace(/[-_]+/g, ' '), fallback).replace(/\b\w/g, (char) => char.toUpperCase());
+
+const layerIdentity = (layer) => lowerTokens({
+  type: layer?.type,
+  kind: layer?.kind,
+  tool: layer?.tool,
+  category: layer?.category,
+  assetType: layer?.assetType,
+  assetId: layer?.assetId,
+  name: layer?.name,
+  label: layer?.label,
+  data: layer?.data,
+});
+
+const FRENCH_RE = [/french\s*tip/, /french-tip/, /frenchtip/, /\bfrench\b/, /\btip\b/];
+const CHARM_RE = [/\bcharms?\b/];
+const JEWEL_RE = [/\bjewels?\b/, /\bgems?\b/, /rhinestone/, /crystal/];
+const DECAL_RE = [/\bdecals?\b/, /sticker/];
+const PATTERN_RE = [/\bpattern\b/, /sparkle/, /\bstars?\b/, /glitter/, /shimmer/];
+
+const layerMatches = (layer, patterns) => includesAnyToken(layerIdentity(layer), patterns);
+
+const visibleLayer = (layer) => isObject(layer) && layer.visible !== false && layer.hidden !== true && layer.deleted !== true && layer.enabled !== false;
+
+const nailCollections = (value) => {
+  if (Array.isArray(value)) return value;
+  if (!isObject(value)) return [];
+  return uniqueList(Object.keys(value)).flatMap((key) => Array.isArray(value[key]) ? value[key] : []);
+};
+
+const pushLayerLike = (layers, item, sourcePath) => {
+  if (!visibleLayer(item)) return;
+  layers.push({ ...item, _sourcePath: sourcePath });
+};
+
+const pushLayerArray = (layers, items, sourcePath) => {
+  list(items).forEach((item, index) => pushLayerLike(layers, item, `${sourcePath}[${index}]`));
+};
+
+const pushNailLayers = (layers, nails, sourcePath) => {
+  nailCollections(nails).forEach((nail, nailIndex) => {
+    if (!isObject(nail)) return;
+    ['layers', 'artLayers', 'canvasLayers', 'boardLayers', 'assets'].forEach((key) => pushLayerArray(layers, nail[key], `${sourcePath}[${nailIndex}].${key}`));
+  });
+};
+
+const summaryEntries = (summary, sourcePath) => {
+  if (!isObject(summary)) return [];
+  const entries = [];
+  const add = (type, count, label) => {
+    const safeCount = Math.max(0, Number(count) || 0);
+    for (let index = 0; index < safeCount; index += 1) entries.push({ type, name: label || type, data: { label: label || type }, _sourcePath: `${sourcePath}.${type}` });
+  };
+  add('charm', summary.charmCount ?? summary.charmsCount ?? summary.charms, 'Charm');
+  add('jewel', summary.jewelCount ?? summary.jewelsCount ?? summary.gemCount ?? summary.gems, 'Jewel');
+  add('decal', summary.decalCount ?? summary.decalsCount ?? summary.stickers, 'Decal');
+  add('frenchTip', summary.frenchTipCount ?? (summary.frenchTip || summary.french ? 1 : 0), 'French Tip');
+  add('pattern', summary.patternCount ?? summary.sparkleCount ?? summary.starCount ?? (summary.pattern || summary.sparkle || summary.star ? 1 : 0), summary.pattern || 'Pattern');
+  return entries;
+};
+
+export function collectDesignLayers(design) {
+  const source = isObject(design) ? design : {};
+  const layers = [];
+  const blueprintDocument = isObject(source.document) ? source.document : isObject(source.blueprint?.document) ? source.blueprint.document : source.blueprint;
+  [
+    ['design.layers', source.layers], ['design.canvasLayers', source.canvasLayers], ['design.boardLayers', source.boardLayers], ['design.artLayers', source.artLayers],
+    ['design.assets', source.assets], ['design.fullSetAssets', source.fullSetAssets], ['design.activeNail.layers', source.activeNail?.layers], ['design.activeNail.artLayers', source.activeNail?.artLayers],
+  ].forEach(([path, items]) => pushLayerArray(layers, items, path));
+  pushNailLayers(layers, source.nails, 'design.nails');
+  pushNailLayers(layers, source.fullSetData?.nails, 'design.fullSetData.nails');
+  pushNailLayers(layers, source.fullSet?.nails, 'design.fullSet.nails');
+  pushNailLayers(layers, blueprintDocument?.nails, 'design.blueprint.nails');
+  pushLayerArray(layers, blueprintDocument?.layers, 'design.blueprint.layers');
+  [source.productUse, source.productUseHook, source.rendererSummary, source.summary, blueprintDocument?.productUse, blueprintDocument?.productUseHook, blueprintDocument?.summary]
+    .forEach((summary, index) => summaryEntries(summary, `summary[${index}]`).forEach((entry) => pushLayerLike(layers, entry, entry._sourcePath)));
+  return layers;
+}
 
 const safeThemeId = (input) => text(input).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || DEFAULT_THEME.themeId;
 
@@ -201,12 +291,16 @@ const collectLayerColors = (layer) => {
 const collectDesignMetadata = (design) => {
   const source = isObject(design) ? design : {};
   const nails = flattenDesignNails(source);
-  const layers = nails.flatMap((nail) => list(nail?.layers).filter((layer) => layer?.visible !== false));
+  const layers = collectDesignLayers(source);
   const baseLayers = layers.filter((layer) => layer?.type === 'base');
-  const typeCount = (type) => layers.filter((layer) => layer?.type === type).length;
+  const typeCount = (type) => layers.filter((layer) => layer?.type === type || layerMatches(layer, type === 'frenchTip' ? FRENCH_RE : type === 'charm' ? CHARM_RE : type === 'jewel' ? JEWEL_RE : type === 'decal' ? DECAL_RE : type === 'pattern' ? PATTERN_RE : [new RegExp(`\\b${type}\\b`)])).length;
   const layerLabels = (type, fallback) => uniqueList(layers
-    .filter((layer) => layer?.type === type)
-    .map((layer) => layer?.data?.label || layer?.data?.assetId || layer?.data?.pattern || layer?.data?.style || layer?.data?.preset || fallback));
+    .filter((layer) => layer?.type === type || layerMatches(layer, type === 'frenchTip' ? FRENCH_RE : type === 'charm' ? CHARM_RE : type === 'jewel' ? JEWEL_RE : type === 'decal' ? DECAL_RE : type === 'pattern' ? PATTERN_RE : [new RegExp(`\\b${type}\\b`)]))
+    .map((layer) => {
+      const displayLabel = layer?.data?.label || layer?.label || layer?.name;
+      if (displayLabel) return titleCase(displayLabel, fallback);
+      return layer?.data?.assetId || layer?.assetId || layer?.data?.assetType || layer?.assetType || layer?.data?.pattern || layer?.data?.style || layer?.data?.preset || fallback;
+    }));
   const shapes = uniqueList([source.shape, ...nails.map((nail) => nail?.shape)]);
   const lengths = uniqueList([source.length, ...nails.map((nail) => nail?.length)]);
   const widths = uniqueList([source.width, ...nails.map((nail) => nail?.width)]);
@@ -219,20 +313,22 @@ const collectDesignMetadata = (design) => {
     ...baseEffects,
     ...gradientLabels,
     ...layerLabels('pattern', 'Pattern'),
-    ...layerLabels('frenchTip', 'French tip'),
+    ...layerLabels('frenchTip', 'French Tip'),
     ...layers.filter((layer) => ['drawing'].includes(layer?.type)).map(() => 'Hand-painted art'),
   ]);
   const charmLabels = layerLabels('charm', 'Charm');
   const jewelLabels = layerLabels('jewel', 'Jewel');
   const decalLabels = layerLabels('decal', 'Decal');
-  const artLayerCount = layers.filter((layer) => !['base', 'charm', 'jewel', 'decal'].includes(layer?.type)).length;
+  const artLayerCount = layers.filter((layer) => layer?.type !== 'base' && !layerMatches(layer, CHARM_RE) && !layerMatches(layer, JEWEL_RE) && !layerMatches(layer, DECAL_RE)).length;
   const embellishmentCount = typeCount('charm') + typeCount('jewel') + typeCount('decal');
   const artSummaryParts = uniqueList([
     typeCount('gradient') ? `${typeCount('gradient')} gradient` : '',
-    typeCount('pattern') ? `${typeCount('pattern')} pattern` : '',
-    typeCount('frenchTip') ? `${typeCount('frenchTip')} french tip` : '',
+    typeCount('pattern') ? layerLabels('pattern', 'Pattern').join(', ') || `${typeCount('pattern')} Pattern` : '',
+    typeCount('frenchTip') ? 'French Tip' : '',
     typeCount('drawing') ? `${typeCount('drawing')} drawing` : '',
-    embellishmentCount ? `${embellishmentCount} embellishment` : '',
+    typeCount('charm') ? `${typeCount('charm')} Charm${typeCount('charm') === 1 ? '' : 's'}` : '',
+    typeCount('jewel') ? `${typeCount('jewel')} Jewel${typeCount('jewel') === 1 ? '' : 's'}` : '',
+    typeCount('decal') ? `${typeCount('decal')} Decal${typeCount('decal') === 1 ? '' : 's'}` : '',
   ]);
 
   return {
@@ -249,7 +345,7 @@ const collectDesignMetadata = (design) => {
     chrome: baseEffects.some((effect) => /chrome/i.test(effect)),
     catEye: baseEffects.some((effect) => /cat\s*eye|cateye/i.test(effect)),
     marble: [...baseEffects, ...layerLabels('pattern', '')].some((effect) => /marble/i.test(effect)),
-    frenchTips: layerLabels('frenchTip', 'French tip'),
+    frenchTips: layerLabels('frenchTip', 'French Tip'),
     patterns: layerLabels('pattern', 'Pattern'),
     charms: charmLabels.length ? charmLabels : ['No Embellishments'],
     jewels: jewelLabels.length ? jewelLabels : ['No Embellishments'],
@@ -267,7 +363,8 @@ const collectDesignMetadata = (design) => {
 
 export function createBlueprintFromDesign(design, options = {}) {
   const source = isObject(design) ? design : {};
-  const fullSetData = firstDefined(source.fullSetData, source.fullSet, source.blueprint, source.nails ? { nails: source.nails } : source);
+  const blueprintDocument = isObject(source.document) ? source.document : isObject(source.blueprint?.document) ? source.blueprint.document : source.blueprint;
+  const fullSetData = firstDefined(source.fullSetData, source.fullSet, blueprintDocument, source.nails ? { nails: source.nails } : source);
   const metadata = collectDesignMetadata(source);
   const designSnapshot = {
     ...source,

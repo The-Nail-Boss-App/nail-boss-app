@@ -789,6 +789,7 @@ export default function NailShop() {
   const [savedDesigns, setSavedDesigns] = useState([]);
   const [savedDesignsStatus, setSavedDesignsStatus] = useState('loading');
   const [selectedSavedDesignId, setSelectedSavedDesignId] = useState('');
+  const [savedDesignBlueprints, setSavedDesignBlueprints] = useState({});
 
   const updateProfile = (field, value) => {
     setSaveMessage('');
@@ -965,7 +966,8 @@ export default function NailShop() {
   const selectedBlueprintTheme = createCustomBlueprintTheme(selectedDefaultBlueprintTheme, blueprintThemeOverrides);
   const blueprintTypography = BLUEPRINT_TYPOGRAPHY_STYLES[selectedBlueprintTheme.typographyStyle] || BLUEPRINT_TYPOGRAPHY_STYLES[selectedDefaultBlueprintTheme.typographyStyle] || BLUEPRINT_TYPOGRAPHY_STYLES['polished serif'];
   const blueprintAccent = BLUEPRINT_ACCENT_STYLES[selectedBlueprintTheme.accentStyle] || BLUEPRINT_ACCENT_STYLES[selectedDefaultBlueprintTheme.accentStyle] || BLUEPRINT_ACCENT_STYLES['soft frame'];
-  const selectedSavedDesign = savedDesigns.find((design) => String(design.id || design.designId) === selectedSavedDesignId) || null;
+  const selectedSavedDesignRecord = savedDesigns.find((design) => String(design.id || design.designId) === selectedSavedDesignId) || null;
+  const selectedSavedDesign = selectedSavedDesignRecord ? { ...selectedSavedDesignRecord, blueprint: savedDesignBlueprints[selectedSavedDesignId] } : null;
   const sampleBlueprint = createBlueprintFromDesign(FULL_SET_RENDERER_SAMPLE, {
     title: 'Shop Sample Blueprint (Sample/Demo)',
     creatorSnapshot: {
@@ -1046,6 +1048,24 @@ export default function NailShop() {
     loadSavedDesigns();
     return () => { cancelled = true; };
   }, []);
+
+  useEffect(() => {
+    if (!selectedSavedDesignId || Object.prototype.hasOwnProperty.call(savedDesignBlueprints, selectedSavedDesignId)) return undefined;
+    let cancelled = false;
+    const loadSavedDesignBlueprint = async () => {
+      try {
+        const response = await fetch(`/api/designs/${selectedSavedDesignId}/blueprint`);
+        if (!response.ok) throw new Error('Unable to load saved design blueprint');
+        const payload = await response.json();
+        if (cancelled) return;
+        setSavedDesignBlueprints((current) => ({ ...current, [selectedSavedDesignId]: payload }));
+      } catch (_error) {
+        if (!cancelled) setSavedDesignBlueprints((current) => ({ ...current, [selectedSavedDesignId]: null }));
+      }
+    };
+    loadSavedDesignBlueprint();
+    return () => { cancelled = true; };
+  }, [selectedSavedDesignId, savedDesignBlueprints]);
 
   useEffect(() => {
     if (!blueprintLibraryMessage) return undefined;
