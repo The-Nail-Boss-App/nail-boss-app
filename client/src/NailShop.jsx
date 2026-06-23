@@ -732,9 +732,9 @@ const buildBlueprintDetailSections = (blueprint) => {
   );
 
   return {
-    shape: nailValues('shape', 'Mixed'),
-    length: nailValues('length', 'Custom'),
-    width: nailValues('width', 'Custom'),
+    shape: nailValues('shape', 'Unknown Shape'),
+    length: nailValues('length', 'Unknown Length'),
+    width: nailValues('width', 'Unknown Width'),
     effects: blueprint.designSnapshot.effects.length ? blueprint.designSnapshot.effects : getBlueprintLayerValues(blueprint, (layer) => layer?.type && layer.type !== 'base', (layer) => layer.type),
     polishTypes,
     artElements,
@@ -1792,7 +1792,12 @@ export default function NailShop() {
                     <span><strong>Length:</strong> {selectedBlueprintDetail.length}</span>
                     <span><strong>Width:</strong> {selectedBlueprintDetail.width}</span>
                     <span><strong>Effects:</strong> {selectedBlueprintDetail.effects.length ? selectedBlueprintDetail.effects.join(', ') : 'None listed'}</span>
-                    <span><strong>Polish Types:</strong> {selectedBlueprintDetail.polishTypes.length ? selectedBlueprintDetail.polishTypes.join(', ') : 'Not specified'}</span>
+                    <span><strong>Polish Types:</strong> {selectedBlueprintDetail.polishTypes.length ? selectedBlueprintDetail.polishTypes.join(', ') : 'No Effects'}</span>
+                    <span><strong>Base Color:</strong> {selectedLibraryBlueprint.designSnapshot.baseColor || 'No colors listed'}</span>
+                    <span><strong>Palette:</strong> {selectedLibraryBlueprint.designSnapshot.palette.length ? selectedLibraryBlueprint.designSnapshot.palette.join(', ') : 'No colors listed'}</span>
+                    <span><strong>Art Level:</strong> {selectedLibraryBlueprint.designSnapshot.artLevel || 'Minimal'}</span>
+                    <span><strong>Layer Count:</strong> {selectedLibraryBlueprint.designSnapshot.layerCount}</span>
+                    <span><strong>Art Summary:</strong> {selectedLibraryBlueprint.designSnapshot.artSummary || 'No Effects'}</span>
                     <span><strong>Art Elements:</strong> {selectedBlueprintDetail.artElements.length ? selectedBlueprintDetail.artElements.join(', ') : 'None listed'}</span>
                     <span><strong>Charms:</strong> {selectedBlueprintDetail.charms.length ? selectedBlueprintDetail.charms.join(', ') : 'None listed'}</span>
                     <span><strong>Jewels:</strong> {selectedBlueprintDetail.jewels.length ? selectedBlueprintDetail.jewels.join(', ') : 'None listed'}</span>
@@ -1832,9 +1837,9 @@ export default function NailShop() {
                   <h3 style={styles.cardTitle}>Theme Information</h3>
                   <div style={styles.blueprintSummaryGrid}>
                     <span><strong>Theme Name:</strong> {selectedLibraryBlueprint.theme.themeName || 'Theme unavailable'}</span>
-                    <span><strong>Typography Style:</strong> {selectedLibraryBlueprint.theme.typographyStyle || 'Not specified'}</span>
-                    <span><strong>Accent Style:</strong> {selectedLibraryBlueprint.theme.accentStyle || 'Not specified'}</span>
-                    <span><strong>Collection Branding:</strong> {selectedLibraryBlueprint.theme.collectionLabel || selectedLibraryBlueprint.collectionName || 'Not specified'}</span>
+                    <span><strong>Typography Style:</strong> {selectedLibraryBlueprint.theme.typographyStyle || 'polished serif'}</span>
+                    <span><strong>Accent Style:</strong> {selectedLibraryBlueprint.theme.accentStyle || 'soft frame'}</span>
+                    <span><strong>Collection Branding:</strong> {selectedLibraryBlueprint.theme.collectionLabel || selectedLibraryBlueprint.collectionName || 'Signature'}</span>
                   </div>
                 </section>
 
@@ -1868,6 +1873,7 @@ export default function NailShop() {
                     <span><strong>Theme:</strong> {theme.themeName}</span>
                     <span><strong>Collection:</strong> {blueprint.collectionName || theme.collectionLabel}</span>
                     <span><strong>Visibility:</strong> {blueprint.visibility}</span>
+                    <span><strong>Metadata:</strong> {blueprint.designSnapshot.shape} • {blueprint.designSnapshot.colors.length} colors • {blueprint.designSnapshot.layerCount} layers</span>
                     <span><strong>Created:</strong> {formatBlueprintDate(blueprint.createdAt)}</span>
                     <span><strong>Tags:</strong> {blueprint.tags.length ? blueprint.tags.join(', ') : 'No tags'}</span>
                   </div>
