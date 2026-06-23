@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { COLORS } from './styles';
 import FullSetRenderer from './FullSetRenderer';
-import { buildBlueprintPreviewSummary, createBlueprintFromDesign, getDefaultBlueprintThemes, normalizeBlueprintTheme } from './blueprintEngine';
+import { buildBlueprintPreviewSummary, createBlueprintFromDesign, createCustomBlueprintTheme, getBlueprintContentSignature, getDefaultBlueprintThemes, normalizeBlueprintTheme } from './blueprintEngine';
 
 
 const FULL_SET_RENDERER_SAMPLE = {
@@ -30,6 +30,33 @@ const DEFAULT_PROFILE = {
   bookingLink: 'Booking link coming soon',
   primaryColor: '#7b2d5f',
   accentColor: '#f3a6c8',
+};
+
+
+const BLUEPRINT_TYPOGRAPHY_STYLES = {
+  'polished serif': { fontFamily: 'Georgia, Times, serif', letterSpacing: '0.01em', textTransform: 'none' },
+  'elevated serif': { fontFamily: 'Georgia, Times, serif', letterSpacing: '0.04em', textTransform: 'uppercase' },
+  'bold magazine': { fontFamily: 'Arial Black, Arial, sans-serif', letterSpacing: '-0.03em', textTransform: 'uppercase' },
+  'romantic script': { fontFamily: 'Brush Script MT, Georgia, serif', letterSpacing: '0.02em', textTransform: 'none' },
+  'sunny rounded': { fontFamily: 'Trebuchet MS, Arial, sans-serif', letterSpacing: '0.02em', textTransform: 'none' },
+  'festive classic': { fontFamily: 'Georgia, Times, serif', letterSpacing: '0.03em', textTransform: 'uppercase' },
+  'dark dramatic': { fontFamily: 'Impact, Arial Black, sans-serif', letterSpacing: '0.05em', textTransform: 'uppercase' },
+  'fluid shimmer': { fontFamily: 'Trebuchet MS, Arial, sans-serif', letterSpacing: '0.04em', textTransform: 'none' },
+  'wild bold': { fontFamily: 'Arial Black, Arial, sans-serif', letterSpacing: '0.02em', textTransform: 'uppercase' },
+  'clean sans': { fontFamily: 'Inter, Arial, sans-serif', letterSpacing: '0', textTransform: 'none' },
+};
+
+const BLUEPRINT_ACCENT_STYLES = {
+  'soft frame': { borderRadius: 24, boxShadow: 'inset 0 0 0 8px rgba(255,255,255,.35)', badgeRadius: 999, pattern: 'linear-gradient(135deg, rgba(255,255,255,.4), transparent)' },
+  'gold foil': { borderRadius: 18, boxShadow: '0 18px 40px rgba(120,90,20,.18)', badgeRadius: 6, pattern: 'radial-gradient(circle at 18% 20%, rgba(212,175,55,.28), transparent 24%)' },
+  'graphic blocks': { borderRadius: 10, boxShadow: '12px 12px 0 rgba(0,0,0,.08)', badgeRadius: 0, pattern: 'linear-gradient(90deg, rgba(0,0,0,.08) 0 18%, transparent 18%)' },
+  'pearl glow': { borderRadius: 32, boxShadow: '0 0 36px rgba(248,215,218,.85)', badgeRadius: 999, pattern: 'radial-gradient(circle at 80% 15%, rgba(255,255,255,.8), transparent 20%)' },
+  'citrus pop': { borderRadius: 20, boxShadow: '0 16px 0 rgba(34,211,238,.18)', badgeRadius: 14, pattern: 'linear-gradient(135deg, rgba(34,211,238,.18), rgba(249,115,22,.12))' },
+  'sparkle garland': { borderRadius: 22, boxShadow: '0 0 0 3px rgba(220,38,38,.2)', badgeRadius: 999, pattern: 'radial-gradient(circle, rgba(220,38,38,.18) 0 3px, transparent 4px)' },
+  'velvet edge': { borderRadius: 8, boxShadow: 'inset 0 0 0 4px rgba(127,29,29,.7)', badgeRadius: 4, pattern: 'linear-gradient(135deg, rgba(127,29,29,.24), transparent)' },
+  'iridescent scales': { borderRadius: 28, boxShadow: '0 16px 36px rgba(14,116,144,.2)', badgeRadius: 999, pattern: 'radial-gradient(circle at 20% 20%, rgba(167,139,250,.32), transparent 18%), radial-gradient(circle at 80% 70%, rgba(34,211,238,.25), transparent 22%)' },
+  'animal print': { borderRadius: 16, boxShadow: '0 18px 0 rgba(69,26,3,.12)', badgeRadius: 12, pattern: 'radial-gradient(ellipse at 20% 30%, rgba(69,26,3,.2) 0 7%, transparent 8%)' },
+  'thin line': { borderRadius: 4, boxShadow: 'none', badgeRadius: 2, pattern: 'linear-gradient(90deg, rgba(15,23,42,.08) 1px, transparent 1px)' },
 };
 
 const PROFILE_FIELDS = [
@@ -669,6 +696,7 @@ export default function NailShop() {
   const [proposalDraftMessage, setProposalDraftMessage] = useState('');
   const [activeSection, setActiveSection] = useState('profile');
   const [selectedBlueprintThemeId, setSelectedBlueprintThemeId] = useState('classic');
+  const [blueprintThemeOverrides, setBlueprintThemeOverrides] = useState({});
 
   const updateProfile = (field, value) => {
     setSaveMessage('');
@@ -841,7 +869,10 @@ export default function NailShop() {
   const proposalDraftPreviewData = generatedProposalDraft || liveProposalDraftData;
   const proposalDraftText = formatProposalDraftText(proposalDraftPreviewData);
   const blueprintThemes = getDefaultBlueprintThemes();
-  const selectedBlueprintTheme = normalizeBlueprintTheme(blueprintThemes.find((theme) => theme.themeId === selectedBlueprintThemeId));
+  const selectedDefaultBlueprintTheme = normalizeBlueprintTheme(blueprintThemes.find((theme) => theme.themeId === selectedBlueprintThemeId));
+  const selectedBlueprintTheme = createCustomBlueprintTheme(selectedDefaultBlueprintTheme, blueprintThemeOverrides);
+  const blueprintTypography = BLUEPRINT_TYPOGRAPHY_STYLES[selectedBlueprintTheme.typographyStyle] || BLUEPRINT_TYPOGRAPHY_STYLES[selectedDefaultBlueprintTheme.typographyStyle] || BLUEPRINT_TYPOGRAPHY_STYLES['polished serif'];
+  const blueprintAccent = BLUEPRINT_ACCENT_STYLES[selectedBlueprintTheme.accentStyle] || BLUEPRINT_ACCENT_STYLES[selectedDefaultBlueprintTheme.accentStyle] || BLUEPRINT_ACCENT_STYLES['soft frame'];
   const sampleBlueprint = createBlueprintFromDesign(FULL_SET_RENDERER_SAMPLE, {
     title: 'Shop Sample Blueprint',
     creatorSnapshot: {
@@ -863,6 +894,30 @@ export default function NailShop() {
     theme: selectedBlueprintTheme,
   });
   const blueprintPreviewSummary = buildBlueprintPreviewSummary(sampleBlueprint);
+  const blueprintContentSignature = getBlueprintContentSignature(sampleBlueprint);
+
+  const updateBlueprintThemeOverride = (field, value) => {
+    setBlueprintThemeOverrides((current) => ({ ...current, [field]: value }));
+  };
+
+  const selectBlueprintTheme = (themeId) => {
+    const nextTheme = normalizeBlueprintTheme(blueprintThemes.find((theme) => theme.themeId === themeId));
+    setSelectedBlueprintThemeId(themeId);
+    setBlueprintThemeOverrides({
+      primaryColor: nextTheme.primaryColor,
+      accentColor: nextTheme.accentColor,
+      backgroundColor: nextTheme.backgroundColor,
+      textColor: nextTheme.textColor,
+      typographyStyle: nextTheme.typographyStyle,
+      accentStyle: nextTheme.accentStyle,
+      collectionLabel: nextTheme.collectionLabel,
+      themeName: `${nextTheme.themeName} Custom`,
+    });
+  };
+
+  const resetBlueprintThemeBuilder = () => {
+    setBlueprintThemeOverrides({});
+  };
 
   const updateCostEngineField = (field, value) => {
     setCostEngineForm((current) => ({ ...current, [field]: value }));
@@ -1382,16 +1437,30 @@ export default function NailShop() {
             <span style={styles.needsSetupBadge}>Not published</span>
           </div>
 
-          <label style={styles.depositField}>
-            <span style={styles.label}>Blueprint Theme</span>
-            <select value={selectedBlueprintThemeId} onChange={(event) => setSelectedBlueprintThemeId(event.target.value)} style={styles.input} data-testid="blueprint-theme-selector">
-              {blueprintThemes.map((theme) => <option key={theme.themeId} value={theme.themeId}>{theme.themeName}</option>)}
-            </select>
-          </label>
+          <div style={styles.blueprintBuilderGrid} data-testid="blueprint-theme-builder-controls">
+            <label style={styles.depositField}>
+              <span style={styles.label}>Default Theme Foundation</span>
+              <select value={selectedBlueprintThemeId} onChange={(event) => selectBlueprintTheme(event.target.value)} style={styles.input} data-testid="blueprint-theme-selector">
+                {blueprintThemes.map((theme) => <option key={theme.themeId} value={theme.themeId}>{theme.themeName}</option>)}
+              </select>
+            </label>
+            <label style={styles.depositField}><span style={styles.label}>Collection Branding</span><input style={styles.input} value={selectedBlueprintTheme.collectionLabel} onChange={(event) => updateBlueprintThemeOverride('collectionLabel', event.target.value)} data-testid="blueprint-collection-branding" /></label>
+            <label style={styles.depositField}><span style={styles.label}>Theme Name</span><input style={styles.input} value={selectedBlueprintTheme.themeName} onChange={(event) => updateBlueprintThemeOverride('themeName', event.target.value)} data-testid="blueprint-theme-name" /></label>
+            {['primaryColor', 'accentColor', 'backgroundColor', 'textColor'].map((field) => (
+              <label key={field} style={styles.depositField}>
+                <span style={styles.label}>{field.replace('Color', ' Color')}</span>
+                <input type="color" style={styles.colorInput} value={selectedBlueprintTheme[field]} onChange={(event) => updateBlueprintThemeOverride(field, event.target.value)} data-testid={`blueprint-${field}`} />
+              </label>
+            ))}
+            <label style={styles.depositField}><span style={styles.label}>Typography Style</span><select style={styles.input} value={selectedBlueprintTheme.typographyStyle} onChange={(event) => updateBlueprintThemeOverride('typographyStyle', event.target.value)} data-testid="blueprint-typography-style">{Object.keys(BLUEPRINT_TYPOGRAPHY_STYLES).map((style) => <option key={style}>{style}</option>)}</select></label>
+            <label style={styles.depositField}><span style={styles.label}>Accent Style</span><select style={styles.input} value={selectedBlueprintTheme.accentStyle} onChange={(event) => updateBlueprintThemeOverride('accentStyle', event.target.value)} data-testid="blueprint-accent-style">{Object.keys(BLUEPRINT_ACCENT_STYLES).map((style) => <option key={style}>{style}</option>)}</select></label>
+            <button type="button" style={styles.secondaryButton} onClick={resetBlueprintThemeBuilder} data-testid="blueprint-theme-reset">Reset to default theme</button>
+          </div>
 
-          <article style={{ ...styles.blueprintThemeCard, background: selectedBlueprintTheme.backgroundColor, color: selectedBlueprintTheme.textColor, borderColor: selectedBlueprintTheme.accentColor }} data-testid="blueprint-theme-preview-card">
-            <div style={{ ...styles.previewBadge, background: selectedBlueprintTheme.accentColor, color: selectedBlueprintTheme.primaryColor }}>{blueprintPreviewSummary.themeLine}</div>
-            <h3 style={{ ...styles.blueprintPreviewTitle, color: selectedBlueprintTheme.primaryColor }}>{blueprintPreviewSummary.title}</h3>
+          <article style={{ ...styles.blueprintThemeCard, background: `${blueprintAccent.pattern}, ${selectedBlueprintTheme.backgroundColor}`, color: selectedBlueprintTheme.textColor, borderColor: selectedBlueprintTheme.accentColor, borderRadius: blueprintAccent.borderRadius, boxShadow: blueprintAccent.boxShadow }} data-testid="blueprint-theme-preview-card" data-content-signature={blueprintContentSignature}>
+            <div style={{ ...styles.blueprintCoverStrip, background: selectedBlueprintTheme.accentColor }} data-testid="blueprint-cover-style" />
+            <div style={{ ...styles.previewBadge, background: selectedBlueprintTheme.accentColor, color: selectedBlueprintTheme.primaryColor, borderRadius: blueprintAccent.badgeRadius }}>{blueprintPreviewSummary.themeLine}</div>
+            <h3 style={{ ...styles.blueprintPreviewTitle, ...blueprintTypography, color: selectedBlueprintTheme.primaryColor }}>{blueprintPreviewSummary.title}</h3>
             <p style={styles.serviceMeta}>{blueprintPreviewSummary.creatorLine}</p>
             <p style={styles.serviceDescription}>{blueprintPreviewSummary.designLine}</p>
             <div style={styles.blueprintSummaryGrid} data-testid="blueprint-preview-summary">
@@ -1399,6 +1468,8 @@ export default function NailShop() {
               <span><strong>Visibility:</strong> {blueprintPreviewSummary.visibilityLine}</span>
               <span><strong>Tags:</strong> {blueprintPreviewSummary.tagLine}</span>
               <span><strong>Accent:</strong> {selectedBlueprintTheme.accentStyle}</span>
+              <span><strong>Typography:</strong> {selectedBlueprintTheme.typographyStyle}</span>
+              <span><strong>Collection:</strong> {selectedBlueprintTheme.collectionLabel}</span>
             </div>
           </article>
         </section>
@@ -1829,12 +1900,29 @@ const styles = {
     gridColumn: '1 / -1',
     padding: 22,
   },
+  blueprintBuilderGrid: {
+    display: 'grid',
+    gap: 12,
+    gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))',
+  },
+  colorInput: {
+    border: `1px solid ${COLORS.border}`,
+    borderRadius: 14,
+    height: 44,
+    padding: 4,
+    width: '100%',
+  },
   blueprintThemeCard: {
     border: '2px solid',
     borderRadius: 22,
     display: 'grid',
     gap: 12,
     padding: 22,
+  },
+  blueprintCoverStrip: {
+    borderRadius: 999,
+    height: 10,
+    width: '100%',
   },
   blueprintPreviewTitle: {
     fontSize: 28,
