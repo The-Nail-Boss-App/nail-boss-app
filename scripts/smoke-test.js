@@ -101,6 +101,13 @@ function assertNailShopProfilePersistenceSource() {
   assert(blueprintEngineSource.includes("export function createBlueprintFromDesign") && blueprintEngineSource.includes("export function normalizeBlueprint") && blueprintEngineSource.includes("export function normalizeBlueprintTheme"), "Blueprint Engine helper exports should exist");
   assert(blueprintEngineSource.includes("export function getDefaultBlueprintThemes") && ["Classic", "Luxury", "Editorial", "Bridal", "Summer", "Holiday", "Goth", "Mermaid", "Cheetah", "Minimal"].every((theme) => blueprintEngineSource.includes(theme)), "default Blueprint Themes should exist");
   assert(blueprintEngineSource.includes("export function buildBlueprintPreviewSummary") && blueprintEngineSource.includes("designSnapshot") && blueprintEngineSource.includes("pricingGuidance"), "Blueprint preview summary should derive from normalized Blueprint content");
+  assert(blueprintEngineSource.includes("export const BLUEPRINT_STATUSES") && ["Draft", "Portfolio Ready", "Gallery Ready"].every((status) => blueprintEngineSource.includes(status)), "Blueprint status system exists");
+  assert(blueprintEngineSource.includes("DEFAULT_BLUEPRINT_STATUS = 'Draft'") && blueprintEngineSource.includes("status: validBlueprintStatus(source.status)"), "Blueprint Draft default exists");
+  assert(blueprintEngineSource.includes("export function evaluateBlueprintReadiness") && blueprintEngineSource.includes("Blueprint title exists") && blueprintEngineSource.includes("At least one tag exists"), "Blueprint readiness helper exists");
+  assert(blueprintEngineSource.includes("score = Math.round") && blueprintEngineSource.includes("Almost Ready") && blueprintEngineSource.includes("Not Ready"), "Blueprint readiness score exists");
+  assert(blueprintEngineSource.includes("FEATURED_BLUEPRINT_COLLECTIONS") && ["Summer Chrome", "Bridal Collection", "Holiday Glam", "After Dark", "Spring Bloom", "Signature Collection"].every((collection) => blueprintEngineSource.includes(collection)), "Featured collection assignment exists");
+  assert(blueprintEngineSource.includes("creatorStory") && blueprintEngineSource.includes("inspiration") && blueprintEngineSource.includes("techniqueNotes") && blueprintEngineSource.includes("productsUsed"), "Creator Story fields exist");
+
   assert(blueprintEngineSource.includes("normalizeBlueprintTheme(source.theme)") && blueprintEngineSource.includes("pricingGuidance: { suggestedPrice") && blueprintEngineSource.includes("designSnapshot: {"), "Blueprint theme normalization should not mutate designSnapshot or pricingGuidance");
   assert(blueprintEngineSource.includes("isObject(input) ? input : {}") && blueprintEngineSource.includes("DEFAULT_THEME") && blueprintEngineSource.includes("safeColor"), "malformed Blueprint and theme input should safely fall back");
   assert(nailShopSource.includes("Blueprint Engine Preview") && nailShopSource.includes('data-testid="blueprint-engine-preview-section"'), "Blueprint Engine Preview should exist in Nail Shop");
@@ -124,6 +131,12 @@ function assertNailShopProfilePersistenceSource() {
   assert(nailShopSource.includes('data-testid="blueprint-library-duplicate-button"') && nailShopSource.includes("duplicateBlueprintLibraryRecord"), "duplicate action exists");
   assert(nailShopSource.includes('data-testid="blueprint-library-rename-button"') && nailShopSource.includes("window.prompt('Rename Blueprint'"), "rename action exists");
   assert(nailShopSource.includes('data-testid="blueprint-library-delete-button"') && nailShopSource.includes("window.confirm('Delete this local Blueprint?"), "delete action exists with safe confirmation");
+  assert(nailShopSource.includes('data-testid="blueprint-prepare-gallery-button"') && nailShopSource.includes("Prepare For Gallery"), "Prepare For Gallery button exists");
+  assert(nailShopSource.includes('data-testid="blueprint-detail-readiness"') && nailShopSource.includes("Gallery Readiness") && nailShopSource.includes("selectedBlueprintReadiness.score"), "Blueprint Detail View shows readiness");
+  assert(nailShopSource.includes("<strong>Status:</strong> {blueprint.status}") && nailShopSource.includes("<strong>Readiness Score:</strong> {readiness.score}/100"), "Blueprint Library shows status and readiness");
+  assert(nailShopSource.includes("Preparing a Blueprint for Gallery does not publish it."), "Gallery prep guardrail copy exists without publishing workflow");
+  assert(!nailShopSource.includes("fetch('/api/gallery") && !nailShopSource.includes('fetch("/api/gallery') && !nailShopSource.includes("marketplace listings"), "no Gallery or Marketplace publishing occurs");
+
   assert(nailShopSource.includes('data-testid="blueprint-detail-view"') && nailShopSource.includes("Blueprint Detail View"), "Blueprint Detail View should exist");
   assert(nailShopSource.includes("onClick={() => selectLibraryBlueprint(blueprint.blueprintId)}") && nailShopSource.includes('data-testid="blueprint-library-preview-card"'), "Blueprint card should open Detail View");
   assert(nailShopSource.includes('data-testid="blueprint-detail-hero-preview"') && nailShopSource.includes('mode="hero"') && nailShopSource.includes("Full Set Hero Preview"), "Blueprint Detail hero preview should render in hero mode");

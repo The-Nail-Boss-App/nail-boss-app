@@ -1,5 +1,9 @@
 const BLUEPRINT_VERSION = 1;
 
+export const BLUEPRINT_STATUSES = ['Draft', 'Portfolio Ready', 'Gallery Ready'];
+export const DEFAULT_BLUEPRINT_STATUS = 'Draft';
+export const FEATURED_BLUEPRINT_COLLECTIONS = ['Summer Chrome', 'Bridal Collection', 'Holiday Glam', 'After Dark', 'Spring Bloom', 'Signature Collection'];
+
 const DEFAULT_THEME = {
   themeId: 'classic',
   themeName: 'Classic',
@@ -53,6 +57,8 @@ const designLayerValues = (design, predicate, mapper) => uniqueList(
 );
 
 const uniqueList = (items) => [...new Set(list(items).map((item) => String(item || '').trim()).filter(Boolean))];
+const validBlueprintStatus = (value) => BLUEPRINT_STATUSES.includes(value) ? value : DEFAULT_BLUEPRINT_STATUS;
+const validFeaturedCollection = (value) => FEATURED_BLUEPRINT_COLLECTIONS.includes(value) ? value : '';
 
 
 const lowerTokens = (value) => {
@@ -234,6 +240,9 @@ export function normalizeBlueprint(input) {
     pricingGuidance: { suggestedPrice: numberOrNull(pricing.suggestedPrice), suggestedDeposit: numberOrNull(pricing.suggestedDeposit), estimatedTime: text(pricing.estimatedTime, 'Not estimated'), breakdown: isObject(pricing.breakdown) ? pricing.breakdown : {} },
     materials: { colors: list(materials.colors), effects: list(materials.effects), products: list(materials.products), vendorReferences: list(materials.vendorReferences) },
     tags: list(source.tags), difficulty: text(source.difficulty, 'Not rated'), collectionName: text(source.collectionName),
+    status: validBlueprintStatus(source.status),
+    featuredCollection: validFeaturedCollection(source.featuredCollection || source.galleryCollection || source.collectionName),
+    creatorStory: { inspiration: text(source.creatorStory?.inspiration || source.inspiration), techniqueNotes: text(source.creatorStory?.techniqueNotes || source.techniqueNotes), productsUsed: text(source.creatorStory?.productsUsed || source.productsUsed) },
     theme: normalizeBlueprintTheme(source.theme),
     visibility: ['private', 'portfolio', 'gallery-ready'].includes(source.visibility) ? source.visibility : 'private',
     engagementStats: { views: Number(stats.views) || 0, saves: Number(stats.saves) || 0, likes: Number(stats.likes) || 0, remixes: Number(stats.remixes) || 0 },
@@ -392,6 +401,28 @@ export function createBlueprintFromDesign(design, options = {}) {
   });
 }
 
+
+export function evaluateBlueprintReadiness(input) {
+  const blueprint = normalizeBlueprint(input);
+  const checks = [
+    { id: 'title', label: 'Blueprint title exists', ready: Boolean(text(blueprint.title) && blueprint.title !== 'Untitled Blueprint') },
+    { id: 'theme', label: 'Theme exists', ready: Boolean(text(blueprint.theme?.themeName) && text(blueprint.theme?.themeId)) },
+    { id: 'heroPreview', label: 'Hero preview exists', ready: flattenDesignNails(blueprint.designSnapshot.fullSetData).length > 0 },
+    { id: 'creatorInfo', label: 'Creator info exists', ready: Boolean(text(blueprint.creatorSnapshot.creatorName) && blueprint.creatorSnapshot.creatorName !== 'Unknown creator') },
+    { id: 'collection', label: 'Collection exists', ready: Boolean(text(blueprint.featuredCollection) || text(blueprint.collectionName) || text(blueprint.theme.collectionLabel)) },
+    { id: 'tags', label: 'At least one tag exists', ready: blueprint.tags.length > 0 },
+  ];
+  const readyCount = checks.filter((check) => check.ready).length;
+  const score = Math.round((readyCount / checks.length) * 100);
+  return {
+    checks,
+    missing: checks.filter((check) => !check.ready).map((check) => check.label),
+    ready: readyCount === checks.length,
+    score,
+    label: score === 100 ? 'Gallery Ready' : score >= 67 ? 'Almost Ready' : 'Not Ready',
+  };
+}
+
 export function buildBlueprintPreviewSummary(blueprint) {
   const normalized = normalizeBlueprint(blueprint);
   return {
@@ -402,5 +433,7 @@ export function buildBlueprintPreviewSummary(blueprint) {
     themeLine: `${normalized.theme.themeName} theme (${normalized.theme.collectionLabel})`,
     tagLine: normalized.tags.length ? normalized.tags.join(', ') : 'No tags yet',
     visibilityLine: normalized.visibility,
+    statusLine: normalized.status,
+    readinessLine: `${evaluateBlueprintReadiness(normalized).score}/100`,
   };
 }
