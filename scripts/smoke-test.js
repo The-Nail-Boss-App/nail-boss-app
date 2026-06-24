@@ -96,7 +96,18 @@ function assertNailShopProfilePersistenceSource() {
   const appSource = fs.readFileSync(path.join(__dirname, "..", "client", "src", "App.jsx"), "utf8");
   const proposalsSource = fs.readFileSync(path.join(__dirname, "..", "client", "src", "Proposals.jsx"), "utf8");
   const blueprintEngineSource = fs.readFileSync(path.join(__dirname, "..", "client", "src", "blueprintEngine.js"), "utf8");
+  const blueprintGalleryRendererSource = fs.readFileSync(path.join(__dirname, "..", "client", "src", "BlueprintGalleryRenderer.jsx"), "utf8");
 
+
+
+  assert(blueprintGalleryRendererSource.includes("export default function BlueprintGalleryRenderer") && nailShopSource.includes("import BlueprintGalleryRenderer from './BlueprintGalleryRenderer'"), "BlueprintGalleryRenderer component exists and is wired into Blueprint Library");
+  assert(blueprintGalleryRendererSource.includes("renderMode = 'gallery'") && nailShopSource.includes('renderMode="gallery"'), "BlueprintGalleryRenderer exposes and uses gallery render mode");
+  assert(blueprintGalleryRendererSource.includes("getBlueprintGalleryAutoScaleStyle") && blueprintGalleryRendererSource.includes("--gallery-art-fill") && blueprintGalleryRendererSource.includes("88%") && blueprintGalleryRendererSource.includes("--gallery-nail-width"), "BlueprintGalleryRenderer includes gallery auto scaling that targets 80-90% artwork fill");
+  assert(blueprintGalleryRendererSource.includes('data-testid="blueprint-gallery-artwork-tray"') && blueprintGalleryRendererSource.includes("gridTemplateRows: 'repeat(2, minmax(0, 1fr))'") && blueprintGalleryRendererSource.includes("gridTemplateColumns: 'repeat(5, var(--gallery-nail-width))'"), "BlueprintGalleryRenderer uses artwork-first two rows of five nails");
+  assert(blueprintGalleryRendererSource.includes("contain: 'layout paint size'") && blueprintGalleryRendererSource.includes("overflow: 'hidden'") && blueprintGalleryRendererSource.includes("maxHeight: '100%'") && blueprintGalleryRendererSource.includes("maxWidth: '100%'"), "BlueprintGalleryRenderer contains overflow and avoids clipping in responsive cards");
+  assert(!blueprintGalleryRendererSource.includes("Hero") && !blueprintGalleryRendererSource.includes("helper") && !blueprintGalleryRendererSource.includes("Full Set Composition") && !blueprintGalleryRendererSource.includes("<label") && !blueprintGalleryRendererSource.includes("renderer label"), "BlueprintGalleryRenderer has no renderer chrome, helper chrome, or finger labels");
+  assert(blueprintGalleryRendererSource.includes("BLUEPRINT_GALLERY_PRESENTATION_THEMES") && ["luxury-tray", "minimal-white", "velvet-display", "boutique", "magazine"].every((theme) => blueprintGalleryRendererSource.includes(theme)), "BlueprintGalleryRenderer has future presentation theme architecture support");
+  assert(nailShopSource.includes('data-testid="blueprint-detail-hero-preview"') && nailShopSource.includes('<FullSetRenderer designData={selectedLibraryBlueprint.designSnapshot.fullSetData} mode="hero" />'), "Blueprint Detail View remains unchanged on FullSetRenderer hero mode");
 
   assert(blueprintEngineSource.includes("export function createBlueprintFromDesign") && blueprintEngineSource.includes("export function normalizeBlueprint") && blueprintEngineSource.includes("export function normalizeBlueprintTheme"), "Blueprint Engine helper exports should exist");
   assert(blueprintEngineSource.includes("export function getDefaultBlueprintThemes") && ["Classic", "Luxury", "Editorial", "Bridal", "Summer", "Holiday", "Goth", "Mermaid", "Cheetah", "Minimal"].every((theme) => blueprintEngineSource.includes(theme)), "default Blueprint Themes should exist");
