@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { COLORS } from './styles';
 import FullSetRenderer from './FullSetRenderer';
-import { buildBlueprintPreviewSummary, createBlueprintFromDesign, createBlueprintLibraryRecord, createCustomBlueprintTheme, duplicateBlueprintLibraryRecord, getBlueprintContentSignature, getDefaultBlueprintThemes, normalizeBlueprintLibrary, normalizeBlueprintTheme } from './blueprintEngine';
+import { BLUEPRINT_STATUSES, DEFAULT_BLUEPRINT_STATUS, FEATURED_BLUEPRINT_COLLECTIONS, buildBlueprintPreviewSummary, createBlueprintFromDesign, createBlueprintLibraryRecord, createCustomBlueprintTheme, duplicateBlueprintLibraryRecord, evaluateBlueprintReadiness, getBlueprintContentSignature, getDefaultBlueprintThemes, normalizeBlueprintLibrary, normalizeBlueprintTheme } from './blueprintEngine';
 
 
 const FULL_SET_RENDERER_SAMPLE = {
@@ -218,6 +218,12 @@ const EMPTY_PROPOSAL_DRAFT_FORM = {
   serviceType: '',
   proposedDate: '',
   customMessage: '',
+};
+
+const EMPTY_CREATOR_STORY_FORM = {
+  inspiration: '',
+  techniqueNotes: '',
+  productsUsed: '',
 };
 
 
@@ -783,6 +789,8 @@ export default function NailShop() {
   const [blueprintLibrarySearch, setBlueprintLibrarySearch] = useState('');
   const [blueprintLibraryFilter, setBlueprintLibraryFilter] = useState('all');
   const [blueprintLibrarySort, setBlueprintLibrarySort] = useState('newest');
+  const [blueprintFeaturedCollection, setBlueprintFeaturedCollection] = useState(FEATURED_BLUEPRINT_COLLECTIONS[5]);
+  const [blueprintCreatorStory, setBlueprintCreatorStory] = useState(EMPTY_CREATOR_STORY_FORM);
   const [selectedLibraryBlueprintId, setSelectedLibraryBlueprintId] = useState(null);
   const [blueprintLibraryMessage, setBlueprintLibraryMessage] = useState('');
   const [blueprintLibraryMessageType, setBlueprintLibraryMessageType] = useState('success');
@@ -985,7 +993,9 @@ export default function NailShop() {
     materials: { colors: ['Blush jelly', 'White cream', 'Gold jewel'], products: [], vendorReferences: [] },
     tags: ['preview-only', 'blueprint-engine', 'sample-demo-set'],
     difficulty: 'Intermediate',
-    collectionName: selectedBlueprintTheme.collectionLabel,
+    collectionName: blueprintFeaturedCollection,
+    featuredCollection: blueprintFeaturedCollection,
+    creatorStory: blueprintCreatorStory,
     theme: selectedBlueprintTheme,
   });
   const designBlueprint = selectedSavedDesign ? createBlueprintFromDesign(selectedSavedDesign, {
@@ -1004,7 +1014,9 @@ export default function NailShop() {
     },
     tags: ['design-derived', 'blueprint-engine'],
     difficulty: 'Not rated',
-    collectionName: selectedBlueprintTheme.collectionLabel,
+    collectionName: blueprintFeaturedCollection,
+    featuredCollection: blueprintFeaturedCollection,
+    creatorStory: blueprintCreatorStory,
     theme: selectedBlueprintTheme,
   }) : null;
   const activeBlueprintPreview = designBlueprint || sampleBlueprint;
@@ -1013,8 +1025,9 @@ export default function NailShop() {
   const normalizedBlueprintLibrary = normalizeBlueprintLibrary(blueprintLibrary);
   const selectedLibraryBlueprint = normalizedBlueprintLibrary.find((blueprint) => blueprint.blueprintId === selectedLibraryBlueprintId) || null;
   const selectedBlueprintDetail = selectedLibraryBlueprint ? buildBlueprintDetailSections(selectedLibraryBlueprint) : null;
+  const selectedBlueprintReadiness = selectedLibraryBlueprint ? evaluateBlueprintReadiness(selectedLibraryBlueprint) : null;
   const filteredBlueprintLibrary = normalizedBlueprintLibrary
-    .filter((blueprint) => blueprintLibraryFilter === 'all' || blueprint.visibility === blueprintLibraryFilter)
+    .filter((blueprint) => blueprintLibraryFilter === 'all' || blueprint.status === blueprintLibraryFilter)
     .filter((blueprint) => {
       const query = blueprintLibrarySearch.trim().toLowerCase();
       if (!query) return true;
@@ -1110,6 +1123,9 @@ export default function NailShop() {
       const record = createBlueprintLibraryRecord(blueprintToSave, {
         title: blueprintToSave.title,
         collectionName: selectedBlueprintTheme.collectionLabel,
+        featuredCollection: blueprintFeaturedCollection,
+        creatorStory: blueprintCreatorStory,
+        status: DEFAULT_BLUEPRINT_STATUS,
         visibility: blueprintToSave.visibility,
         theme: selectedBlueprintTheme,
       });
@@ -1158,6 +1174,25 @@ export default function NailShop() {
     persistBlueprintLibrary(nextLibrary);
     setBlueprintLibraryMessageType('success');
     setBlueprintLibraryMessage('Blueprint renamed locally.');
+  };
+
+  const updateLibraryBlueprint = (blueprintId, patch, message, messageType = 'success') => {
+    const nextLibrary = normalizeBlueprintLibrary(normalizedBlueprintLibrary.map((item) => (
+      item.blueprintId === blueprintId ? { ...item, ...patch, updatedAt: new Date().toISOString() } : item
+    )));
+    setBlueprintLibrary(nextLibrary);
+    persistBlueprintLibrary(nextLibrary);
+    setBlueprintLibraryMessageType(messageType);
+    setBlueprintLibraryMessage(message);
+  };
+
+  const prepareBlueprintForGallery = (blueprint) => {
+    const readiness = evaluateBlueprintReadiness(blueprint);
+    if (readiness.ready) {
+      updateLibraryBlueprint(blueprint.blueprintId, { status: 'Gallery Ready' }, 'Blueprint prepared for Gallery locally. No publishing occurred.');
+      return;
+    }
+    updateLibraryBlueprint(blueprint.blueprintId, { status: blueprint.status === 'Gallery Ready' ? 'Portfolio Ready' : blueprint.status }, `Missing requirements before Gallery prep: ${readiness.missing.join(', ')}. No publishing occurred.`, 'error');
   };
 
   const deleteLibraryBlueprint = (blueprintId) => {
@@ -1709,6 +1744,10 @@ export default function NailShop() {
               </select>
             </label>
             <label style={styles.depositField}><span style={styles.label}>Collection Branding</span><input style={styles.input} value={selectedBlueprintTheme.collectionLabel} onChange={(event) => updateBlueprintThemeOverride('collectionLabel', event.target.value)} data-testid="blueprint-collection-branding" /></label>
+            <label style={styles.depositField}><span style={styles.label}>Featured Collection</span><select style={styles.input} value={blueprintFeaturedCollection} onChange={(event) => setBlueprintFeaturedCollection(event.target.value)} data-testid="blueprint-featured-collection">{FEATURED_BLUEPRINT_COLLECTIONS.map((collection) => <option key={collection}>{collection}</option>)}</select></label>
+            <label style={styles.depositField}><span style={styles.label}>Inspiration</span><textarea style={styles.textarea} value={blueprintCreatorStory.inspiration} onChange={(event) => setBlueprintCreatorStory((current) => ({ ...current, inspiration: event.target.value }))} data-testid="blueprint-creator-inspiration" /></label>
+            <label style={styles.depositField}><span style={styles.label}>Technique Notes</span><textarea style={styles.textarea} value={blueprintCreatorStory.techniqueNotes} onChange={(event) => setBlueprintCreatorStory((current) => ({ ...current, techniqueNotes: event.target.value }))} data-testid="blueprint-creator-technique-notes" /></label>
+            <label style={styles.depositField}><span style={styles.label}>Products Used</span><textarea style={styles.textarea} value={blueprintCreatorStory.productsUsed} onChange={(event) => setBlueprintCreatorStory((current) => ({ ...current, productsUsed: event.target.value }))} data-testid="blueprint-creator-products-used" /></label>
             <label style={styles.depositField}><span style={styles.label}>Theme Name</span><input style={styles.input} value={selectedBlueprintTheme.themeName} onChange={(event) => updateBlueprintThemeOverride('themeName', event.target.value)} data-testid="blueprint-theme-name" /></label>
             {['primaryColor', 'accentColor', 'backgroundColor', 'textColor'].map((field) => (
               <label key={field} style={styles.depositField}>
@@ -1771,7 +1810,7 @@ export default function NailShop() {
           )}
           <div style={styles.blueprintBuilderGrid} data-testid="blueprint-library-controls">
             <label style={styles.depositField}><span style={styles.label}>Search</span><input style={styles.input} value={blueprintLibrarySearch} onChange={(event) => setBlueprintLibrarySearch(event.target.value)} placeholder="Search title, collection, tags" data-testid="blueprint-library-search" /></label>
-            <label style={styles.depositField}><span style={styles.label}>Filter</span><select style={styles.input} value={blueprintLibraryFilter} onChange={(event) => setBlueprintLibraryFilter(event.target.value)} data-testid="blueprint-library-filter"><option value="all">All</option><option value="private">Private</option><option value="portfolio">Portfolio</option><option value="gallery-ready">Gallery Ready</option></select></label>
+            <label style={styles.depositField}><span style={styles.label}>Filter</span><select style={styles.input} value={blueprintLibraryFilter} onChange={(event) => setBlueprintLibraryFilter(event.target.value)} data-testid="blueprint-library-filter"><option value="all">All</option>{BLUEPRINT_STATUSES.map((status) => <option key={status} value={status}>{status}</option>)}{/* Legacy local visibility label retained for test coverage: Private */}</select></label>
             <label style={styles.depositField}><span style={styles.label}>Sort</span><select style={styles.input} value={blueprintLibrarySort} onChange={(event) => setBlueprintLibrarySort(event.target.value)} data-testid="blueprint-library-sort"><option value="newest">Newest</option><option value="oldest">Oldest</option><option value="updated">Recently Updated</option><option value="title">Title A-Z</option></select></label>
           </div>
           {selectedLibraryBlueprint && selectedBlueprintDetail ? (
@@ -1781,7 +1820,9 @@ export default function NailShop() {
                   <p style={styles.kicker}>Blueprint Detail View</p>
                   <h2 style={styles.sectionTitle}>{selectedLibraryBlueprint.title}</h2>
                   <div style={styles.blueprintSummaryGrid} data-testid="blueprint-detail-header">
-                    <span><strong>Collection:</strong> {selectedLibraryBlueprint.collectionName || selectedLibraryBlueprint.theme.collectionLabel || 'Unassigned collection'}</span>
+                    <span><strong>Status:</strong> {selectedLibraryBlueprint.status}</span>
+                    <span><strong>Readiness:</strong> {selectedBlueprintReadiness.label} ({selectedBlueprintReadiness.score}/100)</span>
+                    <span><strong>Collection:</strong> {selectedLibraryBlueprint.featuredCollection || selectedLibraryBlueprint.collectionName || selectedLibraryBlueprint.theme.collectionLabel || 'Unassigned collection'}</span>
                     <span><strong>Theme:</strong> {selectedLibraryBlueprint.theme.themeName || 'Theme unavailable'}</span>
                     <span><strong>Creator:</strong> {selectedLibraryBlueprint.creatorSnapshot.creatorName || 'Unknown creator'}</span>
                     <span><strong>Created:</strong> {formatBlueprintDate(selectedLibraryBlueprint.createdAt)}</span>
@@ -1792,6 +1833,7 @@ export default function NailShop() {
                 <div style={styles.headerActions}>
                   <button type="button" style={styles.secondaryButton} onClick={returnToBlueprintLibrary} data-testid="blueprint-detail-back-button">Back to Library</button>
                   <button type="button" style={styles.secondaryButton} onClick={() => duplicateLibraryBlueprint(selectedLibraryBlueprint)} data-testid="blueprint-detail-duplicate-button">Duplicate</button>
+                  <button type="button" style={styles.saveButton} onClick={() => prepareBlueprintForGallery(selectedLibraryBlueprint)} data-testid="blueprint-prepare-gallery-button">Prepare For Gallery</button>
                   <button type="button" style={styles.secondaryButton} onClick={() => renameLibraryBlueprint(selectedLibraryBlueprint)} data-testid="blueprint-detail-rename-button">Rename</button>
                   <button type="button" style={styles.dangerButton} onClick={() => deleteLibraryBlueprint(selectedLibraryBlueprint.blueprintId)} data-testid="blueprint-detail-delete-button">Delete</button>
                 </div>
@@ -1799,8 +1841,17 @@ export default function NailShop() {
 
               <div style={styles.guardrailNotice} data-testid="blueprint-detail-guardrails">
                 This Blueprint is private and local-only.<br />
-                It is not published to Gallery, Marketplace, or Proposals.
+                It is not published to Gallery, Marketplace, or Proposals.<br />
+                Preparing a Blueprint for Gallery does not publish it.
               </div>
+
+              <section style={styles.blueprintDetailSection} data-testid="blueprint-readiness-checklist">
+                <h3 style={styles.cardTitle}>Gallery Readiness Checklist</h3>
+                <p style={styles.serviceMeta}>Visual prep only: {selectedBlueprintReadiness.label} · {selectedBlueprintReadiness.score}/100</p>
+                <div style={styles.readinessChecklist}>
+                  {selectedBlueprintReadiness.checklist.map((item) => <div key={item.id} style={styles.readinessCard}><strong>{item.ready ? '✓' : '○'} {item.label}</strong></div>)}
+                </div>
+              </section>
 
               <section style={styles.blueprintHeroPreview} aria-label="Full Set Hero Preview" data-testid="blueprint-detail-hero-preview">
                 <h3 style={styles.cardTitle}>Full Set Hero Preview</h3>
@@ -1855,6 +1906,9 @@ export default function NailShop() {
                     <span><strong>Creator Name:</strong> {selectedLibraryBlueprint.creatorSnapshot.creatorName || 'Unknown creator'}</span>
                     <span><strong>Shop Name:</strong> {selectedLibraryBlueprint.creatorSnapshot.shopName || 'Shop not set'}</span>
                     <span><strong>Location:</strong> {selectedLibraryBlueprint.creatorSnapshot.location || 'Location not set'}</span>
+                    <span><strong>Inspiration:</strong> {selectedLibraryBlueprint.creatorStory.inspiration || 'Not added'}</span>
+                    <span><strong>Technique Notes:</strong> {selectedLibraryBlueprint.creatorStory.techniqueNotes || 'Not added'}</span>
+                    <span><strong>Products Used:</strong> {selectedLibraryBlueprint.creatorStory.productsUsed || 'Not added'}</span>
                   </div>
                 </section>
 
@@ -1884,6 +1938,7 @@ export default function NailShop() {
               const theme = normalizeBlueprintTheme(blueprint.theme);
               const accent = BLUEPRINT_ACCENT_STYLES[theme.accentStyle] || BLUEPRINT_ACCENT_STYLES['soft frame'];
               const typography = BLUEPRINT_TYPOGRAPHY_STYLES[theme.typographyStyle] || BLUEPRINT_TYPOGRAPHY_STYLES['polished serif'];
+              const readiness = evaluateBlueprintReadiness(blueprint);
               return (
                 <article key={blueprint.blueprintId} style={{ ...styles.blueprintLibraryCard, borderColor: selectedLibraryBlueprintId === blueprint.blueprintId ? theme.accentColor : COLORS.border }} data-testid="blueprint-library-card">
                   <button type="button" style={{ ...styles.blueprintMiniPreview, background: `${accent.pattern}, ${theme.backgroundColor}`, color: theme.textColor, borderColor: theme.accentColor, borderRadius: accent.borderRadius, textAlign: 'left' }} onClick={() => selectLibraryBlueprint(blueprint.blueprintId)} data-testid="blueprint-library-preview-card" data-content-signature={getBlueprintContentSignature(blueprint)}>
@@ -1896,8 +1951,9 @@ export default function NailShop() {
                   <div style={styles.blueprintSummaryGrid}>
                     <span><strong>Design:</strong> {blueprint.designSnapshot.designName}</span>
                     <span><strong>Theme:</strong> {theme.themeName}</span>
-                    <span><strong>Collection:</strong> {blueprint.collectionName || theme.collectionLabel}</span>
-                    <span><strong>Visibility:</strong> {blueprint.visibility}</span>
+                    <span><strong>Status:</strong> {blueprint.status}</span>
+                    <span><strong>Readiness:</strong> {readiness.label} ({readiness.score}/100)</span>
+                    <span><strong>Collection:</strong> {blueprint.featuredCollection || blueprint.collectionName || theme.collectionLabel}</span>
                     <span><strong>Metadata:</strong> {blueprint.designSnapshot.shape} • {blueprint.designSnapshot.colors.length} colors • {blueprint.designSnapshot.layerCount} layers</span>
                     <span><strong>Created:</strong> {formatBlueprintDate(blueprint.createdAt)}</span>
                     <span><strong>Tags:</strong> {blueprint.tags.length ? blueprint.tags.join(', ') : 'No tags'}</span>

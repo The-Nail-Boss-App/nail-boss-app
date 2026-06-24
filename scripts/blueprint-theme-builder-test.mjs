@@ -27,6 +27,25 @@ const customTheme = engine.createCustomBlueprintTheme(contentTheme, {
 });
 const contentBlueprint = engine.createBlueprintFromDesign(design, { title: 'Content Blueprint', tags: ['content'], theme: contentTheme });
 const themedBlueprint = engine.createBlueprintFromDesign(design, { title: 'Content Blueprint', tags: ['content'], theme: customTheme });
+assert.deepEqual(engine.BLUEPRINT_STATUSES, ['Draft', 'Portfolio Ready', 'Gallery Ready'], 'status system exists');
+assert.equal(engine.DEFAULT_BLUEPRINT_STATUS, 'Draft', 'Draft default exists');
+assert(engine.FEATURED_BLUEPRINT_COLLECTIONS.includes('Summer Chrome'), 'collection assignment choices include Summer Chrome');
+const galleryPrepBlueprint = engine.createBlueprintLibraryRecord(contentBlueprint, {
+  creatorSnapshot: { creatorName: 'Anita Artist', shopName: 'AnitaSet Studio' },
+  featuredCollection: 'Summer Chrome',
+  creatorStory: { inspiration: 'Poolside shine', techniqueNotes: 'Chrome layering', productsUsed: 'Chrome powder, builder gel' },
+});
+assert.equal(galleryPrepBlueprint.status, 'Draft', 'new Blueprint Library records default to Draft status');
+assert.equal(galleryPrepBlueprint.featuredCollection, 'Summer Chrome', 'collection assignment stored locally in Blueprint');
+assert.equal(galleryPrepBlueprint.creatorStory.inspiration, 'Poolside shine', 'creator story inspiration stored');
+assert.equal(galleryPrepBlueprint.creatorStory.techniqueNotes, 'Chrome layering', 'creator story technique notes stored');
+assert.equal(galleryPrepBlueprint.creatorStory.productsUsed, 'Chrome powder, builder gel', 'creator story products used stored');
+const readiness = engine.evaluateBlueprintReadiness(galleryPrepBlueprint);
+assert.equal(typeof readiness.score, 'number', 'readiness score exists');
+assert.equal(readiness.label, 'Gallery Ready', 'complete readiness evaluates Gallery Ready');
+assert(readiness.checklist.some((item) => item.id === 'heroPreview'), 'readiness helper checks hero preview');
+assert.equal(engine.evaluateBlueprintReadiness(engine.createBlueprintLibraryRecord({ title: '' })).label, 'Not Ready', 'incomplete Blueprint evaluates Not Ready');
+
 assert.equal(engine.getBlueprintContentSignature(contentBlueprint), engine.getBlueprintContentSignature(themedBlueprint), 'content unchanged when theme presentation changes');
 assert.notDeepEqual(contentBlueprint.theme, themedBlueprint.theme, 'theme presentation changes are isolated to theme');
 assert.equal(themedBlueprint.designSnapshot.designName, 'Sample Content', 'theme changes do not mutate design content');
@@ -119,6 +138,19 @@ assert(!shopSource.includes('input type="file"'), 'theme builder does not add up
 assert(!shopSource.includes("localStorage.setItem('blueprintTheme") && !shopSource.includes('localStorage.setItem("blueprintTheme'), 'theme builder does not add theme storage');
 assert(!shopSource.includes('marketplace') || shopSource.includes('does not publish to Gallery or Marketplace'), 'no marketplace integration is added');
 assert(!shopSource.includes('/api/proposals'), 'no proposal integration is added');
+
+assert(shopSource.includes('data-testid="blueprint-featured-collection"'), 'featured collection assignment control exists');
+assert(shopSource.includes('data-testid="blueprint-creator-inspiration"'), 'creator story inspiration field exists');
+assert(shopSource.includes('data-testid="blueprint-creator-technique-notes"'), 'creator story technique notes field exists');
+assert(shopSource.includes('data-testid="blueprint-creator-products-used"'), 'creator story products used field exists');
+assert(shopSource.includes('data-testid="blueprint-prepare-gallery-button"'), 'Prepare For Gallery button exists');
+assert(shopSource.includes('data-testid="blueprint-readiness-checklist"'), 'Blueprint Detail View shows readiness');
+assert(shopSource.includes('<strong>Status:</strong> {blueprint.status}'), 'Blueprint Library shows status');
+assert(shopSource.includes('Preparing a Blueprint for Gallery does not publish it.'), 'Gallery prep guardrail copy exists');
+assert(shopSource.includes('No publishing occurred.'), 'Prepare For Gallery action confirms no publishing occurs');
+assert(!shopSource.includes('/api/gallery'), 'no public Gallery publishing API is added');
+assert(!shopSource.includes('/api/marketplace'), 'no Marketplace publishing API is added');
+
 assert(!designStudioSource.includes('blueprint-theme-builder-controls'), 'Design Studio unchanged by theme builder');
 assert(!proposalsSource.includes('blueprint-theme-builder-controls'), 'Proposals unchanged by theme builder');
 
