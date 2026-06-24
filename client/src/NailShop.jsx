@@ -1945,20 +1945,22 @@ export default function NailShop() {
                     <span style={{ ...styles.previewBadge, background: theme.accentColor, color: theme.primaryColor, borderRadius: accent.badgeRadius }}>{theme.themeName}</span>
                     <h3 style={{ ...styles.blueprintPreviewTitle, ...typography, color: theme.primaryColor }}>{blueprint.title}</h3>
                     <p style={styles.serviceMeta}>{summary.designLine}</p>
-                    <FullSetRenderer designData={blueprint.designSnapshot.fullSetData} mode="hero" compact />
+                    <div style={styles.blueprintCompactPreviewFrame} data-testid="blueprint-library-compact-preview">
+                      <FullSetRenderer designData={blueprint.designSnapshot.fullSetData} mode="hero" compact />
+                    </div>
                   </button>
                   <p style={styles.serviceMeta}>{summary.creatorLine}</p>
-                  <div style={styles.blueprintSummaryGrid}>
-                    <span><strong>Design:</strong> {blueprint.designSnapshot.designName}</span>
-                    <span><strong>Theme:</strong> {theme.themeName}</span>
-                    <span><strong>Status:</strong> {blueprint.status}</span>
-                    <span><strong>Readiness:</strong> {readiness.label} ({readiness.score}/100)</span>
-                    <span><strong>Collection:</strong> {blueprint.featuredCollection || blueprint.collectionName || theme.collectionLabel}</span>
-                    <span><strong>Metadata:</strong> {blueprint.designSnapshot.shape} • {blueprint.designSnapshot.colors.length} colors • {blueprint.designSnapshot.layerCount} layers</span>
-                    <span><strong>Created:</strong> {formatBlueprintDate(blueprint.createdAt)}</span>
-                    <span><strong>Tags:</strong> {blueprint.tags.length ? blueprint.tags.join(', ') : 'No tags'}</span>
+                  <div style={styles.blueprintCardMetadata} data-testid="blueprint-library-card-metadata">
+                    <span style={styles.blueprintMetadataRow}><strong>Design:</strong> {blueprint.designSnapshot.designName}</span>
+                    <span style={styles.blueprintMetadataRow}><strong>Theme:</strong> {theme.themeName}</span>
+                    <span style={styles.blueprintMetadataRow}><strong>Collection:</strong> {blueprint.featuredCollection || blueprint.collectionName || theme.collectionLabel}</span>
+                    <span style={styles.blueprintMetadataRow}><strong>Metadata:</strong> {blueprint.designSnapshot.shape} • {blueprint.designSnapshot.colors.length} colors • {blueprint.designSnapshot.layerCount} layers</span>
+                    <span style={styles.blueprintMetadataRow}><strong>Status:</strong> {blueprint.status}</span>
+                    <span style={styles.blueprintMetadataRow}><strong>Readiness:</strong> {readiness.label} ({readiness.score}/100)</span>
+                    <span style={styles.blueprintMetadataRow}><strong>Created:</strong> {formatBlueprintDate(blueprint.createdAt)}</span>
+                    <span style={styles.blueprintMetadataRow}><strong>Tags:</strong> {blueprint.tags.length ? blueprint.tags.join(', ') : 'No tags'}</span>
                   </div>
-                  <div style={styles.headerActions}>
+                  <div style={styles.blueprintCardActions}>
                     <button type="button" style={styles.secondaryButton} onClick={() => selectLibraryBlueprint(blueprint.blueprintId)} data-testid="blueprint-library-select-button">Select/Open</button>
                     <button type="button" style={styles.secondaryButton} onClick={() => duplicateLibraryBlueprint(blueprint)} data-testid="blueprint-library-duplicate-button">Duplicate</button>
                     <button type="button" style={styles.secondaryButton} onClick={() => renameLibraryBlueprint(blueprint)} data-testid="blueprint-library-rename-button">Rename</button>
@@ -2453,6 +2455,9 @@ const styles = {
     fontSize: 28,
     lineHeight: 1.1,
     margin: 0,
+    maxWidth: '100%',
+    overflowWrap: 'anywhere',
+    wordBreak: 'break-word',
   },
   blueprintSummaryGrid: {
     display: 'grid',
@@ -2468,9 +2473,10 @@ const styles = {
     textDecoration: 'underline',
   },
   blueprintLibraryGrid: {
+    alignItems: 'stretch',
     display: 'grid',
-    gap: 16,
-    gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+    gap: 20,
+    gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))',
   },
   blueprintLibraryCard: {
     background: '#fff',
@@ -2478,13 +2484,49 @@ const styles = {
     borderRadius: 20,
     display: 'grid',
     gap: 12,
+    minWidth: 0,
+    overflow: 'hidden',
     padding: 16,
   },
   blueprintMiniPreview: {
     border: '2px solid',
+    cursor: 'pointer',
     display: 'grid',
     gap: 10,
+    maxWidth: '100%',
+    minWidth: 0,
+    overflow: 'hidden',
     padding: 16,
+    width: '100%',
+  },
+  blueprintCompactPreviewFrame: {
+    maxWidth: '100%',
+    minWidth: 0,
+    overflow: 'hidden',
+    transform: 'scale(.74)',
+    transformOrigin: 'top left',
+    width: '135%',
+  },
+  blueprintCardMetadata: {
+    display: 'grid',
+    gap: 8,
+    gridTemplateColumns: '1fr',
+    minWidth: 0,
+  },
+  blueprintMetadataRow: {
+    display: 'block',
+    lineHeight: 1.35,
+    minWidth: 0,
+    overflowWrap: 'anywhere',
+    wordBreak: 'break-word',
+  },
+  blueprintCardActions: {
+    alignItems: 'center',
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: 10,
+    justifyContent: 'flex-start',
+    minWidth: 0,
   },
   blueprintDetailView: {
     background: '#fff',
