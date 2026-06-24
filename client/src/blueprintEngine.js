@@ -1,5 +1,9 @@
 const BLUEPRINT_VERSION = 1;
 
+export const BLUEPRINT_STATUSES = ['Draft', 'Portfolio Ready', 'Gallery Ready'];
+export const DEFAULT_BLUEPRINT_STATUS = 'Draft';
+export const FEATURED_BLUEPRINT_COLLECTIONS = ['Summer Chrome', 'Bridal Collection', 'Holiday Glam', 'After Dark', 'Spring Bloom', 'Signature Collection'];
+
 const DEFAULT_THEME = {
   themeId: 'classic',
   themeName: 'Classic',
@@ -28,6 +32,7 @@ const DEFAULT_BLUEPRINT_THEMES = [
 
 const isObject = (value) => Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 const text = (value, fallback = '') => (typeof value === 'string' && value.trim() ? value.trim() : fallback);
+const hasText = (value) => typeof value === 'string' && value.trim().length > 0;
 const list = (value) => (Array.isArray(value) ? value.filter((item) => item !== null && item !== undefined) : []);
 const numberOrNull = (value) => (Number.isFinite(Number(value)) ? Number(value) : null);
 const timestamp = (value) => (Number.isNaN(Date.parse(value)) ? new Date().toISOString() : new Date(value).toISOString());
@@ -53,6 +58,17 @@ const designLayerValues = (design, predicate, mapper) => uniqueList(
 );
 
 const uniqueList = (items) => [...new Set(list(items).map((item) => String(item || '').trim()).filter(Boolean))];
+
+const normalizeBlueprintStatus = (value) => (BLUEPRINT_STATUSES.includes(value) ? value : DEFAULT_BLUEPRINT_STATUS);
+const normalizeFeaturedCollection = (value) => (FEATURED_BLUEPRINT_COLLECTIONS.includes(value) ? value : '');
+const normalizeCreatorStory = (value) => {
+  const source = isObject(value) ? value : {};
+  return {
+    inspiration: text(source.inspiration),
+    techniqueNotes: text(source.techniqueNotes),
+    productsUsed: text(source.productsUsed),
+  };
+};
 
 
 const lowerTokens = (value) => {
@@ -234,11 +250,31 @@ export function normalizeBlueprint(input) {
     pricingGuidance: { suggestedPrice: numberOrNull(pricing.suggestedPrice), suggestedDeposit: numberOrNull(pricing.suggestedDeposit), estimatedTime: text(pricing.estimatedTime, 'Not estimated'), breakdown: isObject(pricing.breakdown) ? pricing.breakdown : {} },
     materials: { colors: list(materials.colors), effects: list(materials.effects), products: list(materials.products), vendorReferences: list(materials.vendorReferences) },
     tags: list(source.tags), difficulty: text(source.difficulty, 'Not rated'), collectionName: text(source.collectionName),
+    status: normalizeBlueprintStatus(source.status),
+    featuredCollection: normalizeFeaturedCollection(source.featuredCollection || source.collectionName),
+    creatorStory: normalizeCreatorStory(source.creatorStory),
     theme: normalizeBlueprintTheme(source.theme),
     visibility: ['private', 'portfolio', 'gallery-ready'].includes(source.visibility) ? source.visibility : 'private',
     engagementStats: { views: Number(stats.views) || 0, saves: Number(stats.saves) || 0, likes: Number(stats.likes) || 0, remixes: Number(stats.remixes) || 0 },
     createdAt: timestamp(source.createdAt), updatedAt: timestamp(source.updatedAt),
   };
+}
+
+export function evaluateBlueprintReadiness(input) {
+  const blueprint = normalizeBlueprint(input);
+  const fullSetNails = flattenDesignNails(blueprint.designSnapshot.fullSetData);
+  const checklist = [
+    { id: 'title', label: 'Blueprint title exists', ready: hasText(blueprint.title) && blueprint.title !== 'Untitled Blueprint' },
+    { id: 'theme', label: 'Theme exists', ready: hasText(blueprint.theme.themeName) },
+    { id: 'heroPreview', label: 'Hero preview exists', ready: fullSetNails.length > 0 },
+    { id: 'creatorInfo', label: 'Creator info exists', ready: hasText(blueprint.creatorSnapshot.creatorName) && blueprint.creatorSnapshot.creatorName !== 'Unknown creator' },
+    { id: 'collection', label: 'Collection exists', ready: hasText(blueprint.featuredCollection) || hasText(blueprint.collectionName) || hasText(blueprint.theme.collectionLabel) },
+    { id: 'tags', label: 'At least one tag exists', ready: blueprint.tags.length > 0 },
+  ];
+  const completed = checklist.filter((item) => item.ready).length;
+  const score = Math.round((completed / checklist.length) * 100);
+  const label = score === 100 ? 'Gallery Ready' : score >= 67 ? 'Almost Ready' : 'Not Ready';
+  return { checklist, score, label, ready: score === 100, missing: checklist.filter((item) => !item.ready).map((item) => item.label) };
 }
 
 export function normalizeBlueprintLibrary(input) {
@@ -267,6 +303,7 @@ export function duplicateBlueprintLibraryRecord(blueprint) {
     title: `${normalized.title} Copy`,
     createdAt: now,
     updatedAt: now,
+    status: DEFAULT_BLUEPRINT_STATUS,
     theme: clone(normalized.theme),
     designSnapshot: clone(normalized.designSnapshot),
     pricingGuidance: clone(normalized.pricingGuidance),
