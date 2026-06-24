@@ -31,6 +31,15 @@ assert.equal(engine.getBlueprintContentSignature(contentBlueprint), engine.getBl
 assert.notDeepEqual(contentBlueprint.theme, themedBlueprint.theme, 'theme presentation changes are isolated to theme');
 assert.equal(themedBlueprint.designSnapshot.designName, 'Sample Content', 'theme changes do not mutate design content');
 assert.equal(themedBlueprint.designSnapshot.designId, 'sample-design', 'createBlueprintFromDesign uses the selected design id');
+assert.equal(contentBlueprint.status, 'Draft', 'Blueprint status defaults to Draft');
+assert.deepEqual(engine.BLUEPRINT_STATUSES, ['Draft', 'Portfolio Ready', 'Gallery Ready'], 'Blueprint statuses are exposed');
+assert(engine.FEATURED_BLUEPRINT_COLLECTIONS.includes('Signature Collection'), 'featured collection options are exposed');
+const readiness = engine.evaluateBlueprintReadiness({ ...contentBlueprint, creatorSnapshot: { creatorName: 'Artist' }, featuredCollection: 'Signature Collection' });
+assert.equal(readiness.score, 100, 'readiness score reaches 100 when requirements are met');
+assert.equal(readiness.label, 'Gallery Ready', 'readiness label reflects complete checklist');
+const incompleteReadiness = engine.evaluateBlueprintReadiness({ title: '', tags: [] });
+assert(incompleteReadiness.score < 100 && incompleteReadiness.missing.length > 0, 'readiness helper reports missing requirements');
+
 assert.equal(themedBlueprint.designSnapshot.jewels[0], 'crystal', 'createBlueprintFromDesign extracts real selected design jewels');
 assert.equal(themedBlueprint.designSnapshot.fullSetData.nails.left[0].shape, 'Almond', 'selected design full-set data is stored in blueprint snapshot');
 const metadataDesign = {
@@ -115,6 +124,13 @@ assert(shopSource.includes('type="color"'), 'custom color controls are present')
 assert(shopSource.includes('blueprint-typography-style'), 'typography style control is present');
 assert(shopSource.includes('blueprint-accent-style'), 'accent style control is present');
 assert(shopSource.includes('blueprint-collection-branding'), 'collection branding control is present');
+assert(shopSource.includes('data-testid="blueprint-prepare-gallery-button"') && shopSource.includes('Prepare For Gallery'), 'Prepare For Gallery button is present');
+assert(shopSource.includes('data-testid="blueprint-detail-readiness"') && shopSource.includes('Gallery Readiness'), 'Blueprint Detail shows readiness');
+assert(shopSource.includes('<strong>Status:</strong> {blueprint.status}'), 'Blueprint Library shows status');
+assert(shopSource.includes('data-testid="blueprint-featured-collection-select"'), 'collection assignment control exists');
+assert(shopSource.includes('data-testid="blueprint-detail-creator-story"') && shopSource.includes('Inspiration') && shopSource.includes('Technique Notes') && shopSource.includes('Products Used'), 'creator story fields exist');
+assert(shopSource.includes('Preparing a Blueprint for Gallery does not publish it.'), 'gallery prep guardrail copy exists');
+
 assert(!shopSource.includes('input type="file"'), 'theme builder does not add uploads');
 assert(!shopSource.includes("localStorage.setItem('blueprintTheme") && !shopSource.includes('localStorage.setItem("blueprintTheme'), 'theme builder does not add theme storage');
 assert(!shopSource.includes('marketplace') || shopSource.includes('does not publish to Gallery or Marketplace'), 'no marketplace integration is added');
