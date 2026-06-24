@@ -1971,19 +1971,14 @@ export default function NailShop() {
                       <BlueprintLibraryArtworkPreview designData={blueprint.designSnapshot.fullSetData} />
                     </div>
                     <div style={styles.blueprintGalleryCaption}>
-                      <h3 style={{ ...styles.blueprintPreviewTitle, ...typography, color: theme.primaryColor }}>{blueprint.title}</h3>
+                      <h3 style={{ ...styles.blueprintPreviewTitle, ...typography, color: theme.primaryColor }}><strong>Title:</strong> {blueprint.title}</h3>
                       <p style={styles.blueprintCollectionText} data-testid="blueprint-library-card-collection">{collectionLabel}</p>
                       <div style={styles.blueprintStatusLine}>
-                        <span style={{ ...styles.previewBadge, background: theme.accentColor, color: theme.primaryColor, borderRadius: accent.badgeRadius }} data-testid="blueprint-library-card-status">{blueprint.status}</span>
+                        <span style={{ ...styles.previewBadge, background: theme.accentColor, color: theme.primaryColor, borderRadius: accent.badgeRadius }} data-testid="blueprint-library-card-status"><strong>Status:</strong> {blueprint.status}</span>
                         <span style={styles.blueprintReadinessPill} data-testid="blueprint-library-card-readiness">{readiness.label}</span>
                       </div>
                     </div>
                   </button>
-                  <div style={styles.blueprintCardMetadata} data-testid="blueprint-library-card-metadata" aria-label="Blueprint card essentials">
-                    <span style={styles.blueprintMetadataRow}><strong>Title:</strong> {blueprint.title}</span>
-                    <span style={styles.blueprintMetadataRow}><strong>Collection:</strong> {collectionLabel}</span>
-                    <span style={styles.blueprintMetadataRow}><strong>Status:</strong> {blueprint.status}</span>
-                  </div>
                   <div style={styles.blueprintCardActions}>
                     <button type="button" style={styles.secondaryButton} onClick={() => selectLibraryBlueprint(blueprint.blueprintId)} data-testid="blueprint-library-select-button">Select/Open</button>
                     <button type="button" style={styles.secondaryButton} onClick={() => duplicateLibraryBlueprint(blueprint)} data-testid="blueprint-library-duplicate-button">Duplicate</button>
@@ -2594,20 +2589,6 @@ const styles = {
     fontSize: 11,
     fontWeight: 800,
     padding: '7px 10px',
-  },
-  blueprintCardMetadata: {
-    display: 'grid',
-    gap: 6,
-    gridTemplateColumns: '1fr',
-    minWidth: 0,
-    padding: '0 4px',
-  },
-  blueprintMetadataRow: {
-    display: 'block',
-    lineHeight: 1.35,
-    minWidth: 0,
-    overflowWrap: 'anywhere',
-    wordBreak: 'break-word',
   },
   blueprintCardActions: {
     alignItems: 'center',
