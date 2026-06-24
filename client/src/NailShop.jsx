@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { COLORS } from './styles';
 import FullSetRenderer from './FullSetRenderer';
+import NailThumbnail from './design-studio/NailThumbnail';
+import { normalizeFullSetDesign } from './fullSetRenderer';
 import { BLUEPRINT_STATUSES, DEFAULT_BLUEPRINT_STATUS, FEATURED_BLUEPRINT_COLLECTIONS, buildBlueprintPreviewSummary, createBlueprintFromDesign, createBlueprintLibraryRecord, createCustomBlueprintTheme, duplicateBlueprintLibraryRecord, evaluateBlueprintReadiness, getBlueprintContentSignature, getDefaultBlueprintThemes, normalizeBlueprintLibrary, normalizeBlueprintTheme } from './blueprintEngine';
 
 
@@ -58,6 +60,29 @@ const BLUEPRINT_ACCENT_STYLES = {
   'animal print': { borderRadius: 16, boxShadow: '0 18px 0 rgba(69,26,3,.12)', badgeRadius: 12, pattern: 'radial-gradient(ellipse at 20% 30%, rgba(69,26,3,.2) 0 7%, transparent 8%)' },
   'thin line': { borderRadius: 4, boxShadow: 'none', badgeRadius: 2, pattern: 'linear-gradient(90deg, rgba(15,23,42,.08) 1px, transparent 1px)' },
 };
+
+
+function BlueprintLibraryArtworkPreview({ designData }) {
+  const normalized = normalizeFullSetDesign(designData);
+  const hands = [
+    { id: 'left', nails: normalized.left },
+    { id: 'right', nails: normalized.right },
+  ];
+
+  return (
+    <div style={styles.blueprintArtworkPreview} data-testid="blueprint-library-artwork-preview">
+      {hands.map((hand) => (
+        <div key={hand.id} style={styles.blueprintArtworkHand} data-testid={`blueprint-library-${hand.id}-hand`}>
+          {hand.nails.map((nail) => (
+            <div key={nail.id} style={styles.blueprintArtworkNail} data-testid="blueprint-library-preview-nail">
+              <NailThumbnail nail={nail} />
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
 
 const PROFILE_FIELDS = [
   { id: 'shopName', label: 'Shop Name', placeholder: 'Your shop name' },
@@ -1934,31 +1959,30 @@ export default function NailShop() {
           <div style={styles.blueprintLibraryGrid} data-testid="blueprint-library-grid">
             {filteredBlueprintLibrary.length === 0 && <p style={styles.readinessIntro}>No saved Blueprints yet. Save the sample Blueprint to start your private local library.</p>}
             {filteredBlueprintLibrary.map((blueprint) => {
-              const summary = buildBlueprintPreviewSummary(blueprint);
               const theme = normalizeBlueprintTheme(blueprint.theme);
               const accent = BLUEPRINT_ACCENT_STYLES[theme.accentStyle] || BLUEPRINT_ACCENT_STYLES['soft frame'];
               const typography = BLUEPRINT_TYPOGRAPHY_STYLES[theme.typographyStyle] || BLUEPRINT_TYPOGRAPHY_STYLES['polished serif'];
               const readiness = evaluateBlueprintReadiness(blueprint);
+              const collectionLabel = blueprint.featuredCollection || blueprint.collectionName || theme.collectionLabel;
               return (
                 <article key={blueprint.blueprintId} style={{ ...styles.blueprintLibraryCard, borderColor: selectedLibraryBlueprintId === blueprint.blueprintId ? theme.accentColor : COLORS.border }} data-testid="blueprint-library-card">
                   <button type="button" style={{ ...styles.blueprintMiniPreview, background: `${accent.pattern}, ${theme.backgroundColor}`, color: theme.textColor, borderColor: theme.accentColor, borderRadius: accent.borderRadius, textAlign: 'left' }} onClick={() => selectLibraryBlueprint(blueprint.blueprintId)} data-testid="blueprint-library-preview-card" data-content-signature={getBlueprintContentSignature(blueprint)}>
-                    <span style={{ ...styles.previewBadge, background: theme.accentColor, color: theme.primaryColor, borderRadius: accent.badgeRadius }}>{theme.themeName}</span>
-                    <h3 style={{ ...styles.blueprintPreviewTitle, ...typography, color: theme.primaryColor }}>{blueprint.title}</h3>
-                    <p style={styles.serviceMeta}>{summary.designLine}</p>
                     <div style={styles.blueprintCompactPreviewFrame} data-testid="blueprint-library-compact-preview">
-                      <FullSetRenderer designData={blueprint.designSnapshot.fullSetData} mode="hero" compact />
+                      <BlueprintLibraryArtworkPreview designData={blueprint.designSnapshot.fullSetData} />
+                    </div>
+                    <div style={styles.blueprintGalleryCaption}>
+                      <h3 style={{ ...styles.blueprintPreviewTitle, ...typography, color: theme.primaryColor }}>{blueprint.title}</h3>
+                      <p style={styles.blueprintCollectionText} data-testid="blueprint-library-card-collection">{collectionLabel}</p>
+                      <div style={styles.blueprintStatusLine}>
+                        <span style={{ ...styles.previewBadge, background: theme.accentColor, color: theme.primaryColor, borderRadius: accent.badgeRadius }} data-testid="blueprint-library-card-status">{blueprint.status}</span>
+                        <span style={styles.blueprintReadinessPill} data-testid="blueprint-library-card-readiness">{readiness.label}</span>
+                      </div>
                     </div>
                   </button>
-                  <p style={styles.serviceMeta}>{summary.creatorLine}</p>
-                  <div style={styles.blueprintCardMetadata} data-testid="blueprint-library-card-metadata">
-                    <span style={styles.blueprintMetadataRow}><strong>Design:</strong> {blueprint.designSnapshot.designName}</span>
-                    <span style={styles.blueprintMetadataRow}><strong>Theme:</strong> {theme.themeName}</span>
-                    <span style={styles.blueprintMetadataRow}><strong>Collection:</strong> {blueprint.featuredCollection || blueprint.collectionName || theme.collectionLabel}</span>
-                    <span style={styles.blueprintMetadataRow}><strong>Metadata:</strong> {blueprint.designSnapshot.shape} • {blueprint.designSnapshot.colors.length} colors • {blueprint.designSnapshot.layerCount} layers</span>
+                  <div style={styles.blueprintCardMetadata} data-testid="blueprint-library-card-metadata" aria-label="Blueprint card essentials">
+                    <span style={styles.blueprintMetadataRow}><strong>Title:</strong> {blueprint.title}</span>
+                    <span style={styles.blueprintMetadataRow}><strong>Collection:</strong> {collectionLabel}</span>
                     <span style={styles.blueprintMetadataRow}><strong>Status:</strong> {blueprint.status}</span>
-                    <span style={styles.blueprintMetadataRow}><strong>Readiness:</strong> {readiness.label} ({readiness.score}/100)</span>
-                    <span style={styles.blueprintMetadataRow}><strong>Created:</strong> {formatBlueprintDate(blueprint.createdAt)}</span>
-                    <span style={styles.blueprintMetadataRow}><strong>Tags:</strong> {blueprint.tags.length ? blueprint.tags.join(', ') : 'No tags'}</span>
                   </div>
                   <div style={styles.blueprintCardActions}>
                     <button type="button" style={styles.secondaryButton} onClick={() => selectLibraryBlueprint(blueprint.blueprintId)} data-testid="blueprint-library-select-button">Select/Open</button>
@@ -2475,43 +2499,108 @@ const styles = {
   blueprintLibraryGrid: {
     alignItems: 'stretch',
     display: 'grid',
-    gap: 20,
-    gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))',
+    gap: 22,
+    gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))',
   },
   blueprintLibraryCard: {
     background: '#fff',
     border: '2px solid',
-    borderRadius: 20,
+    borderRadius: 26,
+    boxShadow: '0 20px 46px rgba(90,44,80,.1)',
     display: 'grid',
     gap: 12,
     minWidth: 0,
     overflow: 'hidden',
-    padding: 16,
+    padding: 12,
   },
   blueprintMiniPreview: {
     border: '2px solid',
     cursor: 'pointer',
     display: 'grid',
-    gap: 10,
+    gap: 14,
     maxWidth: '100%',
     minWidth: 0,
     overflow: 'hidden',
-    padding: 16,
+    padding: 12,
     width: '100%',
   },
   blueprintCompactPreviewFrame: {
+    aspectRatio: '1.18 / 1',
+    background: 'radial-gradient(circle at 50% 42%, rgba(255,255,255,.94) 0 28%, rgba(255,246,250,.88) 58%, rgba(247,217,232,.78) 100%)',
+    border: '1px solid rgba(255,255,255,.7)',
+    borderRadius: 24,
+    boxShadow: 'inset 0 0 0 1px rgba(123,45,95,.08)',
+    display: 'grid',
+    maxWidth: '100%',
+    minHeight: 230,
+    minWidth: 0,
+    overflow: 'hidden',
+    padding: 'clamp(10px, 3vw, 18px)',
+    placeItems: 'center',
+    width: '100%',
+  },
+  blueprintArtworkPreview: {
+    alignItems: 'center',
+    display: 'grid',
+    gap: 'clamp(10px, 2.8vw, 18px)',
+    gridTemplateColumns: 'minmax(0, 1fr)',
+    height: '100%',
+    justifyItems: 'center',
     maxWidth: '100%',
     minWidth: 0,
     overflow: 'hidden',
-    transform: 'scale(.74)',
-    transformOrigin: 'top left',
-    width: '135%',
+    width: '100%',
+  },
+  blueprintArtworkHand: {
+    alignItems: 'end',
+    display: 'grid',
+    gap: 'clamp(1px, .8vw, 7px)',
+    gridTemplateColumns: 'repeat(5, minmax(0, 1fr))',
+    justifyItems: 'center',
+    maxWidth: 430,
+    minWidth: 0,
+    overflow: 'visible',
+    width: '100%',
+  },
+  blueprintArtworkNail: {
+    filter: 'drop-shadow(0 12px 14px rgba(90,44,80,.16))',
+    minWidth: 0,
+    transform: 'scale(clamp(.46, 1.9vw, .7))',
+    transformOrigin: 'center bottom',
+  },
+  blueprintGalleryCaption: {
+    display: 'grid',
+    gap: 8,
+    minWidth: 0,
+  },
+  blueprintCollectionText: {
+    color: COLORS.text,
+    fontSize: 14,
+    fontWeight: 800,
+    margin: 0,
+    overflowWrap: 'anywhere',
+  },
+  blueprintStatusLine: {
+    alignItems: 'center',
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  blueprintReadinessPill: {
+    background: 'rgba(255,255,255,.72)',
+    border: `1px solid ${COLORS.border}`,
+    borderRadius: 999,
+    color: COLORS.textMuted,
+    fontSize: 11,
+    fontWeight: 800,
+    padding: '7px 10px',
   },
   blueprintCardMetadata: {
     display: 'grid',
-    gap: 8,
+    gap: 6,
     gridTemplateColumns: '1fr',
     minWidth: 0,
+    padding: '0 4px',
   },
   blueprintMetadataRow: {
     display: 'block',
