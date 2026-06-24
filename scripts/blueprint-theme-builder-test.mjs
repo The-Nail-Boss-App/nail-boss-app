@@ -129,10 +129,16 @@ assert(shopSource.includes('selected-design-blueprint-hero-preview'), 'FullSetRe
 assert(shopSource.includes('sample/demo Blueprint fallback'), 'sample/demo fallback is clearly labeled');
 assert(shopSource.includes('<strong>Title:</strong> {blueprint.title}'), 'library card shows Blueprint title');
 assert(shopSource.includes('data-testid="blueprint-library-artwork-preview"'), 'library card renders artwork-only preview');
+assert(shopSource.includes('aria-label="Press-on display tray preview"'), 'press-on tray preview exists');
 assert(shopSource.includes("{ id: 'left', nails: normalized.left }"), 'library card preview includes left hand');
 assert(shopSource.includes("{ id: 'right', nails: normalized.right }"), 'library card preview includes right hand');
+assert(shopSource.includes("gridTemplateColumns: 'repeat(5, minmax(0, 1fr))'"), 'library card preview uses two rows of five nails');
 assert(shopSource.includes('data-testid="blueprint-library-preview-nail"'), 'library card preview renders individual nails');
+assert(shopSource.includes('<BlueprintLibraryPressOnNail nail={nail}'), 'library card preview renders nail artwork directly');
 assert(shopSource.includes("overflow: 'hidden'"), 'library card preview uses overflow containment');
+assert(!shopSource.includes('import NailThumbnail'), 'library card preview has no thumbnail card chrome import');
+assert(!shopSource.includes('<NailThumbnail nail={nail}'), 'library card preview has no thumbnail card chrome');
+assert(!shopSource.includes('slotLabel(nail.slot)'), 'library card preview has no visible finger label renderer');
 assert(!shopSource.includes('<FullSetRenderer designData={blueprint.designSnapshot.fullSetData} mode="hero" compact />'), 'library cards do not show renderer chrome');
 assert(shopSource.includes('<strong>Design Name:</strong> {selectedLibraryBlueprint.designSnapshot.designName}'), 'detail view shows design-derived Blueprint info');
 assert(shopSource.includes('data-testid="blueprint-cover-style"'), 'Blueprint cover styles visibly affect preview presentation');

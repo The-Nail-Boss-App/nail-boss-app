@@ -1,8 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { COLORS } from './styles';
 import FullSetRenderer from './FullSetRenderer';
-import NailThumbnail from './design-studio/NailThumbnail';
 import { normalizeFullSetDesign } from './fullSetRenderer';
+import { renderAssetShapes } from './design-studio/assets';
+import { ArtRealismDefs, GradientLayerShape, PaintedStroke, PatternDefs, artMaterialProfile } from './design-studio/NailCanvas';
+import { AssetContactShadow, AssetSpecularAccent, AssetSurfaceBlend, assetLayerRenderProps, isRenderableAssetLayer } from './design-studio/assetRendering';
+import { VIEWBOX, buildNailPath, layerSort } from './design-studio/blueprint';
+import { FrenchTipShape } from './design-studio/frenchTipRendering';
+import { PolishDefs, PolishSurface } from './design-studio/PolishRenderer';
 import { BLUEPRINT_STATUSES, DEFAULT_BLUEPRINT_STATUS, FEATURED_BLUEPRINT_COLLECTIONS, buildBlueprintPreviewSummary, createBlueprintFromDesign, createBlueprintLibraryRecord, createCustomBlueprintTheme, duplicateBlueprintLibraryRecord, evaluateBlueprintReadiness, getBlueprintContentSignature, getDefaultBlueprintThemes, normalizeBlueprintLibrary, normalizeBlueprintTheme } from './blueprintEngine';
 
 
@@ -62,7 +67,47 @@ const BLUEPRINT_ACCENT_STYLES = {
 };
 
 
+function BlueprintLibraryPressOnNail({ nail, uid }) {
+  const clipId = `${uid}-press-on-${nail.id}`;
+  const base = nail.layers.find((layer) => layer.type === 'base');
+  const path = buildNailPath(nail.shape, nail);
+  const artLayers = nail.layers.filter((layer) => layer.type !== 'base' && layer.visible !== false).sort(layerSort);
+
+  return (
+    <svg viewBox={`0 0 ${VIEWBOX.width} ${VIEWBOX.height}`} width="100%" height="100%" role="img" aria-label="Press-on nail artwork" style={styles.blueprintArtworkSvg}>
+      <defs>
+        <clipPath id={clipId}><path d={path} /></clipPath>
+        <PolishDefs nail={nail} baseLayer={base} uid={clipId} />
+        <filter id={`${clipId}-asset-shadow-blur`} x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="2.2" /></filter>
+        <ArtRealismDefs uid={clipId} />
+      </defs>
+      <PolishSurface nail={nail} baseLayer={base} path={path} clipId={clipId} uid={clipId} />
+      {artLayers.map((layer) => {
+        if (layer.type === 'frenchTip') return <FrenchTipShape key={layer.id} layer={layer} nail={nail} clipId={clipId} thumbnail />;
+        if (layer.type === 'drawing') return <g key={layer.id} clipPath={`url(#${clipId})`} opacity={layer.opacity}>{(layer.data?.strokes || []).map((stroke) => <PaintedStroke key={stroke.id} stroke={stroke} nail={nail} baseLayer={base} uid={clipId} baseColor={base?.data?.colorHex} />)}</g>;
+        if (layer.type === 'gradient') return <GradientLayerShape key={layer.id} layer={layer} nail={nail} baseLayer={base} path={path} clipId={clipId} uid={clipId} thumbnail />;
+        if (layer.type === 'pattern') {
+          const id = `${clipId}-${layer.id}`;
+          const art = artMaterialProfile(base, nail);
+          return <g key={layer.id} clipPath={`url(#${clipId})`} opacity={(layer.opacity ?? 1) * art.artOpacity} data-realism-layer="material-aware-clipped-pattern"><defs><PatternDefs id={id} layer={layer} /></defs><rect width={VIEWBOX.width} height={VIEWBOX.height} fill={`url(#${id})`} /><path d={path} fill="#fff" opacity={art.surfaceHighlight * 0.32} /></g>;
+        }
+        if (!isRenderableAssetLayer(layer)) return null;
+        const assetRender = assetLayerRenderProps(layer, nail, artMaterialProfile(base, nail));
+        return (
+          <g key={layer.id} clipPath={`url(#${clipId})`} opacity={assetRender.opacity} data-layer-type={layer.type} data-asset-id={assetRender.assetId}>
+            <AssetContactShadow render={assetRender} uid={clipId} />
+            <AssetSurfaceBlend layer={layer} render={assetRender} />
+            <g transform={assetRender.innerTransform}>{renderAssetShapes(assetRender.assetId, assetRender.colorHex)}</g>
+            <AssetSpecularAccent layer={layer} render={assetRender} />
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
 function BlueprintLibraryArtworkPreview({ designData }) {
+  const uid = useId().replace(/:/g, '');
   const normalized = normalizeFullSetDesign(designData);
   const hands = [
     { id: 'left', nails: normalized.left },
@@ -70,12 +115,12 @@ function BlueprintLibraryArtworkPreview({ designData }) {
   ];
 
   return (
-    <div style={styles.blueprintArtworkPreview} data-testid="blueprint-library-artwork-preview">
+    <div style={styles.blueprintArtworkPreview} data-testid="blueprint-library-artwork-preview" aria-label="Press-on display tray preview">
       {hands.map((hand) => (
         <div key={hand.id} style={styles.blueprintArtworkHand} data-testid={`blueprint-library-${hand.id}-hand`}>
           {hand.nails.map((nail) => (
             <div key={nail.id} style={styles.blueprintArtworkNail} data-testid="blueprint-library-preview-nail">
-              <NailThumbnail nail={nail} />
+              <BlueprintLibraryPressOnNail nail={nail} uid={`${uid}-${hand.id}`} />
             </div>
           ))}
         </div>
@@ -2520,24 +2565,25 @@ const styles = {
     width: '100%',
   },
   blueprintCompactPreviewFrame: {
-    aspectRatio: '1.18 / 1',
-    background: 'radial-gradient(circle at 50% 42%, rgba(255,255,255,.94) 0 28%, rgba(255,246,250,.88) 58%, rgba(247,217,232,.78) 100%)',
+    aspectRatio: '1.55 / 1',
+    background: 'radial-gradient(circle at 50% 42%, rgba(255,255,255,.96) 0 28%, rgba(255,246,250,.9) 58%, rgba(247,217,232,.8) 100%)',
     border: '1px solid rgba(255,255,255,.7)',
     borderRadius: 24,
-    boxShadow: 'inset 0 0 0 1px rgba(123,45,95,.08)',
+    boxShadow: 'inset 0 0 0 1px rgba(123,45,95,.08), inset 0 -24px 46px rgba(123,45,95,.06)',
     display: 'grid',
+    maxHeight: 260,
     maxWidth: '100%',
-    minHeight: 230,
+    minHeight: 188,
     minWidth: 0,
     overflow: 'hidden',
-    padding: 'clamp(10px, 3vw, 18px)',
+    padding: 'clamp(10px, 2.2vw, 16px)',
     placeItems: 'center',
     width: '100%',
   },
   blueprintArtworkPreview: {
     alignItems: 'center',
     display: 'grid',
-    gap: 'clamp(10px, 2.8vw, 18px)',
+    gap: 'clamp(8px, 1.6vw, 14px)',
     gridTemplateColumns: 'minmax(0, 1fr)',
     height: '100%',
     justifyItems: 'center',
@@ -2549,19 +2595,32 @@ const styles = {
   blueprintArtworkHand: {
     alignItems: 'end',
     display: 'grid',
-    gap: 'clamp(1px, .8vw, 7px)',
+    gap: 'clamp(4px, 1vw, 10px)',
     gridTemplateColumns: 'repeat(5, minmax(0, 1fr))',
     justifyItems: 'center',
-    maxWidth: 430,
+    maxWidth: 500,
     minWidth: 0,
-    overflow: 'visible',
+    overflow: 'hidden',
     width: '100%',
   },
   blueprintArtworkNail: {
+    alignItems: 'end',
+    aspectRatio: '70 / 104',
+    display: 'grid',
     filter: 'drop-shadow(0 12px 14px rgba(90,44,80,.16))',
+    justifyItems: 'center',
+    maxHeight: 92,
     minWidth: 0,
-    transform: 'scale(clamp(.46, 1.9vw, .7))',
-    transformOrigin: 'center bottom',
+    overflow: 'visible',
+    width: 'min(100%, 56px)',
+  },
+  blueprintArtworkSvg: {
+    display: 'block',
+    height: '100%',
+    maxHeight: '100%',
+    maxWidth: '100%',
+    overflow: 'visible',
+    width: '100%',
   },
   blueprintGalleryCaption: {
     display: 'grid',
