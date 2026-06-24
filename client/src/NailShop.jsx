@@ -1099,22 +1099,27 @@ export default function NailShop() {
     setBlueprintThemeOverrides({});
   };
 
-  const saveBlueprintToLibrary = () => {
-    const blueprintToSave = activeBlueprintPreview;
-    const record = createBlueprintLibraryRecord(blueprintToSave, {
-      title: blueprintToSave.title,
-      collectionName: selectedBlueprintTheme.collectionLabel,
-      visibility: blueprintToSave.visibility,
-      theme: selectedBlueprintTheme,
-    });
-    const nextLibrary = normalizeBlueprintLibrary([record, ...normalizedBlueprintLibrary]);
+  const dismissBlueprintLibraryMessage = () => {
+    setBlueprintLibraryMessage('');
+    setBlueprintLibraryMessageType('success');
+  };
 
+  const saveBlueprintToLibrary = () => {
     try {
+      const blueprintToSave = activeBlueprintPreview;
+      const record = createBlueprintLibraryRecord(blueprintToSave, {
+        title: blueprintToSave.title,
+        collectionName: selectedBlueprintTheme.collectionLabel,
+        visibility: blueprintToSave.visibility,
+        theme: selectedBlueprintTheme,
+      });
+      const nextLibrary = normalizeBlueprintLibrary([record, ...normalizedBlueprintLibrary]);
+
       persistBlueprintLibrary(nextLibrary);
       setBlueprintLibrary(nextLibrary);
       setSelectedLibraryBlueprintId(record.blueprintId);
       setBlueprintLibraryMessageType('success');
-      setBlueprintLibraryMessage(`Blueprint saved to Library: ${record.title}${selectedSavedDesign ? ` from ${getDesignSelectLabel(selectedSavedDesign)}` : ' (sample/demo fallback)'}.`);
+      setBlueprintLibraryMessage(`Blueprint saved to Library: ${record.title}.`);
     } catch (error) {
       setBlueprintLibraryMessageType('error');
       setBlueprintLibraryMessage('Blueprint could not be saved. Check browser storage and try again.');
@@ -1724,7 +1729,7 @@ export default function NailShop() {
           {blueprintLibraryMessage && (
             <div style={blueprintLibraryMessageType === 'error' ? styles.errorMessage : styles.successMessage} role="status" data-testid="blueprint-save-confirmation">
               <span>{blueprintLibraryMessage}</span>
-              <button type="button" style={styles.inlineDismissButton} onClick={() => setBlueprintLibraryMessage('')} aria-label="Dismiss Blueprint save message">Dismiss</button>
+              <button type="button" style={styles.inlineDismissButton} onClick={dismissBlueprintLibraryMessage} aria-label="Dismiss Blueprint save message">Dismiss</button>
             </div>
           )}
 
@@ -1761,7 +1766,7 @@ export default function NailShop() {
           {blueprintLibraryMessage && (
             <div style={blueprintLibraryMessageType === 'error' ? styles.errorMessage : styles.successMessage} role="status" data-testid="blueprint-save-confirmation">
               <span>{blueprintLibraryMessage}</span>
-              <button type="button" style={styles.inlineDismissButton} onClick={() => setBlueprintLibraryMessage('')} aria-label="Dismiss Blueprint save message">Dismiss</button>
+              <button type="button" style={styles.inlineDismissButton} onClick={dismissBlueprintLibraryMessage} aria-label="Dismiss Blueprint save message">Dismiss</button>
             </div>
           )}
           <div style={styles.blueprintBuilderGrid} data-testid="blueprint-library-controls">
