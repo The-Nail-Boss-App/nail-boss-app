@@ -135,6 +135,11 @@ assert(shopSource.includes("{ id: 'right', nails: normalized.right }"), 'library
 assert(shopSource.includes("gridTemplateColumns: 'repeat(5, minmax(0, 1fr))'"), 'library card preview uses two rows of five nails');
 assert(shopSource.includes('data-testid="blueprint-library-preview-nail"'), 'library card preview renders individual nails');
 assert(shopSource.includes('<BlueprintLibraryPressOnNail nail={nail}'), 'library card preview renders nail artwork directly');
+assert(shopSource.includes("width: 'min(100%, clamp(72px, 16vw, 96px))'"), 'library card preview uses enlarged clamp-based nail sizing');
+assert(shopSource.includes("maxHeight: 128"), 'library card preview increases nail height allowance');
+assert(shopSource.includes("padding: 'clamp(4px, 1.1vw, 8px)'"), 'library card tray padding is reduced');
+assert(shopSource.includes("gap: 'clamp(2px, .75vw, 6px)'"), 'library card preview row gap is reduced');
+assert(shopSource.includes("gap: 'clamp(2px, .6vw, 5px)'"), 'library card preview nail column gap is reduced');
 assert(shopSource.includes("overflow: 'hidden'"), 'library card preview uses overflow containment');
 assert(!shopSource.includes('import NailThumbnail'), 'library card preview has no thumbnail card chrome import');
 assert(!shopSource.includes('<NailThumbnail nail={nail}'), 'library card preview has no thumbnail card chrome');
