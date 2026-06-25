@@ -128,7 +128,8 @@ assert(shopSource.includes("fetch('/api/designs')"), 'Blueprint Engine uses /api
 assert(shopSource.includes("fetch(`/api/designs/${selectedSavedDesignId}/blueprint`)"), 'Blueprint Engine loads selected saved design blueprint artwork document');
 assert(shopSource.includes('selected-design-blueprint-hero-preview'), 'FullSetRenderer hero preview renders for selected design Blueprint');
 assert(shopSource.includes('sample/demo Blueprint fallback'), 'sample/demo fallback is clearly labeled');
-assert(shopSource.includes('<strong>Title:</strong> {blueprint.title}'), 'library card shows Blueprint title');
+assert(shopSource.includes('data-testid="blueprint-library-card-name"') && shopSource.includes('{blueprint.title}</h3>'), 'library cover card shows Blueprint name without a field label');
+assert(!shopSource.includes('<strong>Title:</strong> {blueprint.title}') && !shopSource.includes('<strong>Status:</strong> {blueprint.status}'), 'library cover card removes admin-style field labels');
 assert(shopSource.includes("import BlueprintGalleryRenderer from './BlueprintGalleryRenderer'"), 'library card imports the dedicated Blueprint Gallery Renderer');
 assert(shopSource.includes('<BlueprintGalleryRenderer designData={blueprint.designSnapshot.fullSetData} renderMode="gallery" />'), 'library card renders artwork-only gallery renderer in gallery mode');
 assert(galleryRendererSource.includes('export function createBlueprintCompositionProfile'), 'composition helper exists');
@@ -148,7 +149,7 @@ assert(galleryRendererSource.includes('data-testid="blueprint-gallery-nail"') &&
 assert(galleryRendererSource.includes("contain: 'layout paint size'") && galleryRendererSource.includes("overflow: 'hidden'") && galleryRendererSource.includes("maxHeight: '100%'") && galleryRendererSource.includes("maxWidth: '100%'"), 'gallery renderer provides overflow containment and no clipping');
 assert(!galleryRendererSource.includes('Full Set Composition') && !galleryRendererSource.includes('<label') && !galleryRendererSource.includes('Hero labels') && !galleryRendererSource.includes('renderer labels'), 'gallery renderer omits renderer chrome and labels');
 assert(galleryRendererSource.includes('BLUEPRINT_GALLERY_PRESENTATION_THEMES') && ['luxury-tray', 'minimal-white', 'velvet-display', 'boutique', 'magazine'].every((theme) => galleryRendererSource.includes(theme)), 'gallery renderer supports future presentation theme architecture');
-assert(shopSource.includes("aspectRatio: '1.18 / 1'") && shopSource.includes('minHeight: 260'), 'library card preview window target is preserved');
+assert(shopSource.includes("aspectRatio: '1.08 / 1'") && shopSource.includes('minHeight: 285'), 'library cover card preview window is enlarged for cover-first artwork');
 assert(shopSource.includes("overflow: 'hidden'"), 'library card preview uses overflow containment');
 assert(shopSource.includes('blueprintLibraryPreviewTitle') && shopSource.includes('WebkitLineClamp: 2'), 'library card title is safely limited to two lines');
 assert(shopSource.includes("overflow: 'hidden'"), 'library card preview uses overflow containment');
@@ -173,7 +174,7 @@ assert(shopSource.includes('data-testid="blueprint-creator-technique-notes"'), '
 assert(shopSource.includes('data-testid="blueprint-creator-products-used"'), 'creator story products used field exists');
 assert(shopSource.includes('data-testid="blueprint-prepare-gallery-button"'), 'Prepare For Gallery button exists');
 assert(shopSource.includes('data-testid="blueprint-readiness-checklist"'), 'Blueprint Detail View shows readiness');
-assert(shopSource.includes('<strong>Status:</strong> {blueprint.status}'), 'Blueprint Library shows status');
+assert(shopSource.includes('data-testid="blueprint-library-card-status"') && shopSource.includes('{blueprint.status}</span>'), 'Blueprint Library shows status badge without a field label');
 assert(shopSource.includes('Preparing a Blueprint for Gallery does not publish it.'), 'Gallery prep guardrail copy exists');
 assert(shopSource.includes('No publishing occurred.'), 'Prepare For Gallery action confirms no publishing occurs');
 assert(!shopSource.includes('/api/gallery'), 'no public Gallery publishing API is added');
