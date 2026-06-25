@@ -104,10 +104,10 @@ export function createBlueprintCompositionProfile(normalizedSet = {}) {
 
 export function buildGalleryGrid(compositionProfile, renderMode = 'gallery') {
   const profile = compositionProfile || createBlueprintCompositionProfile();
-  const trayFill = renderMode === 'gallery' ? 0.86 : 0.82;
-  const nailFill = 0.94;
-  const trayPadding = `clamp(3px, ${clamp(profile.shapeFootprintPadding * 0.68, 0.024, 0.042) * 100}%, 10px)`;
-  const rowGap = `clamp(2px, ${clamp(0.006 + (profile.maxNailLength - 0.5) * 0.012, 0.006, 0.018) * 100}%, 8px)`;
+  const trayFill = renderMode === 'gallery' ? 0.98 : 0.92;
+  const nailFill = 0.99;
+  const trayPadding = `clamp(1px, ${clamp(profile.shapeFootprintPadding * 0.36, 0.012, 0.026) * 100}%, 6px)`;
+  const rowGap = `clamp(1px, ${clamp(0.002 + (profile.maxNailLength - 0.5) * 0.006, 0.002, 0.01) * 100}%, 4px)`;
   const columnGap = `clamp(2px, ${clamp(0.004 + (profile.maxNailWidth - 0.5) * 0.008, 0.004, 0.014) * 100}%, 8px)`;
   const safeAspect = Number(clamp(profile.estimatedNailFootprint.width / profile.estimatedNailFootprint.length, 0.5, 0.92).toFixed(3));
 
@@ -209,7 +209,7 @@ const styles = {
     minHeight: 0,
     minWidth: 0,
     overflow: 'hidden',
-    padding: 'clamp(2px, 1%, 8px)',
+    padding: 'clamp(1px, .45%, 4px)',
     width: '100%',
   },
   tray: {
@@ -227,9 +227,10 @@ const styles = {
     overflow: 'hidden',
     padding: 'var(--gallery-tray-padding)',
     width: 'var(--gallery-tray-area)',
-    background: 'linear-gradient(145deg, rgba(255,255,255,.48), rgba(248,232,241,.24))',
-    borderRadius: 18,
-    boxShadow: 'inset 0 0 0 1px rgba(123,45,95,.075), inset 0 18px 30px rgba(255,255,255,.24)',
+    background: 'linear-gradient(145deg, rgba(255,255,255,.18), rgba(248,232,241,.06))',
+    borderRadius: 20,
+    boxShadow: 'inset 0 0 0 1px rgba(255,255,255,.18), inset 0 20px 36px rgba(255,255,255,.08)',
+    backdropFilter: 'blur(10px)',
   },
   nailSlot: {
     alignItems: 'center',

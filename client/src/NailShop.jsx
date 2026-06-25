@@ -1949,10 +1949,10 @@ export default function NailShop() {
                       <BlueprintGalleryRenderer designData={blueprint.designSnapshot.fullSetData} renderMode="gallery" />
                     </div>
                     <div style={styles.blueprintGalleryCaption}>
-                      <h3 style={{ ...styles.blueprintPreviewTitle, ...styles.blueprintLibraryPreviewTitle, ...typography, color: theme.primaryColor }}><strong>Title:</strong> {blueprint.title}</h3>
+                      <h3 style={{ ...styles.blueprintPreviewTitle, ...styles.blueprintLibraryPreviewTitle, ...typography, color: theme.primaryColor }} data-testid="blueprint-library-card-name">{blueprint.title}</h3>
                       <p style={styles.blueprintCollectionText} data-testid="blueprint-library-card-collection">{collectionLabel}</p>
                       <div style={styles.blueprintStatusLine}>
-                        <span style={{ ...styles.previewBadge, background: theme.accentColor, color: theme.primaryColor, borderRadius: accent.badgeRadius }} data-testid="blueprint-library-card-status"><strong>Status:</strong> {blueprint.status}</span>
+                        <span style={{ ...styles.previewBadge, background: theme.accentColor, color: theme.primaryColor, borderRadius: accent.badgeRadius }} data-testid="blueprint-library-card-status">{blueprint.status}</span>
                         <span style={styles.blueprintReadinessPill} data-testid="blueprint-library-card-readiness">{readiness.label}</span>
                       </div>
                     </div>
@@ -2268,7 +2268,7 @@ const styles = {
     borderRadius: 999,
     display: 'inline-flex',
     fontSize: 11,
-    fontWeight: 800,
+    fontWeight: 600,
     letterSpacing: '.08em',
     marginBottom: 42,
     padding: '6px 10px',
@@ -2458,7 +2458,9 @@ const styles = {
   },
   blueprintLibraryPreviewTitle: {
     display: '-webkit-box',
-    fontSize: 18,
+    fontSize: 16,
+    fontWeight: 500,
+    letterSpacing: '.01em',
     lineHeight: 1.08,
     maxHeight: '2.16em',
     overflow: 'hidden',
@@ -2499,26 +2501,26 @@ const styles = {
     border: '2px solid',
     cursor: 'pointer',
     display: 'grid',
-    gap: 8,
+    gap: 10,
     maxWidth: '100%',
     minWidth: 0,
     overflow: 'hidden',
-    padding: 8,
+    padding: 7,
     width: '100%',
   },
   blueprintCompactPreviewFrame: {
-    aspectRatio: '1.18 / 1',
+    aspectRatio: '1.08 / 1',
     background: 'radial-gradient(circle at 50% 42%, rgba(255,255,255,.96) 0 28%, rgba(255,246,250,.9) 58%, rgba(247,217,232,.8) 100%)',
     border: '1px solid rgba(255,255,255,.7)',
     borderRadius: 24,
     boxShadow: 'inset 0 0 0 1px rgba(123,45,95,.08), inset 0 -24px 46px rgba(123,45,95,.06)',
     display: 'grid',
-    maxHeight: 360,
+    maxHeight: 420,
     maxWidth: '100%',
-    minHeight: 260,
+    minHeight: 285,
     minWidth: 0,
     overflow: 'hidden',
-    padding: 'clamp(2px, .7vw, 5px)',
+    padding: 'clamp(1px, .35vw, 3px)',
     placeItems: 'center',
     width: '100%',
   },
@@ -2530,7 +2532,7 @@ const styles = {
   blueprintCollectionText: {
     color: COLORS.text,
     fontSize: 12,
-    fontWeight: 800,
+    fontWeight: 600,
     margin: 0,
     overflowWrap: 'anywhere',
   },
