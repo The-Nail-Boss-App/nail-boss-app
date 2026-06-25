@@ -12,12 +12,93 @@ export const BLUEPRINT_GALLERY_PRESENTATION_THEMES = ['luxury-tray', 'minimal-wh
 
 const NAIL_ORDER = ['Thumb', 'Index', 'Middle', 'Ring', 'Pinky'];
 
-export function getBlueprintGalleryAutoScaleStyle(renderMode = 'gallery') {
+const SHAPE_FAMILIES = {
+  Almond: 'tapered',
+  Coffin: 'tapered',
+  Stiletto: 'pointed',
+  Lipstick: 'asymmetric',
+  Oval: 'rounded',
+  Round: 'rounded',
+  Square: 'flat',
+  Duck: 'wide',
+  Flare: 'wide',
+};
+
+const SHAPE_FOOTPRINTS = {
+  rounded: { length: 0.9, width: 0.96, padding: 0.032 },
+  flat: { length: 0.96, width: 1.02, padding: 0.035 },
+  tapered: { length: 1, width: 0.98, padding: 0.038 },
+  pointed: { length: 1.16, width: 0.92, padding: 0.045 },
+  asymmetric: { length: 1.06, width: 1.02, padding: 0.044 },
+  wide: { length: 0.98, width: 1.22, padding: 0.05 },
+};
+
+const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+
+function safeDimension(value, fallback) {
+  const number = Number(value);
+  return Number.isFinite(number) && number > 0 ? clamp(number, 0.28, 1.2) : fallback;
+}
+
+export function createBlueprintCompositionProfile(normalizedSet = {}) {
+  const nails = [normalizedSet.left, normalizedSet.right].flatMap((row) => (Array.isArray(row) ? row : [])).slice(0, 10);
+  const safeNails = nails.length ? nails : [{ shape: 'Almond', length: 0.62, width: 0.52 }];
+  const maxNailLength = Math.max(...safeNails.map((nail) => safeDimension(nail?.length, 0.62)));
+  const maxNailWidth = Math.max(...safeNails.map((nail) => safeDimension(nail?.width, 0.52)));
+  const shapeFamilies = [...new Set(safeNails.map((nail) => SHAPE_FAMILIES[nail?.shape] || 'tapered'))];
+  const primaryShapeFamily = shapeFamilies.includes('wide') ? 'wide'
+    : shapeFamilies.includes('pointed') ? 'pointed'
+      : shapeFamilies.includes('asymmetric') ? 'asymmetric'
+        : shapeFamilies.includes('flat') ? 'flat'
+          : shapeFamilies.includes('rounded') ? 'rounded'
+            : 'tapered';
+  const shapeFootprint = shapeFamilies.reduce((footprint, family) => {
+    const current = SHAPE_FOOTPRINTS[family] || SHAPE_FOOTPRINTS.tapered;
+    return {
+      length: Math.max(footprint.length, current.length),
+      width: Math.max(footprint.width, current.width),
+      padding: Math.max(footprint.padding, current.padding),
+    };
+  }, { length: 0, width: 0, padding: 0 });
+
+  const estimatedNailFootprint = {
+    length: Number((shapeFootprint.length * (0.82 + maxNailLength * 0.5)).toFixed(3)),
+    width: Number((shapeFootprint.width * (0.78 + maxNailWidth * 0.54)).toFixed(3)),
+  };
+  const safeTrayPadding = `${clamp(shapeFootprint.padding + maxNailLength * 0.018 + maxNailWidth * 0.012, 0.036, 0.072) * 100}%`;
+  const rowGap = `${clamp(0.008 + (maxNailLength - 0.5) * 0.018, 0.006, 0.026) * 100}%`;
+  const columnGap = `${clamp(0.003 + (maxNailWidth - 0.5) * 0.008, 0.002, 0.012) * 100}%`;
+  const safeArtworkScale = Number(clamp(0.93 - Math.max(0, maxNailLength - 0.72) * 0.16 - Math.max(0, maxNailWidth - 0.72) * 0.12, 0.84, 0.92).toFixed(3));
+  const nailAspectRatio = Number(clamp(estimatedNailFootprint.width / estimatedNailFootprint.length, 0.52, 0.86).toFixed(3));
+
   return {
-    '--gallery-art-fill': renderMode === 'gallery' ? '88%' : '84%',
-    '--gallery-tray-gap': 'clamp(1px, 0.8%, 6px)',
-    '--gallery-row-gap': 'clamp(2px, 1.2%, 8px)',
-    '--gallery-nail-width': 'min(calc((var(--gallery-art-fill) - (4 * var(--gallery-tray-gap))) / 5), calc((100% - var(--gallery-row-gap)) / 2 * 0.66))',
+    maxNailLength,
+    maxNailWidth,
+    shapeFamily: primaryShapeFamily,
+    shapeFamilies,
+    estimatedNailFootprint,
+    safeTrayPadding,
+    rowGap,
+    columnGap,
+    safeArtworkScale,
+    nailAspectRatio,
+    rows: 2,
+    columns: 5,
+    visibleNailCount: 10,
+  };
+}
+
+export function getBlueprintGalleryAutoScaleStyle(renderMode = 'gallery', compositionProfile) {
+  const profile = compositionProfile || createBlueprintCompositionProfile();
+  const artFill = renderMode === 'gallery' ? profile.safeArtworkScale : Math.min(profile.safeArtworkScale, 0.86);
+  return {
+    '--gallery-art-fill': `${Math.round(artFill * 1000) / 10}%`,
+    '--gallery-tray-padding': profile.safeTrayPadding,
+    '--gallery-tray-gap': profile.columnGap,
+    '--gallery-row-gap': profile.rowGap,
+    '--gallery-nail-aspect': profile.nailAspectRatio,
+    '--gallery-nail-width': 'min(calc((100% - (4 * var(--gallery-tray-gap))) / 5), calc(((100% - var(--gallery-row-gap)) / 2) * var(--gallery-nail-aspect)))',
+    '--gallery-nail-height': 'min(calc((100% - var(--gallery-row-gap)) / 2), calc((100% - (4 * var(--gallery-tray-gap))) / 5 / var(--gallery-nail-aspect)))',
   };
 }
 
@@ -66,7 +147,7 @@ export default function BlueprintGalleryRenderer({ designData, renderMode = 'gal
   const rows = [normalized.left, normalized.right];
 
   return (
-    <div style={{ ...styles.shell, ...getBlueprintGalleryAutoScaleStyle(renderMode) }} data-testid="blueprint-gallery-renderer" data-render-mode={renderMode} data-presentation-theme={presentationTheme} aria-label="Blueprint gallery product preview">
+    <div style={{ ...styles.shell, ...getBlueprintGalleryAutoScaleStyle(renderMode, createBlueprintCompositionProfile(normalized)) }} data-testid="blueprint-gallery-renderer" data-render-mode={renderMode} data-presentation-theme={presentationTheme} aria-label="Blueprint gallery product preview">
       <div style={styles.tray} data-testid="blueprint-gallery-artwork-tray">
         {rows.map((nails, rowIndex) => (
           <div key={rowIndex === 0 ? 'top' : 'bottom'} style={styles.row} data-testid="blueprint-gallery-nail-row">
@@ -103,13 +184,14 @@ const styles = {
     display: 'grid',
     gap: 'var(--gallery-row-gap)',
     gridTemplateRows: 'repeat(2, minmax(0, 1fr))',
-    height: '88%',
+    height: 'var(--gallery-art-fill)',
     justifyItems: 'center',
     maxHeight: '100%',
     maxWidth: '100%',
     minHeight: 0,
     minWidth: 0,
     overflow: 'hidden',
+    padding: 'var(--gallery-tray-padding)',
     width: 'var(--gallery-art-fill)',
   },
   row: {
@@ -117,7 +199,7 @@ const styles = {
     display: 'grid',
     gap: 'var(--gallery-tray-gap)',
     gridTemplateColumns: 'repeat(5, var(--gallery-nail-width))',
-    height: '100%',
+    height: 'var(--gallery-nail-height)',
     justifyContent: 'center',
     maxHeight: '100%',
     minHeight: 0,
@@ -125,7 +207,7 @@ const styles = {
     width: '100%',
   },
   nailSlot: {
-    aspectRatio: '70 / 104',
+    aspectRatio: 'var(--gallery-nail-aspect) / 1',
     display: 'grid',
     filter: 'drop-shadow(0 10px 12px rgba(90,44,80,.18))',
     maxHeight: '100%',
@@ -133,6 +215,7 @@ const styles = {
     minWidth: 0,
     overflow: 'hidden',
     placeItems: 'center',
+    height: 'var(--gallery-nail-height)',
     width: 'var(--gallery-nail-width)',
   },
   nailSvg: {
