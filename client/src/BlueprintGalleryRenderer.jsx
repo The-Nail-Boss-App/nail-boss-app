@@ -12,6 +12,21 @@ export const BLUEPRINT_GALLERY_PRESENTATION_THEMES = ['luxury-tray', 'minimal-wh
 
 const NAIL_ORDER = ['Thumb', 'Index', 'Middle', 'Ring', 'Pinky'];
 
+export const GALLERY_ARTWORK_VIEWBOX = {
+  x: 18,
+  y: 18,
+  width: 204,
+  height: 314,
+};
+
+export const GALLERY_ARTWORK_BOUNDS_PROFILE = {
+  viewBox: `${GALLERY_ARTWORK_VIEWBOX.x} ${GALLERY_ARTWORK_VIEWBOX.y} ${GALLERY_ARTWORK_VIEWBOX.width} ${GALLERY_ARTWORK_VIEWBOX.height}`,
+  preserveAspectRatio: 'xMidYMid meet',
+  targetCellHeightFill: [0.85, 0.95],
+  targetCellWidthFill: [0.8, 0.9],
+  distortionSafe: true,
+};
+
 const SHAPE_FAMILIES = {
   Almond: 'tapered',
   Coffin: 'tapered',
@@ -131,7 +146,7 @@ function BlueprintGalleryNail({ nail, uid }) {
   const artLayers = nail.layers.filter((layer) => layer.type !== 'base' && layer.visible !== false).sort(layerSort);
 
   return (
-    <svg viewBox={`0 0 ${VIEWBOX.width} ${VIEWBOX.height}`} width="100%" height="100%" preserveAspectRatio="xMidYMid meet" aria-hidden="true" focusable="false" style={styles.nailSvg}>
+    <svg viewBox={GALLERY_ARTWORK_BOUNDS_PROFILE.viewBox} width="100%" height="100%" preserveAspectRatio={GALLERY_ARTWORK_BOUNDS_PROFILE.preserveAspectRatio} aria-hidden="true" focusable="false" style={styles.nailSvg} data-gallery-artwork-bounds="tight">
       <defs>
         <clipPath id={clipId}><path d={path} /></clipPath>
         <PolishDefs nail={nail} baseLayer={base} uid={clipId} />
@@ -212,6 +227,9 @@ const styles = {
     overflow: 'hidden',
     padding: 'var(--gallery-tray-padding)',
     width: 'var(--gallery-tray-area)',
+    background: 'linear-gradient(145deg, rgba(255,255,255,.48), rgba(248,232,241,.24))',
+    borderRadius: 18,
+    boxShadow: 'inset 0 0 0 1px rgba(123,45,95,.075), inset 0 18px 30px rgba(255,255,255,.24)',
   },
   nailSlot: {
     alignItems: 'center',
