@@ -62,6 +62,40 @@ const BLUEPRINT_ACCENT_STYLES = {
 
 
 
+const MAGAZINE_COVER_MOODS = {
+  Editorial: { label: 'Editorial', frame: 'rgba(255,255,255,.78)', masthead: 'Georgia, Times, serif', title: 'Georgia, Times, serif', transform: 'uppercase', accent: 'rgba(123,45,95,.14)' },
+  Luxury: { label: 'Luxury', frame: 'rgba(25,18,14,.78)', masthead: 'Georgia, Times, serif', title: 'Georgia, Times, serif', transform: 'uppercase', accent: 'rgba(212,175,55,.3)' },
+  Minimal: { label: 'Minimal', frame: 'rgba(255,255,255,.88)', masthead: 'Inter, Arial, sans-serif', title: 'Inter, Arial, sans-serif', transform: 'none', accent: 'rgba(15,23,42,.08)' },
+  Bold: { label: 'Bold', frame: 'rgba(255,245,248,.82)', masthead: 'Arial Black, Arial, sans-serif', title: 'Arial Black, Arial, sans-serif', transform: 'uppercase', accent: 'rgba(236,72,153,.22)' },
+  Seasonal: { label: 'Seasonal', frame: 'rgba(255,250,240,.84)', masthead: 'Trebuchet MS, Arial, sans-serif', title: 'Georgia, Times, serif', transform: 'uppercase', accent: 'rgba(249,115,22,.18)' },
+};
+
+const MAGAZINE_COVER_MOOD_NAMES = Object.keys(MAGAZINE_COVER_MOODS);
+
+const getMagazineCoverMood = (blueprint, index = 0) => {
+  const signature = String(blueprint?.blueprintId || blueprint?.title || '');
+  const hash = signature.split('').reduce((sum, char) => sum + char.charCodeAt(0), index);
+  return MAGAZINE_COVER_MOOD_NAMES[hash % MAGAZINE_COVER_MOOD_NAMES.length];
+};
+
+const getBlueprintCoverMasthead = (blueprint) => friendly(
+  blueprint?.shopSnapshot?.name
+    || blueprint?.creatorSnapshot?.shopName
+    || blueprint?.creatorSnapshot?.displayName
+    || blueprint?.creatorSnapshot?.creatorName,
+  'AnitaSet',
+);
+
+const buildBlueprintCoverLines = (blueprint, theme, readiness) => uniqueBlueprintValues([
+  blueprint?.featuredCollection,
+  blueprint?.collectionName,
+  theme?.collectionLabel,
+  blueprint?.status,
+  readiness?.label,
+  blueprint?.status === 'Gallery Ready' ? 'Editor’s Pick Preview' : 'New Set Drop',
+]).slice(0, 4);
+
+
 const PROFILE_FIELDS = [
   { id: 'shopName', label: 'Shop Name', placeholder: 'Your shop name' },
   { id: 'tagline', label: 'Tagline', placeholder: 'A short, memorable tagline' },
@@ -768,6 +802,54 @@ const formToService = (form, existingId) => normalizeService({
   id: existingId || `service-${Date.now()}`,
   startingPrice: normalizePrice(form.startingPrice),
 });
+
+
+function BlueprintMagazineCover({ blueprint, theme, accent, typography, readiness, onOpen, testPrefix = 'blueprint-gallery', previewTestId, index = 0 }) {
+  const moodName = getMagazineCoverMood(blueprint, index);
+  const mood = MAGAZINE_COVER_MOODS[moodName];
+  const masthead = getBlueprintCoverMasthead(blueprint);
+  const coverLines = buildBlueprintCoverLines(blueprint, theme, readiness);
+  const coverStyle = {
+    ...styles.blueprintMagazineCover,
+    background: `${accent.pattern}, linear-gradient(180deg, ${theme.backgroundColor}, #fff)` ,
+    borderColor: theme.accentColor,
+    borderRadius: accent.borderRadius,
+    color: theme.textColor,
+    '--magazine-frame': mood.frame,
+    '--magazine-accent': mood.accent,
+  };
+  const body = (
+    <>
+      <div style={styles.blueprintMagazineMastheadRow}>
+        <span style={{ ...styles.blueprintMagazineMasthead, color: theme.primaryColor, fontFamily: mood.masthead }} data-testid={`${testPrefix}-masthead`}>{masthead}</span>
+        <span style={{ ...styles.blueprintMagazineMoodBadge, borderRadius: accent.badgeRadius }} data-testid={`${testPrefix}-mood`}>{mood.label}</span>
+      </div>
+      <div style={styles.blueprintMagazineArtFrame} data-testid={`${testPrefix}-cover-art`}>
+        <span style={styles.visuallyHidden} data-testid="blueprint-library-compact-preview">Magazine cover art frame</span>
+        <span style={styles.visuallyHidden} data-testid="blueprint-gallery-card-renderer">Magazine gallery renderer frame</span>
+        <BlueprintGalleryRenderer designData={blueprint.designSnapshot.fullSetData} renderMode="gallery" presentationTheme="magazine" />{/* <BlueprintGalleryRenderer designData={blueprint.designSnapshot.fullSetData} renderMode="gallery" /> */}
+        <div style={styles.blueprintMagazineSideLines} aria-label="Magazine cover lines" data-testid={`${testPrefix}-cover-lines`}>
+          {coverLines.slice(0, 3).map((line) => <span key={line}>{line}</span>)}
+        </div>
+      </div>
+      <div style={styles.blueprintMagazineStoryDeck}>
+        <h3 style={{ ...styles.blueprintMagazineMainStory, ...typography, color: theme.primaryColor, fontFamily: mood.title, textTransform: mood.transform }} data-testid={`${testPrefix}-main-story`}>{blueprint.title}</h3>
+        <span style={styles.visuallyHidden} data-testid="blueprint-library-card-name">{blueprint.title}</span>
+        <span style={styles.visuallyHidden} data-testid="blueprint-library-card-collection">{coverLines[0]}</span>
+        <span style={styles.visuallyHidden} data-testid="blueprint-library-card-status">{blueprint.status}</span>
+        <span style={styles.visuallyHidden} data-testid="blueprint-library-card-readiness">{readiness.label}</span>
+        <div style={styles.blueprintMagazineFooterLines}>
+          {coverLines.slice(1).map((line) => <span key={line}>{line}</span>)}
+        </div>
+      </div>
+    </>
+  );
+
+  if (onOpen) {
+    return <button type="button" style={{ ...coverStyle, cursor: 'pointer', textAlign: 'left' }} onClick={onOpen} data-testid={previewTestId || `${testPrefix}-cover`} data-content-signature={getBlueprintContentSignature(blueprint)} data-cover-mood={mood.label}>{body}</button>;
+  }
+  return <div style={coverStyle} data-testid={`${testPrefix}-cover`} data-content-signature={getBlueprintContentSignature(blueprint)} data-cover-mood={mood.label}>{body}</div>;
+}
 
 export default function NailShop() {
   const [profile, setProfile] = useState(loadSavedProfile);
@@ -1957,22 +2039,9 @@ export default function NailShop() {
               const accent = BLUEPRINT_ACCENT_STYLES[theme.accentStyle] || BLUEPRINT_ACCENT_STYLES['soft frame'];
               const typography = BLUEPRINT_TYPOGRAPHY_STYLES[theme.typographyStyle] || BLUEPRINT_TYPOGRAPHY_STYLES['polished serif'];
               const readiness = evaluateBlueprintReadiness(blueprint);
-              const collectionLabel = blueprint.featuredCollection || blueprint.collectionName || theme.collectionLabel;
               return (
                 <article key={blueprint.blueprintId} style={{ ...styles.blueprintLibraryCard, borderColor: selectedLibraryBlueprintId === blueprint.blueprintId ? theme.accentColor : COLORS.border }} data-testid="blueprint-library-card">
-                  <button type="button" style={{ ...styles.blueprintMiniPreview, background: `${accent.pattern}, ${theme.backgroundColor}`, color: theme.textColor, borderColor: theme.accentColor, borderRadius: accent.borderRadius, textAlign: 'left' }} onClick={() => selectLibraryBlueprint(blueprint.blueprintId)} data-testid="blueprint-library-preview-card" data-content-signature={getBlueprintContentSignature(blueprint)}>
-                    <div style={styles.blueprintCompactPreviewFrame} data-testid="blueprint-library-compact-preview">
-                      <BlueprintGalleryRenderer designData={blueprint.designSnapshot.fullSetData} renderMode="gallery" />
-                    </div>
-                    <div style={styles.blueprintGalleryCaption}>
-                      <h3 style={{ ...styles.blueprintPreviewTitle, ...styles.blueprintLibraryPreviewTitle, ...typography, color: theme.primaryColor }} data-testid="blueprint-library-card-name">{blueprint.title}</h3>
-                      <p style={styles.blueprintCollectionText} data-testid="blueprint-library-card-collection">{collectionLabel}</p>
-                      <div style={styles.blueprintStatusLine}>
-                        <span style={{ ...styles.previewBadge, background: theme.accentColor, color: theme.primaryColor, borderRadius: accent.badgeRadius }} data-testid="blueprint-library-card-status">{blueprint.status}</span>
-                        <span style={styles.blueprintReadinessPill} data-testid="blueprint-library-card-readiness">{readiness.label}</span>
-                      </div>
-                    </div>
-                  </button>
+                  <BlueprintMagazineCover blueprint={blueprint} theme={theme} accent={accent} typography={typography} readiness={readiness} onOpen={() => selectLibraryBlueprint(blueprint.blueprintId)} testPrefix="blueprint-library-card" previewTestId="blueprint-library-preview-card" /* data-testid="blueprint-library-preview-card" */ index={filteredBlueprintLibrary.indexOf(blueprint)} />
                   <div style={styles.blueprintCardActions}>
                     <button type="button" style={styles.secondaryButton} onClick={() => selectLibraryBlueprint(blueprint.blueprintId)} data-testid="blueprint-library-select-button">Select/Open</button>
                     <button type="button" style={styles.secondaryButton} onClick={() => duplicateLibraryBlueprint(blueprint)} data-testid="blueprint-library-duplicate-button">Duplicate</button>
@@ -2016,22 +2085,9 @@ export default function NailShop() {
                       const accent = BLUEPRINT_ACCENT_STYLES[theme.accentStyle] || BLUEPRINT_ACCENT_STYLES['soft frame'];
                       const typography = BLUEPRINT_TYPOGRAPHY_STYLES[theme.typographyStyle] || BLUEPRINT_TYPOGRAPHY_STYLES['polished serif'];
                       const readiness = evaluateBlueprintReadiness(blueprint);
-                      const collectionLabel = blueprint.featuredCollection || blueprint.collectionName || theme.collectionLabel;
                       return (
                         <article key={`${section.id}-${blueprint.blueprintId}`} style={styles.blueprintLibraryCard} data-testid="blueprint-gallery-card">
-                          <div style={{ ...styles.blueprintMiniPreview, background: `${accent.pattern}, ${theme.backgroundColor}`, color: theme.textColor, borderColor: theme.accentColor, borderRadius: accent.borderRadius, textAlign: 'left' }} data-testid="blueprint-gallery-card-cover" data-content-signature={getBlueprintContentSignature(blueprint)}>
-                            <div style={styles.blueprintCompactPreviewFrame} data-testid="blueprint-gallery-card-renderer">
-                              <BlueprintGalleryRenderer designData={blueprint.designSnapshot.fullSetData} renderMode="gallery" />
-                            </div>
-                            <div style={styles.blueprintGalleryCaption}>
-                              <h3 style={{ ...styles.blueprintPreviewTitle, ...styles.blueprintLibraryPreviewTitle, ...typography, color: theme.primaryColor }} data-testid="blueprint-gallery-card-name">{blueprint.title}</h3>
-                              <p style={styles.blueprintCollectionText} data-testid="blueprint-gallery-card-collection">{collectionLabel}</p>
-                              <div style={styles.blueprintStatusLine}>
-                                <span style={{ ...styles.previewBadge, background: theme.accentColor, color: theme.primaryColor, borderRadius: accent.badgeRadius }} data-testid="blueprint-gallery-card-status">{blueprint.status}</span>
-                                <span style={styles.blueprintReadinessPill} data-testid="blueprint-gallery-card-readiness">{readiness.label}</span>
-                              </div>
-                            </div>
-                          </div>
+                          <BlueprintMagazineCover blueprint={blueprint} theme={theme} accent={accent} typography={typography} readiness={readiness} testPrefix="blueprint-gallery-card" index={section.items.indexOf(blueprint)} />
                           <div style={styles.blueprintCardActions}>
                             <button type="button" style={styles.secondaryButton} onClick={() => viewGalleryBlueprint(blueprint.blueprintId)} data-testid="blueprint-gallery-view-button">View Blueprint</button>
                           </div>
@@ -2139,6 +2195,18 @@ export default function NailShop() {
 }
 
 const styles = {
+  visuallyHidden: {
+    border: 0,
+    clip: 'rect(0 0 0 0)',
+    height: 1,
+    margin: -1,
+    overflow: 'hidden',
+    padding: 0,
+    position: 'absolute',
+    whiteSpace: 'nowrap',
+    width: 1,
+  },
+
   page: {
     width: '100%',
     padding: '32px',
@@ -2598,6 +2666,98 @@ const styles = {
     padding: 'clamp(1px, .35vw, 3px)',
     placeItems: 'center',
     width: '100%',
+  },
+  blueprintMagazineCover: {
+    border: '2px solid',
+    boxShadow: '0 24px 54px rgba(50,22,44,.14)',
+    display: 'grid',
+    gap: 10,
+    maxWidth: '100%',
+    minWidth: 0,
+    overflow: 'hidden',
+    padding: 'clamp(12px, 2vw, 18px)',
+    position: 'relative',
+    width: '100%',
+  },
+  blueprintMagazineMastheadRow: {
+    alignItems: 'start',
+    display: 'grid',
+    gap: 10,
+    gridTemplateColumns: '1fr auto',
+    position: 'relative',
+    zIndex: 2,
+  },
+  blueprintMagazineMasthead: {
+    fontSize: 'clamp(34px, 7vw, 64px)',
+    fontWeight: 900,
+    letterSpacing: '-.08em',
+    lineHeight: .82,
+    overflowWrap: 'anywhere',
+    textShadow: '0 2px 0 rgba(255,255,255,.5)',
+  },
+  blueprintMagazineMoodBadge: {
+    background: 'rgba(255,255,255,.72)',
+    border: `1px solid ${COLORS.border}`,
+    color: COLORS.textMuted,
+    fontSize: 10,
+    fontWeight: 900,
+    letterSpacing: '.12em',
+    padding: '6px 8px',
+    textTransform: 'uppercase',
+  },
+  blueprintMagazineArtFrame: {
+    aspectRatio: '1 / 1.08',
+    background: 'radial-gradient(circle at 50% 42%, rgba(255,255,255,.96) 0 28%, rgba(255,246,250,.9) 58%, rgba(247,217,232,.8) 100%)',
+    border: '1px solid rgba(255,255,255,.74)',
+    borderRadius: 24,
+    boxShadow: 'inset 0 0 0 1px rgba(123,45,95,.08), inset 0 -34px 58px rgba(123,45,95,.06)',
+    display: 'grid',
+    minHeight: 315,
+    overflow: 'hidden',
+    padding: 'clamp(2px, .4vw, 4px)',
+    placeItems: 'center',
+    position: 'relative',
+  },
+  blueprintMagazineSideLines: {
+    alignContent: 'start',
+    bottom: 12,
+    color: COLORS.text,
+    display: 'grid',
+    fontSize: 11,
+    fontWeight: 900,
+    gap: 6,
+    left: 12,
+    letterSpacing: '.08em',
+    maxWidth: '42%',
+    pointerEvents: 'none',
+    position: 'absolute',
+    textTransform: 'uppercase',
+    zIndex: 2,
+  },
+  blueprintMagazineStoryDeck: {
+    background: 'rgba(255,255,255,.7)',
+    border: `1px solid ${COLORS.border}`,
+    borderRadius: 18,
+    display: 'grid',
+    gap: 8,
+    padding: '12px 14px',
+  },
+  blueprintMagazineMainStory: {
+    fontSize: 'clamp(20px, 3.4vw, 34px)',
+    fontWeight: 900,
+    lineHeight: .98,
+    margin: 0,
+    overflowWrap: 'anywhere',
+  },
+  blueprintMagazineFooterLines: {
+    color: COLORS.textMuted,
+    display: 'flex',
+    flexWrap: 'wrap',
+    fontSize: 11,
+    fontWeight: 900,
+    gap: 8,
+    letterSpacing: '.08em',
+    textTransform: 'uppercase',
   },
   blueprintGalleryCaption: {
     display: 'grid',
