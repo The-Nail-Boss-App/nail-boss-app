@@ -1029,6 +1029,21 @@ export default function NailShop() {
   const selectedLibraryBlueprint = normalizedBlueprintLibrary.find((blueprint) => blueprint.blueprintId === selectedLibraryBlueprintId) || null;
   const selectedBlueprintDetail = selectedLibraryBlueprint ? buildBlueprintDetailSections(selectedLibraryBlueprint) : null;
   const selectedBlueprintReadiness = selectedLibraryBlueprint ? evaluateBlueprintReadiness(selectedLibraryBlueprint) : null;
+  const isBlueprintGalleryEligible = (blueprint) => {
+    const readiness = evaluateBlueprintReadiness(blueprint);
+    return blueprint.status === 'Gallery Ready' || readiness.label === 'Gallery Ready';
+  };
+  const galleryReadyBlueprints = normalizedBlueprintLibrary.filter(isBlueprintGalleryEligible);
+  const blueprintGallerySections = [
+    { id: 'featured', title: 'Featured Collection', items: galleryReadyBlueprints.slice(0, 1) },
+    { id: 'ready', title: 'Gallery Ready', items: galleryReadyBlueprints },
+    { id: 'new', title: 'New This Week', items: galleryReadyBlueprints.slice(0, 4) },
+    { id: 'editors', title: 'Editor’s Picks Preview', items: galleryReadyBlueprints.slice(0, 3) },
+  ];
+  const viewGalleryBlueprint = (blueprintId) => {
+    selectLibraryBlueprint(blueprintId);
+    setActiveSection('blueprintLibrary');
+  };
   const filteredBlueprintLibrary = normalizedBlueprintLibrary
     .filter((blueprint) => blueprintLibraryFilter === 'all' || blueprint.status === blueprintLibraryFilter)
     .filter((blueprint) => {
@@ -1287,6 +1302,7 @@ export default function NailShop() {
     { id: 'fullSetRenderer', label: 'Full Set Renderer' },
     { id: 'blueprintEngine', label: 'Blueprint Engine' },
     { id: 'blueprintLibrary', label: 'Blueprint Library' },
+    { id: 'blueprintGallery', label: 'Blueprint Gallery' },
   ];
 
   const preview = {
@@ -1971,6 +1987,65 @@ export default function NailShop() {
         </section>
         )}
 
+
+        {activeSection === 'blueprintGallery' && (
+        <section style={styles.blueprintPreviewPanel} aria-label="Blueprint Gallery" data-testid="blueprint-gallery-section" data-storage-key={BLUEPRINT_LIBRARY_STORAGE_KEY}>
+          <div style={styles.panelHeader}>
+            <div>
+              <p style={styles.kicker}>Local discovery preview</p>
+              <h2 style={styles.sectionTitle}>Blueprint Gallery</h2>
+              <p style={styles.readinessIntro}>Browse Gallery Ready Blueprint Covers from your existing local Blueprint Library.</p>
+              <p style={styles.serviceMeta}>Source: {BLUEPRINT_LIBRARY_STORAGE_KEY}</p>
+            </div>
+            <span style={styles.needsSetupBadge} data-testid="blueprint-gallery-local-only-badge">Local only</span>
+          </div>
+          <div style={styles.guardrailNotice} data-testid="blueprint-gallery-guardrail">Local Gallery preview only. Nothing is published.</div>
+          {galleryReadyBlueprints.length === 0 ? (
+            <p style={styles.readinessIntro} data-testid="blueprint-gallery-empty-state">No Gallery Ready Blueprints yet.</p>
+          ) : (
+            <div style={styles.blueprintEditorialGallery} data-testid="blueprint-gallery-editorial-layout">
+              {blueprintGallerySections.map((section) => (
+                <section key={section.id} style={styles.blueprintGallerySection} data-testid={`blueprint-gallery-section-${section.id}`}>
+                  <div style={styles.blueprintGallerySectionHeader}>
+                    <p style={styles.kicker}>{section.title}</p>
+                    <h3 style={styles.cardTitle}>{section.title}</h3>
+                  </div>
+                  <div style={styles.blueprintLibraryGrid}>
+                    {section.items.map((blueprint) => {
+                      const theme = normalizeBlueprintTheme(blueprint.theme);
+                      const accent = BLUEPRINT_ACCENT_STYLES[theme.accentStyle] || BLUEPRINT_ACCENT_STYLES['soft frame'];
+                      const typography = BLUEPRINT_TYPOGRAPHY_STYLES[theme.typographyStyle] || BLUEPRINT_TYPOGRAPHY_STYLES['polished serif'];
+                      const readiness = evaluateBlueprintReadiness(blueprint);
+                      const collectionLabel = blueprint.featuredCollection || blueprint.collectionName || theme.collectionLabel;
+                      return (
+                        <article key={`${section.id}-${blueprint.blueprintId}`} style={styles.blueprintLibraryCard} data-testid="blueprint-gallery-card">
+                          <div style={{ ...styles.blueprintMiniPreview, background: `${accent.pattern}, ${theme.backgroundColor}`, color: theme.textColor, borderColor: theme.accentColor, borderRadius: accent.borderRadius, textAlign: 'left' }} data-testid="blueprint-gallery-card-cover" data-content-signature={getBlueprintContentSignature(blueprint)}>
+                            <div style={styles.blueprintCompactPreviewFrame} data-testid="blueprint-gallery-card-renderer">
+                              <BlueprintGalleryRenderer designData={blueprint.designSnapshot.fullSetData} renderMode="gallery" />
+                            </div>
+                            <div style={styles.blueprintGalleryCaption}>
+                              <h3 style={{ ...styles.blueprintPreviewTitle, ...styles.blueprintLibraryPreviewTitle, ...typography, color: theme.primaryColor }} data-testid="blueprint-gallery-card-name">{blueprint.title}</h3>
+                              <p style={styles.blueprintCollectionText} data-testid="blueprint-gallery-card-collection">{collectionLabel}</p>
+                              <div style={styles.blueprintStatusLine}>
+                                <span style={{ ...styles.previewBadge, background: theme.accentColor, color: theme.primaryColor, borderRadius: accent.badgeRadius }} data-testid="blueprint-gallery-card-status">{blueprint.status}</span>
+                                <span style={styles.blueprintReadinessPill} data-testid="blueprint-gallery-card-readiness">{readiness.label}</span>
+                              </div>
+                            </div>
+                          </div>
+                          <div style={styles.blueprintCardActions}>
+                            <button type="button" style={styles.secondaryButton} onClick={() => viewGalleryBlueprint(blueprint.blueprintId)} data-testid="blueprint-gallery-view-button">View Blueprint</button>
+                          </div>
+                        </article>
+                      );
+                    })}
+                  </div>
+                </section>
+              ))}
+            </div>
+          )}
+        </section>
+        )}
+
         {activeSection === 'proposalDraft' && (
         <section style={styles.proposalDraftPanel} aria-label="Proposal Draft Generator" data-testid="proposal-draft-section">
           <div style={styles.panelHeader}>
@@ -2558,6 +2633,20 @@ const styles = {
     gap: 10,
     justifyContent: 'flex-start',
     minWidth: 0,
+  },
+  blueprintEditorialGallery: {
+    display: 'grid',
+    gap: 24,
+  },
+  blueprintGallerySection: {
+    borderTop: `1px solid ${COLORS.border}`,
+    display: 'grid',
+    gap: 14,
+    paddingTop: 18,
+  },
+  blueprintGallerySectionHeader: {
+    display: 'grid',
+    gap: 2,
   },
   blueprintDetailView: {
     background: '#fff',
