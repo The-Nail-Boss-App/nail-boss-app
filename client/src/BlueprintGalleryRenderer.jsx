@@ -2,7 +2,7 @@ import { useId } from 'react';
 import { renderAssetShapes } from './design-studio/assets';
 import { ArtRealismDefs, GradientLayerShape, PaintedStroke, PatternDefs, artMaterialProfile } from './design-studio/NailCanvas';
 import { AssetContactShadow, AssetSpecularAccent, AssetSurfaceBlend, assetLayerRenderProps, isRenderableAssetLayer } from './design-studio/assetRendering';
-import { VIEWBOX, buildNailPath, layerSort } from './design-studio/blueprint';
+import { VIEWBOX, buildNailPath, getNailGeometry, layerSort } from './design-studio/blueprint';
 import { FrenchTipShape } from './design-studio/frenchTipRendering';
 import { PolishDefs, PolishSurface } from './design-studio/PolishRenderer';
 import { normalizeFullSetDesign } from './fullSetRenderer';
@@ -22,10 +22,34 @@ export const GALLERY_ARTWORK_VIEWBOX = {
 export const GALLERY_ARTWORK_BOUNDS_PROFILE = {
   viewBox: `${GALLERY_ARTWORK_VIEWBOX.x} ${GALLERY_ARTWORK_VIEWBOX.y} ${GALLERY_ARTWORK_VIEWBOX.width} ${GALLERY_ARTWORK_VIEWBOX.height}`,
   preserveAspectRatio: 'xMidYMid meet',
-  targetCellHeightFill: [0.85, 0.95],
-  targetCellWidthFill: [0.8, 0.9],
+  targetCellHeightFill: [0.98, 1],
+  targetCellWidthFill: [0.92, 1],
+  artworkMagnification: [1.15, 1.2],
   distortionSafe: true,
 };
+
+
+const GALLERY_DYNAMIC_VIEWBOX_LIMITS = {
+  minWidth: 170,
+  minHeight: 268,
+  maxWidth: GALLERY_ARTWORK_VIEWBOX.width,
+  maxHeight: GALLERY_ARTWORK_VIEWBOX.height,
+  nailPadding: 1.08,
+};
+
+function constrainArtworkAxis(center, size, min, max) {
+  return Number(clamp(center - size / 2, min, max - size).toFixed(2));
+}
+
+export function getGalleryArtworkViewBox(nail = {}) {
+  const geometry = getNailGeometry(nail);
+  const width = Number(clamp(geometry.width * GALLERY_DYNAMIC_VIEWBOX_LIMITS.nailPadding, GALLERY_DYNAMIC_VIEWBOX_LIMITS.minWidth, GALLERY_DYNAMIC_VIEWBOX_LIMITS.maxWidth).toFixed(2));
+  const height = Number(clamp(geometry.height * GALLERY_DYNAMIC_VIEWBOX_LIMITS.nailPadding, GALLERY_DYNAMIC_VIEWBOX_LIMITS.minHeight, GALLERY_DYNAMIC_VIEWBOX_LIMITS.maxHeight).toFixed(2));
+  const x = constrainArtworkAxis(geometry.cx, width, GALLERY_ARTWORK_VIEWBOX.x, GALLERY_ARTWORK_VIEWBOX.x + GALLERY_ARTWORK_VIEWBOX.width);
+  const y = constrainArtworkAxis((geometry.topY + geometry.bottomY) / 2, height, GALLERY_ARTWORK_VIEWBOX.y, GALLERY_ARTWORK_VIEWBOX.y + GALLERY_ARTWORK_VIEWBOX.height);
+
+  return `${x} ${y} ${width} ${height}`;
+}
 
 const SHAPE_FAMILIES = {
   Almond: 'tapered',
@@ -146,7 +170,7 @@ function BlueprintGalleryNail({ nail, uid }) {
   const artLayers = nail.layers.filter((layer) => layer.type !== 'base' && layer.visible !== false).sort(layerSort);
 
   return (
-    <svg viewBox={GALLERY_ARTWORK_BOUNDS_PROFILE.viewBox} width="100%" height="100%" preserveAspectRatio={GALLERY_ARTWORK_BOUNDS_PROFILE.preserveAspectRatio} aria-hidden="true" focusable="false" style={styles.nailSvg} data-gallery-artwork-bounds="tight">
+    <svg viewBox={getGalleryArtworkViewBox(nail)} width="100%" height="100%" preserveAspectRatio={GALLERY_ARTWORK_BOUNDS_PROFILE.preserveAspectRatio} aria-hidden="true" focusable="false" style={styles.nailSvg} data-gallery-artwork-bounds="tight">
       <defs>
         <clipPath id={clipId}><path d={path} /></clipPath>
         <PolishDefs nail={nail} baseLayer={base} uid={clipId} />
