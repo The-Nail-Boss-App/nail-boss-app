@@ -68,7 +68,6 @@ export function createBlueprintCompositionProfile(normalizedSet = {}) {
   const safeTrayPadding = `${clamp(shapeFootprint.padding + maxNailLength * 0.018 + maxNailWidth * 0.012, 0.036, 0.072) * 100}%`;
   const rowGap = `${clamp(0.008 + (maxNailLength - 0.5) * 0.018, 0.006, 0.026) * 100}%`;
   const columnGap = `${clamp(0.003 + (maxNailWidth - 0.5) * 0.008, 0.002, 0.012) * 100}%`;
-  const safeArtworkScale = Number(clamp(0.93 - Math.max(0, maxNailLength - 0.72) * 0.16 - Math.max(0, maxNailWidth - 0.72) * 0.12, 0.84, 0.92).toFixed(3));
   const nailAspectRatio = Number(clamp(estimatedNailFootprint.width / estimatedNailFootprint.length, 0.52, 0.86).toFixed(3));
 
   return {
@@ -80,7 +79,7 @@ export function createBlueprintCompositionProfile(normalizedSet = {}) {
     safeTrayPadding,
     rowGap,
     columnGap,
-    safeArtworkScale,
+    shapeFootprintPadding: shapeFootprint.padding,
     nailAspectRatio,
     rows: 2,
     columns: 5,
@@ -88,17 +87,40 @@ export function createBlueprintCompositionProfile(normalizedSet = {}) {
   };
 }
 
-export function getBlueprintGalleryAutoScaleStyle(renderMode = 'gallery', compositionProfile) {
+export function buildGalleryGrid(compositionProfile, renderMode = 'gallery') {
   const profile = compositionProfile || createBlueprintCompositionProfile();
-  const artFill = renderMode === 'gallery' ? profile.safeArtworkScale : Math.min(profile.safeArtworkScale, 0.86);
+  const trayFill = renderMode === 'gallery' ? 0.86 : 0.82;
+  const nailFill = 0.94;
+  const trayPadding = `clamp(3px, ${clamp(profile.shapeFootprintPadding * 0.68, 0.024, 0.042) * 100}%, 10px)`;
+  const rowGap = `clamp(2px, ${clamp(0.006 + (profile.maxNailLength - 0.5) * 0.012, 0.006, 0.018) * 100}%, 8px)`;
+  const columnGap = `clamp(2px, ${clamp(0.004 + (profile.maxNailWidth - 0.5) * 0.008, 0.004, 0.014) * 100}%, 8px)`;
+  const safeAspect = Number(clamp(profile.estimatedNailFootprint.width / profile.estimatedNailFootprint.length, 0.5, 0.92).toFixed(3));
+
   return {
-    '--gallery-art-fill': `${Math.round(artFill * 1000) / 10}%`,
-    '--gallery-tray-padding': profile.safeTrayPadding,
-    '--gallery-tray-gap': profile.columnGap,
-    '--gallery-row-gap': profile.rowGap,
-    '--gallery-nail-aspect': profile.nailAspectRatio,
-    '--gallery-nail-width': 'min(calc((100% - (4 * var(--gallery-tray-gap))) / 5), calc(((100% - var(--gallery-row-gap)) / 2) * var(--gallery-nail-aspect)))',
-    '--gallery-nail-height': 'min(calc((100% - var(--gallery-row-gap)) / 2), calc((100% - (4 * var(--gallery-tray-gap))) / 5 / var(--gallery-nail-aspect)))',
+    rows: 2,
+    columns: 5,
+    cellWidth: 'minmax(0, 1fr)',
+    cellHeight: 'minmax(0, 1fr)',
+    rowGap,
+    columnGap,
+    trayPadding,
+    availableTrayArea: `${Math.round(trayFill * 100)}%`,
+    nailFill: `${Math.round(nailFill * 100)}%`,
+    cellAspectRatio: safeAspect,
+  };
+}
+
+export function getBlueprintGalleryGridStyle(renderMode = 'gallery', compositionProfile) {
+  const grid = buildGalleryGrid(compositionProfile, renderMode);
+  return {
+    '--gallery-tray-area': grid.availableTrayArea,
+    '--gallery-tray-padding': grid.trayPadding,
+    '--gallery-row-gap': grid.rowGap,
+    '--gallery-column-gap': grid.columnGap,
+    '--gallery-cell-width': grid.cellWidth,
+    '--gallery-cell-height': grid.cellHeight,
+    '--gallery-nail-fill': grid.nailFill,
+    '--gallery-cell-aspect': grid.cellAspectRatio,
   };
 }
 
@@ -109,7 +131,7 @@ function BlueprintGalleryNail({ nail, uid }) {
   const artLayers = nail.layers.filter((layer) => layer.type !== 'base' && layer.visible !== false).sort(layerSort);
 
   return (
-    <svg viewBox={`0 0 ${VIEWBOX.width} ${VIEWBOX.height}`} width="100%" height="100%" aria-hidden="true" focusable="false" style={styles.nailSvg}>
+    <svg viewBox={`0 0 ${VIEWBOX.width} ${VIEWBOX.height}`} width="100%" height="100%" preserveAspectRatio="xMidYMid meet" aria-hidden="true" focusable="false" style={styles.nailSvg}>
       <defs>
         <clipPath id={clipId}><path d={path} /></clipPath>
         <PolishDefs nail={nail} baseLayer={base} uid={clipId} />
@@ -147,17 +169,13 @@ export default function BlueprintGalleryRenderer({ designData, renderMode = 'gal
   const rows = [normalized.left, normalized.right];
 
   return (
-    <div style={{ ...styles.shell, ...getBlueprintGalleryAutoScaleStyle(renderMode, createBlueprintCompositionProfile(normalized)) }} data-testid="blueprint-gallery-renderer" data-render-mode={renderMode} data-presentation-theme={presentationTheme} aria-label="Blueprint gallery product preview">
+    <div style={{ ...styles.shell, ...getBlueprintGalleryGridStyle(renderMode, createBlueprintCompositionProfile(normalized)) }} data-testid="blueprint-gallery-renderer" data-render-mode={renderMode} data-presentation-theme={presentationTheme} aria-label="Blueprint gallery product preview">
       <div style={styles.tray} data-testid="blueprint-gallery-artwork-tray">
-        {rows.map((nails, rowIndex) => (
-          <div key={rowIndex === 0 ? 'top' : 'bottom'} style={styles.row} data-testid="blueprint-gallery-nail-row">
-            {nails.slice(0, 5).map((nail, nailIndex) => (
-              <div key={nail.id} style={styles.nailSlot} data-testid="blueprint-gallery-nail" data-finger-position={NAIL_ORDER[nailIndex]}>
-                <BlueprintGalleryNail nail={nail} uid={`${uid}-${rowIndex}`} />
-              </div>
-            ))}
+        {rows.flatMap((nails, rowIndex) => nails.slice(0, 5).map((nail, nailIndex) => (
+          <div key={nail.id} style={styles.nailSlot} data-testid="blueprint-gallery-nail" data-finger-position={NAIL_ORDER[nailIndex]} data-gallery-row={rowIndex === 0 ? 'top' : 'bottom'}>
+            <BlueprintGalleryNail nail={nail} uid={`${uid}-${rowIndex}`} />
           </div>
-        ))}
+        )))}
       </div>
     </div>
   );
@@ -182,9 +200,10 @@ const styles = {
   tray: {
     alignContent: 'center',
     display: 'grid',
-    gap: 'var(--gallery-row-gap)',
-    gridTemplateRows: 'repeat(2, minmax(0, 1fr))',
-    height: 'var(--gallery-art-fill)',
+    gap: 'var(--gallery-row-gap) var(--gallery-column-gap)',
+    gridTemplateColumns: 'repeat(5, var(--gallery-cell-width))',
+    gridTemplateRows: 'repeat(2, var(--gallery-cell-height))',
+    height: 'var(--gallery-tray-area)',
     justifyItems: 'center',
     maxHeight: '100%',
     maxWidth: '100%',
@@ -192,37 +211,28 @@ const styles = {
     minWidth: 0,
     overflow: 'hidden',
     padding: 'var(--gallery-tray-padding)',
-    width: 'var(--gallery-art-fill)',
-  },
-  row: {
-    alignItems: 'center',
-    display: 'grid',
-    gap: 'var(--gallery-tray-gap)',
-    gridTemplateColumns: 'repeat(5, var(--gallery-nail-width))',
-    height: 'var(--gallery-nail-height)',
-    justifyContent: 'center',
-    maxHeight: '100%',
-    minHeight: 0,
-    overflow: 'hidden',
-    width: '100%',
+    width: 'var(--gallery-tray-area)',
   },
   nailSlot: {
-    aspectRatio: 'var(--gallery-nail-aspect) / 1',
+    alignItems: 'center',
     display: 'grid',
     filter: 'drop-shadow(0 10px 12px rgba(90,44,80,.18))',
+    height: 'var(--gallery-nail-fill)',
+    justifyItems: 'center',
     maxHeight: '100%',
+    maxWidth: '100%',
     minHeight: 0,
     minWidth: 0,
     overflow: 'hidden',
     placeItems: 'center',
-    height: 'var(--gallery-nail-height)',
-    width: 'var(--gallery-nail-width)',
+    width: 'var(--gallery-nail-fill)',
   },
   nailSvg: {
     display: 'block',
     height: '100%',
     maxHeight: '100%',
     maxWidth: '100%',
+    objectFit: 'contain',
     overflow: 'visible',
     width: '100%',
   },
