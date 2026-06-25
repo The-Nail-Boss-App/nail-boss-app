@@ -181,6 +181,21 @@ assert(shopSource.includes('No publishing occurred.'), 'Prepare For Gallery acti
 assert(!shopSource.includes('/api/gallery'), 'no public Gallery publishing API is added');
 assert(!shopSource.includes('/api/marketplace'), 'no Marketplace publishing API is added');
 
+assert(shopSource.includes("{ id: 'blueprintGallery', label: 'Blueprint Gallery' }"), 'Blueprint Gallery tab exists');
+assert(shopSource.includes('data-testid="blueprint-gallery-section"'), 'Blueprint Gallery view exists');
+assert(shopSource.includes('data-storage-key={BLUEPRINT_LIBRARY_STORAGE_KEY}') && shopSource.includes("export const BLUEPRINT_LIBRARY_STORAGE_KEY = 'anitaset.blueprintLibrary.v1'"), 'Blueprint Gallery reads existing Blueprint Library key');
+assert(!shopSource.includes('blueprintGallery.v1') && !shopSource.includes('galleryLibrary') && !shopSource.includes('setItem(\'anitaset.blueprintGallery'), 'Blueprint Gallery does not add a new localStorage key');
+assert(shopSource.includes("blueprint.status === 'Gallery Ready' || readiness.label === 'Gallery Ready'"), 'Blueprint Gallery filters Gallery Ready Blueprints by status or readiness label');
+assert(shopSource.includes('No Gallery Ready Blueprints yet.'), 'Blueprint Gallery empty state exists');
+assert(shopSource.includes('Featured Collection'), 'Featured Collection section exists');
+assert(shopSource.includes('Gallery Ready'), 'Gallery Ready section exists');
+assert(shopSource.includes('New This Week'), 'New This Week section exists');
+assert(shopSource.includes('Editor’s Picks Preview'), 'Editor’s Picks Preview section exists');
+assert(shopSource.includes('data-testid="blueprint-gallery-card-renderer"') && shopSource.includes('<BlueprintGalleryRenderer designData={blueprint.designSnapshot.fullSetData} renderMode="gallery" />'), 'Blueprint Gallery uses BlueprintGalleryRenderer');
+assert(shopSource.includes('data-testid="blueprint-gallery-view-button"') && shopSource.includes('View Blueprint') && shopSource.includes("setActiveSection('blueprintLibrary')"), 'View Blueprint opens existing detail view');
+assert(shopSource.includes('Local Gallery preview only. Nothing is published.'), 'Blueprint Gallery local-only guardrail exists');
+assert(!shopSource.includes('Publish Blueprint') && !shopSource.includes('publish-button') && !shopSource.includes('/api/gallery') && !shopSource.includes('/api/marketplace'), 'Blueprint Gallery has no publishing behavior');
+
 assert(!designStudioSource.includes('blueprint-theme-builder-controls'), 'Design Studio unchanged by theme builder');
 assert(!proposalsSource.includes('blueprint-theme-builder-controls'), 'Proposals unchanged by theme builder');
 
