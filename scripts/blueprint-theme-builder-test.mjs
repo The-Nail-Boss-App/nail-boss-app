@@ -192,7 +192,7 @@ assert(shopSource.includes('Gallery Ready'), 'Gallery Ready section exists');
 assert(shopSource.includes('New This Week'), 'New This Week section exists');
 assert(shopSource.includes('Editor’s Picks Preview'), 'Editor’s Picks Preview section exists');
 assert(shopSource.includes('data-testid="blueprint-gallery-card-renderer"') && shopSource.includes('<BlueprintGalleryRenderer designData={blueprint.designSnapshot.fullSetData} renderMode="gallery" />'), 'Blueprint Gallery uses BlueprintGalleryRenderer');
-assert(shopSource.includes('data-testid="blueprint-gallery-view-button"') && shopSource.includes('View Blueprint') && shopSource.includes("setActiveSection('blueprintLibrary')"), 'View Blueprint opens existing detail view');
+assert(shopSource.includes('data-testid="blueprint-gallery-view-button"') && shopSource.includes('Explore Look') && !shopSource.includes('View Blueprint') && shopSource.includes("setActiveSection('blueprintLibrary')"), 'Explore Look opens existing detail view');
 assert(shopSource.includes('Local Gallery preview only. Nothing is published.'), 'Blueprint Gallery local-only guardrail exists');
 
 assert(shopSource.includes('data-testid="artist-spotlight-section"'), 'Artist Spotlight section exists');
