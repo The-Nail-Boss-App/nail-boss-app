@@ -116,6 +116,17 @@ function assertNailShopProfilePersistenceSource() {
   assert(blueprintGalleryRendererSource.includes("contain: 'layout paint size'") && blueprintGalleryRendererSource.includes("overflow: 'hidden'") && blueprintGalleryRendererSource.includes("maxHeight: '100%'") && blueprintGalleryRendererSource.includes("maxWidth: '100%'"), "BlueprintGalleryRenderer contains overflow and avoids clipping in responsive cards");
   assert(!blueprintGalleryRendererSource.includes("Hero") && !blueprintGalleryRendererSource.includes("Full Set Composition") && !blueprintGalleryRendererSource.includes("<label") && !blueprintGalleryRendererSource.includes("renderer label"), "BlueprintGalleryRenderer has no renderer chrome, helper chrome, or finger labels");
   assert(blueprintGalleryRendererSource.includes("BLUEPRINT_GALLERY_PRESENTATION_THEMES") && ["luxury-tray", "minimal-white", "velvet-display", "boutique", "magazine"].every((theme) => blueprintGalleryRendererSource.includes(theme)), "BlueprintGalleryRenderer has future presentation theme architecture support");
+  assert(nailShopSource.includes('data-testid="gallery-actions"') && nailShopSource.includes('Gallery Actions'), "Gallery Actions exist on Blueprint Gallery covers");
+  assert(nailShopSource.includes('Save to Look Book') && nailShopSource.includes('LOOK_BOOK_STORAGE_KEY'), "Save to Look Book reuses local Look Book storage");
+  assert(nailShopSource.includes('Create a new Look Book'), "Create New Look Book wording exists");
+  assert(nailShopSource.includes('Request This Look'), "Request This Look action exists");
+  assert(nailShopSource.includes('Buy This Set'), "Buy This Set action exists");
+  assert(nailShopSource.includes('Book This Look'), "Book This Look action exists");
+  assert(nailShopSource.includes('Visit Nail Shop') && !nailShopSource.includes('Storefront'), "Visit Nail Shop action exists without Storefront wording");
+  assert(nailShopSource.includes('Share') && nailShopSource.includes('shareGalleryLook'), "Share action exists");
+  assert(nailShopSource.includes('Explore Look') && !nailShopSource.includes('View Blueprint'), "Explore Look replaces client-facing View Blueprint wording");
+  assert(nailShopSource.includes('Look Book') && !nailShopSource.includes('Board'), "Look Book terminology is preserved without Board wording");
+  assert(nailShopSource.includes('No publishing') || nailShopSource.includes('Nothing is published'), "Gallery Actions retain no publishing guardrails");
   assert(nailShopSource.includes('data-testid="blueprint-detail-hero-preview"') && nailShopSource.includes('<FullSetRenderer designData={selectedLibraryBlueprint.designSnapshot.fullSetData} mode="hero" />'), "Blueprint Detail View remains unchanged on FullSetRenderer hero mode");
 
   assert(blueprintEngineSource.includes("export function createBlueprintFromDesign") && blueprintEngineSource.includes("export function normalizeBlueprint") && blueprintEngineSource.includes("export function normalizeBlueprintTheme"), "Blueprint Engine helper exports should exist");

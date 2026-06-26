@@ -189,6 +189,7 @@ const SERVICE_CATEGORIES = [
 ];
 
 export const BLUEPRINT_LIBRARY_STORAGE_KEY = 'anitaset.blueprintLibrary.v1';
+export const LOOK_BOOK_STORAGE_KEY = 'anitaset.lookBook.v1';
 
 const loadSavedBlueprintLibrary = () => {
   if (typeof window === 'undefined') return [];
@@ -204,6 +205,23 @@ const loadSavedBlueprintLibrary = () => {
 const persistBlueprintLibrary = (records) => {
   if (typeof window === 'undefined') return;
   window.localStorage.setItem(BLUEPRINT_LIBRARY_STORAGE_KEY, JSON.stringify(normalizeBlueprintLibrary(records)));
+};
+
+const loadSavedLookBook = () => {
+  if (typeof window === 'undefined') return [];
+  try {
+    const saved = window.localStorage.getItem(LOOK_BOOK_STORAGE_KEY);
+    if (!saved) return [];
+    const parsed = JSON.parse(saved);
+    return Array.isArray(parsed) ? parsed.filter(Boolean) : [];
+  } catch (error) {
+    return [];
+  }
+};
+
+const persistLookBook = (records) => {
+  if (typeof window === 'undefined') return;
+  window.localStorage.setItem(LOOK_BOOK_STORAGE_KEY, JSON.stringify(records));
 };
 
 export const NAIL_SHOP_SERVICES_STORAGE_KEY = 'nailBoss.nailShop.services.v1';
@@ -915,6 +933,25 @@ function BlueprintMagazineCover({ blueprint, theme, accent, typography, readines
   return <div style={coverStyle} data-testid={`${testPrefix}-cover`} data-content-signature={getBlueprintContentSignature(blueprint)} data-cover-mood={mood.label}>{body}</div>;
 }
 
+function GalleryActions({ blueprint, onExploreLook, onSaveToLookBook, onRequestLook, onBuySet, onBookLook, onVisitNailShop, onShare }) {
+  return (
+    <details style={styles.galleryActionsSheet} data-testid="gallery-actions">
+      <summary style={styles.galleryActionsSummary} data-testid="gallery-actions-summary">Gallery Actions</summary>
+      <div style={styles.galleryActionsGrid} aria-label={`Gallery Actions for ${blueprint.title}`}>
+        <button type="button" style={styles.secondaryButton} onClick={() => onExploreLook(blueprint.blueprintId)} data-testid="blueprint-gallery-view-button">Explore Look</button>
+        <button type="button" style={styles.secondaryButton} onClick={() => onSaveToLookBook(blueprint)} data-testid="gallery-action-save-look-book">❤️ Save to Look Book</button>
+        <button type="button" style={styles.secondaryButton} onClick={() => onRequestLook(blueprint)} data-testid="gallery-action-request-look">💅 Request This Look</button>
+        <button type="button" style={styles.secondaryButton} onClick={() => onBuySet(blueprint)} data-testid="gallery-action-buy-set">🛍 Buy This Set</button>
+        <button type="button" style={styles.secondaryButton} onClick={() => onBookLook(blueprint)} data-testid="gallery-action-book-look">📅 Book This Look</button>
+        <button type="button" style={styles.secondaryButton} onClick={() => onVisitNailShop(blueprint)} data-testid="gallery-action-visit-nail-shop">🏪 Visit Nail Shop</button>
+        <button type="button" style={styles.secondaryButton} onClick={() => onShare(blueprint)} data-testid="gallery-action-share">📤 Share</button>
+        <p style={styles.serviceMeta} data-testid="gallery-actions-local-only">Local-only engagement placeholders. No publishing, checkout, payment, backend, or Proposal integration.</p>
+        <p style={styles.visuallyHidden}>Create a new Look Book</p>
+      </div>
+    </details>
+  );
+}
+
 export default function NailShop() {
   const [profile, setProfile] = useState(loadSavedProfile);
   const [saveMessage, setSaveMessage] = useState('');
@@ -945,6 +982,7 @@ export default function NailShop() {
   const [selectedLibraryBlueprintId, setSelectedLibraryBlueprintId] = useState(null);
   const [blueprintLibraryMessage, setBlueprintLibraryMessage] = useState('');
   const [blueprintLibraryMessageType, setBlueprintLibraryMessageType] = useState('success');
+  const [lookBook, setLookBook] = useState(loadSavedLookBook);
   const [savedDesigns, setSavedDesigns] = useState([]);
   const [savedDesignsStatus, setSavedDesignsStatus] = useState('loading');
   const [selectedSavedDesignId, setSelectedSavedDesignId] = useState('');
@@ -1204,6 +1242,46 @@ export default function NailShop() {
   const viewGalleryBlueprint = (blueprintId) => {
     selectLibraryBlueprint(blueprintId);
     setActiveSection('blueprintLibrary');
+  };
+  const saveGalleryLookToLookBook = (blueprint) => {
+    const entry = {
+      id: `look-book-${blueprint.blueprintId}-${Date.now()}`,
+      blueprintId: blueprint.blueprintId,
+      title: blueprint.title,
+      creator: getBlueprintCoverMasthead(blueprint),
+      savedAt: new Date().toISOString(),
+      source: 'Blueprint Gallery Actions',
+    };
+    const nextLookBook = [entry, ...lookBook.filter((item) => item.blueprintId !== blueprint.blueprintId)];
+    setLookBook(nextLookBook);
+    persistLookBook(nextLookBook);
+    setBlueprintLibraryMessageType('success');
+    setBlueprintLibraryMessage(`Saved to Look Book: ${blueprint.title}. Create a new Look Book from saved looks when you are ready.`);
+  };
+  const setGalleryActionPlaceholder = (blueprint, action) => {
+    setBlueprintLibraryMessageType('success');
+    setBlueprintLibraryMessage(`${action} is ready as a local presentation placeholder for ${blueprint.title}. No backend, checkout, payment, publishing, or Proposal integration occurred.`);
+  };
+  const requestGalleryLook = (blueprint) => setGalleryActionPlaceholder(blueprint, 'Request This Look');
+  const buyGallerySet = (blueprint) => setGalleryActionPlaceholder(blueprint, 'Buy This Set');
+  const bookGalleryLook = (blueprint) => setGalleryActionPlaceholder(blueprint, 'Book This Look');
+  const visitGalleryNailShop = (blueprint) => {
+    setActiveSection('profile');
+    setGalleryActionPlaceholder(blueprint, `Visit Nail Shop (${getBlueprintCoverMasthead(blueprint)})`);
+  };
+  const shareGalleryLook = async (blueprint) => {
+    const shareText = `Explore Look: ${blueprint.title} by ${getBlueprintCoverMasthead(blueprint)}`;
+    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+      try {
+        await navigator.clipboard.writeText(shareText);
+        setBlueprintLibraryMessageType('success');
+        setBlueprintLibraryMessage('Share placeholder copied locally. No publishing occurred.');
+        return;
+      } catch (error) {
+        // Fall through to safe local placeholder.
+      }
+    }
+    setGalleryActionPlaceholder(blueprint, 'Share');
   };
   const filteredBlueprintLibrary = normalizedBlueprintLibrary
     .filter((blueprint) => blueprintLibraryFilter === 'all' || blueprint.status === blueprintLibraryFilter)
@@ -2148,6 +2226,7 @@ export default function NailShop() {
             <span style={styles.needsSetupBadge} data-testid="blueprint-gallery-local-only-badge">Local only</span>
           </div>
           <div style={styles.guardrailNotice} data-testid="blueprint-gallery-guardrail">Editorial Preview. Local only. Nothing is published. Collections are demonstration content with no backend, Marketplace, publishing, or Proposal integration. Local Gallery preview only. Nothing is published.</div>
+          {blueprintLibraryMessage && <div style={blueprintLibraryMessageType === 'error' ? styles.errorMessage : styles.successMessage} role="status" data-testid="gallery-actions-message">{blueprintLibraryMessage}</div>}
 
           <section style={styles.editorialHero} data-testid="featured-issue-hero" aria-label="Featured Issue">
             <div style={styles.editorialHeroCopy}>
@@ -2160,7 +2239,12 @@ export default function NailShop() {
               const theme = normalizeBlueprintTheme(featuredIssueBlueprint.theme);
               const accent = BLUEPRINT_ACCENT_STYLES[theme.accentStyle] || BLUEPRINT_ACCENT_STYLES['soft frame'];
               const typography = BLUEPRINT_TYPOGRAPHY_STYLES[theme.typographyStyle] || BLUEPRINT_TYPOGRAPHY_STYLES['polished serif'];
-              return <BlueprintMagazineCover blueprint={featuredIssueBlueprint} theme={theme} accent={accent} typography={typography} readiness={evaluateBlueprintReadiness(featuredIssueBlueprint)} testPrefix="featured-issue" index={0} />;
+              return (
+                <div style={styles.blueprintLibraryCard}>
+                  <BlueprintMagazineCover blueprint={featuredIssueBlueprint} theme={theme} accent={accent} typography={typography} readiness={evaluateBlueprintReadiness(featuredIssueBlueprint)} testPrefix="featured-issue" index={0} />
+                  <GalleryActions blueprint={featuredIssueBlueprint} onExploreLook={viewGalleryBlueprint} onSaveToLookBook={saveGalleryLookToLookBook} onRequestLook={requestGalleryLook} onBuySet={buyGallerySet} onBookLook={bookGalleryLook} onVisitNailShop={visitGalleryNailShop} onShare={shareGalleryLook} />
+                </div>
+              );
             })()}
           </section>
 
@@ -2185,7 +2269,16 @@ export default function NailShop() {
                     return (
                       <article key={`${section.id}-${blueprint.blueprintId}`} style={styles.blueprintLibraryCard} data-testid="blueprint-gallery-card">
                         <BlueprintMagazineCover blueprint={blueprint} theme={theme} accent={accent} typography={typography} readiness={evaluateBlueprintReadiness(blueprint)} testPrefix="blueprint-gallery-card" index={index} />
-                        <div style={styles.blueprintCardActions}><button type="button" style={styles.secondaryButton} onClick={() => viewGalleryBlueprint(blueprint.blueprintId)} data-testid="blueprint-gallery-view-button">View Blueprint</button></div>
+                        <GalleryActions
+                          blueprint={blueprint}
+                          onExploreLook={viewGalleryBlueprint}
+                          onSaveToLookBook={saveGalleryLookToLookBook}
+                          onRequestLook={requestGalleryLook}
+                          onBuySet={buyGallerySet}
+                          onBookLook={bookGalleryLook}
+                          onVisitNailShop={visitGalleryNailShop}
+                          onShare={shareGalleryLook}
+                        />
                       </article>
                     );
                   })}
@@ -2219,7 +2312,12 @@ export default function NailShop() {
                     const theme = normalizeBlueprintTheme(featuredArtistBlueprint.theme);
                     const accent = BLUEPRINT_ACCENT_STYLES[theme.accentStyle] || BLUEPRINT_ACCENT_STYLES['soft frame'];
                     const typography = BLUEPRINT_TYPOGRAPHY_STYLES[theme.typographyStyle] || BLUEPRINT_TYPOGRAPHY_STYLES['polished serif'];
-                    return <BlueprintMagazineCover blueprint={featuredArtistBlueprint} theme={theme} accent={accent} typography={typography} readiness={evaluateBlueprintReadiness(featuredArtistBlueprint)} testPrefix="artist-spotlight" index={0} />;
+                    return (
+                      <>
+                        <BlueprintMagazineCover blueprint={featuredArtistBlueprint} theme={theme} accent={accent} typography={typography} readiness={evaluateBlueprintReadiness(featuredArtistBlueprint)} testPrefix="artist-spotlight" index={0} />
+                        <GalleryActions blueprint={featuredArtistBlueprint} onExploreLook={viewGalleryBlueprint} onSaveToLookBook={saveGalleryLookToLookBook} onRequestLook={requestGalleryLook} onBuySet={buyGallerySet} onBookLook={bookGalleryLook} onVisitNailShop={visitGalleryNailShop} onShare={shareGalleryLook} />
+                      </>
+                    );
                   })()}
                   <p style={styles.serviceMeta}>Featured Collection · Blueprint Cover</p>
                 </div>
@@ -2942,6 +3040,28 @@ const styles = {
     gap: 10,
     justifyContent: 'flex-start',
     minWidth: 0,
+  },
+  galleryActionsSheet: {
+    background: 'linear-gradient(135deg, rgba(255,255,255,.96), rgba(253,242,248,.9))',
+    border: `1px solid ${COLORS.border}`,
+    borderRadius: 20,
+    boxShadow: '0 12px 30px rgba(90,44,80,.08)',
+    padding: 12,
+  },
+  galleryActionsSummary: {
+    color: COLORS.plum,
+    cursor: 'pointer',
+    fontSize: 13,
+    fontWeight: 900,
+    letterSpacing: '.08em',
+    listStyle: 'none',
+    textTransform: 'uppercase',
+  },
+  galleryActionsGrid: {
+    display: 'grid',
+    gap: 10,
+    gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+    marginTop: 12,
   },
   blueprintEditorialGallery: {
     display: 'grid',
