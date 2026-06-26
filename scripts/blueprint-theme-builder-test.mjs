@@ -194,6 +194,18 @@ assert(shopSource.includes('Editor’s Picks Preview'), 'Editor’s Picks Previe
 assert(shopSource.includes('data-testid="blueprint-gallery-card-renderer"') && shopSource.includes('<BlueprintGalleryRenderer designData={blueprint.designSnapshot.fullSetData} renderMode="gallery" />'), 'Blueprint Gallery uses BlueprintGalleryRenderer');
 assert(shopSource.includes('data-testid="blueprint-gallery-view-button"') && shopSource.includes('View Blueprint') && shopSource.includes("setActiveSection('blueprintLibrary')"), 'View Blueprint opens existing detail view');
 assert(shopSource.includes('Local Gallery preview only. Nothing is published.'), 'Blueprint Gallery local-only guardrail exists');
+
+assert(shopSource.includes('data-testid="artist-spotlight-section"'), 'Artist Spotlight section exists');
+assert(shopSource.includes('data-testid="artist-spotlight-card"'), 'Spotlight card exists');
+assert(shopSource.includes('data-testid="artist-spotlight-known-for"') && shopSource.includes('Known For'), 'Known For section exists');
+assert(shopSource.includes('data-testid="artist-spotlight-featured-collection"') && shopSource.includes('Featured Collection · Blueprint Cover'), 'Featured Collection exists in Artist Spotlight');
+assert(shopSource.includes('data-testid="artist-spotlight-editors-note"') && shopSource.includes('Editor’s Note:'), "Editor's Note exists");
+assert(shopSource.includes('data-testid="artist-spotlight-explore-button"') && shopSource.includes('Explore Artist'), 'Explore Artist button exists');
+assert(shopSource.includes("const [artistSpotlightCreatorFilter, setArtistSpotlightCreatorFilter] = useState('all')") && shopSource.includes('getArtistSpotlightCreatorKey(blueprint) === artistSpotlightCreatorFilter') && shopSource.includes('setArtistSpotlightCreatorFilter(getArtistSpotlightCreatorKey(featuredArtistBlueprint))'), 'Artist Spotlight local filtering works');
+assert(['Luxury Chrome', 'Bridal', 'Editorial', 'Minimal', 'Maximal', 'Character Art', 'Hand Painted', 'Press-On Specialist', 'Gel Art', 'Seasonal Collections'].every((tag) => shopSource.includes(tag)), 'Artist Spotlight supports local/demo Known For tags');
+assert(['Artist of the Week', 'Rising Artist', 'Hall of Fame', 'Community Favorite', 'Featured Creator'].every((badge) => shopSource.includes(badge)), 'Artist Spotlight supports future recognition labels as presentation only');
+assert(shopSource.includes('No followers, no likes, no ranking, and no popularity metrics.'), 'Artist Spotlight guardrails exclude social metrics');
+assert(!shopSource.includes('/api/publish') && !shopSource.includes('Publish Artist') && !shopSource.includes('Publish Blueprint'), 'Artist Spotlight adds no publishing');
 assert(!shopSource.includes('Publish Blueprint') && !shopSource.includes('publish-button') && !shopSource.includes('/api/gallery') && !shopSource.includes('/api/marketplace'), 'Blueprint Gallery has no publishing behavior');
 
 assert(!designStudioSource.includes('blueprint-theme-builder-controls'), 'Design Studio unchanged by theme builder');

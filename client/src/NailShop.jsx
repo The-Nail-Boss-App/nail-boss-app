@@ -110,10 +110,55 @@ const EDITORIAL_COLLECTION_STORIES = [
   { id: 'editor-favorites', title: 'Editor Favorites', description: 'The AnitaSet desk list: versatile covers with strong silhouettes, polish story, and save appeal.', count: 20, coverGradient: 'linear-gradient(135deg, #fdf2f8, #ede9fe)', accent: '#7b2d5f' },
 ];
 
+const ARTIST_SPOTLIGHT_RECOGNITION_BADGES = ['Artist of the Week', 'Rising Artist', 'Hall of Fame', 'Community Favorite', 'Featured Creator'];
+
+const ARTIST_SPOTLIGHT_KNOWN_FOR_TAGS = [
+  'Luxury Chrome',
+  'Bridal',
+  'Editorial',
+  'Minimal',
+  'Maximal',
+  'Character Art',
+  'Hand Painted',
+  'Press-On Specialist',
+  'Gel Art',
+  'Seasonal Collections',
+];
+
 const getEditorialCollectionForBlueprint = (blueprint, index = 0) => {
   const label = String(blueprint?.featuredCollection || blueprint?.collectionName || blueprint?.theme?.collectionLabel || '').toLowerCase();
   return EDITORIAL_COLLECTION_STORIES.find((collection) => label.includes(collection.title.toLowerCase())) || EDITORIAL_COLLECTION_STORIES[index % EDITORIAL_COLLECTION_STORIES.length];
 };
+
+const getArtistSpotlightCreatorKey = (blueprint) => String(
+  blueprint?.creatorSnapshot?.creatorName
+    || blueprint?.creatorSnapshot?.shopName
+    || blueprint?.shopSnapshot?.name
+    || 'AnitaSet Artist',
+).toLowerCase();
+
+const getArtistSpotlightKnownFor = (blueprint, index = 0) => {
+  const source = [
+    blueprint?.featuredCollection,
+    blueprint?.collectionName,
+    blueprint?.theme?.collectionLabel,
+    ...(Array.isArray(blueprint?.tags) ? blueprint.tags : []),
+  ].join(' ').toLowerCase();
+  const matches = ARTIST_SPOTLIGHT_KNOWN_FOR_TAGS.filter((tag) => source.includes(tag.toLowerCase().split(' ')[0]));
+  return uniqueBlueprintValues([
+    ...matches,
+    ARTIST_SPOTLIGHT_KNOWN_FOR_TAGS[index % ARTIST_SPOTLIGHT_KNOWN_FOR_TAGS.length],
+    ARTIST_SPOTLIGHT_KNOWN_FOR_TAGS[(index + 2) % ARTIST_SPOTLIGHT_KNOWN_FOR_TAGS.length],
+    'Editorial',
+  ]).slice(0, 4);
+};
+
+const getArtistSpotlightBio = (blueprint) => friendly(
+  blueprint?.creatorStory?.inspiration,
+  'A creator-led studio voice translating reusable Blueprint Covers into polished collection stories for local editorial discovery.',
+);
+
+const getArtistSpotlightEditorsNote = (knownFor) => `Known for ${knownFor.map((tag) => tag.toLowerCase()).slice(0, 2).join(' and ')} finishes and modern editorial collections.`;
 
 const PROFILE_FIELDS = [
   { id: 'shopName', label: 'Shop Name', placeholder: 'Your shop name' },
@@ -894,6 +939,7 @@ export default function NailShop() {
   const [blueprintLibraryFilter, setBlueprintLibraryFilter] = useState('all');
   const [blueprintLibrarySort, setBlueprintLibrarySort] = useState('newest');
   const [editorialCollectionFilter, setEditorialCollectionFilter] = useState('all');
+  const [artistSpotlightCreatorFilter, setArtistSpotlightCreatorFilter] = useState('all');
   const [blueprintFeaturedCollection, setBlueprintFeaturedCollection] = useState(FEATURED_BLUEPRINT_COLLECTIONS[5]);
   const [blueprintCreatorStory, setBlueprintCreatorStory] = useState(EMPTY_CREATOR_STORY_FORM);
   const [selectedLibraryBlueprintId, setSelectedLibraryBlueprintId] = useState(null);
@@ -1137,17 +1183,22 @@ export default function NailShop() {
   };
   const galleryReadyBlueprints = normalizedBlueprintLibrary.filter(isBlueprintGalleryEligible);
   const editorialBlueprintCovers = galleryReadyBlueprints.length ? galleryReadyBlueprints : [activeBlueprintPreview];
-  const filteredEditorialBlueprints = editorialCollectionFilter === 'all'
+  const collectionFilteredEditorialBlueprints = editorialCollectionFilter === 'all'
     ? editorialBlueprintCovers
     : editorialBlueprintCovers.filter((blueprint, index) => getEditorialCollectionForBlueprint(blueprint, index).id === editorialCollectionFilter);
+  const filteredEditorialBlueprints = artistSpotlightCreatorFilter === 'all'
+    ? collectionFilteredEditorialBlueprints
+    : collectionFilteredEditorialBlueprints.filter((blueprint) => getArtistSpotlightCreatorKey(blueprint) === artistSpotlightCreatorFilter);
   const visibleEditorialBlueprints = filteredEditorialBlueprints.length ? filteredEditorialBlueprints : editorialBlueprintCovers;
   const featuredIssueBlueprint = visibleEditorialBlueprints[0];
   const featuredArtistBlueprint = visibleEditorialBlueprints[1] || visibleEditorialBlueprints[0];
   const trendingBlueprints = visibleEditorialBlueprints.slice(0, 4);
   const editorsPickBlueprints = visibleEditorialBlueprints.slice(0, 3);
   const selectedEditorialCollection = EDITORIAL_COLLECTION_STORIES.find((collection) => collection.id === editorialCollectionFilter) || null;
+  const artistSpotlightKnownFor = getArtistSpotlightKnownFor(featuredArtistBlueprint, 0);
+  const artistSpotlightCollection = getEditorialCollectionForBlueprint(featuredArtistBlueprint, 0);
   const blueprintGallerySections = [
-    { id: 'trending', title: '🔥 Trending This Week', intro: 'Local presentation placeholders for future views, saves, likes, and bookings.', items: trendingBlueprints },
+    { id: 'trending', title: '🔥 New This Week', intro: 'Local editorial curation only: no followers, likes, ranking, or popularity metrics.', items: trendingBlueprints },
     { id: 'editors', title: '💎 Editor’s Picks', intro: 'Hand-selected editorial favorites. No algorithm, no publishing, no backend.', items: editorsPickBlueprints },
   ];
   const viewGalleryBlueprint = (blueprintId) => {
@@ -2086,7 +2137,7 @@ export default function NailShop() {
 
 
         {activeSection === 'blueprintGallery' && (
-        <section style={styles.blueprintPreviewPanel} aria-label="Blueprint Gallery" data-testid="blueprint-gallery-section" data-storage-key={BLUEPRINT_LIBRARY_STORAGE_KEY} data-editorial-filter={editorialCollectionFilter}>
+        <section style={styles.blueprintPreviewPanel} aria-label="Blueprint Gallery" data-testid="blueprint-gallery-section" data-storage-key={BLUEPRINT_LIBRARY_STORAGE_KEY} data-editorial-filter={editorialCollectionFilter} data-artist-filter={artistSpotlightCreatorFilter}>
           <div style={styles.panelHeader} data-testid="editorial-homepage">
             <div>
               <p style={styles.kicker}>Editorial Preview · Local only</p>
@@ -2114,6 +2165,7 @@ export default function NailShop() {
           </section>
 
           {selectedEditorialCollection && <div style={styles.guardrailNotice} data-testid="collection-filter-status">Viewing collection: {selectedEditorialCollection.title}. Filtering is local only.</div>}
+          {artistSpotlightCreatorFilter !== 'all' && <div style={styles.guardrailNotice} data-testid="artist-filter-status">Viewing artist: {getBlueprintCoverMasthead(featuredArtistBlueprint)}. Filtering is local only and never uses ranking metrics.</div>}
 
           <p style={styles.visuallyHidden} data-testid="blueprint-gallery-empty-state">No Gallery Ready Blueprints yet.</p>
           <p style={styles.visuallyHidden}>Featured Collection · Gallery Ready · New This Week · Editor’s Picks Preview</p>
@@ -2141,13 +2193,38 @@ export default function NailShop() {
               </section>
             ))}
 
-            <section style={styles.blueprintGallerySection} data-testid="featured-artist-section" aria-label="Featured Artist">
+            <section style={styles.blueprintGallerySection} data-testid="artist-spotlight-section" aria-label="Artist Spotlight">
               <div style={styles.blueprintGallerySectionHeader}>
-                <p style={styles.kicker}>👑 Featured Artist</p>
-                <h3 style={styles.cardTitle}>{getBlueprintCoverMasthead(featuredArtistBlueprint)}</h3>
-                <p style={styles.readinessIntro}>Artist spotlight: a local-only masthead moment celebrating a signature cover, shop voice, and curated collection direction.</p>
+                <p style={styles.kicker}>👑 Artist Spotlight</p>
+                <h3 style={styles.cardTitle}>Recognition through editorial curation</h3>
+                <p style={styles.readinessIntro}>Artist of the Week, Rising Artist, Hall of Fame, Community Favorite, and Featured Creator are presentation labels only. No followers, no likes, no ranking, and no popularity metrics.</p>
               </div>
-              <button type="button" style={styles.secondaryButton} onClick={() => setEditorialCollectionFilter('editor-favorites')} data-testid="featured-artist-view-collection">View Collection</button>
+              <article style={styles.artistSpotlightCard} data-testid="artist-spotlight-card">
+                <div style={styles.artistSpotlightCopy}>
+                  <p style={styles.kicker} data-testid="artist-spotlight-masthead">{getBlueprintCoverMasthead(featuredArtistBlueprint)}</p>
+                  <h4 style={styles.cardTitle}>Featured Collection: {featuredArtistBlueprint?.featuredCollection || artistSpotlightCollection.title}</h4>
+                  <p style={styles.blueprintCollectionText} data-testid="artist-spotlight-bio">{getArtistSpotlightBio(featuredArtistBlueprint)}</p>
+                  <div data-testid="artist-spotlight-known-for">
+                    <p style={styles.serviceMeta}>Known For</p>
+                    <div style={styles.tagList}>
+                      {artistSpotlightKnownFor.map((tag) => <span key={tag} style={styles.tagPill}>{tag}</span>)}
+                    </div>
+                  </div>
+                  <p style={styles.guardrailNotice} data-testid="artist-spotlight-editors-note">Editor’s Note: {getArtistSpotlightEditorsNote(artistSpotlightKnownFor)}</p>
+                  <p style={styles.serviceMeta}>{ARTIST_SPOTLIGHT_RECOGNITION_BADGES.join(' · ')}</p>
+                  <button type="button" style={styles.secondaryButton} onClick={() => setArtistSpotlightCreatorFilter(getArtistSpotlightCreatorKey(featuredArtistBlueprint))} data-testid="artist-spotlight-explore-button">Explore Artist</button>
+                </div>
+                <div style={styles.artistSpotlightCover} data-testid="artist-spotlight-featured-collection">
+                  {featuredArtistBlueprint && (() => {
+                    const theme = normalizeBlueprintTheme(featuredArtistBlueprint.theme);
+                    const accent = BLUEPRINT_ACCENT_STYLES[theme.accentStyle] || BLUEPRINT_ACCENT_STYLES['soft frame'];
+                    const typography = BLUEPRINT_TYPOGRAPHY_STYLES[theme.typographyStyle] || BLUEPRINT_TYPOGRAPHY_STYLES['polished serif'];
+                    return <BlueprintMagazineCover blueprint={featuredArtistBlueprint} theme={theme} accent={accent} typography={typography} readiness={evaluateBlueprintReadiness(featuredArtistBlueprint)} testPrefix="artist-spotlight" index={0} />;
+                  })()}
+                  <p style={styles.serviceMeta}>Featured Collection · Blueprint Cover</p>
+                </div>
+              </article>
+              <button type="button" style={styles.resetButton} onClick={() => setArtistSpotlightCreatorFilter('all')} data-testid="clear-artist-filter-button">Clear Artist Filter</button>
             </section>
 
             <section style={styles.blueprintGallerySection} data-testid="editorial-collections-section" aria-label="Editorial Collections">
@@ -2908,6 +2985,25 @@ const styles = {
     lineHeight: 1.7,
     margin: 0,
     maxWidth: 680,
+  },
+  artistSpotlightCard: {
+    alignItems: 'start',
+    background: '#fff',
+    border: `1px solid ${COLORS.border}`,
+    borderRadius: 28,
+    display: 'grid',
+    gap: 20,
+    gridTemplateColumns: 'minmax(0, 1fr) minmax(240px, .65fr)',
+    padding: 20,
+  },
+  artistSpotlightCopy: {
+    display: 'grid',
+    gap: 12,
+  },
+  artistSpotlightCover: {
+    display: 'grid',
+    gap: 10,
+    minWidth: 0,
   },
   editorialCollectionGrid: {
     display: 'grid',
