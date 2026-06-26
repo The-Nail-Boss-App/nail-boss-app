@@ -110,6 +110,60 @@ const EDITORIAL_COLLECTION_STORIES = [
   { id: 'editor-favorites', title: 'Editor Favorites', description: 'The AnitaSet desk list: versatile covers with strong silhouettes, polish story, and save appeal.', count: 20, coverGradient: 'linear-gradient(135deg, #fdf2f8, #ede9fe)', accent: '#7b2d5f' },
 ];
 
+
+const DISCOVERY_TREND_SIGNALS = ['Chrome', 'Bridal', 'French', 'After Dark', 'Vacation Ready', 'Minimal', 'Charm Heavy'];
+
+const normalizeDiscoveryToken = (value) => String(value || '').trim().toLowerCase();
+
+const getBlueprintDiscoverySignals = (blueprint, index = 0) => uniqueBlueprintValues([
+  ...(Array.isArray(blueprint?.tags) ? blueprint.tags : []),
+  blueprint?.collectionName,
+  blueprint?.featuredCollection,
+  blueprint?.theme?.collectionLabel,
+  blueprint?.theme?.themeName,
+  blueprint?.status,
+  blueprint?.creatorSnapshot?.creatorName,
+  blueprint?.creatorSnapshot?.shopName,
+  blueprint?.shopSnapshot?.name,
+  getEditorialCollectionForBlueprint(blueprint, index)?.title,
+  ...(Array.isArray(blueprint?.designSnapshot?.effects) ? blueprint.designSnapshot.effects : []),
+  ...(Array.isArray(blueprint?.designSnapshot?.charms) && blueprint.designSnapshot.charms.length ? ['Charm Heavy'] : []),
+  ...(Array.isArray(blueprint?.designSnapshot?.polishTypes) ? blueprint.designSnapshot.polishTypes : []),
+]);
+
+const scoreBlueprintForDiscovery = (blueprint, signalTokens, index = 0) => {
+  const blueprintTokens = getBlueprintDiscoverySignals(blueprint, index).map(normalizeDiscoveryToken);
+  return signalTokens.reduce((score, signal) => score + (blueprintTokens.some((token) => token.includes(signal) || signal.includes(token)) ? 1 : 0), 0);
+};
+
+const buildLocalDiscoveryEngine = ({ blueprints, lookBook, activeCollectionFilter, activeArtistFilter, recentlyViewedBlueprint }) => {
+  const galleryReady = (blueprints || []).filter(Boolean);
+  const savedIds = new Set((lookBook || []).map((item) => item?.blueprintId).filter(Boolean));
+  const savedBlueprints = galleryReady.filter((blueprint) => savedIds.has(blueprint.blueprintId));
+  const lookBookSignals = savedBlueprints.flatMap((blueprint, index) => getBlueprintDiscoverySignals(blueprint, index));
+  const fallbackSignals = [recentlyViewedBlueprint, galleryReady[0]].filter(Boolean).flatMap((blueprint, index) => getBlueprintDiscoverySignals(blueprint, index));
+  const signalTokens = uniqueBlueprintValues((lookBookSignals.length ? lookBookSignals : fallbackSignals).map(normalizeDiscoveryToken));
+  const bySignals = galleryReady
+    .map((blueprint, index) => ({ blueprint, score: scoreBlueprintForDiscovery(blueprint, signalTokens, index) }))
+    .filter((entry) => entry.score > 0 && !savedIds.has(entry.blueprint.blueprintId))
+    .sort((a, b) => b.score - a.score)
+    .map((entry) => entry.blueprint);
+  const recommendedForYou = (bySignals.length ? bySignals : galleryReady).slice(0, 6);
+  const inspiredByLookBooks = savedBlueprints.length ? [...bySignals, ...galleryReady].filter((blueprint, index, list) => !savedIds.has(blueprint.blueprintId) && list.findIndex((item) => item.blueprintId === blueprint.blueprintId) === index).slice(0, 6) : [];
+  const similarLooks = galleryReady.filter((blueprint, index) => (
+    (activeCollectionFilter !== 'all' && getEditorialCollectionForBlueprint(blueprint, index).id === activeCollectionFilter)
+    || (activeArtistFilter !== 'all' && getArtistSpotlightCreatorKey(blueprint) === activeArtistFilter)
+  )).slice(0, 6);
+  const creatorGroups = galleryReady.reduce((groups, blueprint) => {
+    const key = getArtistSpotlightCreatorKey(blueprint);
+    groups[key] = groups[key] || { key, name: getBlueprintCoverMasthead(blueprint), items: [] };
+    groups[key].items.push(blueprint);
+    return groups;
+  }, {});
+  const artistsYouMayLove = Object.values(creatorGroups).filter((group) => group.items.length > 1).slice(0, 4);
+  return { recommendedForYou, inspiredByLookBooks, similarLooks, artistsYouMayLove, trendSignals: DISCOVERY_TREND_SIGNALS, hasLookBookSaves: savedIds.size > 0 };
+};
+
 const ARTIST_SPOTLIGHT_RECOGNITION_BADGES = ['Artist of the Week', 'Rising Artist', 'Hall of Fame', 'Community Favorite', 'Featured Creator'];
 
 const ARTIST_SPOTLIGHT_KNOWN_FOR_TAGS = [
@@ -1239,6 +1293,18 @@ export default function NailShop() {
     { id: 'trending', title: '🔥 New This Week', intro: 'Local editorial curation only: no followers, likes, ranking, or popularity metrics.', items: trendingBlueprints },
     { id: 'editors', title: '💎 Editor’s Picks', intro: 'Hand-selected editorial favorites. No algorithm, no publishing, no backend.', items: editorsPickBlueprints },
   ];
+  const discoveryEngine = buildLocalDiscoveryEngine({
+    blueprints: galleryReadyBlueprints,
+    lookBook,
+    activeCollectionFilter: editorialCollectionFilter,
+    activeArtistFilter: artistSpotlightCreatorFilter,
+    recentlyViewedBlueprint: selectedLibraryBlueprint,
+  });
+  const blueprintDiscoverySections = [
+    { id: 'recommended-for-you', title: 'Recommended For You', intro: 'Gallery Ready Blueprint Covers matched to saved Look Book tags, collection themes, and local editorial context.', items: discoveryEngine.recommendedForYou },
+    { id: 'inspired-by-your-look-books', title: 'Inspired By Your Look Books', intro: 'Related Blueprint Covers based only on local Look Book saves.', items: discoveryEngine.inspiredByLookBooks, empty: 'Save looks to your Look Book to unlock better recommendations.' },
+    { id: 'similar-looks', title: 'Similar Looks', intro: 'Visually related local Blueprint Covers appear when a collection or artist filter is active.', items: discoveryEngine.similarLooks, empty: 'Choose a collection or artist filter to see similar local Blueprint Covers.' },
+  ];
   const viewGalleryBlueprint = (blueprintId) => {
     selectLibraryBlueprint(blueprintId);
     setActiveSection('blueprintLibrary');
@@ -2253,6 +2319,41 @@ export default function NailShop() {
 
           <p style={styles.visuallyHidden} data-testid="blueprint-gallery-empty-state">No Gallery Ready Blueprints yet.</p>
           <p style={styles.visuallyHidden}>Featured Collection · Gallery Ready · New This Week · Editor’s Picks Preview</p>
+          <div style={styles.guardrailNotice} data-testid="discovery-engine-guardrail">Discovery preview only. Recommendations are local and not published.</div>
+          <div style={styles.blueprintEditorialGallery} data-testid="discovery-engine">
+            {blueprintDiscoverySections.map((section) => (
+              <section key={section.id} style={styles.blueprintGallerySection} data-testid={`discovery-section-${section.id}`} aria-label={section.title}>
+                <div style={styles.blueprintGallerySectionHeader}>
+                  <p style={styles.kicker}>Discovery Engine™</p>
+                  <h3 style={styles.cardTitle}>{section.title}</h3>
+                  <p style={styles.readinessIntro}>{section.intro}</p>
+                </div>
+                {section.items.length ? (
+                  <div style={styles.blueprintLibraryGrid}>
+                    {section.items.map((blueprint, index) => {
+                      const theme = normalizeBlueprintTheme(blueprint.theme);
+                      const accent = BLUEPRINT_ACCENT_STYLES[theme.accentStyle] || BLUEPRINT_ACCENT_STYLES['soft frame'];
+                      const typography = BLUEPRINT_TYPOGRAPHY_STYLES[theme.typographyStyle] || BLUEPRINT_TYPOGRAPHY_STYLES['polished serif'];
+                      return (
+                        <article key={`${section.id}-${blueprint.blueprintId}`} style={styles.blueprintLibraryCard} data-testid="discovery-blueprint-card">
+                          <BlueprintMagazineCover blueprint={blueprint} theme={theme} accent={accent} typography={typography} readiness={evaluateBlueprintReadiness(blueprint)} testPrefix="discovery-blueprint" index={index} />
+                          <GalleryActions blueprint={blueprint} onExploreLook={viewGalleryBlueprint} onSaveToLookBook={saveGalleryLookToLookBook} onRequestLook={requestGalleryLook} onBuySet={buyGallerySet} onBookLook={bookGalleryLook} onVisitNailShop={visitGalleryNailShop} onShare={shareGalleryLook} />
+                        </article>
+                      );
+                    })}
+                  </div>
+                ) : <p style={styles.guardrailNotice} data-testid={`discovery-empty-${section.id}`}>{section.empty}</p>}
+              </section>
+            ))}
+            <section style={styles.blueprintGallerySection} data-testid="discovery-section-artists-you-may-love" aria-label="Artists You May Love">
+              <div style={styles.blueprintGallerySectionHeader}><p style={styles.kicker}>Discovery Engine™</p><h3 style={styles.cardTitle}>Artists You May Love</h3><p style={styles.readinessIntro}>Creators with multiple Gallery Ready Blueprints, grouped locally by creator or Nail Shop name.</p></div>
+              <div style={styles.editorialCollectionGrid}>{discoveryEngine.artistsYouMayLove.map((artist) => <article key={artist.key} style={styles.editorialCollectionCard} data-testid="discovery-artist-card"><p style={styles.kicker}>{artist.name}</p><h4 style={styles.cardTitle}>{artist.name}</h4><p style={styles.blueprintCollectionText}>{artist.items.length} Gallery Ready Blueprint Covers</p><button type="button" style={styles.secondaryButton} onClick={() => setArtistSpotlightCreatorFilter(artist.key)} data-testid="discovery-artist-filter-button">Explore Artist</button></article>)}</div>
+            </section>
+            <section style={styles.blueprintGallerySection} data-testid="discovery-section-trending-style-signals" aria-label="Trending Style Signals">
+              <div style={styles.blueprintGallerySectionHeader}><p style={styles.kicker}>Discovery Engine™</p><h3 style={styles.cardTitle}>Trending Style Signals</h3><p style={styles.readinessIntro}>Local/demo style chips only. No real popularity claims, ranking metrics, tracking pixels, backend, checkout, publishing, or Proposal integration.</p></div>
+              <div style={styles.tagList}>{discoveryEngine.trendSignals.map((signal) => <span key={signal} style={styles.tagPill} data-testid="discovery-trend-chip">{signal}</span>)}</div>
+            </section>
+          </div>
           <div style={styles.blueprintEditorialGallery} data-testid="blueprint-gallery-editorial-layout">
             {blueprintGallerySections.map((section) => (
               <section key={section.id} style={styles.blueprintGallerySection} data-testid={`blueprint-gallery-section-${section.id}`}>
