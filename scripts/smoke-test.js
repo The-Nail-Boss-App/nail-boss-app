@@ -127,6 +127,18 @@ function assertNailShopProfilePersistenceSource() {
   assert(nailShopSource.includes('Explore Look') && !nailShopSource.includes('View Blueprint'), "Explore Look replaces client-facing View Blueprint wording");
   assert(nailShopSource.includes('Look Book') && !nailShopSource.includes('Board'), "Look Book terminology is preserved without Board wording");
   assert(nailShopSource.includes('No publishing') || nailShopSource.includes('Nothing is published'), "Gallery Actions retain no publishing guardrails");
+  assert(nailShopSource.includes('data-testid="discovery-engine"') && nailShopSource.includes('Discovery Engine™'), "Discovery Engine exists");
+  assert(nailShopSource.includes('Recommended For You') && nailShopSource.includes("id: 'recommended-for-you'"), "Recommended For You exists");
+  assert(nailShopSource.includes('Inspired By Your Look Books') && nailShopSource.includes("id: 'inspired-by-your-look-books'"), "Inspired By Your Look Books exists");
+  assert(nailShopSource.includes('Similar Looks') && nailShopSource.includes("id: 'similar-looks'"), "Similar Looks exists");
+  assert(nailShopSource.includes('Artists You May Love') && nailShopSource.includes('discovery-section-artists-you-may-love'), "Artists You May Love exists");
+  assert(nailShopSource.includes('Trending Style Signals') && nailShopSource.includes('discovery-section-trending-style-signals'), "Trending Style Signals exists");
+  assert(nailShopSource.includes('buildLocalDiscoveryEngine') && nailShopSource.includes('getBlueprintDiscoverySignals') && nailShopSource.includes('scoreBlueprintForDiscovery'), "local-only recommendation logic exists");
+  assert(['Chrome', 'Bridal', 'French', 'After Dark', 'Vacation Ready', 'Minimal', 'Charm Heavy'].every((signal) => nailShopSource.includes(signal)), "Trending Style Signals chips exist");
+  assert(nailShopSource.includes('Save looks to your Look Book to unlock better recommendations.'), "Look Book empty guidance exists");
+  assert(nailShopSource.includes('Discovery preview only. Recommendations are local and not published.'), "Discovery guardrail copy exists");
+  assert(nailShopSource.includes('data-testid="discovery-blueprint-card"') && nailShopSource.includes('<GalleryActions blueprint={blueprint}'), "Discovery cards preserve Gallery Actions");
+  assert(!nailShopSource.includes('/api/discovery'), "Discovery Engine adds no backend endpoint");
   assert(nailShopSource.includes('data-testid="blueprint-detail-hero-preview"') && nailShopSource.includes('<FullSetRenderer designData={selectedLibraryBlueprint.designSnapshot.fullSetData} mode="hero" />'), "Blueprint Detail View remains unchanged on FullSetRenderer hero mode");
 
   assert(blueprintEngineSource.includes("export function createBlueprintFromDesign") && blueprintEngineSource.includes("export function normalizeBlueprint") && blueprintEngineSource.includes("export function normalizeBlueprintTheme"), "Blueprint Engine helper exports should exist");
