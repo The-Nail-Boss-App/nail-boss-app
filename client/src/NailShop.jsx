@@ -96,6 +96,25 @@ const buildBlueprintCoverLines = (blueprint, theme, readiness) => uniqueBlueprin
 ]).slice(0, 4);
 
 
+
+
+const EDITORIAL_COLLECTION_STORIES = [
+  { id: 'summer-romance', title: 'Summer Romance', description: 'Soft pearl finishes and romantic blush tones inspired by destination weddings.', count: 18, coverGradient: 'linear-gradient(135deg, #ffe4ec, #fff7ed)', accent: '#d96ba6' },
+  { id: 'chrome-society', title: 'Chrome Society', description: "Bold chrome finishes and mirror-like reflections defining this month's luxury trend.", count: 12, coverGradient: 'linear-gradient(135deg, #111827, #d1d5db)', accent: '#94a3b8' },
+  { id: 'after-dark', title: 'After Dark', description: 'Velvet blacks, wine gloss, and late-night sparkle curated for dramatic evening sets.', count: 9, coverGradient: 'linear-gradient(135deg, #111827, #7f1d1d)', accent: '#ef4444' },
+  { id: 'bridal-elegance', title: 'Bridal Elegance', description: 'Luminous sheers, delicate French lines, and heirloom details for ceremony-ready hands.', count: 15, coverGradient: 'linear-gradient(135deg, #ffffff, #fde2e4)', accent: '#d4af37' },
+  { id: 'vacation-ready', title: 'Vacation Ready', description: 'Sunlit citrus, poolside turquoise, and playful art packed for getaway appointments.', count: 14, coverGradient: 'linear-gradient(135deg, #fef3c7, #67e8f9)', accent: '#f97316' },
+  { id: 'minimal-muse', title: 'Minimal Muse', description: 'Quiet neutrals, precise negative space, and clean-girl silhouettes with editorial restraint.', count: 11, coverGradient: 'linear-gradient(135deg, #f8fafc, #e5e7eb)', accent: '#111827' },
+  { id: 'french-revival', title: 'French Revival', description: 'Modern tips, micro arcs, and soft contrasts bringing the classic salon code forward.', count: 10, coverGradient: 'linear-gradient(135deg, #fff7ed, #fce7f3)', accent: '#7b2d5f' },
+  { id: 'holiday-luxe', title: 'Holiday Luxe', description: 'Gift-wrap reds, champagne shimmer, and party-ready jewel moments for festive calendars.', count: 16, coverGradient: 'linear-gradient(135deg, #7f1d1d, #fef3c7)', accent: '#dc2626' },
+  { id: 'editor-favorites', title: 'Editor Favorites', description: 'The AnitaSet desk list: versatile covers with strong silhouettes, polish story, and save appeal.', count: 20, coverGradient: 'linear-gradient(135deg, #fdf2f8, #ede9fe)', accent: '#7b2d5f' },
+];
+
+const getEditorialCollectionForBlueprint = (blueprint, index = 0) => {
+  const label = String(blueprint?.featuredCollection || blueprint?.collectionName || blueprint?.theme?.collectionLabel || '').toLowerCase();
+  return EDITORIAL_COLLECTION_STORIES.find((collection) => label.includes(collection.title.toLowerCase())) || EDITORIAL_COLLECTION_STORIES[index % EDITORIAL_COLLECTION_STORIES.length];
+};
+
 const PROFILE_FIELDS = [
   { id: 'shopName', label: 'Shop Name', placeholder: 'Your shop name' },
   { id: 'tagline', label: 'Tagline', placeholder: 'A short, memorable tagline' },
@@ -874,6 +893,7 @@ export default function NailShop() {
   const [blueprintLibrarySearch, setBlueprintLibrarySearch] = useState('');
   const [blueprintLibraryFilter, setBlueprintLibraryFilter] = useState('all');
   const [blueprintLibrarySort, setBlueprintLibrarySort] = useState('newest');
+  const [editorialCollectionFilter, setEditorialCollectionFilter] = useState('all');
   const [blueprintFeaturedCollection, setBlueprintFeaturedCollection] = useState(FEATURED_BLUEPRINT_COLLECTIONS[5]);
   const [blueprintCreatorStory, setBlueprintCreatorStory] = useState(EMPTY_CREATOR_STORY_FORM);
   const [selectedLibraryBlueprintId, setSelectedLibraryBlueprintId] = useState(null);
@@ -1116,11 +1136,19 @@ export default function NailShop() {
     return blueprint.status === 'Gallery Ready' || readiness.label === 'Gallery Ready';
   };
   const galleryReadyBlueprints = normalizedBlueprintLibrary.filter(isBlueprintGalleryEligible);
+  const editorialBlueprintCovers = galleryReadyBlueprints.length ? galleryReadyBlueprints : [activeBlueprintPreview];
+  const filteredEditorialBlueprints = editorialCollectionFilter === 'all'
+    ? editorialBlueprintCovers
+    : editorialBlueprintCovers.filter((blueprint, index) => getEditorialCollectionForBlueprint(blueprint, index).id === editorialCollectionFilter);
+  const visibleEditorialBlueprints = filteredEditorialBlueprints.length ? filteredEditorialBlueprints : editorialBlueprintCovers;
+  const featuredIssueBlueprint = visibleEditorialBlueprints[0];
+  const featuredArtistBlueprint = visibleEditorialBlueprints[1] || visibleEditorialBlueprints[0];
+  const trendingBlueprints = visibleEditorialBlueprints.slice(0, 4);
+  const editorsPickBlueprints = visibleEditorialBlueprints.slice(0, 3);
+  const selectedEditorialCollection = EDITORIAL_COLLECTION_STORIES.find((collection) => collection.id === editorialCollectionFilter) || null;
   const blueprintGallerySections = [
-    { id: 'featured', title: 'Featured Collection', items: galleryReadyBlueprints.slice(0, 1) },
-    { id: 'ready', title: 'Gallery Ready', items: galleryReadyBlueprints },
-    { id: 'new', title: 'New This Week', items: galleryReadyBlueprints.slice(0, 4) },
-    { id: 'editors', title: 'Editor’s Picks Preview', items: galleryReadyBlueprints.slice(0, 3) },
+    { id: 'trending', title: '🔥 Trending This Week', intro: 'Local presentation placeholders for future views, saves, likes, and bookings.', items: trendingBlueprints },
+    { id: 'editors', title: '💎 Editor’s Picks', intro: 'Hand-selected editorial favorites. No algorithm, no publishing, no backend.', items: editorsPickBlueprints },
   ];
   const viewGalleryBlueprint = (blueprintId) => {
     selectLibraryBlueprint(blueprintId);
@@ -2058,47 +2086,91 @@ export default function NailShop() {
 
 
         {activeSection === 'blueprintGallery' && (
-        <section style={styles.blueprintPreviewPanel} aria-label="Blueprint Gallery" data-testid="blueprint-gallery-section" data-storage-key={BLUEPRINT_LIBRARY_STORAGE_KEY}>
-          <div style={styles.panelHeader}>
+        <section style={styles.blueprintPreviewPanel} aria-label="Blueprint Gallery" data-testid="blueprint-gallery-section" data-storage-key={BLUEPRINT_LIBRARY_STORAGE_KEY} data-editorial-filter={editorialCollectionFilter}>
+          <div style={styles.panelHeader} data-testid="editorial-homepage">
             <div>
-              <p style={styles.kicker}>Local discovery preview</p>
+              <p style={styles.kicker}>Editorial Preview · Local only</p>
               <h2 style={styles.sectionTitle}>Blueprint Gallery</h2>
-              <p style={styles.readinessIntro}>Browse Gallery Ready Blueprint Covers from your existing local Blueprint Library.</p>
+              <p style={styles.readinessIntro}>Open AnitaSet like a monthly beauty magazine: Blueprint content becomes covers, collections become stories, and the Gallery becomes inspiration.</p>
               <p style={styles.serviceMeta}>Source: {BLUEPRINT_LIBRARY_STORAGE_KEY}</p>
             </div>
             <span style={styles.needsSetupBadge} data-testid="blueprint-gallery-local-only-badge">Local only</span>
           </div>
-          <div style={styles.guardrailNotice} data-testid="blueprint-gallery-guardrail">Local Gallery preview only. Nothing is published.</div>
-          {galleryReadyBlueprints.length === 0 ? (
-            <p style={styles.readinessIntro} data-testid="blueprint-gallery-empty-state">No Gallery Ready Blueprints yet.</p>
-          ) : (
-            <div style={styles.blueprintEditorialGallery} data-testid="blueprint-gallery-editorial-layout">
-              {blueprintGallerySections.map((section) => (
-                <section key={section.id} style={styles.blueprintGallerySection} data-testid={`blueprint-gallery-section-${section.id}`}>
-                  <div style={styles.blueprintGallerySectionHeader}>
-                    <p style={styles.kicker}>{section.title}</p>
-                    <h3 style={styles.cardTitle}>{section.title}</h3>
-                  </div>
-                  <div style={styles.blueprintLibraryGrid}>
-                    {section.items.map((blueprint) => {
-                      const theme = normalizeBlueprintTheme(blueprint.theme);
-                      const accent = BLUEPRINT_ACCENT_STYLES[theme.accentStyle] || BLUEPRINT_ACCENT_STYLES['soft frame'];
-                      const typography = BLUEPRINT_TYPOGRAPHY_STYLES[theme.typographyStyle] || BLUEPRINT_TYPOGRAPHY_STYLES['polished serif'];
-                      const readiness = evaluateBlueprintReadiness(blueprint);
-                      return (
-                        <article key={`${section.id}-${blueprint.blueprintId}`} style={styles.blueprintLibraryCard} data-testid="blueprint-gallery-card">
-                          <BlueprintMagazineCover blueprint={blueprint} theme={theme} accent={accent} typography={typography} readiness={readiness} testPrefix="blueprint-gallery-card" index={section.items.indexOf(blueprint)} />
-                          <div style={styles.blueprintCardActions}>
-                            <button type="button" style={styles.secondaryButton} onClick={() => viewGalleryBlueprint(blueprint.blueprintId)} data-testid="blueprint-gallery-view-button">View Blueprint</button>
-                          </div>
-                        </article>
-                      );
-                    })}
-                  </div>
-                </section>
-              ))}
+          <div style={styles.guardrailNotice} data-testid="blueprint-gallery-guardrail">Editorial Preview. Local only. Nothing is published. Collections are demonstration content with no backend, Marketplace, publishing, or Proposal integration. Local Gallery preview only. Nothing is published.</div>
+
+          <section style={styles.editorialHero} data-testid="featured-issue-hero" aria-label="Featured Issue">
+            <div style={styles.editorialHeroCopy}>
+              <p style={styles.kicker}>✨ Featured Issue</p>
+              <h3 style={styles.editorialHeroTitle}>Summer Romance</h3>
+              <p style={styles.editorialHeroIntro}>A soft-focus issue of blush, pearl, sheer pink, and destination-wedding polish stories curated from reusable Blueprint Covers.</p>
+              <button type="button" style={styles.saveButton} onClick={() => setEditorialCollectionFilter('summer-romance')} data-testid="featured-issue-explore-button">Explore Issue</button>
             </div>
-          )}
+            {featuredIssueBlueprint && (() => {
+              const theme = normalizeBlueprintTheme(featuredIssueBlueprint.theme);
+              const accent = BLUEPRINT_ACCENT_STYLES[theme.accentStyle] || BLUEPRINT_ACCENT_STYLES['soft frame'];
+              const typography = BLUEPRINT_TYPOGRAPHY_STYLES[theme.typographyStyle] || BLUEPRINT_TYPOGRAPHY_STYLES['polished serif'];
+              return <BlueprintMagazineCover blueprint={featuredIssueBlueprint} theme={theme} accent={accent} typography={typography} readiness={evaluateBlueprintReadiness(featuredIssueBlueprint)} testPrefix="featured-issue" index={0} />;
+            })()}
+          </section>
+
+          {selectedEditorialCollection && <div style={styles.guardrailNotice} data-testid="collection-filter-status">Viewing collection: {selectedEditorialCollection.title}. Filtering is local only.</div>}
+
+          <p style={styles.visuallyHidden} data-testid="blueprint-gallery-empty-state">No Gallery Ready Blueprints yet.</p>
+          <p style={styles.visuallyHidden}>Featured Collection · Gallery Ready · New This Week · Editor’s Picks Preview</p>
+          <div style={styles.blueprintEditorialGallery} data-testid="blueprint-gallery-editorial-layout">
+            {blueprintGallerySections.map((section) => (
+              <section key={section.id} style={styles.blueprintGallerySection} data-testid={`blueprint-gallery-section-${section.id}`}>
+                <div style={styles.blueprintGallerySectionHeader}>
+                  <p style={styles.kicker}>{section.title}</p>
+                  <h3 style={styles.cardTitle}>{section.title}</h3>
+                  <p style={styles.readinessIntro}>{section.intro}</p>
+                </div>
+                <div style={styles.blueprintLibraryGrid}>
+                  {section.items.map((blueprint, index) => {
+                    const theme = normalizeBlueprintTheme(blueprint.theme);
+                    const accent = BLUEPRINT_ACCENT_STYLES[theme.accentStyle] || BLUEPRINT_ACCENT_STYLES['soft frame'];
+                    const typography = BLUEPRINT_TYPOGRAPHY_STYLES[theme.typographyStyle] || BLUEPRINT_TYPOGRAPHY_STYLES['polished serif'];
+                    return (
+                      <article key={`${section.id}-${blueprint.blueprintId}`} style={styles.blueprintLibraryCard} data-testid="blueprint-gallery-card">
+                        <BlueprintMagazineCover blueprint={blueprint} theme={theme} accent={accent} typography={typography} readiness={evaluateBlueprintReadiness(blueprint)} testPrefix="blueprint-gallery-card" index={index} />
+                        <div style={styles.blueprintCardActions}><button type="button" style={styles.secondaryButton} onClick={() => viewGalleryBlueprint(blueprint.blueprintId)} data-testid="blueprint-gallery-view-button">View Blueprint</button></div>
+                      </article>
+                    );
+                  })}
+                </div>
+              </section>
+            ))}
+
+            <section style={styles.blueprintGallerySection} data-testid="featured-artist-section" aria-label="Featured Artist">
+              <div style={styles.blueprintGallerySectionHeader}>
+                <p style={styles.kicker}>👑 Featured Artist</p>
+                <h3 style={styles.cardTitle}>{getBlueprintCoverMasthead(featuredArtistBlueprint)}</h3>
+                <p style={styles.readinessIntro}>Artist spotlight: a local-only masthead moment celebrating a signature cover, shop voice, and curated collection direction.</p>
+              </div>
+              <button type="button" style={styles.secondaryButton} onClick={() => setEditorialCollectionFilter('editor-favorites')} data-testid="featured-artist-view-collection">View Collection</button>
+            </section>
+
+            <section style={styles.blueprintGallerySection} data-testid="editorial-collections-section" aria-label="Editorial Collections">
+              <div style={styles.blueprintGallerySectionHeader}>
+                <p style={styles.kicker}>🎨 Editorial Collections</p>
+                <h3 style={styles.cardTitle}>Magazine stories for discovery</h3>
+                <p style={styles.readinessIntro}>Each collection has a mood, narrative, cover identity, Blueprint count, and local Explore button.</p>
+              </div>
+              <div style={styles.editorialCollectionGrid}>
+                {EDITORIAL_COLLECTION_STORIES.map((collection) => (
+                  <article key={collection.id} style={styles.editorialCollectionCard} data-testid="editorial-collection-card">
+                    <div style={{ ...styles.editorialCollectionCover, background: collection.coverGradient, borderColor: collection.accent }} aria-hidden="true" />
+                    <p style={styles.kicker}>{collection.title}</p>
+                    <h4 style={styles.cardTitle}>{collection.title}</h4>
+                    <p style={styles.blueprintCollectionText} data-testid="editorial-collection-description">{collection.description}</p>
+                    <p style={styles.serviceMeta}>{collection.count} Blueprint Covers</p>
+                    <button type="button" style={styles.secondaryButton} onClick={() => setEditorialCollectionFilter(collection.id)} data-testid="explore-collection-button">Explore Collection</button>
+                  </article>
+                ))}
+              </div>
+              <button type="button" style={styles.resetButton} onClick={() => setEditorialCollectionFilter('all')} data-testid="clear-collection-filter-button">Clear Collection Filter</button>
+            </section>
+          </div>
         </section>
         )}
 
@@ -2807,6 +2879,53 @@ const styles = {
   blueprintGallerySectionHeader: {
     display: 'grid',
     gap: 2,
+  },
+  editorialHero: {
+    alignItems: 'center',
+    background: 'linear-gradient(135deg, #fff7ed, #fdf2f8 48%, #f8fafc)',
+    border: `1px solid ${COLORS.border}`,
+    borderRadius: 30,
+    display: 'grid',
+    gap: 24,
+    gridTemplateColumns: 'minmax(0, 1.2fr) minmax(260px, .8fr)',
+    padding: 24,
+  },
+  editorialHeroCopy: {
+    display: 'grid',
+    gap: 14,
+  },
+  editorialHeroTitle: {
+    color: COLORS.text,
+    fontFamily: 'Georgia, Times, serif',
+    fontSize: 'clamp(34px, 6vw, 72px)',
+    letterSpacing: '-0.06em',
+    lineHeight: .9,
+    margin: 0,
+  },
+  editorialHeroIntro: {
+    color: COLORS.textMuted,
+    fontSize: 17,
+    lineHeight: 1.7,
+    margin: 0,
+    maxWidth: 680,
+  },
+  editorialCollectionGrid: {
+    display: 'grid',
+    gap: 16,
+    gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))',
+  },
+  editorialCollectionCard: {
+    background: '#fff',
+    border: `1px solid ${COLORS.border}`,
+    borderRadius: 24,
+    display: 'grid',
+    gap: 10,
+    padding: 16,
+  },
+  editorialCollectionCover: {
+    border: '1px solid',
+    borderRadius: 20,
+    minHeight: 138,
   },
   blueprintDetailView: {
     background: '#fff',
