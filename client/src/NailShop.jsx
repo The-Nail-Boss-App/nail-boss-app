@@ -2,7 +2,7 @@ import { useEffect, useId, useState } from 'react';
 import { COLORS } from './styles';
 import FullSetRenderer from './FullSetRenderer';
 import BlueprintGalleryRenderer from './BlueprintGalleryRenderer';
-import { BLUEPRINT_STATUSES, DEFAULT_BLUEPRINT_STATUS, FEATURED_BLUEPRINT_COLLECTIONS, buildBlueprintPreviewSummary, createBlueprintFromDesign, createBlueprintLibraryRecord, createCustomBlueprintTheme, duplicateBlueprintLibraryRecord, evaluateBlueprintReadiness, getBlueprintContentSignature, getDefaultBlueprintThemes, normalizeBlueprintLibrary, normalizeBlueprintTheme } from './blueprintEngine';
+import { BLUEPRINT_STATUSES, DEFAULT_BLUEPRINT_STATUS, FEATURED_BLUEPRINT_COLLECTIONS, buildBlueprintPreviewSummary, createBlueprintFromDesign, createBlueprintLibraryRecord, createCustomBlueprintTheme, duplicateBlueprintLibraryRecord, evaluateBlueprintReadiness, getBlueprintContentSignature, getDefaultBlueprintThemes, normalizeBlueprintLibrary, normalizeBlueprintTheme, createRecipeFromDesign } from './blueprintEngine';
 
 
 const FULL_SET_RENDERER_SAMPLE = {
@@ -715,6 +715,48 @@ const calculateCostEngine = (form, services, pricingLibrary) => {
 
 const hasText = (value) => typeof value === 'string' && value.trim().length > 0;
 
+
+const RECIPE_STEP_ICONS = {
+  polishColor: '🎨',
+  polishType: '🧴',
+  technique: '✍️',
+  topCoat: '✨',
+  embellishment: '💎',
+  jewels: '💎',
+  pattern: '•',
+};
+
+const formatRecipeStepLabel = (step) => {
+  const label = hasText(step?.label) ? step.label.trim() : `Step ${step?.index || ''}`.trim();
+  const [title, ...rest] = label.split(':');
+  return { title: title || 'Recipe Step', detail: rest.join(':').trim() };
+};
+
+const listWithoutPlaceholders = (items = [], placeholders = []) => items.filter((item) => {
+  const value = String(item || '').trim();
+  if (!value) return false;
+  return !placeholders.some((placeholder) => value.toLowerCase() === placeholder.toLowerCase());
+});
+
+const buildRecipeViewerModel = (blueprint) => {
+  const recipe = createRecipeFromDesign(blueprint?.designSnapshot || {});
+  const products = listWithoutPlaceholders(recipe.productUsagePlaceholders, ['Product usage TBD']);
+  const techniqueNotes = listWithoutPlaceholders([...(recipe.masksPlacementNotes || []), recipe.recreationNotes], ['Generated from editable Nail Design layers.']);
+  return {
+    recipe,
+    products,
+    techniqueNotes,
+    summary: {
+      totalPolishColors: recipe.polishColors.length,
+      polishTypesUsed: recipe.polishTypes,
+      techniquesUsed: recipe.techniques,
+      topCoatTypes: recipe.topCoats.map((topCoat) => topCoat.topCoatType).filter(Boolean),
+      embellishments: recipe.embellishments,
+      estimatedLayers: recipe.layerOrder.length || blueprint?.designSnapshot?.layerCount || recipe.steps.length,
+    },
+  };
+};
+
 const describeDepositPolicy = (policies) => {
   const depositRules = normalizePolicies(policies).depositRules;
   if (depositRules.fullPaymentRequired) return 'Full payment is required to book.';
@@ -1268,6 +1310,7 @@ export default function NailShop() {
   const normalizedBlueprintLibrary = normalizeBlueprintLibrary(blueprintLibrary);
   const selectedLibraryBlueprint = normalizedBlueprintLibrary.find((blueprint) => blueprint.blueprintId === selectedLibraryBlueprintId) || null;
   const selectedBlueprintDetail = selectedLibraryBlueprint ? buildBlueprintDetailSections(selectedLibraryBlueprint) : null;
+  const selectedRecipeViewer = selectedLibraryBlueprint ? buildRecipeViewerModel(selectedLibraryBlueprint) : null;
   const selectedBlueprintReadiness = selectedLibraryBlueprint ? evaluateBlueprintReadiness(selectedLibraryBlueprint) : null;
   const isBlueprintGalleryEligible = (blueprint) => {
     const readiness = evaluateBlueprintReadiness(blueprint);
@@ -2182,6 +2225,59 @@ export default function NailShop() {
                 <FullSetRenderer designData={selectedLibraryBlueprint.designSnapshot.fullSetData} mode="hero" />
               </section>
 
+              <section style={styles.recipeViewerPanel} aria-label="Nail Recipe" data-testid="nail-recipe-viewer">
+                <div style={styles.recipeHeader}>
+                  <div>
+                    <p style={styles.kicker}>Production Instructions</p>
+                    <h3 style={styles.recipeTitle}>📖 Nail Recipe™</h3>
+                  </div>
+                  <div style={styles.recipeMetricGrid}>
+                    <span><strong>Estimated Difficulty</strong>{selectedRecipeViewer.recipe.difficultyEstimate}</span>
+                    <span><strong>Estimated Time</strong>{selectedRecipeViewer.recipe.timeEstimate}</span>
+                    <span><strong>Layer Count</strong>{selectedRecipeViewer.summary.estimatedLayers}</span>
+                    <span><strong>Art Level</strong>{selectedLibraryBlueprint.designSnapshot.artLevel || selectedRecipeViewer.recipe.difficultyEstimate}</span>
+                  </div>
+                </div>
+
+                <div style={styles.recipeTimeline} data-testid="nail-recipe-steps">
+                  {selectedRecipeViewer.recipe.steps.map((step, index) => {
+                    const stepText = formatRecipeStepLabel(step);
+                    return (
+                      <div key={`${step.id}-${index}`} style={styles.recipeStep}>
+                        <div style={styles.recipeStepNumber}>{index + 1}</div>
+                        <div>
+                          <strong>{RECIPE_STEP_ICONS[step.category] || '①'} {stepText.title}</strong>
+                          {stepText.detail && <p style={styles.recipeStepDetail}>{stepText.detail}</p>}
+                          {step.coverage && <p style={styles.recipeStepDetail}>Coverage: {step.coverage}</p>}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div style={styles.recipeCardGrid}>
+                  <section style={styles.recipeMiniCard} data-testid="recipe-products-used">
+                    <h4 style={styles.recipeMiniTitle}>Products Used™</h4>
+                    <p style={styles.serviceMeta}>{selectedRecipeViewer.products.length ? selectedRecipeViewer.products.join(', ') : 'Products have not been assigned yet.'}</p>
+                  </section>
+                  <section style={styles.recipeMiniCard} data-testid="recipe-technique-notes">
+                    <h4 style={styles.recipeMiniTitle}>Technique Notes</h4>
+                    <p style={styles.serviceMeta}>{selectedRecipeViewer.techniqueNotes.length ? selectedRecipeViewer.techniqueNotes.join(' • ') : 'No technique notes added.'}</p>
+                  </section>
+                  <section style={styles.recipeMiniCard} data-testid="recipe-summary">
+                    <h4 style={styles.recipeMiniTitle}>Recipe Summary</h4>
+                    <div style={styles.blueprintSummaryGrid}>
+                      <span><strong>Total Polish Colors:</strong> {selectedRecipeViewer.summary.totalPolishColors}</span>
+                      <span><strong>Polish Types Used:</strong> {selectedRecipeViewer.summary.polishTypesUsed.join(', ')}</span>
+                      <span><strong>Techniques Used:</strong> {selectedRecipeViewer.summary.techniquesUsed.join(', ')}</span>
+                      <span><strong>Top Coat Types:</strong> {selectedRecipeViewer.summary.topCoatTypes.length ? selectedRecipeViewer.summary.topCoatTypes.join(', ') : 'No Top Coat'}</span>
+                      <span><strong>Embellishments:</strong> {selectedRecipeViewer.summary.embellishments.join(', ')}</span>
+                      <span><strong>Estimated Layers:</strong> {selectedRecipeViewer.summary.estimatedLayers}</span>
+                    </div>
+                  </section>
+                </div>
+              </section>
+
               <div style={styles.blueprintDetailGrid}>
                 <section style={styles.blueprintDetailSection} data-testid="blueprint-detail-design-info">
                   <h3 style={styles.cardTitle}>Design Information</h3>
@@ -2193,7 +2289,7 @@ export default function NailShop() {
                     <span><strong>Width:</strong> {selectedBlueprintDetail.width}</span>
                     <span><strong>Effects:</strong> {selectedBlueprintDetail.effects.length ? selectedBlueprintDetail.effects.join(', ') : 'None listed'}</span>
                     <span><strong>Polish Types:</strong> {selectedBlueprintDetail.polishTypes.length ? selectedBlueprintDetail.polishTypes.join(', ') : 'No Effects'}</span>
-                    <span><strong>Base Color:</strong> {selectedLibraryBlueprint.designSnapshot.baseColor || 'No colors listed'}</span>
+                    <span><strong>Polish Color:</strong> {selectedLibraryBlueprint.designSnapshot.baseColor || selectedLibraryBlueprint.designSnapshot.polishColor || 'No colors listed'}</span>
                     <span><strong>Palette:</strong> {selectedLibraryBlueprint.designSnapshot.palette.length ? selectedLibraryBlueprint.designSnapshot.palette.join(', ') : 'No colors listed'}</span>
                     <span><strong>Art Level:</strong> {selectedLibraryBlueprint.designSnapshot.artLevel || 'Minimal'}</span>
                     <span><strong>Layer Count:</strong> {selectedLibraryBlueprint.designSnapshot.layerCount}</span>
@@ -2216,7 +2312,7 @@ export default function NailShop() {
                 </section>
 
                 <section style={styles.blueprintDetailSection} data-testid="blueprint-detail-materials">
-                  <h3 style={styles.cardTitle}>Materials</h3>
+                  <h3 style={styles.cardTitle}>Products & Polish™</h3>
                   <div style={styles.blueprintSummaryGrid}>
                     <span><strong>Colors:</strong> {selectedBlueprintDetail.colors.length ? selectedBlueprintDetail.colors.join(', ') : 'No colors listed'}</span>
                     <span><strong>Products:</strong> {selectedLibraryBlueprint.materials.products.length ? selectedLibraryBlueprint.materials.products.join(', ') : 'Products not specified'}</span>
@@ -3270,6 +3366,81 @@ const styles = {
     justifyItems: 'center',
     overflow: 'visible',
     padding: 20,
+  },
+  recipeViewerPanel: {
+    background: 'linear-gradient(135deg, #fffaf7 0%, #fff 50%, #fdf2f8 100%)',
+    border: `1px solid ${COLORS.border}`,
+    borderRadius: 26,
+    boxShadow: '0 24px 60px rgba(123,45,95,.12)',
+    display: 'grid',
+    gap: 20,
+    padding: 24,
+  },
+  recipeHeader: {
+    alignItems: 'start',
+    borderBottom: `1px solid ${COLORS.border}`,
+    display: 'grid',
+    gap: 18,
+    gridTemplateColumns: 'minmax(220px, 1fr) minmax(260px, 1.5fr)',
+    paddingBottom: 18,
+  },
+  recipeTitle: {
+    color: COLORS.plum,
+    fontFamily: 'Georgia, Times, serif',
+    fontSize: 30,
+    lineHeight: 1.1,
+    margin: 0,
+  },
+  recipeMetricGrid: {
+    display: 'grid',
+    gap: 10,
+    gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
+  },
+  recipeTimeline: {
+    display: 'grid',
+    gap: 0,
+  },
+  recipeStep: {
+    alignItems: 'start',
+    borderBottom: `1px solid ${COLORS.border}`,
+    display: 'grid',
+    gap: 12,
+    gridTemplateColumns: '42px 1fr',
+    padding: '14px 0',
+  },
+  recipeStepNumber: {
+    alignItems: 'center',
+    background: COLORS.plum,
+    borderRadius: 999,
+    color: '#fff',
+    display: 'flex',
+    fontFamily: 'Georgia, Times, serif',
+    fontWeight: 900,
+    height: 34,
+    justifyContent: 'center',
+    width: 34,
+  },
+  recipeStepDetail: {
+    color: COLORS.muted,
+    margin: '5px 0 0',
+  },
+  recipeCardGrid: {
+    display: 'grid',
+    gap: 14,
+    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+  },
+  recipeMiniCard: {
+    background: 'rgba(255,255,255,.78)',
+    border: `1px solid ${COLORS.border}`,
+    borderRadius: 18,
+    display: 'grid',
+    gap: 8,
+    padding: 16,
+  },
+  recipeMiniTitle: {
+    color: COLORS.plum,
+    fontSize: 16,
+    margin: 0,
   },
   blueprintDetailGrid: {
     display: 'grid',
