@@ -165,7 +165,8 @@ export const DESIGN_METADATA_FIELD_PATHS = {
   shape: ['design.shape', 'design.nails[].shape', 'design.fullSetData.nails[].shape', 'design.blueprint.nails[].shape'],
   length: ['design.length', 'design.nails[].length', 'design.fullSetData.nails[].length', 'design.blueprint.nails[].length'],
   width: ['design.width', 'design.nails[].width', 'design.fullSetData.nails[].width', 'design.blueprint.nails[].width'],
-  baseColor: ['design.baseColorHex', 'design.nails[].baseColorHex', 'design.nails[].layers[type=base].data.colorHex'],
+  polishColor: ['design.polishColor', 'design.polishColors[]', 'design.baseColorHex', 'design.nails[].baseColorHex', 'design.nails[].layers[type=base].data.colorHex'],
+  baseColor: ['legacy design.baseColorHex', 'legacy design.nails[].baseColorHex', 'legacy design.nails[].layers[type=base].data.colorHex'],
   secondaryColors: ['layer.data.effectColorHex', 'layer.data.patternColorHex', 'layer.data.patternSecondaryColorHex', 'layer.data.secondaryColorHex', 'layer.data.gradientStops[].color'],
   gradients: ['design.nails[].layers[type=gradient].data', 'layer.data.colorA', 'layer.data.colorB', 'layer.data.gradientStops[]', 'layer.data.direction'],
   polishEffects: ['design.effect', 'design.polishType', 'design.nails[].layers[type=base].data.effect', 'layer.data.polishType', 'layer.data.topCoat'],
@@ -178,6 +179,34 @@ export const DESIGN_METADATA_FIELD_PATHS = {
 };
 
 const safeColor = (value, fallback) => (/^#[0-9a-f]{6}$/i.test(String(value || '')) ? String(value).toLowerCase() : fallback);
+
+/**
+ * Creative Data Architecture™ purpose map.
+ * Nail Design™ is the editable artwork source; it owns canvas data, nails,
+ * layers, masks, polish color layers, polish types, techniques, top coat
+ * layers, embellishment layers, drawing layers, and design metadata.
+ * Nail Recipe™ is generated from Nail Design and owns production/recreation
+ * instructions: recipe steps, layer order, polish colors/types, techniques,
+ * paintable top coats, masks/placement notes, embellishments, product usage
+ * placeholders, difficulty/time estimates, and recreation notes.
+ * Nail Blueprint™ is generated from Nail Design + Nail Recipe and owns the
+ * business/client-facing sales document: hero preview, title, price, deposit,
+ * appointment time, service category, collection, creator/shop snapshot,
+ * gallery readiness/status, proposal-ready details, and customer-facing notes.
+ */
+const CREATIVE_OBJECT_PURPOSES = Object.freeze({
+  nailDesign: 'Editable artwork source',
+  nailRecipe: 'Production and recreation instructions',
+  nailBlueprint: 'Business and client-facing sales document',
+});
+
+const layerData = (layer) => (isObject(layer?.data) ? layer.data : {});
+const layerLabel = (layer, fallback) => text(layerData(layer).label || layer?.label || layer?.name || layerData(layer).assetId || layer?.assetId || layerData(layer).assetType || layer?.assetType, fallback);
+const layerPolishColor = (layer) => safeColor(layerData(layer).colorHex || layerData(layer).polishColor || layerData(layer).polishColorHex || layerData(layer).baseColorHex, '');
+const layerPolishType = (layer) => text(layerData(layer).polishType || layerData(layer).typeName || layerData(layer).effect);
+const layerTechnique = (layer) => text(layerData(layer).technique || layerData(layer).style || layerData(layer).preset || (layerMatches(layer, FRENCH_RE) ? 'French Tip' : ''));
+const topCoatCoverage = (layer) => ['full', 'partial', 'masked', 'unknown'].includes(layerData(layer).coverage) ? layerData(layer).coverage : (layerData(layer).mask || layerData(layer).maskSummary ? 'masked' : layerData(layer).placement ? 'partial' : 'unknown');
+const isTopCoatLayer = (layer) => layer?.type === 'topCoat' || layer?.kind === 'top-coat' || layer?.category === 'topCoat' || /top\s*coat/i.test(layerIdentity(layer));
 
 export function getDefaultBlueprintThemes() {
   return clone(DEFAULT_BLUEPRINT_THEMES);
@@ -242,7 +271,7 @@ export function normalizeBlueprint(input) {
       fullSetData: design.fullSetData || design.nails || source.fullSetData || { nails: [] },
       shape: text(design.shape, 'Mixed'), length: text(design.length, 'Custom'), width: text(design.width, 'Custom'),
       colors: list(design.colors), effects: list(design.effects), charms: list(design.charms), jewels: list(design.jewels), decals: list(design.decals),
-      baseColor: text(design.baseColor), secondaryColors: list(design.secondaryColors), palette: list(design.palette),
+      baseColor: text(design.baseColor), polishColor: text(design.polishColor, text(design.baseColor)), polishColors: list(design.polishColors).length ? list(design.polishColors) : list(design.colors), secondaryColors: list(design.secondaryColors), palette: list(design.palette),
       polishTypes: list(design.polishTypes), gradients: list(design.gradients), chrome: Boolean(design.chrome), catEye: Boolean(design.catEye), marble: Boolean(design.marble), frenchTips: list(design.frenchTips), patterns: list(design.patterns),
       charmCount: Number(design.charmCount) || 0, jewelCount: Number(design.jewelCount) || 0, decalCount: Number(design.decalCount) || 0, layerCount: Number(design.layerCount) || 0, artLayerCount: Number(design.artLayerCount) || 0,
       artLevel: text(design.artLevel, 'Minimal'), artSummary: text(design.artSummary, 'No Effects'), effectsUsed: list(design.effectsUsed),
@@ -398,35 +427,130 @@ const collectDesignMetadata = (design) => {
   };
 };
 
-export function createBlueprintFromDesign(design, options = {}) {
-  const source = isObject(design) ? design : {};
-  const blueprintDocument = isObject(source.document) ? source.document : isObject(source.blueprint?.document) ? source.blueprint.document : source.blueprint;
-  const fullSetData = firstDefined(source.fullSetData, source.fullSet, blueprintDocument, source.nails ? { nails: source.nails } : source);
-  const metadata = collectDesignMetadata(source);
-  const designSnapshot = {
-    ...source,
-    ...(options.designSnapshot || {}),
-    designId: firstDefined(source.id, source.designId),
-    designName: firstDefined(source.name, source.designName),
-    fullSetData,
-    ...metadata,
-    colors: uniqueList(firstDefined(source.colors, options.designSnapshot?.colors, metadata.colors)),
-    effects: uniqueList(firstDefined(source.effects, options.designSnapshot?.effects, metadata.effects)),
-    charms: uniqueList(firstDefined(source.charms, options.designSnapshot?.charms, metadata.charms)),
-    jewels: uniqueList(firstDefined(source.jewels, options.designSnapshot?.jewels, metadata.jewels)),
-    decals: uniqueList(firstDefined(source.decals, options.designSnapshot?.decals, metadata.decals)),
-  };
 
-  return normalizeBlueprint({
+export function normalizeNailDesign(design) {
+  const source = isObject(design) ? design : {};
+  const metadata = collectDesignMetadata(source);
+  const fullSetData = firstDefined(source.fullSetData, source.fullSet, source.document, source.blueprint?.document, source.nails ? { nails: source.nails } : { nails: [] });
+  const layers = collectDesignLayers(source);
+  const legacyPolishColors = uniqueList([source.polishColor, ...(Array.isArray(source.polishColors) ? source.polishColors : []), source.baseColorHex, ...layers.map(layerPolishColor)]).filter((color) => /^#[0-9a-f]{6}$/i.test(color));
+  return {
+    objectType: 'Nail Design',
+    purpose: CREATIVE_OBJECT_PURPOSES.nailDesign,
+    designId: text(firstDefined(source.id, source.designId), `design-${Date.now()}`),
+    designName: text(firstDefined(source.name, source.designName), 'Untitled design'),
+    canvasData: clone(firstDefined(source.canvasData, source.canvas, {})),
+    nails: flattenDesignNails(source),
+    layers,
+    masks: list(source.masks),
+    polishColor: legacyPolishColors[0] || '',
+    polishColors: legacyPolishColors,
+    baseColorHex: source.baseColorHex,
+    polishTypes: uniqueList([source.polishType, ...layers.map(layerPolishType), ...metadata.polishTypes]),
+    techniques: uniqueList([source.technique, ...layers.map(layerTechnique), ...metadata.frenchTips, ...metadata.patterns]).filter((item) => item !== 'No Technique'),
+    topCoatLayers: layers.filter(isTopCoatLayer),
+    embellishmentLayers: layers.filter((layer) => layerMatches(layer, CHARM_RE) || layerMatches(layer, JEWEL_RE) || layerMatches(layer, DECAL_RE)),
+    drawingLayers: layers.filter((layer) => layer?.type === 'drawing'),
+    metadata: { ...metadata, polishColor: legacyPolishColors[0] || '', polishColors: legacyPolishColors },
+    rawDesign: clone(source),
+  };
+}
+
+const recipeStep = (category, label, details = {}) => ({ id: `${category}-${label}`.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''), category, label, ...details });
+
+export function createRecipeFromDesign(design) {
+  const normalizedDesign = normalizeNailDesign(design);
+  const layers = normalizedDesign.layers;
+  const steps = [];
+  const polishColors = normalizedDesign.polishColors.length ? normalizedDesign.polishColors : ['Unknown Polish Color'];
+  polishColors.forEach((color) => steps.push(recipeStep('polishColor', `Polish Color: ${color}`)));
+  const polishTypes = normalizedDesign.polishTypes.length ? normalizedDesign.polishTypes : ['Unknown Polish Type'];
+  polishTypes.forEach((type) => steps.push(recipeStep('polishType', `Polish Type: ${type}`)));
+  const techniques = uniqueList([...normalizedDesign.techniques, ...layers.map(layerTechnique)]).filter(Boolean);
+  (techniques.length ? techniques : ['No Technique']).forEach((technique) => steps.push(recipeStep('technique', `Technique: ${technique}`)));
+  const topCoatLayers = layers.filter(isTopCoatLayer);
+  if (topCoatLayers.length) topCoatLayers.forEach((layer) => {
+    const data = layerData(layer);
+    const topCoat = text(data.topCoatType || data.topCoat || data.finish || layerLabel(layer, ''), 'Unknown Top Coat');
+    const placement = text(data.placement, topCoatCoverage(layer) === 'full' ? 'full nail' : 'placement unknown');
+    steps.push(recipeStep('topCoat', `Top Coat: ${topCoat}, applied to ${placement}`, { coverage: topCoatCoverage(layer), placement, maskSummary: text(data.maskSummary || data.mask), topCoatType: topCoat }));
+  });
+  else steps.push(recipeStep('topCoat', 'Top Coat: No Top Coat', { coverage: 'unknown', placement: '', maskSummary: '', topCoatType: 'No Top Coat' }));
+  const charms = layers.filter((layer) => layerMatches(layer, CHARM_RE));
+  const jewels = layers.filter((layer) => layerMatches(layer, JEWEL_RE));
+  const patterns = layers.filter((layer) => layerMatches(layer, PATTERN_RE));
+  steps.push(recipeStep('embellishment', `Embellishment: ${charms.length ? layerLabel(charms[0], 'Charm') : 'No Embellishments'}`));
+  steps.push(recipeStep('jewels', `Jewels: ${jewels.length ? `${jewels.length} crystals` : 'No Embellishments'}`));
+  if (patterns.length) steps.push(recipeStep('pattern', `Pattern: ${layerLabel(patterns[0], layerData(patterns[0]).pattern || 'Sparkle/star pattern')}`));
+  return normalizeNailRecipe({
+    recipeId: `recipe-${normalizedDesign.designId}`,
+    sourceDesignId: normalizedDesign.designId,
+    purpose: CREATIVE_OBJECT_PURPOSES.nailRecipe,
+    steps,
+    layerOrder: layers.map((layer, index) => ({ index, type: text(layer?.type || layer?.kind || layer?.category, 'layer'), label: layerLabel(layer, `Layer ${index + 1}`) })),
+    polishColors,
+    polishTypes,
+    techniques: techniques.length ? techniques : ['No Technique'],
+    topCoats: topCoatLayers.map((layer) => ({ coverage: topCoatCoverage(layer), placement: text(layerData(layer).placement), maskSummary: text(layerData(layer).maskSummary || layerData(layer).mask), topCoatType: text(layerData(layer).topCoatType || layerData(layer).topCoat || layerData(layer).finish, 'Unknown Top Coat') })),
+    masksPlacementNotes: uniqueList(topCoatLayers.map((layer) => text(layerData(layer).maskSummary || layerData(layer).placement))),
+    embellishments: uniqueList([...charms, ...jewels].map((layer) => layerLabel(layer, 'Embellishment'))),
+    productUsagePlaceholders: ['Product usage TBD'],
+    difficultyEstimate: normalizedDesign.metadata.artLevel,
+    timeEstimate: normalizedDesign.metadata.artLevel === 'Advanced' ? '120+ minutes' : normalizedDesign.metadata.artLevel === 'Detailed' ? '90 minutes' : '60 minutes',
+    recreationNotes: 'Generated from editable Nail Design layers.',
+  });
+}
+
+export function normalizeNailRecipe(recipe) {
+  const source = isObject(recipe) ? recipe : {};
+  const safeSteps = list(source.steps).map((step, index) => isObject(step) ? { ...step, label: text(step.label, `Step ${index + 1}`) } : recipeStep('step', text(step, `Step ${index + 1}`)));
+  return {
+    objectType: 'Nail Recipe',
+    recipeId: text(source.recipeId, `recipe-${Date.now()}`),
+    sourceDesignId: text(source.sourceDesignId),
+    purpose: text(source.purpose, CREATIVE_OBJECT_PURPOSES.nailRecipe),
+    steps: safeSteps,
+    layerOrder: list(source.layerOrder),
+    polishColors: list(source.polishColors).length ? list(source.polishColors) : ['Unknown Polish Color'],
+    polishTypes: list(source.polishTypes).length ? list(source.polishTypes) : ['Unknown Polish Type'],
+    techniques: list(source.techniques).length ? list(source.techniques) : ['No Technique'],
+    topCoats: list(source.topCoats), masksPlacementNotes: list(source.masksPlacementNotes), embellishments: list(source.embellishments).length ? list(source.embellishments) : ['No Embellishments'], productUsagePlaceholders: list(source.productUsagePlaceholders), difficultyEstimate: text(source.difficultyEstimate, 'Minimal'), timeEstimate: text(source.timeEstimate, '60 minutes'), recreationNotes: text(source.recreationNotes),
+  };
+}
+
+export function createBlueprintFromDesignAndRecipe(design, recipe, options = {}) {
+  const normalizedDesign = normalizeNailDesign(design);
+  const normalizedRecipe = normalizeNailRecipe(recipe || createRecipeFromDesign(normalizedDesign.rawDesign));
+  const blueprint = normalizeBlueprint({
     ...options,
-    title: options.title || source.name || source.designName,
-    designId: designSnapshot.designId,
-    designName: designSnapshot.designName,
-    designSnapshot,
+    title: options.title || normalizedDesign.designName,
+    designId: normalizedDesign.designId,
+    designName: normalizedDesign.designName,
+    designSnapshot: { ...(options.designSnapshot || {}), ...normalizedDesign.rawDesign, designId: normalizedDesign.designId, designName: normalizedDesign.designName, fullSetData: firstDefined(normalizedDesign.rawDesign.fullSetData, normalizedDesign.rawDesign.fullSet, normalizedDesign.rawDesign.nails ? { nails: normalizedDesign.rawDesign.nails } : { nails: normalizedDesign.nails }), ...normalizedDesign.metadata, polishColor: normalizedDesign.polishColor, polishColors: normalizedDesign.polishColors },
     pricingGuidance: options.pricingGuidance,
-    materials: options.materials || { colors: designSnapshot.colors, products: [], vendorReferences: [], effects: designSnapshot.effectsUsed || designSnapshot.effects },
+    materials: options.materials || { colors: normalizedDesign.polishColors, products: [], vendorReferences: [], effects: normalizedDesign.metadata.effectsUsed || normalizedDesign.metadata.effects },
     theme: options.theme,
   });
+  return normalizeNailBlueprint({
+    ...blueprint,
+    sourceDesignId: normalizedDesign.designId,
+    recipeId: normalizedRecipe.recipeId,
+    recipeSnapshot: { recipeId: normalizedRecipe.recipeId, steps: normalizedRecipe.steps.slice(0, 6), difficultyEstimate: normalizedRecipe.difficultyEstimate, timeEstimate: normalizedRecipe.timeEstimate },
+    recipeSummary: normalizedRecipe.steps.map((step) => step.label).slice(0, 6).join(' • '),
+    businessSummary: { title: blueprint.title, price: blueprint.pricingGuidance.suggestedPrice, deposit: blueprint.pricingGuidance.suggestedDeposit, estimatedAppointmentTime: blueprint.pricingGuidance.estimatedTime, serviceCategory: text(options.serviceCategory, 'Custom nail art'), collection: blueprint.featuredCollection || blueprint.collectionName || blueprint.theme.collectionLabel },
+  });
+}
+
+export function normalizeNailBlueprint(blueprint) {
+  const normalized = normalizeBlueprint(blueprint);
+  const source = isObject(blueprint) ? blueprint : {};
+  return { ...normalized, objectType: 'Nail Blueprint', purpose: CREATIVE_OBJECT_PURPOSES.nailBlueprint, sourceDesignId: text(source.sourceDesignId, normalized.designSnapshot.designId), recipeId: text(source.recipeId), recipeSnapshot: isObject(source.recipeSnapshot) ? source.recipeSnapshot : null, recipeSummary: text(source.recipeSummary), businessSummary: isObject(source.businessSummary) ? source.businessSummary : {} };
+}
+
+export function createBlueprintFromDesign(design, options = {}) {
+  const normalizedDesign = normalizeNailDesign(design);
+  const recipe = createRecipeFromDesign(normalizedDesign.rawDesign);
+  return createBlueprintFromDesignAndRecipe(normalizedDesign.rawDesign, recipe, options);
 }
 
 export function buildBlueprintPreviewSummary(blueprint) {
