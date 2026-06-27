@@ -114,6 +114,54 @@ assert.notEqual(artworkBlueprint.designSnapshot.artSummary, 'No Effects', 'saved
 assert(!JSON.stringify(artworkBlueprint.designSnapshot).includes('Not specified'), 'saved full-set artwork extraction avoids Not specified placeholders');
 assert(engine.collectDesignLayers(fullSetArtworkDesign).some((layer) => layer._sourcePath.includes('design.blueprint.nails')), 'collector discovers artwork under /api/designs/:id/blueprint document nails');
 
+
+const architectureDesign = {
+  id: 'creative-4l',
+  name: 'Creative 4L Set',
+  baseColorHex: '#FFA21F',
+  nails: [{ shape: 'Almond', layers: [
+    { type: 'base', data: { colorHex: '#FFA21F', polishType: 'Chrome' } },
+    { type: 'frenchTip', data: { style: 'French Tip' } },
+    { type: 'topCoat', data: { topCoatType: 'Gloss', coverage: 'partial', placement: 'lower section', maskSummary: 'lower-third mask' } },
+    { type: 'charm', name: 'Heart charm', data: { assetId: 'heart-charm' } },
+    { type: 'jewel', name: 'Crystal', data: { assetId: 'crystal' } },
+    { type: 'jewel', name: 'Crystal', data: { assetId: 'crystal' } },
+    { type: 'pattern', data: { pattern: 'Sparkle/star pattern' } },
+  ] }],
+};
+const nailDesign = engine.normalizeNailDesign(architectureDesign);
+assert.equal(nailDesign.objectType, 'Nail Design', 'Nail Design purpose separation object exists');
+assert.equal(nailDesign.purpose, 'Editable artwork source', 'Nail Design owns editable artwork source purpose');
+assert.equal(nailDesign.polishColor, '#FFA21F', 'legacy baseColorHex normalizes into polish color metadata');
+assert(nailDesign.polishColors.includes('#FFA21F'), 'legacy baseColorHex is retained as polishColors metadata');
+assert(!Object.hasOwn(nailDesign, 'price'), 'Nail Design does not own business price');
+const nailRecipe = engine.createRecipeFromDesign(architectureDesign);
+assert.equal(nailRecipe.objectType, 'Nail Recipe', 'Nail Recipe generation returns separated recipe object');
+const recipeText = JSON.stringify(nailRecipe);
+assert(recipeText.includes('Polish Color: #FFA21F'), 'recipe steps include polish color data');
+assert(recipeText.includes('Polish Type: Chrome'), 'recipe steps include polish type data');
+assert(recipeText.includes('Technique: French Tip'), 'recipe steps include technique data');
+assert(recipeText.includes('Top Coat: Gloss, applied to lower section'), 'recipe steps include paintable top coat placement data');
+assert(recipeText.includes('Embellishment: Heart charm'), 'recipe steps include embellishment data');
+assert(recipeText.includes('Jewels: 2 crystals'), 'recipe steps include jewel quantity data');
+assert(recipeText.includes('Pattern: Sparkle/star pattern'), 'recipe steps include pattern data');
+assert(!recipeText.includes('Not specified'), 'recipe generation never returns Not specified');
+assert.equal(nailRecipe.topCoats[0].coverage, 'partial', 'top coat supports partial coverage');
+assert.equal(nailRecipe.topCoats[0].maskSummary, 'lower-third mask', 'top coat supports mask summary');
+const architectureBlueprint = engine.createBlueprintFromDesignAndRecipe(architectureDesign, nailRecipe, { title: 'Client Sale Sheet', pricingGuidance: { suggestedPrice: 140, suggestedDeposit: 35, estimatedTime: '95 minutes' }, featuredCollection: 'Summer Chrome' });
+assert.equal(architectureBlueprint.objectType, 'Nail Blueprint', 'Nail Blueprint generation returns separated blueprint object');
+assert.equal(architectureBlueprint.sourceDesignId, 'creative-4l', 'Blueprint references source design id');
+assert.equal(architectureBlueprint.recipeId, nailRecipe.recipeId, 'Blueprint references recipe id');
+assert(architectureBlueprint.recipeSummary.includes('Polish Color'), 'Blueprint embeds summarized recipe info');
+assert.equal(architectureBlueprint.businessSummary.price, 140, 'Blueprint keeps business/client-facing price');
+assert.equal(architectureBlueprint.businessSummary.deposit, 35, 'Blueprint keeps business/client-facing deposit');
+const legacyArchitectureBlueprint = engine.createBlueprintFromDesign(architectureDesign, { title: 'Legacy Compatible' });
+assert.equal(legacyArchitectureBlueprint.title, 'Legacy Compatible', 'createBlueprintFromDesign remains backward compatible');
+assert.equal(legacyArchitectureBlueprint.sourceDesignId, 'creative-4l', 'legacy createBlueprintFromDesign now carries source design reference');
+assert(legacyArchitectureBlueprint.recipeSummary.includes('Polish Color'), 'legacy createBlueprintFromDesign now carries recipe summary');
+assert.equal(legacyArchitectureBlueprint.designSnapshot.polishColor, '#FFA21F', 'Blueprint design snapshot uses polish color terminology');
+assert(!JSON.stringify(legacyArchitectureBlueprint).includes('Not specified'), 'Blueprint architecture avoids Not specified placeholders');
+
 const malformedBlueprint = engine.createBlueprintFromDesign(null, { title: 'Malformed Safe Blueprint' });
 assert.equal(malformedBlueprint.title, 'Malformed Safe Blueprint', 'malformed design data falls back safely');
 assert.equal(malformedBlueprint.designSnapshot.shape, 'Unknown Shape', 'malformed design shape fallback is explicit');
