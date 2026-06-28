@@ -6,6 +6,7 @@ import LayersPanel from "./LayersPanel.jsx";
 import PropertiesPanel from "./PropertiesPanel.jsx";
 import DrawingToolbar from "./DrawingToolbar.jsx";
 import FullSetPreview from "./FullSetPreview.jsx";
+import PolishBottle from "./PolishBottle.jsx";
 import BulkActionsPanel from "./BulkActionsPanel.jsx";
 import { UI } from "./studioStyles.js";
 import {
@@ -61,6 +62,7 @@ import {
 
 
 const PANEL_PREFS_STORAGE_KEY = "anitaset.designStudio.panels.v1";
+const RECENT_POLISH_LIMIT = 12;
 
 const DEFAULT_PANEL_STATE = {
   nailBasics: true,
@@ -108,7 +110,7 @@ function GeometrySlider({ label, value = 0.5, onChange }) {
 }
 
 function ColorInput({ value, onChange }) {
-  return <div style={{ display: "flex", gap: 8 }}><input type="color" value={value} onChange={(e) => onChange(e.target.value)} style={{ width: 44, height: 42, border: `1px solid ${COLORS.border}`, borderRadius: 10, background: "transparent" }}/><input style={{ ...S.input, fontFamily: "monospace" }} value={value} maxLength={7} onChange={(e) => /^#[0-9a-fA-F]{0,6}$/.test(e.target.value) && onChange(e.target.value.toUpperCase())}/></div>;
+  return <div style={{ display: "flex", gap: 8, alignItems: "center" }}><PolishBottle colorHex={value} label={`Selected Polish Color ${value}`} selected size="medium"/><input aria-label="Polish Color picker" type="color" value={value} onChange={(e) => onChange(e.target.value)} style={{ width: 44, height: 42, border: `1px solid ${COLORS.border}`, borderRadius: 10, background: "transparent" }}/><input style={{ ...S.input, fontFamily: "monospace" }} value={value} maxLength={7} onChange={(e) => /^#[0-9a-fA-F]{0,6}$/.test(e.target.value) && onChange(e.target.value.toUpperCase())}/></div>;
 }
 
 function FrenchTipControls({ layer, onAdd, onPatch, onApply }) {
@@ -180,20 +182,31 @@ function collectDesignPalette(nail) {
 
 const NAIL_COLOR_SWATCHES = ["#F7D7E6", "#E8A0BF", "#C86B8D", "#9D4D72", "#7B2F59", "#FFFFFF", "#F5E8D8", "#2B1024"];
 
-function NailColorSystem({ value, polishType = "Cream", onChange, onPolishTypeChange, onApply }) {
+function NailColorSystem({ value, polishType = "Cream", recentPolish = [], onChange, onPolishTypeChange, onApply, onRackSelect }) {
   return <section style={{ border: `1px solid ${COLORS.border}`, borderRadius: 16, padding: 12, marginBottom: 14, background: "#fff" }}>
-    <div style={UI.sectionTitle}>Nail Color System</div>
+    <div style={UI.sectionTitle}>Polish Color System</div>
     <Field label="Polish Type"><select style={S.input} value={polishType} onChange={(e) => onPolishTypeChange(e.target.value)}>{POLISH_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}</select></Field>
     <ColorInput value={value} onChange={onChange}/>
     <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, marginTop: 10 }}>
-      {NAIL_COLOR_SWATCHES.map((color) => <button key={color} type="button" aria-label={`Set nail color ${color}`} onClick={() => onChange(color)} style={{ height: 34, borderRadius: 12, border: `2px solid ${value?.toUpperCase() === color ? COLORS.plum : COLORS.border}`, background: color, cursor: "pointer" }}/>) }
+      {NAIL_COLOR_SWATCHES.map((color) => <PolishBottle key={color} colorHex={color} label={`Set Polish Color ${color}`} selected={value?.toUpperCase() === color} polishType={polishType} onClick={() => onChange(color)} />) }
     </div>
+    <PolishRack colors={recentPolish} activeColor={value} polishType={polishType} onSelect={onRackSelect || onChange}/>
     <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 10 }}>
       <button type="button" onClick={() => onApply("active")} style={UI.iconButton(false)}>Active nail</button>
       <button type="button" onClick={() => onApply("hand")} style={UI.iconButton(false)}>Current hand</button>
       <button type="button" onClick={() => onApply("all")} style={UI.iconButton(false)}>Full set</button>
     </div>
     <p style={UI.smallText}>Cream, Jelly, Milky, and Matte each render through the shared material engine with shape-aware depth.</p>
+  </section>;
+}
+
+function PolishRack({ colors, activeColor, polishType, onSelect }) {
+  return <section aria-label="Polish Rack™" data-testid="polish-rack" style={{ marginTop: 12, padding: "12px 10px", borderRadius: 18, border: "1px solid rgba(123,47,89,.16)", background: "linear-gradient(180deg, #fff, #fff7fb)", boxShadow: "0 10px 26px rgba(59,31,53,.08)" }}>
+    <div style={{ ...UI.sectionTitle, marginBottom: 2 }}>Polish Rack™</div>
+    <div style={{ ...UI.smallText, marginTop: 0, marginBottom: 8 }}>Recently Used Polish</div>
+    {colors.length ? <div style={{ display: "grid", gridTemplateColumns: "repeat(6, minmax(30px, 1fr))", gap: 8, alignItems: "end" }}>
+      {colors.map((color) => <PolishBottle key={color} colorHex={color} label={`Apply Polish Color ${color}`} selected={activeColor?.toUpperCase() === color} polishType={polishType} onClick={() => onSelect(color)} />)}
+    </div> : <p style={{ ...UI.smallText, margin: 0 }}>Choose a Polish Color to place the first bottle on the rack.</p>}
   </section>;
 }
 
@@ -207,7 +220,7 @@ function DesignPalette({ colors }) {
   return <section style={{ border: `1px solid ${COLORS.border}`, borderRadius: 16, padding: 12, marginBottom: 14, background: "#fff" }}>
     <div style={UI.sectionTitle}>Design Palette</div>
     {colors.length ? <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-      {colors.map((color) => <div key={color} title={color} style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 8px", border: `1px solid ${COLORS.border}`, borderRadius: 999, background: "#fff" }}><span style={{ width: 18, height: 18, borderRadius: "50%", background: color, border: `1px solid ${COLORS.border}` }}/><span style={{ fontSize: 11, fontFamily: "monospace", color: COLORS.textMuted }}>{color}</span></div>)}
+      {colors.map((color) => <div key={color} title={color} style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 8px", border: `1px solid ${COLORS.border}`, borderRadius: 999, background: "#fff" }}><PolishBottle colorHex={color} label={`Polish Color ${color}`} size="small"/><span style={{ fontSize: 11, fontFamily: "monospace", color: COLORS.textMuted }}>{color}</span></div>)}
     </div> : <p style={UI.smallText}>Choose polish or artwork colors and they will appear here automatically.</p>}
   </section>;
 }
@@ -281,6 +294,7 @@ function DesignStudio(_, ref) {
   const [selectedSlots, setSelectedSlots] = useState([]);
   const [saveStatus, setSaveStatus] = useState("Ready");
   const [userSignatureLooks, setUserSignatureLooks] = useState(() => loadStoredSignatureLooks());
+  const [recentPolish, setRecentPolish] = useState([]);
   const [panelState, setPanelState] = useState(() => loadPanelState());
   const [selectedSignatureLookId, setSelectedSignatureLookId] = useState(STARTER_SIGNATURE_LOOKS[0]?.id || "");
   const autosaveTimerRef = useRef(null);
@@ -311,6 +325,12 @@ function DesignStudio(_, ref) {
   const productSummary = useMemo(() => summarizeFullSetAssets(blueprint), [blueprint]);
   const designPalette = useMemo(() => collectDesignPalette(activeNail), [activeNail]);
   const signatureLooks = useMemo(() => [...STARTER_SIGNATURE_LOOKS, ...userSignatureLooks], [userSignatureLooks]);
+
+  function rememberPolishColor(value) {
+    const normalized = normalizeHex(value, "").toUpperCase();
+    if (!/^#[0-9A-F]{6}$/.test(normalized)) return;
+    setRecentPolish((prev) => [normalized, ...prev.filter((color) => color !== normalized)].slice(0, RECENT_POLISH_LIMIT));
+  }
 
   useEffect(() => { loadDesigns(); }, []);
   useEffect(() => { dirtyRef.current = dirty; blueprintRef.current = blueprint; selectedDesignIdRef.current = selectedDesignId; designNameRef.current = designName; }, [dirty, blueprint, selectedDesignId, designName]);
@@ -444,6 +464,7 @@ function DesignStudio(_, ref) {
   }
 
   function updateBase(patch) {
+    if (patch.baseColorHex || patch.colorHex) rememberPolishColor(patch.baseColorHex || patch.colorHex);
     let next = synchronizeBase(blueprint, patch);
     if (["shape", "length", "width"].some((key) => patch[key] !== undefined)) next = revalidateLayersAfterNailResize(next);
     if (patch.tags !== undefined) next = { ...next, metadata: { ...next.metadata, tags: normalizeTags(patch.tags) } };
@@ -923,7 +944,7 @@ function DesignStudio(_, ref) {
           <Field label="Nail shape"><select style={S.input} value={activeNail.shape} onChange={(e) => updateBase({ shape: e.target.value })}>{SHAPES.map((shape) => <option key={shape}>{shape}</option>)}</select></Field>
           <GeometrySlider label="Nail length" value={activeNail.length} onChange={(length) => updateBase({ length })}/>
           <GeometrySlider label="Nail width" value={activeNail.width} onChange={(width) => updateBase({ width })}/>
-          <NailColorSystem value={baseLayer?.data?.colorHex || activeNail.baseColorHex} polishType={normalizePolishData(baseLayer?.data || {}, activeNail.baseColorHex).polishType} onPolishTypeChange={(polishType) => updateBase({ polishType, topCoat: polishType === "Matte" ? "Matte" : "Gloss", effect: "Solid" })} onChange={(value) => updateBase({ baseColorHex: normalizeHex(value, baseLayer?.data?.colorHex), polishType: normalizePolishData(baseLayer?.data || {}, activeNail.baseColorHex).polishType, effect: "Solid" })} onApply={(scope) => { const targets = scope === "active" ? [activeSlot] : slotsFor(scope); const polish = normalizePolishData(baseLayer?.data || {}, activeNail.baseColorHex); commit(applyBaseToSlots(blueprint, { baseColorHex: getVisibleBaseColor(activeNail), polishType: polish.polishType, shine: polish.shine, transparency: polish.transparency, topCoat: polish.topCoat, effect: "Solid" }, targets)); }}/>
+          <NailColorSystem value={baseLayer?.data?.colorHex || activeNail.baseColorHex} recentPolish={recentPolish} polishType={normalizePolishData(baseLayer?.data || {}, activeNail.baseColorHex).polishType} onRackSelect={(value) => updateBase({ baseColorHex: normalizeHex(value, baseLayer?.data?.colorHex), polishType: normalizePolishData(baseLayer?.data || {}, activeNail.baseColorHex).polishType, effect: "Solid" })} onPolishTypeChange={(polishType) => updateBase({ polishType, topCoat: polishType === "Matte" ? "Matte" : "Gloss", effect: "Solid" })} onChange={(value) => updateBase({ baseColorHex: normalizeHex(value, baseLayer?.data?.colorHex), polishType: normalizePolishData(baseLayer?.data || {}, activeNail.baseColorHex).polishType, effect: "Solid" })} onApply={(scope) => { const targets = scope === "active" ? [activeSlot] : slotsFor(scope); const polish = normalizePolishData(baseLayer?.data || {}, activeNail.baseColorHex); commit(applyBaseToSlots(blueprint, { baseColorHex: getVisibleBaseColor(activeNail), polishType: polish.polishType, shine: polish.shine, transparency: polish.transparency, topCoat: polish.topCoat, effect: "Solid" }, targets)); }}/>
           <p style={UI.smallText}>Hero shape masks are artist-calibrated. Length and width can scale the mask, but they do not redefine the shape family.</p>
         </CollapsiblePanel>
         <CollapsiblePanel id="signatureLooks" title="Signature Looks" open={panelState.signatureLooks} onToggle={togglePanel}>
