@@ -28,6 +28,16 @@ assert(!studio.includes('Recent Colors'), 'Recent Colors wording is removed from
 assert(studio.includes('onRackSelect={(value) => updateBase({ baseColorHex: normalizeHex(value'), 'clicking a rack bottle applies a Polish Color through existing base color logic');
 assert(studio.includes('prev.filter((color) => color !== normalized)') && studio.includes('RECENT_POLISH_LIMIT'), 'duplicate polish colors are not repeated and recent list is capped');
 assert(studio.includes('baseLayer?.data?.colorHex || activeNail.baseColorHex'), 'legacy baseColorHex remains supported in Design Studio color value');
+assert(studio.includes('data-testid="artist-command-bar"'), 'Artist Command Bar exists');
+assert(studio.includes('data-testid="artist-command-design-name"') && studio.includes('placeholder="Untitled Design"') && studio.includes('updateDesignName(e.target.value)'), 'Artist Command Bar design name is editable with placeholder');
+assert(studio.includes('data-testid="artist-command-collection"') && studio.includes('No Collection Assigned'), 'Artist Command Bar collection subtitle exists');
+assert(studio.includes('data-testid="artist-command-autosave"') && studio.includes('● Auto Saved') && studio.includes('Saving…'), 'Artist Command Bar auto saved indicator exists');
+assert(studio.includes('Save Version'), 'Save Version wording exists');
+assert(studio.includes('data-testid="current-polish-bottle"') && studio.includes('Current Polish Bottle™'), 'Current Polish Bottle exists in Artist Command Bar');
+assert(['Duplicate', 'Undo', 'Redo', 'Copy', 'Paste'].every((label) => studio.includes(`>${label}</button>`)), 'Artist Command Bar toolbar buttons exist');
+assert(studio.includes('Canvas Mode') && studio.includes('canvasModeButton'), 'Canvas Mode button exists with special styling');
+assert(studio.includes('data-testid="artist-command-zoom"') && studio.includes('commandZoom') && studio.includes('adjustZoom'), 'Zoom controls exist');
+assert(studio.includes('Workspace Memory placeholders') && ['zoom', 'selected polish', 'drawer state', 'canvas mode', 'selected nail'].every((text) => studio.includes(text)), 'workspace memory placeholders are documented without persistence');
 assert(blueprint.includes('baseColorHex') && blueprint.includes('getVisibleBaseColor'), 'legacy baseColorHex remains supported in blueprint helpers');
 assert(blueprint.includes('export const SHAPES = ["Almond", "Square", "Coffin", "Stiletto", "Oval", "Round", "Lipstick"]'), 'Hero 7 exact guardrail remains present');
 assert(blueprint.includes('HIDDEN_SHAPE_FALLBACKS = { Duck: "Square" }') && !gallery.includes('Full Set Composition') && !studio.includes('Full Set Composition'), 'Duck hidden fallback remains and Full Set Composition chrome is absent');
