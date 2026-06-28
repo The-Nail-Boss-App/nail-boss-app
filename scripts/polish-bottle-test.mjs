@@ -18,6 +18,11 @@ assert(bottle.includes('bodyWidth') && bottle.includes('height: "78%"'), 'Polish
 assert(bottle.includes('rgba(255,255,255,.42)'), 'PolishBottle renders a subtle highlight');
 
 assert(studio.includes('data-testid="polish-rack"'), 'Polish Rack section exists');
+assert(studio.includes('data-testid="polish-color-controls"'), 'Polish Color controls exist');
+assert(studio.includes('data-testid="command-polish-color-popover"'), 'Current Polish Bottle opens Polish Color controls in the command bar');
+assert(studio.includes('data-testid="command-set-actions-trigger"') && studio.includes('data-testid="command-set-actions-popover"'), 'Full Set Actions are available from the command bar');
+assert(studio.includes('Apply current design to all nails') && studio.includes('Copy current nail') && studio.includes('Paste to selected nails') && studio.includes('Mirror current hand'), 'Command bar exposes existing full-set workflow actions');
+assert(studio.includes('data-testid="command-french-tip-trigger"') && studio.includes('data-testid="command-french-tip-popover"'), 'French Tip controls are available from the command bar');
 assert(studio.includes('Polish Rack™'), 'Polish Rack™ wording exists');
 assert(studio.includes('Recently Used Polish'), 'Recently Used Polish wording exists');
 assert(studio.includes('gridTemplateColumns: "repeat(auto-fit, minmax(34px, 1fr))"'), 'Polish Rack uses responsive grid columns for containment');
@@ -25,6 +30,8 @@ assert(studio.includes('justifyItems: "center"') && studio.includes('minWidth: 0
 assert(studio.includes('overflow: "hidden"'), 'Polish Rack clips accidental overflow within the card');
 assert(bottle.includes('maxWidth: "100%"') && bottle.includes('boxSizing: "border-box"'), 'PolishBottle respects the width of narrow rack cells');
 assert(!studio.includes('Recent Colors'), 'Recent Colors wording is removed from Design Studio UI');
+assert(!studio.includes('NAIL_COLOR_SWATCHES'), 'legacy static bottle swatch palette is removed');
+assert(!studio.includes('Set Polish Color ${color}'), 'duplicate static polish bottle rows are removed');
 assert(studio.includes('onRackSelect={(value) => updateBase({ baseColorHex: normalizeHex(value'), 'clicking a rack bottle applies a Polish Color through existing base color logic');
 assert(studio.includes('prev.filter((color) => color !== normalized)') && studio.includes('RECENT_POLISH_LIMIT'), 'duplicate polish colors are not repeated and recent list is capped');
 assert(studio.includes('baseLayer?.data?.colorHex || activeNail.baseColorHex'), 'legacy baseColorHex remains supported in Design Studio color value');
@@ -34,12 +41,13 @@ assert(studio.includes('data-testid="artist-command-collection"') && studio.incl
 assert(studio.includes('data-testid="artist-command-autosave"') && studio.includes('● Auto Saved') && studio.includes('Saving…'), 'Artist Command Bar auto saved indicator exists');
 assert(studio.includes('Save Version'), 'Save Version wording exists');
 assert(studio.includes('data-testid="current-polish-bottle"') && studio.includes('Current Polish Bottle™'), 'Current Polish Bottle exists in Artist Command Bar');
-assert(['Duplicate', 'Undo', 'Redo', 'Copy', 'Paste'].every((label) => studio.includes(`>${label}</button>`)), 'Artist Command Bar toolbar buttons exist');
+assert(['Set Actions', 'French Tip', 'Undo', 'Redo'].every((label) => studio.includes(`>${label}</button>`)), 'Artist Command Bar grouped workflow buttons exist');
 assert(studio.includes('Canvas Mode') && studio.includes('canvasModeButton'), 'Canvas Mode button exists with special styling');
 assert(studio.includes('data-testid="artist-command-zoom"') && studio.includes('commandZoom') && studio.includes('adjustZoom'), 'Zoom controls exist');
 assert(studio.includes('Workspace Memory placeholders') && ['zoom', 'selected polish', 'drawer state', 'canvas mode', 'selected nail'].every((text) => studio.includes(text)), 'workspace memory placeholders are documented without persistence');
 assert(blueprint.includes('baseColorHex') && blueprint.includes('getVisibleBaseColor'), 'legacy baseColorHex remains supported in blueprint helpers');
 assert(blueprint.includes('export const SHAPES = ["Almond", "Square", "Coffin", "Stiletto", "Oval", "Round", "Lipstick"]'), 'Hero 7 exact guardrail remains present');
 assert(blueprint.includes('HIDDEN_SHAPE_FALLBACKS = { Duck: "Square" }') && !gallery.includes('Full Set Composition') && !studio.includes('Full Set Composition'), 'Duck hidden fallback remains and Full Set Composition chrome is absent');
+assert(!read('client/src/Proposals.jsx').includes('command-set-actions-trigger'), 'Proposal surface is unchanged by command bar workflow cleanup');
 
 console.log('Polish Bottle / Polish Rack source tests passed');
