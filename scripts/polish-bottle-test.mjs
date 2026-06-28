@@ -20,6 +20,10 @@ assert(bottle.includes('rgba(255,255,255,.42)'), 'PolishBottle renders a subtle 
 assert(studio.includes('data-testid="polish-rack"'), 'Polish Rack section exists');
 assert(studio.includes('Polish Rack™'), 'Polish Rack™ wording exists');
 assert(studio.includes('Recently Used Polish'), 'Recently Used Polish wording exists');
+assert(studio.includes('gridTemplateColumns: "repeat(auto-fit, minmax(34px, 1fr))"'), 'Polish Rack uses responsive grid columns for containment');
+assert(studio.includes('justifyItems: "center"') && studio.includes('minWidth: 0') && studio.includes('maxWidth: "100%"'), 'Polish Rack centers bottles without allowing layout spill');
+assert(studio.includes('overflow: "hidden"'), 'Polish Rack clips accidental overflow within the card');
+assert(bottle.includes('maxWidth: "100%"') && bottle.includes('boxSizing: "border-box"'), 'PolishBottle respects the width of narrow rack cells');
 assert(!studio.includes('Recent Colors'), 'Recent Colors wording is removed from Design Studio UI');
 assert(studio.includes('onRackSelect={(value) => updateBase({ baseColorHex: normalizeHex(value'), 'clicking a rack bottle applies a Polish Color through existing base color logic');
 assert(studio.includes('prev.filter((color) => color !== normalized)') && studio.includes('RECENT_POLISH_LIMIT'), 'duplicate polish colors are not repeated and recent list is capped');
