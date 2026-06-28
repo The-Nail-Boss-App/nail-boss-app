@@ -1,12 +1,12 @@
 {
   "name": "nail-boss",
   "version": "1.0.0",
-  "description": "AnitaSet — design-first operating system for independent nail businesses",
+  "description": "AnitaSet \u2014 design-first operating system for independent nail businesses",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
     "build": "npm install --prefix client && npm run build --prefix client",
-    "test": "ANITASET_TEST_DB_FILE=.tmp/smoke-test-db.json node scripts/smoke-test.js",
+    "test": "node scripts/polish-bottle-test.mjs && ANITASET_TEST_DB_FILE=.tmp/smoke-test-db.json node scripts/smoke-test.js",
     "test:geometry": "node scripts/geometry-helper-test.mjs",
     "dev:server": "nodemon server.js",
     "dev:client": "cd client && npm start",
