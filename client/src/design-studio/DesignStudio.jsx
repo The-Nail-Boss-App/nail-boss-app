@@ -295,7 +295,9 @@ function DesignStudio(_, ref) {
   const [saveStatus, setSaveStatus] = useState("Ready");
   const [userSignatureLooks, setUserSignatureLooks] = useState(() => loadStoredSignatureLooks());
   const [recentPolish, setRecentPolish] = useState([]);
+  const [commandZoom, setCommandZoom] = useState(100);
   const [panelState, setPanelState] = useState(() => loadPanelState());
+  // Workspace Memory placeholders: future local persistence should restore zoom, selected polish, drawer state, canvas mode, and selected nail without changing Blueprint data.
   const [selectedSignatureLookId, setSelectedSignatureLookId] = useState(STARTER_SIGNATURE_LOOKS[0]?.id || "");
   const autosaveTimerRef = useRef(null);
   const autosaveSessionRef = useRef(0);
@@ -325,6 +327,9 @@ function DesignStudio(_, ref) {
   const productSummary = useMemo(() => summarizeFullSetAssets(blueprint), [blueprint]);
   const designPalette = useMemo(() => collectDesignPalette(activeNail), [activeNail]);
   const signatureLooks = useMemo(() => [...STARTER_SIGNATURE_LOOKS, ...userSignatureLooks], [userSignatureLooks]);
+  const activePolish = normalizePolishData(baseLayer?.data || {}, activeNail.baseColorHex);
+  const activePolishColor = baseLayer?.data?.colorHex || activeNail.baseColorHex;
+  const collectionName = blueprint.metadata?.collectionName || blueprint.metadata?.collection || "No Collection Assigned";
 
   function rememberPolishColor(value) {
     const normalized = normalizeHex(value, "").toUpperCase();
@@ -913,6 +918,27 @@ function DesignStudio(_, ref) {
     setSelectedSignatureLookId(STARTER_SIGNATURE_LOOKS[0]?.id || "");
   }
 
+
+  function updateDesignName(value) {
+    markEdited();
+    generatedDraftNameRef.current = "";
+    designNameRef.current = value;
+    dirtyRef.current = true;
+    setDesignName(value);
+    setDirty(true);
+    setSaveStatus("Unsaved changes");
+    scheduleAutosave();
+  }
+
+  function openPolishRack() {
+    setPanelState((prev) => ({ ...prev, nailBasics: true }));
+    showNotice("Polish Rack opened in Nail Basics.");
+  }
+
+  function adjustZoom(delta) {
+    setCommandZoom((value) => clamp(value + delta, 25, 200));
+  }
+
   function togglePanel(id) {
     setPanelState((prev) => {
       const next = { ...prev, [id]: !prev[id] };
@@ -926,20 +952,42 @@ function DesignStudio(_, ref) {
   const statusColor = status.type === "error" ? "#b91c1c" : status.type === "saved" ? COLORS.statusAccepted : status.type === "dirty" ? COLORS.statusChangesRequested : COLORS.textMuted;
 
   return <div style={UI.shell}>
-    <div style={UI.toolbar}>
-      <button type="button" onClick={undo} disabled={!canUndo} style={UI.iconButton(false, !canUndo)}>Undo</button>
-      <button type="button" onClick={redo} disabled={!canRedo} style={UI.iconButton(false, !canRedo)}>Redo</button>
-      <button type="button" onClick={() => setMode("select")} style={UI.iconButton(mode === "select")}>Select</button>
-      <button type="button" onClick={() => setMode("draw")} style={UI.iconButton(mode === "draw")}>Draw</button>
-      <button type="button" onClick={() => setMode("eraser")} style={UI.iconButton(mode === "eraser")}>Eraser</button>
-      <span style={{ marginLeft: "auto", color: statusColor, fontSize: 13, fontWeight: 800 }}>{saving ? "Saving…" : loading ? "Loading…" : dirty ? `● ${saveStatus}` : saveStatus || status.message}</span>
-    </div>
+    <header data-testid="artist-command-bar" aria-label="Artist Command Bar" style={UI.artistCommandBar}>
+      <div style={UI.commandIdentity}>
+        <div style={UI.commandLogo}>AnitaSet</div>
+        <input aria-label="Design Name" data-testid="artist-command-design-name" value={designName} onChange={(e) => updateDesignName(e.target.value)} placeholder="Untitled Design" style={UI.commandDesignName} />
+        <div data-testid="artist-command-collection" style={UI.commandCollection}>{collectionName}</div>
+      </div>
+
+      <div style={UI.commandCenter}>
+        <div data-testid="artist-command-autosave" style={{ ...UI.autoSaveBadge, color: statusColor }}>{saving || loading ? "Saving…" : "● Auto Saved"}</div>
+        <button type="button" data-testid="current-polish-bottle" onClick={openPolishRack} style={UI.currentPolishButton} aria-label="Open Polish Rack for Current Polish Bottle">
+          <PolishBottle colorHex={activePolishColor} label={`Current Polish Bottle ${activePolishColor}`} selected size="medium" polishType={activePolish.polishType}/>
+          <span style={UI.currentPolishText}>Current Polish Bottle™<strong style={UI.currentPolishMeta}>{activePolish.polishType} · {activePolishColor}</strong></span>
+        </button>
+      </div>
+
+      <nav aria-label="Artist workspace actions" style={UI.commandActions}>
+        <button type="button" onClick={save} disabled={saving} style={UI.commandButton(false, saving)}>Save Version</button>
+        <button type="button" onClick={() => duplicateActive("opposite")} style={UI.commandButton(false)}>Duplicate</button>
+        <button type="button" onClick={undo} disabled={!canUndo} style={UI.commandButton(false, !canUndo)}>Undo</button>
+        <button type="button" onClick={redo} disabled={!canRedo} style={UI.commandButton(false, !canRedo)}>Redo</button>
+        <button type="button" onClick={copyActiveNail} style={UI.commandButton(false)}>Copy</button>
+        <button type="button" onClick={pasteToSelected} style={UI.commandButton(false, !clipboardNail)}>Paste</button>
+        <div data-testid="artist-command-zoom" style={UI.zoomPill}>
+          <button type="button" aria-label="Zoom Out" onClick={() => adjustZoom(-10)} style={UI.zoomButton}>−</button>
+          <span>{commandZoom}%</span>
+          <button type="button" aria-label="Zoom In" onClick={() => adjustZoom(10)} style={UI.zoomButton}>＋</button>
+        </div>
+        <button type="button" onClick={() => setMode("select")} style={UI.canvasModeButton}>Canvas Mode</button>
+      </nav>
+    </header>
 
     <div style={UI.layout}>
       <aside style={UI.panel}><div style={UI.panelPad}>
         <CollapsiblePanel id="nailBasics" title="Nail Basics" open={panelState.nailBasics} onToggle={togglePanel}>
-          <Field label="Design name"><input style={S.input} value={designName} onChange={(e) => { markEdited(); generatedDraftNameRef.current = ""; designNameRef.current = e.target.value; dirtyRef.current = true; setDesignName(e.target.value); setDirty(true); setSaveStatus("Unsaved changes"); scheduleAutosave(); }} placeholder="Milky bow accent" /></Field>
-          <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}><button type="button" onClick={newDesign} style={{ ...S.btnSecondary, padding: "10px 12px" }}>New Design</button><button type="button" aria-label="Save design" title="Save design" onClick={save} disabled={saving} style={{ ...S.btnPrimary, padding: "10px 12px", opacity: saving ? .65 : 1 }}>💾 Save</button></div>
+          <Field label="Design name"><input style={S.input} value={designName} onChange={(e) => updateDesignName(e.target.value)} placeholder="Untitled Design" /></Field>
+          <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}><button type="button" onClick={newDesign} style={{ ...S.btnSecondary, padding: "10px 12px" }}>New Design</button><button type="button" aria-label="Save design" title="Save design" onClick={save} disabled={saving} style={{ ...S.btnPrimary, padding: "10px 12px", opacity: saving ? .65 : 1 }}>💾 Save Version</button></div>
           <Field label="Saved Designs"><select style={S.input} value={selectedDesignId} onChange={(e) => loadDesign(e.target.value)}><option value="">Choose saved design…</option>{designs.map((design) => <option key={design.id} value={design.id}>{design.name}</option>)}</select></Field>
           <Field label="Nail shape"><select style={S.input} value={activeNail.shape} onChange={(e) => updateBase({ shape: e.target.value })}>{SHAPES.map((shape) => <option key={shape}>{shape}</option>)}</select></Field>
           <GeometrySlider label="Nail length" value={activeNail.length} onChange={(length) => updateBase({ length })}/>
