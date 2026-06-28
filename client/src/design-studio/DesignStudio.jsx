@@ -201,10 +201,10 @@ function NailColorSystem({ value, polishType = "Cream", recentPolish = [], onCha
 }
 
 function PolishRack({ colors, activeColor, polishType, onSelect }) {
-  return <section aria-label="Polish Rack™" data-testid="polish-rack" style={{ marginTop: 12, padding: "12px 10px", borderRadius: 18, border: "1px solid rgba(123,47,89,.16)", background: "linear-gradient(180deg, #fff, #fff7fb)", boxShadow: "0 10px 26px rgba(59,31,53,.08)" }}>
+  return <section aria-label="Polish Rack™" data-testid="polish-rack" style={{ marginTop: 12, minWidth: 0, maxWidth: "100%", padding: "10px 8px", borderRadius: 18, border: "1px solid rgba(123,47,89,.16)", background: "linear-gradient(180deg, #fff, #fff7fb)", boxShadow: "0 10px 26px rgba(59,31,53,.08)", overflow: "hidden" }}>
     <div style={{ ...UI.sectionTitle, marginBottom: 2 }}>Polish Rack™</div>
     <div style={{ ...UI.smallText, marginTop: 0, marginBottom: 8 }}>Recently Used Polish</div>
-    {colors.length ? <div style={{ display: "grid", gridTemplateColumns: "repeat(6, minmax(30px, 1fr))", gap: 8, alignItems: "end" }}>
+    {colors.length ? <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(34px, 1fr))", gap: "6px 4px", alignItems: "end", justifyItems: "center", minWidth: 0, maxWidth: "100%", overflow: "hidden" }}>
       {colors.map((color) => <PolishBottle key={color} colorHex={color} label={`Apply Polish Color ${color}`} selected={activeColor?.toUpperCase() === color} polishType={polishType} onClick={() => onSelect(color)} />)}
     </div> : <p style={{ ...UI.smallText, margin: 0 }}>Choose a Polish Color to place the first bottle on the rack.</p>}
   </section>;

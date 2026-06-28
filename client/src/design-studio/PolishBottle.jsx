@@ -19,7 +19,7 @@ export default function PolishBottle({ colorHex = "#E8A0BF", label, selected = f
   </span>;
 
   if (onClick) {
-    return <button type="button" aria-label={accessibleLabel} title={accessibleLabel} onClick={onClick} style={{ border: 0, background: "transparent", padding: 2, cursor: "pointer", borderRadius: 12 }}>{bottle}</button>;
+    return <button type="button" aria-label={accessibleLabel} title={accessibleLabel} onClick={onClick} style={{ display: "inline-flex", justifyContent: "center", maxWidth: "100%", border: 0, background: "transparent", padding: 1, cursor: "pointer", borderRadius: 12, boxSizing: "border-box" }}>{bottle}</button>;
   }
-  return <span role="img" aria-label={accessibleLabel} title={accessibleLabel} style={{ display: "inline-flex", padding: 2 }}>{bottle}</span>;
+  return <span role="img" aria-label={accessibleLabel} title={accessibleLabel} style={{ display: "inline-flex", justifyContent: "center", maxWidth: "100%", padding: 1, boxSizing: "border-box" }}>{bottle}</span>;
 }
