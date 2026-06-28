@@ -180,16 +180,11 @@ function collectDesignPalette(nail) {
 }
 
 
-const NAIL_COLOR_SWATCHES = ["#F7D7E6", "#E8A0BF", "#C86B8D", "#9D4D72", "#7B2F59", "#FFFFFF", "#F5E8D8", "#2B1024"];
-
-function NailColorSystem({ value, polishType = "Cream", recentPolish = [], onChange, onPolishTypeChange, onApply, onRackSelect }) {
-  return <section style={{ border: `1px solid ${COLORS.border}`, borderRadius: 16, padding: 12, marginBottom: 14, background: "#fff" }}>
+function PolishColorControls({ value, polishType = "Cream", recentPolish = [], onChange, onPolishTypeChange, onApply, onRackSelect, compact = false }) {
+  return <section data-testid="polish-color-controls" aria-label="Polish Color controls" style={{ border: `1px solid ${COLORS.border}`, borderRadius: 16, padding: 12, marginBottom: compact ? 0 : 14, background: "#fff" }}>
     <div style={UI.sectionTitle}>Polish Color System</div>
     <Field label="Polish Type"><select style={S.input} value={polishType} onChange={(e) => onPolishTypeChange(e.target.value)}>{POLISH_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}</select></Field>
     <ColorInput value={value} onChange={onChange}/>
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, marginTop: 10 }}>
-      {NAIL_COLOR_SWATCHES.map((color) => <PolishBottle key={color} colorHex={color} label={`Set Polish Color ${color}`} selected={value?.toUpperCase() === color} polishType={polishType} onClick={() => onChange(color)} />) }
-    </div>
     <PolishRack colors={recentPolish} activeColor={value} polishType={polishType} onSelect={onRackSelect || onChange}/>
     <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 10 }}>
       <button type="button" onClick={() => onApply("active")} style={UI.iconButton(false)}>Active nail</button>
@@ -198,6 +193,10 @@ function NailColorSystem({ value, polishType = "Cream", recentPolish = [], onCha
     </div>
     <p style={UI.smallText}>Cream, Jelly, Milky, and Matte each render through the shared material engine with shape-aware depth.</p>
   </section>;
+}
+
+function NailColorSystem(props) {
+  return <PolishColorControls {...props} />;
 }
 
 function PolishRack({ colors, activeColor, polishType, onSelect }) {
@@ -296,6 +295,7 @@ function DesignStudio(_, ref) {
   const [userSignatureLooks, setUserSignatureLooks] = useState(() => loadStoredSignatureLooks());
   const [recentPolish, setRecentPolish] = useState([]);
   const [commandZoom, setCommandZoom] = useState(100);
+  const [commandPopover, setCommandPopover] = useState("");
   const [panelState, setPanelState] = useState(() => loadPanelState());
   // Workspace Memory placeholders: future local persistence should restore zoom, selected polish, drawer state, canvas mode, and selected nail without changing Blueprint data.
   const [selectedSignatureLookId, setSelectedSignatureLookId] = useState(STARTER_SIGNATURE_LOOKS[0]?.id || "");
@@ -930,9 +930,13 @@ function DesignStudio(_, ref) {
     scheduleAutosave();
   }
 
+  function toggleCommandPopover(id) {
+    setCommandPopover((current) => current === id ? "" : id);
+  }
+
   function openPolishRack() {
-    setPanelState((prev) => ({ ...prev, nailBasics: true }));
-    showNotice("Polish Rack opened in Nail Basics.");
+    setCommandPopover("polish");
+    showNotice("Polish Color controls opened.");
   }
 
   function adjustZoom(delta) {
@@ -950,6 +954,14 @@ function DesignStudio(_, ref) {
   const tagsString = (blueprint.metadata?.tags || []).join(", ");
   const [debugShapeOverlay, setDebugShapeOverlay] = useState(false);
   const statusColor = status.type === "error" ? "#b91c1c" : status.type === "saved" ? COLORS.statusAccepted : status.type === "dirty" ? COLORS.statusChangesRequested : COLORS.textMuted;
+  const activeFrenchTip = activeFrenchTipLayer();
+  const activePolishType = normalizePolishData(baseLayer?.data || {}, activeNail.baseColorHex).polishType;
+  const currentHand = activeSlot.startsWith("R") ? "right" : "left";
+  const applyCurrentPolish = (scope) => {
+    const targets = scope === "active" ? [activeSlot] : slotsFor(scope);
+    const polish = normalizePolishData(baseLayer?.data || {}, activeNail.baseColorHex);
+    commit(applyBaseToSlots(blueprint, { baseColorHex: getVisibleBaseColor(activeNail), polishType: polish.polishType, shine: polish.shine, transparency: polish.transparency, topCoat: polish.topCoat, effect: "Solid" }, targets));
+  };
 
   return <div style={UI.shell}>
     <header data-testid="artist-command-bar" aria-label="Artist Command Bar" style={UI.artistCommandBar}>
@@ -961,19 +973,40 @@ function DesignStudio(_, ref) {
 
       <div style={UI.commandCenter}>
         <div data-testid="artist-command-autosave" style={{ ...UI.autoSaveBadge, color: statusColor }}>{saving || loading ? "Saving…" : "● Auto Saved"}</div>
-        <button type="button" data-testid="current-polish-bottle" onClick={openPolishRack} style={UI.currentPolishButton} aria-label="Open Polish Rack for Current Polish Bottle">
-          <PolishBottle colorHex={activePolishColor} label={`Current Polish Bottle ${activePolishColor}`} selected size="medium" polishType={activePolish.polishType}/>
-          <span style={UI.currentPolishText}>Current Polish Bottle™<strong style={UI.currentPolishMeta}>{activePolish.polishType} · {activePolishColor}</strong></span>
-        </button>
+        <div style={UI.commandGroup}>
+          <button type="button" data-testid="current-polish-bottle" aria-expanded={commandPopover === "polish"} aria-controls="command-polish-color-popover" onClick={openPolishRack} style={UI.currentPolishButton} aria-label="Open Polish Color controls for Current Polish Bottle">
+            <PolishBottle colorHex={activePolishColor} label={`Current Polish Bottle ${activePolishColor}`} selected size="medium" polishType={activePolish.polishType}/>
+            <span style={UI.currentPolishText}>Current Polish Bottle™<strong style={UI.currentPolishMeta}>{activePolish.polishType} · {activePolishColor}</strong></span>
+          </button>
+          {commandPopover === "polish" && <div id="command-polish-color-popover" data-testid="command-polish-color-popover" style={UI.commandPopoverWide}>
+            <PolishColorControls compact value={baseLayer?.data?.colorHex || activeNail.baseColorHex} recentPolish={recentPolish} polishType={activePolishType} onRackSelect={(value) => updateBase({ baseColorHex: normalizeHex(value, baseLayer?.data?.colorHex), polishType: activePolishType, effect: "Solid" })} onPolishTypeChange={(polishType) => updateBase({ polishType, topCoat: polishType === "Matte" ? "Matte" : "Gloss", effect: "Solid" })} onChange={(value) => updateBase({ baseColorHex: normalizeHex(value, baseLayer?.data?.colorHex), polishType: activePolishType, effect: "Solid" })} onApply={applyCurrentPolish}/>
+          </div>}
+        </div>
       </div>
 
       <nav aria-label="Artist workspace actions" style={UI.commandActions}>
         <button type="button" onClick={save} disabled={saving} style={UI.commandButton(false, saving)}>Save Version</button>
-        <button type="button" onClick={() => duplicateActive("opposite")} style={UI.commandButton(false)}>Duplicate</button>
+        <div style={UI.commandGroup}>
+          <button type="button" data-testid="command-set-actions-trigger" aria-expanded={commandPopover === "set"} aria-controls="command-set-actions-popover" onClick={() => toggleCommandPopover("set")} style={UI.commandButton(commandPopover === "set")}>Set Actions</button>
+          {commandPopover === "set" && <div id="command-set-actions-popover" data-testid="command-set-actions-popover" style={UI.commandPopover}>
+            <div style={UI.sectionTitle}>Set Actions</div>
+            <button type="button" onClick={() => duplicateActive("all")} style={UI.iconButton(false)}>Apply current design to all nails</button>
+            <button type="button" onClick={() => duplicateActive("opposite")} style={UI.iconButton(false)}>Duplicate current nail</button>
+            <button type="button" onClick={copyActiveNail} style={UI.iconButton(false)}>Copy current nail</button>
+            <button type="button" onClick={pasteToSelected} disabled={!clipboardNail} style={UI.iconButton(false, !clipboardNail)}>Paste to selected nails</button>
+            <button type="button" onClick={() => duplicateActive("hand")} style={UI.iconButton(false)}>Duplicate to current hand</button>
+            <button type="button" onClick={() => mirrorHand(currentHand)} style={UI.iconButton(false)}>Mirror current hand</button>
+            <p style={{ ...UI.smallText, margin: 0 }}>Paste uses the existing selected-nail workflow from Full-Set Actions.</p>
+          </div>}
+        </div>
+        <div style={UI.commandGroup}>
+          <button type="button" data-testid="command-french-tip-trigger" aria-expanded={commandPopover === "french"} aria-controls="command-french-tip-popover" onClick={() => toggleCommandPopover("french")} style={UI.commandButton(commandPopover === "french", false)}>French Tip</button>
+          {commandPopover === "french" && <div id="command-french-tip-popover" data-testid="command-french-tip-popover" style={UI.commandPopoverWide}>
+            <FrenchTipControls layer={activeFrenchTip} onAdd={addFrenchTip} onPatch={patchFrenchTipData} onApply={applyFrenchTip}/>
+          </div>}
+        </div>
         <button type="button" onClick={undo} disabled={!canUndo} style={UI.commandButton(false, !canUndo)}>Undo</button>
         <button type="button" onClick={redo} disabled={!canRedo} style={UI.commandButton(false, !canRedo)}>Redo</button>
-        <button type="button" onClick={copyActiveNail} style={UI.commandButton(false)}>Copy</button>
-        <button type="button" onClick={pasteToSelected} style={UI.commandButton(false, !clipboardNail)}>Paste</button>
         <div data-testid="artist-command-zoom" style={UI.zoomPill}>
           <button type="button" aria-label="Zoom Out" onClick={() => adjustZoom(-10)} style={UI.zoomButton}>−</button>
           <span>{commandZoom}%</span>
