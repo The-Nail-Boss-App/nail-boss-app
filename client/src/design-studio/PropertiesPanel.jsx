@@ -49,14 +49,14 @@ function GradientStopsControls({ layer, disabled, onPatch }) {
 
 export default function PropertiesPanel({ layer, onPatch, onDuplicate, onDelete }) {
   if (!layer) {
-    return <section><div style={UI.sectionTitle}>Properties</div><p style={UI.smallText}>Select an art layer to edit position, size, color, opacity, and rotation. Artwork is clipped to strict nail-surface boundaries.</p></section>;
+    return <section><div style={UI.sectionTitle}>Nail Art Controls™</div><p style={UI.smallText}>Select an art layer to edit position, size, color, opacity, and rotation. Artwork is clipped to strict nail-surface boundaries.</p></section>;
   }
   const disabled = layer.locked;
   const asset = findAsset(layer.data?.assetId);
   const isAsset = ["charm", "jewel", "decal"].includes(layer.type);
   return (
     <section>
-      <div style={UI.sectionTitle}>Properties</div>
+      <div style={UI.sectionTitle}>Nail Art Controls™</div>
       <div style={UI.field}>
         <label style={S.label}>Layer name</label>
         <input style={S.input} value={layer.name} disabled={layer.type === "base"} onChange={(e) => onPatch({ name: e.target.value })} />

@@ -120,8 +120,8 @@ for (const card of [
   assert.ok(studio.includes(card), `${card} card should exist.`);
 assert.match(
   studioStyles,
-  /gridTemplateColumns:[\s\S]*"minmax\(320px, 0\.9fr\) minmax\(560px, 1\.8fr\) minmax\(300px, 0\.85fr\)"/,
-  "Hero Canvas should be the dominant central workspace column.",
+  /gridTemplateColumns:[\s\S]*"minmax\(220px, 0\.9fr\) minmax\(320px, 1\.7fr\) minmax\(220px, 0\.85fr\)"[\s\S]*overflowX: "hidden"/,
+  "Hero Canvas should remain the dominant responsive workspace column without horizontal overflow.",
 );
 assert.match(
   studio,
@@ -130,8 +130,26 @@ assert.match(
 );
 assert.match(
   studio,
-  /Nail Stack™[\s\S]*<PropertiesPanel[\s\S]*<LayersPanel[\s\S]*data-testid="history-placeholder"/,
-  "Nail Stack right panel should contain properties, layers, and history placeholder.",
+  /(?=[\s\S]*data-testid="artist-command-zoom")(?=[\s\S]*\{commandZoom\}%)(?=[\s\S]*zoom=\{commandZoom \/ 100\})/,
+  "Zoom controls should drive the Hero Canvas NailCanvas scale."
+);
+assert.match(
+  studio,
+  /data-testid="command-nail-basics-trigger"[\s\S]*Nail Basics™[\s\S]*Nail Shape[\s\S]*Nail Length[\s\S]*Nail Width[\s\S]*Active Nail[\s\S]*Current Hand[\s\S]*Full Set/,
+  "Nail Basics should live in an Artist Command Bar popover with supported apply scopes."
+);
+assert.doesNotMatch(
+  leftSidebar,
+  /title="Nail Basics"/,
+  "Legacy Nail Basics sidebar panel should be removed."
+);
+assert.match(studio, /Nail Art Controls™/, "Nail Art Controls wording should exist.");
+assert.doesNotMatch(studio, />Properties<|title="Properties"|Layer Details/, "Legacy Properties and Layer Details wording should be removed from UI copy.");
+
+assert.match(
+  studio,
+  /Nail Stack™[\s\S]*Nail Art Controls™[\s\S]*<PropertiesPanel[\s\S]*<LayersPanel[\s\S]*data-testid="history-placeholder"/,
+  "Nail Stack right panel should contain Nail Art Controls, layers, and history placeholder.",
 );
 assert.doesNotMatch(
   nailStackPanel,
