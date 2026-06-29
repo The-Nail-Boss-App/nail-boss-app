@@ -125,7 +125,7 @@ const STUDIO_DOCK_MODES = [
 
 const DEFAULT_PANEL_STATE = {
   polishStudio: true,
-  nailBasics: true,
+  nailBasics: false,
   signatureLooks: true,
   designDetails: false,
   artTools: true,
@@ -2269,6 +2269,71 @@ function DesignStudio(_, ref) {
           <div style={UI.commandGroup}>
             <button
               type="button"
+              data-testid="command-nail-basics-trigger"
+              aria-expanded={commandPopover === "nailBasics"}
+              aria-controls="command-nail-basics-popover"
+              onClick={() => toggleCommandPopover("nailBasics")}
+              style={UI.commandButton(commandPopover === "nailBasics")}
+            >
+              Nail Basics™
+            </button>
+            {commandPopover === "nailBasics" && (
+              <div
+                id="command-nail-basics-popover"
+                data-testid="command-nail-basics-popover"
+                style={UI.commandPopover}
+              >
+                <div style={UI.sectionTitle}>Nail Basics™</div>
+                <Field label="Nail Shape">
+                  <select
+                    style={S.input}
+                    value={activeNail.shape}
+                    onChange={(e) => updateBase({ shape: e.target.value })}
+                  >
+                    {SHAPES.map((shape) => (
+                      <option key={shape}>{shape}</option>
+                    ))}
+                  </select>
+                </Field>
+                <GeometrySlider
+                  label="Nail Length"
+                  value={activeNail.length}
+                  onChange={(length) => updateBase({ length })}
+                />
+                <GeometrySlider
+                  label="Nail Width"
+                  value={activeNail.width}
+                  onChange={(width) => updateBase({ width })}
+                />
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  <button
+                    type="button"
+                    onClick={() => showNotice("Nail basics already applied to the active nail.")}
+                    style={UI.iconButton(false)}
+                  >
+                    Active Nail
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyShape("hand")}
+                    style={UI.iconButton(false)}
+                  >
+                    Current Hand
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyShape("all")}
+                    style={UI.iconButton(false)}
+                  >
+                    Full Set
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+          <div style={UI.commandGroup}>
+            <button
+              type="button"
               data-testid="command-set-actions-trigger"
               aria-expanded={commandPopover === "set"}
               aria-controls="command-set-actions-popover"
@@ -2429,94 +2494,6 @@ function DesignStudio(_, ref) {
               {renderActiveStudioPanel()}
             </div>
             <CollapsiblePanel
-              id="nailBasics"
-              title="Nail Basics"
-              open={panelState.nailBasics}
-              onToggle={togglePanel}
-            >
-              <Field label="Design name">
-                <input
-                  style={S.input}
-                  value={designName}
-                  onChange={(e) => updateDesignName(e.target.value)}
-                  placeholder="Untitled Design"
-                />
-              </Field>
-              <div
-                style={{
-                  display: "flex",
-                  gap: 8,
-                  marginBottom: 14,
-                  flexWrap: "wrap",
-                }}
-              >
-                <button
-                  type="button"
-                  onClick={newDesign}
-                  style={{ ...S.btnSecondary, padding: "10px 12px" }}
-                >
-                  New Design
-                </button>
-                <button
-                  type="button"
-                  aria-label="Save design"
-                  title="Save design"
-                  onClick={save}
-                  disabled={saving}
-                  style={{
-                    ...S.btnPrimary,
-                    padding: "10px 12px",
-                    opacity: saving ? 0.65 : 1,
-                  }}
-                >
-                  💾 Save Version
-                </button>
-              </div>
-              <Field label="Saved Designs">
-                <select
-                  style={S.input}
-                  value={selectedDesignId}
-                  onChange={(e) => loadDesign(e.target.value)}
-                >
-                  <option value="">Choose saved design…</option>
-                  {designs.map((design) => (
-                    <option key={design.id} value={design.id}>
-                      {design.name}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-              <Field label="Nail shape">
-                <select
-                  style={S.input}
-                  value={activeNail.shape}
-                  onChange={(e) => updateBase({ shape: e.target.value })}
-                >
-                  {SHAPES.map((shape) => (
-                    <option key={shape}>{shape}</option>
-                  ))}
-                </select>
-              </Field>
-              <GeometrySlider
-                label="Nail length"
-                value={activeNail.length}
-                onChange={(length) => updateBase({ length })}
-              />
-              <GeometrySlider
-                label="Nail width"
-                value={activeNail.width}
-                onChange={(width) => updateBase({ width })}
-              />
-              <p style={UI.smallText}>
-                Polish controls now live in the Current Polish Bottle™ Polish
-                Studio in the Artist Command Bar.
-              </p>
-              <p style={UI.smallText}>
-                Hero shape masks are artist-calibrated. Length and width can
-                scale the mask, but they do not redefine the shape family.
-              </p>
-            </CollapsiblePanel>
-            <CollapsiblePanel
               id="signatureLooks"
               title="Signature Looks"
               open={panelState.signatureLooks}
@@ -2629,6 +2606,7 @@ function DesignStudio(_, ref) {
           >
             <NailCanvas
               debugOverlay={debugShapeOverlay}
+              zoom={commandZoom / 100}
               nail={activeNail}
               layers={activeNail.layers}
               selectedLayerId={selectedLayerId}
@@ -2667,7 +2645,7 @@ function DesignStudio(_, ref) {
             </div>
             <CollapsiblePanel
               id="properties"
-              title="Properties"
+              title="Nail Art Controls™"
               open={panelState.properties}
               onToggle={togglePanel}
             >

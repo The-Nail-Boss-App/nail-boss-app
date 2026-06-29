@@ -14,7 +14,7 @@ const polishRendererSource = await readFile(new URL('../client/src/design-studio
 const propertiesPanelSource = await readFile(new URL('../client/src/design-studio/PropertiesPanel.jsx', import.meta.url), 'utf8');
 const blueprint = await import(`data:text/javascript;charset=utf-8,${encodeURIComponent(source)}`);
 
-assert(['Nail Basics', 'Signature Looks', 'Design Details', 'Art Tools', 'Properties', 'Layers'].every((title) => designStudioSource.includes(`title="${title}"`) || designStudioSource.includes(`>${title}<`) || designStudioSource.includes(`"${title}"`)), 'Design Studio exposes the required compact top-level section titles');
+assert(['Nail Basics™', 'Signature Looks', 'Design Details', 'Art Tools', 'Nail Art Controls™', 'Layers'].every((title) => designStudioSource.includes(`title="${title}"`) || designStudioSource.includes(`>${title}<`) || designStudioSource.includes(`"${title}"`)), 'Design Studio exposes the required compact top-level section titles');
 assert(!designStudioSource.includes('title="Full-Set Actions"') && !designStudioSource.includes('title="Developer Geometry Tools"'), 'Legacy full-set and developer geometry panels are hidden from production UI');
 assert(designStudioSource.includes('aria-expanded={open}') && designStudioSource.includes('PANEL_PREFS_STORAGE_KEY') && designStudioSource.includes('localStorage.setItem(PANEL_PREFS_STORAGE_KEY'), 'collapsible panels can expand/collapse and remember panel state');
 assert(designStudioSource.includes('data-testid="signature-looks-select"') && designStudioSource.includes('<optgroup label="Starter Looks"') && designStudioSource.includes('<optgroup label="My Looks"'), 'Signature Looks Library exposes starter and custom looks in a grouped dropdown/select');
@@ -303,7 +303,7 @@ assert(designStudioSource.includes('Smile width') && propertiesPanelSource.inclu
 assert(frenchTipRenderingSource.includes('const width = g.width * data.smileWidth') && frenchTipRenderingSource.includes('Q ${g.cx} ${qY} ${right}'), 'French Tip width changes the rendered smile path endpoints');
 assert(frenchTipRenderingSource.includes('getNailFreeEdgeExtent(nail)') && frenchTipRenderingSource.includes('L ${g.right} ${renderBottomY} L ${g.left} ${renderBottomY} Z'), 'French Tip free-edge fill closes against shared smooth silhouette extent to prevent Round/Oval base-color crescents');
 
-assert(nailCanvasSource.includes('justifyContent: "flex-start"') && nailCanvasSource.includes('width: "min(54vh, 96%)"') && nailCanvasSource.includes('maxWidth: 430'), 'active nail canvas is top-aligned with reduced vertical footprint while preserving a comfortable design size');
+assert(nailCanvasSource.includes('justifyContent: "center"') && nailCanvasSource.includes('width: "min(42vh, 74%)"') && nailCanvasSource.includes('maxWidth: 340') && nailCanvasSource.includes('transform: `scale(${zoom})`'), 'active nail canvas stays centered, zoomable, and sized to avoid responsive clipping');
 
 assert(!designStudioSource.includes('Taper') && !designStudioSource.includes('Apex height') && !designStudioSource.includes('Sidewall curve') && !designStudioSource.includes('Free-edge thickness'), 'advanced taper/apex/sidewall/free-edge controls are not exposed in the editor flow');
 

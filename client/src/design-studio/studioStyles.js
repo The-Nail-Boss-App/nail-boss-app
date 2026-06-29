@@ -21,10 +21,10 @@ export const UI = {
   artistCommandBar: {
     display: "grid",
     gridTemplateColumns:
-      "minmax(250px, 1.1fr) minmax(260px, .9fr) minmax(420px, 1.35fr)",
+      "minmax(220px, 1.1fr) minmax(220px, .9fr) minmax(300px, 1.35fr)",
     gap: 22,
     alignItems: "center",
-    padding: "26px 30px",
+    padding: "clamp(14px, 2vw, 26px) clamp(16px, 2.4vw, 30px)",
     borderBottom: "1px solid rgba(123,47,89,.14)",
     background: "linear-gradient(135deg, #fffaf7 0%, #fff 48%, #fff4fb 100%)",
     boxShadow: "0 18px 45px rgba(60,20,50,.08)",
@@ -217,10 +217,11 @@ export const UI = {
     minHeight: 0,
     display: "grid",
     gridTemplateColumns:
-      "minmax(320px, 0.9fr) minmax(560px, 1.8fr) minmax(300px, 0.85fr)",
+      "minmax(220px, 0.9fr) minmax(320px, 1.7fr) minmax(220px, 0.85fr)",
     gap: 16,
     padding: 16,
-    overflow: "auto",
+    overflowX: "hidden",
+    overflowY: "auto",
     alignItems: "start",
   },
   panel: {
@@ -238,7 +239,10 @@ export const UI = {
     zIndex: 2,
     background:
       "radial-gradient(circle at 50% 10%, #fff 0%, #fff7fb 52%, #f7edf4 100%)",
-    minHeight: 560,
+    minHeight: "clamp(420px, 58vh, 620px)",
+    display: "grid",
+    placeItems: "center",
+    overflow: "visible",
   },
   panelPad: { padding: 14 },
   sectionTitle: {
@@ -361,6 +365,7 @@ export const UI = {
     flexDirection: "column",
     alignItems: "stretch",
     overflow: "visible",
+    minWidth: 0,
     border: "1px solid rgba(123,47,89,.18)",
     background: "linear-gradient(180deg, #fff 0%, #fff7fb 100%)",
   },
