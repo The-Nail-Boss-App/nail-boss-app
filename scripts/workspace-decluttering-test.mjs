@@ -197,4 +197,42 @@ assert.ok(
   "Proposal and Blueprint files are only read by this test.",
 );
 
+assert.ok(
+  studio.includes("data: patch.data ? { ...layer.data, ...patch.data } : layer.data") &&
+    studio.includes('onPatch({ colorHex: normalizeHex(value, "#FFFFFF") })') &&
+    studio.includes('data-testid="french-tip-visible-color-binding"'),
+  "French Tip color controls should merge existing layer data and bind to the visible French Tip color layer.",
+);
+assert.match(
+  studio,
+  /data-testid="command-french-tip-popover"[\s\S]*data-canvas-safe-placement="left-creative-wall-anchor"[\s\S]*style=\{UI\.commandFrenchTipPopover\}/,
+  "French Tip quick access should be anchored to the Creative Wall side instead of over the hero canvas.",
+);
+assert.match(
+  studioStyles,
+  /commandFrenchTipPopover:[\s\S]*position: "fixed"[\s\S]*left: 18[\s\S]*maxHeight: "calc\(100vh - 154px\)"/,
+  "French Tip command popover should use a canvas-safe fixed left rail style.",
+);
+assert.match(
+  studio,
+  /function openFrenchTipQuickAccess\(\)[\s\S]*setCommandPopover[\s\S]*setActiveStudio\("techniqueStudio"\)[\s\S]*setTab\("effects"\)/,
+  "Command-bar French Tip should open Technique Studio as quick access, not become the only control path.",
+);
+assert.ok(
+  studio.includes('data-testid="technique-studio-panel"') &&
+    studio.includes('data-testid={quickAccess ? "french-tip-quick-access-controls" : "technique-studio-french-tip-controls"}') &&
+    studio.includes('data-control-home={quickAccess ? "command-quick-access" : "technique-studio"}'),
+  "French Tip controls should remain available inside Technique Studio.",
+);
+assert.match(
+  studio,
+  /data-testid="french-tip-height-slider"[\s\S]*data-testid="french-tip-smile-curve-slider"[\s\S]*data-testid="french-tip-smile-depth-slider"[\s\S]*data-testid="french-tip-smile-width-slider"/,
+  "French Tip live adjustment sliders should remain present.",
+);
+assert.match(
+  studio,
+  /function applyFrenchTip\(scope\)[\s\S]*commit\(applyFrenchTipToSlots[\s\S]*setCommandPopover\(\s*""\s*\)/,
+  "Applying a French Tip scope from quick access should close the command popover without closing during slider changes.",
+);
+
 console.log("Workspace Decluttering UI guardrails passed.");

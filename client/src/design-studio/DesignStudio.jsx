@@ -281,10 +281,12 @@ function ColorInput({ value, onChange }) {
   );
 }
 
-function FrenchTipControls({ layer, onAdd, onPatch, onApply }) {
+function FrenchTipControls({ layer, onAdd, onPatch, onApply, quickAccess = false }) {
   const data = layer?.data || {};
   return (
     <section
+      data-testid={quickAccess ? "french-tip-quick-access-controls" : "technique-studio-french-tip-controls"}
+      data-control-home={quickAccess ? "command-quick-access" : "technique-studio"}
       style={{
         border: `1px solid ${COLORS.border}`,
         borderRadius: 16,
@@ -305,6 +307,7 @@ function FrenchTipControls({ layer, onAdd, onPatch, onApply }) {
         <select
           style={S.input}
           value={data.preset || "medium"}
+          data-testid="french-tip-preset-control"
           onChange={(e) => onPatch({ preset: e.target.value })}
         >
           {Object.keys(FRENCH_TIP_PRESETS).map((preset) => (
@@ -318,6 +321,7 @@ function FrenchTipControls({ layer, onAdd, onPatch, onApply }) {
         <select
           style={S.input}
           value={data.style || "classic"}
+          data-testid="french-tip-style-control"
           onChange={(e) => onPatch({ style: e.target.value })}
         >
           {FRENCH_TIP_STYLES.map((style) => (
@@ -335,6 +339,7 @@ function FrenchTipControls({ layer, onAdd, onPatch, onApply }) {
           min="8"
           max="72"
           value={Math.round((data.tipHeight ?? 0.32) * 100)}
+          data-testid="french-tip-height-slider"
           onChange={(e) => onPatch({ tipHeight: Number(e.target.value) / 100 })}
           style={{ width: "100%" }}
         />
@@ -347,6 +352,7 @@ function FrenchTipControls({ layer, onAdd, onPatch, onApply }) {
           min="0"
           max="100"
           value={Math.round((data.smileCurve ?? 0.32) * 100)}
+          data-testid="french-tip-smile-curve-slider"
           onChange={(e) =>
             onPatch({ smileCurve: Number(e.target.value) / 100 })
           }
@@ -361,6 +367,7 @@ function FrenchTipControls({ layer, onAdd, onPatch, onApply }) {
           min="0"
           max="65"
           value={Math.round((data.smileDepth ?? 0.24) * 100)}
+          data-testid="french-tip-smile-depth-slider"
           onChange={(e) =>
             onPatch({ smileDepth: Number(e.target.value) / 100 })
           }
@@ -375,6 +382,7 @@ function FrenchTipControls({ layer, onAdd, onPatch, onApply }) {
           min="25"
           max="100"
           value={Math.round((data.smileWidth ?? 0.82) * 100)}
+          data-testid="french-tip-smile-width-slider"
           onChange={(e) =>
             onPatch({ smileWidth: Number(e.target.value) / 100 })
           }
@@ -385,6 +393,7 @@ function FrenchTipControls({ layer, onAdd, onPatch, onApply }) {
         <select
           style={S.input}
           value={data.fillType || "solid"}
+          data-testid="french-tip-fill-type-control"
           onChange={(e) => onPatch({ fillType: e.target.value })}
         >
           <option value="solid">Solid</option>
@@ -441,12 +450,14 @@ function FrenchTipControls({ layer, onAdd, onPatch, onApply }) {
         </>
       ) : (
         <Field label="Tip color">
+          <div data-testid="french-tip-visible-color-binding">
           <ColorInput
             value={data.colorHex || "#FFFFFF"}
             onChange={(value) =>
               onPatch({ colorHex: normalizeHex(value, "#FFFFFF") })
             }
           />
+          </div>
         </Field>
       )}
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
@@ -1241,7 +1252,7 @@ function DesignStudio(_, ref) {
         const merged = {
           ...layer,
           ...patch,
-          data: patch.data ? patch.data : layer.data,
+          data: patch.data ? { ...layer.data, ...patch.data } : layer.data,
         };
         if (patch.transform)
           merged.transform = safeTransform(patch.transform, nail, layer.type);
@@ -1349,6 +1360,7 @@ function DesignStudio(_, ref) {
             ? "French tip applied to current hand."
             : "French tip applied to active nail.",
     });
+    setCommandPopover("");
   }
 
   function addStroke(stroke) {
@@ -1941,6 +1953,13 @@ function DesignStudio(_, ref) {
     setCommandPopover((current) => (current === id ? "" : id));
   }
 
+  function openFrenchTipQuickAccess() {
+    setCommandPopover((current) => (current === "french" ? "" : "french"));
+    setActiveStudio("techniqueStudio");
+    setTab("effects");
+    showNotice("Technique Studio opened on the Creative Wall; French Tip quick access is anchored away from the Hero Canvas.");
+  }
+
   function openPolishRack() {
     setCommandPopover("polish");
     setActiveStudio("polishStudio");
@@ -2405,7 +2424,7 @@ function DesignStudio(_, ref) {
               data-testid="command-french-tip-trigger"
               aria-expanded={commandPopover === "french"}
               aria-controls="command-french-tip-popover"
-              onClick={() => toggleCommandPopover("french")}
+              onClick={openFrenchTipQuickAccess}
               style={UI.commandButton(commandPopover === "french", false)}
             >
               French Tip
@@ -2414,13 +2433,15 @@ function DesignStudio(_, ref) {
               <div
                 id="command-french-tip-popover"
                 data-testid="command-french-tip-popover"
-                style={UI.commandPopoverWide}
+                data-canvas-safe-placement="left-creative-wall-anchor"
+                style={UI.commandFrenchTipPopover}
               >
                 <FrenchTipControls
                   layer={activeFrenchTip}
                   onAdd={addFrenchTip}
                   onPatch={patchFrenchTipData}
                   onApply={applyFrenchTip}
+                  quickAccess
                 />
               </div>
             )}
