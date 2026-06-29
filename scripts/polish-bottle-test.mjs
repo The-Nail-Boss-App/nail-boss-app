@@ -19,8 +19,8 @@ assert(bottle.includes('rgba(255,255,255,.42)'), 'PolishBottle renders a subtle 
 
 assert(studio.includes('data-testid="polish-rack"'), 'Polish Rack section exists');
 assert(studio.includes('data-testid="polish-color-controls"'), 'Polish Color controls exist');
-assert(studio.includes('data-testid="command-polish-color-popover"'), 'Current Polish Bottle opens Polish Color controls in the command bar');
-assert(studio.includes('data-testid="command-set-actions-trigger"') && studio.includes('data-testid="command-set-actions-popover"'), 'Full Set Actions are available from the command bar');
+assert(studio.includes('data-testid="command-polish-color-popover"') && studio.includes('Polish Studio'), 'Current Polish Bottle opens Polish Studio in the command bar');
+assert(studio.includes('data-testid="command-set-actions-trigger"') && studio.includes('data-testid="command-set-actions-popover"'), 'Set Actions are available from the command bar');
 assert(studio.includes('Apply current design to all nails') && studio.includes('Copy current nail') && studio.includes('Paste to selected nails') && studio.includes('Mirror current hand'), 'Command bar exposes existing full-set workflow actions');
 assert(studio.includes('data-testid="command-french-tip-trigger"') && studio.includes('data-testid="command-french-tip-popover"'), 'French Tip controls are available from the command bar');
 assert(studio.includes('Polish Rack™'), 'Polish Rack™ wording exists');
@@ -32,8 +32,9 @@ assert(bottle.includes('maxWidth: "100%"') && bottle.includes('boxSizing: "borde
 assert(!studio.includes('Recent Colors'), 'Recent Colors wording is removed from Design Studio UI');
 assert(!studio.includes('NAIL_COLOR_SWATCHES'), 'legacy static bottle swatch palette is removed');
 assert(!studio.includes('Set Polish Color ${color}'), 'duplicate static polish bottle rows are removed');
-assert(studio.includes('onRackSelect={(value) => updateBase({ baseColorHex: normalizeHex(value'), 'clicking a rack bottle applies a Polish Color through existing base color logic');
+assert(studio.includes('onRackSelect={(value) => { const colorHex = normalizeHex(value, activePolishColor);') && studio.includes('rememberPolishColor(colorHex); updateBase({ baseColorHex: colorHex'), 'clicking a committed rack bottle applies a Polish Color through existing base color logic');
 assert(studio.includes('prev.filter((color) => color !== normalized)') && studio.includes('RECENT_POLISH_LIMIT'), 'duplicate polish colors are not repeated and recent list is capped');
+assert(!studio.includes('if (patch.baseColorHex || patch.colorHex) rememberPolishColor'), 'browsing polish colors does not create rack history');
 assert(studio.includes('baseLayer?.data?.colorHex || activeNail.baseColorHex'), 'legacy baseColorHex remains supported in Design Studio color value');
 assert(studio.includes('data-testid="artist-command-bar"'), 'Artist Command Bar exists');
 assert(studio.includes('data-testid="artist-command-design-name"') && studio.includes('placeholder="Untitled Design"') && studio.includes('updateDesignName(e.target.value)'), 'Artist Command Bar design name is editable with placeholder');

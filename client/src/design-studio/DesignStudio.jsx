@@ -7,7 +7,6 @@ import PropertiesPanel from "./PropertiesPanel.jsx";
 import DrawingToolbar from "./DrawingToolbar.jsx";
 import FullSetPreview from "./FullSetPreview.jsx";
 import PolishBottle from "./PolishBottle.jsx";
-import BulkActionsPanel from "./BulkActionsPanel.jsx";
 import { UI } from "./studioStyles.js";
 import {
   DEFAULT_ACTIVE_SLOT,
@@ -37,7 +36,6 @@ import {
   FRENCH_TIP_STYLES,
   getActiveNail,
   getVisibleBaseColor,
-  getNailArchitecture,
   gradientLayer,
   isReusableDrawingLayer,
   normalizeHex,
@@ -63,14 +61,15 @@ import {
 
 const PANEL_PREFS_STORAGE_KEY = "anitaset.designStudio.panels.v1";
 const RECENT_POLISH_LIMIT = 12;
+const PANEL_GROUPS = [
+  ["nailBasics", "signatureLooks", "designDetails"],
+  ["artTools", "properties", "layers"],
+];
 
 const DEFAULT_PANEL_STATE = {
   nailBasics: true,
   signatureLooks: true,
   designDetails: false,
-  frenchTip: false,
-  fullSetActions: false,
-  developerGeometry: false,
   artTools: true,
   layerEffects: true,
   detailBrush: false,
@@ -78,10 +77,20 @@ const DEFAULT_PANEL_STATE = {
   layers: true,
 };
 
+
+function collapsePanelSiblings(state) {
+  return PANEL_GROUPS.reduce((next, group) => {
+    const openPanels = group.filter((id) => next[id]);
+    if (openPanels.length <= 1) return next;
+    const keepOpen = openPanels[0];
+    return group.reduce((groupState, id) => ({ ...groupState, [id]: id === keepOpen }), next);
+  }, { ...state });
+}
+
 function loadPanelState() {
   if (typeof window === "undefined") return DEFAULT_PANEL_STATE;
   try {
-    return { ...DEFAULT_PANEL_STATE, ...JSON.parse(window.localStorage.getItem(PANEL_PREFS_STORAGE_KEY) || "{}") };
+    return collapsePanelSiblings({ ...DEFAULT_PANEL_STATE, ...JSON.parse(window.localStorage.getItem(PANEL_PREFS_STORAGE_KEY) || "{}") });
   } catch {
     return DEFAULT_PANEL_STATE;
   }
@@ -181,10 +190,11 @@ function collectDesignPalette(nail) {
 
 
 function PolishColorControls({ value, polishType = "Cream", recentPolish = [], onChange, onPolishTypeChange, onApply, onRackSelect, compact = false }) {
-  return <section data-testid="polish-color-controls" aria-label="Polish Color controls" style={{ border: `1px solid ${COLORS.border}`, borderRadius: 16, padding: 12, marginBottom: compact ? 0 : 14, background: "#fff" }}>
-    <div style={UI.sectionTitle}>Polish Color System</div>
+  return <section data-testid="polish-color-controls" aria-label="Polish Studio" style={{ border: `1px solid ${COLORS.border}`, borderRadius: 16, padding: 12, marginBottom: compact ? 0 : 14, background: "#fff" }}>
+    <div style={UI.sectionTitle}>Polish Studio</div>
+    <Field label="Polish Color"><ColorInput value={value} onChange={onChange}/></Field>
+    <Field label="HEX"><input aria-label="Polish HEX" style={{ ...S.input, fontFamily: "monospace" }} value={value} maxLength={7} onChange={(e) => /^#[0-9a-fA-F]{0,6}$/.test(e.target.value) && onChange(e.target.value.toUpperCase())}/></Field>
     <Field label="Polish Type"><select style={S.input} value={polishType} onChange={(e) => onPolishTypeChange(e.target.value)}>{POLISH_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}</select></Field>
-    <ColorInput value={value} onChange={onChange}/>
     <PolishRack colors={recentPolish} activeColor={value} polishType={polishType} onSelect={onRackSelect || onChange}/>
     <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 10 }}>
       <button type="button" onClick={() => onApply("active")} style={UI.iconButton(false)}>Active nail</button>
@@ -195,17 +205,13 @@ function PolishColorControls({ value, polishType = "Cream", recentPolish = [], o
   </section>;
 }
 
-function NailColorSystem(props) {
-  return <PolishColorControls {...props} />;
-}
-
 function PolishRack({ colors, activeColor, polishType, onSelect }) {
   return <section aria-label="Polish Rack™" data-testid="polish-rack" style={{ marginTop: 12, minWidth: 0, maxWidth: "100%", padding: "10px 8px", borderRadius: 18, border: "1px solid rgba(123,47,89,.16)", background: "linear-gradient(180deg, #fff, #fff7fb)", boxShadow: "0 10px 26px rgba(59,31,53,.08)", overflow: "hidden" }}>
     <div style={{ ...UI.sectionTitle, marginBottom: 2 }}>Polish Rack™</div>
     <div style={{ ...UI.smallText, marginTop: 0, marginBottom: 8 }}>Recently Used Polish</div>
     {colors.length ? <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(34px, 1fr))", gap: "6px 4px", alignItems: "end", justifyItems: "center", minWidth: 0, maxWidth: "100%", overflow: "hidden" }}>
       {colors.map((color) => <PolishBottle key={color} colorHex={color} label={`Apply Polish Color ${color}`} selected={activeColor?.toUpperCase() === color} polishType={polishType} onClick={() => onSelect(color)} />)}
-    </div> : <p style={{ ...UI.smallText, margin: 0 }}>Choose a Polish Color to place the first bottle on the rack.</p>}
+    </div> : <p style={{ ...UI.smallText, margin: 0 }}>Apply a Polish Color to place the first bottle on the rack.</p>}
   </section>;
 }
 
@@ -329,6 +335,7 @@ function DesignStudio(_, ref) {
   const signatureLooks = useMemo(() => [...STARTER_SIGNATURE_LOOKS, ...userSignatureLooks], [userSignatureLooks]);
   const activePolish = normalizePolishData(baseLayer?.data || {}, activeNail.baseColorHex);
   const activePolishColor = baseLayer?.data?.colorHex || activeNail.baseColorHex;
+  const [draftPolish, setDraftPolish] = useState({ colorHex: activePolishColor, polishType: activePolish.polishType });
   const collectionName = blueprint.metadata?.collectionName || blueprint.metadata?.collection || "No Collection Assigned";
 
   function rememberPolishColor(value) {
@@ -357,6 +364,10 @@ function DesignStudio(_, ref) {
     window.addEventListener("beforeunload", onBeforeUnload);
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
   }, []);
+
+  useEffect(() => {
+    setDraftPolish({ colorHex: activePolishColor, polishType: activePolish.polishType });
+  }, [activePolishColor, activePolish.polishType, commandPopover]);
 
   useImperativeHandle(ref, () => ({
     hasDirtyWork: () => dirtyRef.current,
@@ -469,7 +480,6 @@ function DesignStudio(_, ref) {
   }
 
   function updateBase(patch) {
-    if (patch.baseColorHex || patch.colorHex) rememberPolishColor(patch.baseColorHex || patch.colorHex);
     let next = synchronizeBase(blueprint, patch);
     if (["shape", "length", "width"].some((key) => patch[key] !== undefined)) next = revalidateLayersAfterNailResize(next);
     if (patch.tags !== undefined) next = { ...next, metadata: { ...next.metadata, tags: normalizeTags(patch.tags) } };
@@ -936,7 +946,7 @@ function DesignStudio(_, ref) {
 
   function openPolishRack() {
     setCommandPopover("polish");
-    showNotice("Polish Color controls opened.");
+    showNotice("Polish Studio opened.");
   }
 
   function adjustZoom(delta) {
@@ -945,7 +955,10 @@ function DesignStudio(_, ref) {
 
   function togglePanel(id) {
     setPanelState((prev) => {
-      const next = { ...prev, [id]: !prev[id] };
+      const group = PANEL_GROUPS.find((items) => items.includes(id));
+      const next = group
+        ? group.reduce((state, panelId) => ({ ...state, [panelId]: panelId === id ? !prev[id] : false }), { ...prev })
+        : { ...prev, [id]: !prev[id] };
       if (typeof window !== "undefined") window.localStorage.setItem(PANEL_PREFS_STORAGE_KEY, JSON.stringify(next));
       return next;
     });
@@ -955,12 +968,13 @@ function DesignStudio(_, ref) {
   const [debugShapeOverlay, setDebugShapeOverlay] = useState(false);
   const statusColor = status.type === "error" ? "#b91c1c" : status.type === "saved" ? COLORS.statusAccepted : status.type === "dirty" ? COLORS.statusChangesRequested : COLORS.textMuted;
   const activeFrenchTip = activeFrenchTipLayer();
-  const activePolishType = normalizePolishData(baseLayer?.data || {}, activeNail.baseColorHex).polishType;
   const currentHand = activeSlot.startsWith("R") ? "right" : "left";
   const applyCurrentPolish = (scope) => {
     const targets = scope === "active" ? [activeSlot] : slotsFor(scope);
-    const polish = normalizePolishData(baseLayer?.data || {}, activeNail.baseColorHex);
-    commit(applyBaseToSlots(blueprint, { baseColorHex: getVisibleBaseColor(activeNail), polishType: polish.polishType, shine: polish.shine, transparency: polish.transparency, topCoat: polish.topCoat, effect: "Solid" }, targets));
+    const committedColor = normalizeHex(draftPolish.colorHex, activePolishColor);
+    const polish = normalizePolishData({ ...baseLayer?.data, polishType: draftPolish.polishType }, committedColor);
+    rememberPolishColor(committedColor);
+    commit(applyBaseToSlots(blueprint, { baseColorHex: committedColor, polishType: polish.polishType, shine: polish.shine, transparency: polish.transparency, topCoat: draftPolish.polishType === "Matte" ? "Matte" : polish.topCoat, effect: "Solid" }, targets));
   };
 
   return <div style={UI.shell}>
@@ -979,7 +993,7 @@ function DesignStudio(_, ref) {
             <span style={UI.currentPolishText}>Current Polish Bottle™<strong style={UI.currentPolishMeta}>{activePolish.polishType} · {activePolishColor}</strong></span>
           </button>
           {commandPopover === "polish" && <div id="command-polish-color-popover" data-testid="command-polish-color-popover" style={UI.commandPopoverWide}>
-            <PolishColorControls compact value={baseLayer?.data?.colorHex || activeNail.baseColorHex} recentPolish={recentPolish} polishType={activePolishType} onRackSelect={(value) => updateBase({ baseColorHex: normalizeHex(value, baseLayer?.data?.colorHex), polishType: activePolishType, effect: "Solid" })} onPolishTypeChange={(polishType) => updateBase({ polishType, topCoat: polishType === "Matte" ? "Matte" : "Gloss", effect: "Solid" })} onChange={(value) => updateBase({ baseColorHex: normalizeHex(value, baseLayer?.data?.colorHex), polishType: activePolishType, effect: "Solid" })} onApply={applyCurrentPolish}/>
+            <PolishColorControls compact value={draftPolish.colorHex} recentPolish={recentPolish} polishType={draftPolish.polishType} onRackSelect={(value) => { const colorHex = normalizeHex(value, activePolishColor); setDraftPolish((prev) => ({ ...prev, colorHex })); rememberPolishColor(colorHex); updateBase({ baseColorHex: colorHex, polishType: draftPolish.polishType, topCoat: draftPolish.polishType === "Matte" ? "Matte" : "Gloss", effect: "Solid" }); }} onPolishTypeChange={(polishType) => setDraftPolish((prev) => ({ ...prev, polishType }))} onChange={(value) => setDraftPolish((prev) => ({ ...prev, colorHex: normalizeHex(value, prev.colorHex) }))} onApply={applyCurrentPolish}/>
           </div>}
         </div>
       </div>
@@ -996,7 +1010,7 @@ function DesignStudio(_, ref) {
             <button type="button" onClick={pasteToSelected} disabled={!clipboardNail} style={UI.iconButton(false, !clipboardNail)}>Paste to selected nails</button>
             <button type="button" onClick={() => duplicateActive("hand")} style={UI.iconButton(false)}>Duplicate to current hand</button>
             <button type="button" onClick={() => mirrorHand(currentHand)} style={UI.iconButton(false)}>Mirror current hand</button>
-            <p style={{ ...UI.smallText, margin: 0 }}>Paste uses the existing selected-nail workflow from Full-Set Actions.</p>
+            <p style={{ ...UI.smallText, margin: 0 }}>Paste uses the existing selected-nail workflow from Set Actions.</p>
           </div>}
         </div>
         <div style={UI.commandGroup}>
@@ -1025,7 +1039,7 @@ function DesignStudio(_, ref) {
           <Field label="Nail shape"><select style={S.input} value={activeNail.shape} onChange={(e) => updateBase({ shape: e.target.value })}>{SHAPES.map((shape) => <option key={shape}>{shape}</option>)}</select></Field>
           <GeometrySlider label="Nail length" value={activeNail.length} onChange={(length) => updateBase({ length })}/>
           <GeometrySlider label="Nail width" value={activeNail.width} onChange={(width) => updateBase({ width })}/>
-          <NailColorSystem value={baseLayer?.data?.colorHex || activeNail.baseColorHex} recentPolish={recentPolish} polishType={normalizePolishData(baseLayer?.data || {}, activeNail.baseColorHex).polishType} onRackSelect={(value) => updateBase({ baseColorHex: normalizeHex(value, baseLayer?.data?.colorHex), polishType: normalizePolishData(baseLayer?.data || {}, activeNail.baseColorHex).polishType, effect: "Solid" })} onPolishTypeChange={(polishType) => updateBase({ polishType, topCoat: polishType === "Matte" ? "Matte" : "Gloss", effect: "Solid" })} onChange={(value) => updateBase({ baseColorHex: normalizeHex(value, baseLayer?.data?.colorHex), polishType: normalizePolishData(baseLayer?.data || {}, activeNail.baseColorHex).polishType, effect: "Solid" })} onApply={(scope) => { const targets = scope === "active" ? [activeSlot] : slotsFor(scope); const polish = normalizePolishData(baseLayer?.data || {}, activeNail.baseColorHex); commit(applyBaseToSlots(blueprint, { baseColorHex: getVisibleBaseColor(activeNail), polishType: polish.polishType, shine: polish.shine, transparency: polish.transparency, topCoat: polish.topCoat, effect: "Solid" }, targets)); }}/>
+          <p style={UI.smallText}>Polish controls now live in the Current Polish Bottle™ Polish Studio in the Artist Command Bar.</p>
           <p style={UI.smallText}>Hero shape masks are artist-calibrated. Length and width can scale the mask, but they do not redefine the shape family.</p>
         </CollapsiblePanel>
         <CollapsiblePanel id="signatureLooks" title="Signature Looks" open={panelState.signatureLooks} onToggle={togglePanel}>
@@ -1038,9 +1052,7 @@ function DesignStudio(_, ref) {
           <Field label="Internal notes"><textarea style={{ ...S.input, minHeight: 70 }} value={blueprint.metadata?.internalNotes || ""} onChange={(e) => commit({ ...blueprint, metadata: { ...blueprint.metadata, internalNotes: e.target.value } })} placeholder="Optional artist-only notes" /></Field>
           <Field label="Estimated service price"><input style={S.input} value={blueprint.metadata?.estimatedServicePrice || ""} onChange={(e) => commit({ ...blueprint, metadata: { ...blueprint.metadata, estimatedServicePrice: e.target.value } })} placeholder="Placeholder for later pricing" /></Field>
         </CollapsiblePanel>
-        <CollapsiblePanel id="frenchTip" title="French Tip Precision" open={panelState.frenchTip} onToggle={togglePanel}><FrenchTipControls layer={activeFrenchTipLayer()} onAdd={addFrenchTip} onPatch={patchFrenchTipData} onApply={applyFrenchTip}/></CollapsiblePanel>
-        <CollapsiblePanel id="fullSetActions" title="Full-Set Actions" open={panelState.fullSetActions} onToggle={togglePanel}><BulkActionsPanel activeSlot={activeSlot} clipboard={clipboardNail} selectedSlots={selectedSlots} onToggleSlot={(slot) => setSelectedSlots((prev) => prev.includes(slot) ? prev.filter((item) => item !== slot) : [...prev, slot])} onCopy={copyActiveNail} onPaste={pasteToSelected} onDuplicate={duplicateActive} onMirror={mirrorHand} onApplyBase={applyBase} onApplyShape={applyShape} onReset={resetActive}/></CollapsiblePanel>
-        <CollapsiblePanel id="developerGeometry" title="Developer Geometry Tools" open={panelState.developerGeometry} onToggle={togglePanel}><label style={{ ...UI.smallText, display: "flex", gap: 8, alignItems: "center", marginTop: 8 }}><input type="checkbox" checked={debugShapeOverlay} onChange={(e) => setDebugShapeOverlay(e.target.checked)}/> Shape Debug Overlay</label><p style={UI.smallText}>Apex Y: {Math.round(getNailArchitecture(activeNail).apexYNorm * 100)}% · Free edge starts: {Math.round(getNailArchitecture(activeNail).freeEdgeYNorm * 100)}%</p></CollapsiblePanel>
+        {/* Developer Geometry Tools implementation is intentionally hidden until a future Developer Mode gate is available. */}
         <p style={UI.smallText}>Strict-fit mode keeps all editable vectors clipped and clamped inside the active nail surface for realistic product-use planning.</p>
       </div></aside>
 
