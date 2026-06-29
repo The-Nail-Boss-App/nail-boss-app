@@ -48,9 +48,8 @@ export function AssetContactShadow({ render, uid }) {
 
 export function AssetSurfaceBlend({ layer, render }) {
   if (!render || layer?.type !== "decal" || !render.surfaceBlendOpacity) return null;
-  return <g data-realism-layer="decal-surface-blending" pointerEvents="none" transform={render.innerTransform}>
-    <rect x="-42" y="-42" width="84" height="84" rx="18" fill="#fff" opacity={render.surfaceBlendOpacity}/>
-    <path d="M -30 -18 C -10 -32 16 -28 34 -10" stroke="#fff" strokeWidth="6" strokeLinecap="round" opacity={render.surfaceBlendOpacity * 0.75} fill="none"/>
+  return <g data-realism-layer="decal-surface-blending" data-decal-transparent-artwork="no-white-box" pointerEvents="none" transform={render.innerTransform}>
+    <path d="M -30 -18 C -10 -32 16 -28 34 -10" stroke="#fff" strokeWidth="6" strokeLinecap="round" opacity={render.surfaceBlendOpacity * 0.45} fill="none"/>
   </g>;
 }
 

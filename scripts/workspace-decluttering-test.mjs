@@ -14,6 +14,15 @@ const blueprintEngine = fs.readFileSync(
   "client/src/blueprintEngine.js",
   "utf8",
 );
+const propertiesPanel = fs.readFileSync(
+  "client/src/design-studio/PropertiesPanel.jsx",
+  "utf8",
+);
+const assetRendering = fs.readFileSync(
+  "client/src/design-studio/assetRendering.js",
+  "utf8",
+);
+const dashboard = fs.readFileSync("client/src/Dashboard.jsx", "utf8");
 
 const creativeWallStart = studio.indexOf('data-testid="creative-wall"');
 const mainStart = studio.indexOf(
@@ -192,6 +201,38 @@ assert.doesNotMatch(
   /Hero 7|Duck|Full Set Composition/,
   "Hero 7 exact guardrails remain clean: Duck hidden and Full Set Composition absent from studio UI.",
 );
+
+assert.match(
+  propertiesPanel,
+  /layer\.type === "gradient"[\s\S]*onPatch\(\{ data: normalizeGradientData\(\{ \.\.\.layer\.data, colorA \}\) \}\)[\s\S]*onPatch\(\{ opacity: v \/ 100 \}\)/,
+  "Gradient controls should patch the selected gradient layer data/opacity instead of base polish color.",
+);
+assert.match(
+  propertiesPanel,
+  /layer\.type === "pattern"[\s\S]*Pattern scale[\s\S]*transform: \{ \.\.\.layer\.transform, scaleX[\s\S]*Pattern rotation[\s\S]*Pattern spacing[\s\S]*data: \{ \.\.\.layer\.data, density/,
+  "Pattern controls should bind selected pattern layer transform/data controls only.",
+);
+assert.doesNotMatch(
+  propertiesPanel.slice(propertiesPanel.indexOf('layer.type === "pattern"'), propertiesPanel.indexOf('layer.type === "frenchTip"')),
+  /frenchTip|French Tip/,
+  "Pattern controls should not move into French Tip controls.",
+);
+assert.match(
+  assetRendering,
+  /data-decal-transparent-artwork="no-white-box"/,
+  "Decal rendering should mark transparent artwork handling.",
+);
+assert.doesNotMatch(
+  assetRendering.slice(assetRendering.indexOf('export function AssetSurfaceBlend'), assetRendering.indexOf('export function AssetSpecularAccent')),
+  /<rect[\s\S]*fill="#fff"/,
+  "Decal surface blending must not render a visible white/light box behind transparent artwork.",
+);
+assert.match(
+  dashboard,
+  /label: "Saved Designs"[\s\S]*onClick: onStartLook[\s\S]*data-testid=\{c\.testId\}/,
+  "Dashboard Saved Designs card should open the existing saved-design workflow instead of dead-ending.",
+);
+
 assert.ok(
   proposals.length > 0 && blueprintEngine.length > 0,
   "Proposal and Blueprint files are only read by this test.",
