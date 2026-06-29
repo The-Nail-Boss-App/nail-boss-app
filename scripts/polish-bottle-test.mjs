@@ -38,6 +38,13 @@ assert(
   bottle.includes("rgba(255,255,255,.42)"),
   "PolishBottle renders a subtle highlight",
 );
+assert(
+  bottle.includes("polish-bottle-button") &&
+    bottle.includes("polish-bottle-reflection") &&
+    bottle.includes("anitasetBottleSelected") === false &&
+    bottle.includes("transition"),
+  "PolishBottle exposes lightweight hover, focus, and reflection hooks",
+);
 
 assert(
   studio.includes('data-testid="polish-rack"'),
@@ -109,6 +116,40 @@ assert(
 assert(
   studio.includes('overflow: "hidden"'),
   "Polish Rack clips accidental overflow within the card",
+);
+assert(
+  studio.includes('className="polish-rack-bottle"') &&
+    studio.includes("@keyframes anitasetRackInsert"),
+  "Polish Rack insertion animation exists",
+);
+assert(
+  studio.includes("@keyframes anitasetHeroFade") &&
+    studio.includes('className="studio-hero-fade"'),
+  "Hero Canvas transition exists",
+);
+assert(
+  studio.includes("@keyframes anitasetDrawerSettle") &&
+    studio.includes("studio-popover-motion") &&
+    read("client/src/design-studio/studioStyles.js").includes("anitasetDrawerSettle"),
+  "Drawer transitions exist",
+);
+assert(
+  studio.includes("studio-motion-button:hover") &&
+    studio.includes("studio-motion-button:active") &&
+    studio.includes("studio-motion-button:focus-visible") &&
+    studio.includes("studio-motion-button:disabled") &&
+    studio.includes('[aria-pressed="true"]'),
+  "Buttons have hover, press, focus, disabled, and selected states",
+);
+assert(
+  studio.includes("studio-card-button:hover") &&
+    read("client/src/design-studio/studioStyles.js").includes("scale(1.01)"),
+  "Studio cards are animated with luxury scale and glow",
+);
+assert(
+  studio.includes("studio-status-loading") &&
+    studio.includes("@keyframes anitasetStatusSheen"),
+  "Existing loading status uses a subtle skeleton fade treatment",
 );
 assert(
   bottle.includes('maxWidth: "100%"') &&
@@ -198,6 +239,11 @@ assert(
 assert(
   studio.includes("Canvas Mode") && studio.includes("canvasModeButton"),
   "Canvas Mode button exists with special styling",
+);
+assert(
+  studio.includes("studio-canvas-mode-button") &&
+    read("client/src/design-studio/studioStyles.js").includes("transition: LUXURY_TRANSITION"),
+  "Command Bar transitions exist and Canvas Mode keeps premium tactile feedback",
 );
 assert(
   studio.includes('data-testid="artist-command-zoom"') &&

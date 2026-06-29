@@ -1,5 +1,7 @@
 import { COLORS, S } from "../styles.js";
 
+const LUXURY_TRANSITION = "transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease, background 180ms ease, color 180ms ease, opacity 180ms ease";
+
 // commandPolishPopover: { position: "fixed", top: 132, left: 18 } keeps quick controls away from the hero canvas.
 // commandFrenchTipPopover uses the same fixed left Creative Wall anchor for canvas-safe quick access.
 export const UI = {
@@ -80,6 +82,7 @@ export const UI = {
     letterSpacing: ".08em",
     textTransform: "uppercase",
     boxShadow: "0 10px 24px rgba(60,20,50,.07)",
+    transition: LUXURY_TRANSITION,
   },
   currentPolishButton: {
     display: "flex",
@@ -93,6 +96,7 @@ export const UI = {
     padding: "9px 14px",
     cursor: "pointer",
     boxShadow: "0 14px 34px rgba(60,20,50,.1)",
+    transition: LUXURY_TRANSITION,
   },
   currentPolishText: {
     display: "flex",
@@ -187,7 +191,10 @@ export const UI = {
     fontWeight: 900,
     cursor: disabled ? "not-allowed" : "pointer",
     opacity: disabled ? 0.55 : 1,
-    boxShadow: "0 10px 24px rgba(60,20,50,.06)",
+    boxShadow: active
+      ? "0 14px 30px rgba(123,47,89,.14)"
+      : "0 10px 24px rgba(60,20,50,.06)",
+    transition: LUXURY_TRANSITION,
   }),
   zoomPill: {
     display: "flex",
@@ -212,6 +219,7 @@ export const UI = {
     fontSize: 18,
     fontWeight: 900,
     cursor: "pointer",
+    transition: LUXURY_TRANSITION,
   },
   canvasModeButton: {
     minHeight: 52,
@@ -226,6 +234,7 @@ export const UI = {
     textTransform: "uppercase",
     cursor: "pointer",
     boxShadow: "0 16px 34px rgba(60,20,50,.2)",
+    transition: LUXURY_TRANSITION,
   },
   layout: {
     flex: 1,
@@ -233,8 +242,8 @@ export const UI = {
     display: "grid",
     gridTemplateColumns:
       "minmax(220px, 0.9fr) minmax(320px, 1.7fr) minmax(220px, 0.85fr)",
-    gap: 16,
-    padding: 16,
+    gap: 18,
+    padding: "18px clamp(14px, 2vw, 22px)",
     overflowX: "hidden",
     overflowY: "auto",
     alignItems: "start",
@@ -244,6 +253,7 @@ export const UI = {
     border: `1px solid ${COLORS.border}`,
     borderRadius: 24,
     boxShadow: "0 18px 46px rgba(60,20,50,.08)",
+    transition: "box-shadow 220ms ease, transform 220ms ease",
     minHeight: 0,
     minWidth: 0,
     overflow: "auto",
@@ -259,7 +269,7 @@ export const UI = {
     placeItems: "center",
     overflow: "visible",
   },
-  panelPad: { padding: 14 },
+  panelPad: { padding: 16 },
   sectionTitle: {
     fontSize: 12,
     letterSpacing: ".08em",
@@ -282,6 +292,8 @@ export const UI = {
     marginBottom: 12,
     background: "#fff",
     overflow: "hidden",
+    boxShadow: "0 10px 24px rgba(60,20,50,.05)",
+    transition: "box-shadow 180ms ease, border-color 180ms ease",
   },
   panelHeader: {
     width: "100%",
@@ -294,8 +306,9 @@ export const UI = {
     borderBottom: `1px solid ${COLORS.border}`,
     background: COLORS.roseDim,
     cursor: "pointer",
+    transition: LUXURY_TRANSITION,
   },
-  panelBody: { padding: 12 },
+  panelBody: { padding: 12, animation: "anitasetDrawerSettle 220ms cubic-bezier(.2,.8,.2,1)" },
   actionGrid: {
     display: "grid",
     gridTemplateColumns: "repeat(4, minmax(42px, 1fr))",
@@ -313,6 +326,7 @@ export const UI = {
     fontWeight: 800,
     cursor: disabled ? "not-allowed" : "pointer",
     opacity: disabled ? 0.55 : 1,
+    transition: LUXURY_TRANSITION,
   }),
   iconButton: (active = false, disabled = false) => ({
     border: `1px solid ${active ? COLORS.plum : COLORS.border}`,
@@ -324,6 +338,7 @@ export const UI = {
     fontWeight: 700,
     cursor: disabled ? "not-allowed" : "pointer",
     opacity: disabled ? 0.55 : 1,
+    transition: LUXURY_TRANSITION,
   }),
   field: { marginBottom: 14 },
   row: { display: "flex", gap: 8, alignItems: "center" },
@@ -346,8 +361,10 @@ export const UI = {
     textAlign: "left",
     cursor: "pointer",
     boxShadow: active
-      ? "0 18px 38px rgba(123,47,89,.16)"
+      ? "0 0 0 3px rgba(255,214,232,.88), 0 20px 44px rgba(123,47,89,.18)"
       : "0 12px 28px rgba(60,20,50,.07)",
+    transform: active ? "translateY(-1px) scale(1.01)" : "translateY(0) scale(1)",
+    transition: LUXURY_TRANSITION,
   }),
   studioCardIcon: {
     width: 44,
@@ -359,6 +376,7 @@ export const UI = {
     color: "#fff",
     fontSize: 22,
     boxShadow: "0 12px 24px rgba(60,20,50,.18)",
+    transition: LUXURY_TRANSITION,
   },
   studioCardTitle: {
     display: "block",
@@ -383,6 +401,7 @@ export const UI = {
     minWidth: 0,
     border: "1px solid rgba(123,47,89,.18)",
     background: "linear-gradient(180deg, #fff 0%, #fff7fb 100%)",
+    transition: "box-shadow 220ms ease, border-color 220ms ease",
   },
   heroCanvasHeader: {
     padding: "18px 22px 4px",
@@ -425,5 +444,6 @@ export const UI = {
     fontWeight: 900,
     whiteSpace: "nowrap",
     cursor: "pointer",
+    transition: LUXURY_TRANSITION,
   }),
 };

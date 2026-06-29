@@ -164,6 +164,32 @@ function loadPanelState() {
   }
 }
 
+function StudioMicrointeractionStyles() {
+  return (
+    <style>{`
+      @keyframes anitasetDrawerSettle { from { opacity: .62; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+      @keyframes anitasetBottleSelected { 0% { transform: translateY(0) scale(1); } 48% { transform: translateY(-3px) scale(1.025); } 100% { transform: translateY(0) scale(1); } }
+      @keyframes anitasetRackInsert { from { opacity: 0; transform: translateY(10px) scale(.96); } to { opacity: 1; transform: translateY(0) scale(1); } }
+      @keyframes anitasetHeroFade { from { opacity: .78; transform: translateY(4px) scale(.997); } to { opacity: 1; transform: translateY(0) scale(1); } }
+      @keyframes anitasetStatusSheen { from { background-position: 120% 0; } to { background-position: -120% 0; } }
+      .studio-motion-button:hover:not(:disabled), .studio-card-button:hover, .studio-dock-button:hover, .studio-current-polish:hover, .polish-bottle-button:hover { transform: translateY(-1px); filter: brightness(1.025); box-shadow: 0 16px 34px rgba(60,20,50,.12); }
+      .studio-motion-button:active:not(:disabled), .studio-card-button:active, .studio-dock-button:active, .studio-current-polish:active, .polish-bottle-button:active { transform: translateY(1px) scale(.99); box-shadow: inset 0 2px 8px rgba(60,20,50,.12), 0 8px 18px rgba(60,20,50,.08); }
+      .studio-motion-button:focus-visible, .studio-card-button:focus-visible, .studio-dock-button:focus-visible, .studio-current-polish:focus-visible, .polish-bottle-button:focus-visible { outline: 3px solid rgba(123,47,89,.32); outline-offset: 3px; }
+      .studio-motion-button[aria-pressed="true"], .studio-card-button[aria-pressed="true"], .studio-dock-button[aria-pressed="true"] { box-shadow: 0 0 0 3px rgba(255,214,232,.86), 0 18px 40px rgba(123,47,89,.16); }
+      .studio-motion-button:disabled { cursor: not-allowed; filter: saturate(.65); }
+      .studio-card-button:hover { transform: translateY(-2px) scale(1.02); }
+      .polish-bottle-button:hover .polish-bottle-figure { transform: translateY(-3px); filter: drop-shadow(0 8px 10px rgba(60,20,50,.14)); }
+      .polish-bottle-button:hover .polish-bottle-reflection { opacity: .8; transform: translateX(6%); }
+      .polish-bottle-figure.is-selected { animation: anitasetBottleSelected 260ms cubic-bezier(.2,.8,.2,1); filter: drop-shadow(0 8px 14px rgba(123,47,89,.20)); }
+      .polish-rack-bottle { animation: anitasetRackInsert 260ms cubic-bezier(.2,.8,.2,1); will-change: transform, opacity; }
+      .studio-popover-motion { animation: anitasetDrawerSettle 220ms cubic-bezier(.2,.8,.2,1); transform-origin: top right; }
+      .studio-hero-fade { animation: anitasetHeroFade 180ms ease both; will-change: transform, opacity; }
+      .studio-status-loading { color: transparent; min-width: 116px; background: linear-gradient(90deg, rgba(123,47,89,.10), rgba(123,47,89,.24), rgba(123,47,89,.10)); background-size: 220% 100%; animation: anitasetStatusSheen 950ms ease-in-out infinite; }
+      @media (prefers-reduced-motion: reduce) { .studio-motion-button, .studio-card-button, .studio-dock-button, .studio-current-polish, .polish-bottle-button, .polish-bottle-figure, .polish-rack-bottle, .studio-popover-motion, .studio-hero-fade, .studio-status-loading { animation: none !important; transition-duration: 1ms !important; } }
+    `}</style>
+  );
+}
+
 function CollapsiblePanel({ id, title, open, onToggle, children }) {
   return (
     <section data-panel-id={id} style={UI.panelSection}>
@@ -174,6 +200,7 @@ function CollapsiblePanel({ id, title, open, onToggle, children }) {
         aria-label={`${open ? "Collapse" : "Expand"} ${title}`}
         title={`${open ? "Collapse" : "Expand"} ${title}`}
         onClick={() => onToggle(id)}
+        className="studio-motion-button"
         style={UI.panelHeader}
       >
         <span style={UI.sectionTitle}>{title}</span>
@@ -204,6 +231,8 @@ function IconActionButton({
       title={label}
       disabled={disabled}
       onClick={onClick}
+      className="studio-motion-button"
+      aria-pressed={active}
       style={UI.iconOnlyButton(active, disabled)}
     >
       {icon}
@@ -464,6 +493,7 @@ function FrenchTipControls({ layer, onAdd, onPatch, onApply, quickAccess = false
         <button
           type="button"
           onClick={() => onApply("active")}
+          className="studio-motion-button"
           style={UI.iconButton(false)}
         >
           Apply to active nail
@@ -471,6 +501,7 @@ function FrenchTipControls({ layer, onAdd, onPatch, onApply, quickAccess = false
         <button
           type="button"
           onClick={() => onApply("hand")}
+          className="studio-motion-button"
           style={UI.iconButton(false)}
         >
           Apply to current hand
@@ -478,6 +509,7 @@ function FrenchTipControls({ layer, onAdd, onPatch, onApply, quickAccess = false
         <button
           type="button"
           onClick={() => onApply("all")}
+          className="studio-motion-button"
           style={UI.iconButton(false)}
         >
           Apply to all nails
@@ -595,6 +627,7 @@ function PolishColorControls({
         <button
           type="button"
           onClick={() => onApply("active")}
+          className="studio-motion-button"
           style={UI.iconButton(false)}
         >
           Active nail
@@ -602,6 +635,7 @@ function PolishColorControls({
         <button
           type="button"
           onClick={() => onApply("hand")}
+          className="studio-motion-button"
           style={UI.iconButton(false)}
         >
           Current hand
@@ -609,6 +643,7 @@ function PolishColorControls({
         <button
           type="button"
           onClick={() => onApply("all")}
+          className="studio-motion-button"
           style={UI.iconButton(false)}
         >
           Full set
@@ -659,6 +694,7 @@ function PolishRack({ colors, activeColor, polishType, onSelect }) {
           {colors.map((color) => (
             <PolishBottle
               key={color}
+              className="polish-rack-bottle"
               colorHex={color}
               label={`Apply Polish Color ${color}`}
               selected={activeColor?.toUpperCase() === color}
@@ -683,6 +719,7 @@ function StudioCard({ studio, active, onSelect }) {
       data-testid={`studio-card-${studio.id}`}
       aria-pressed={active}
       onClick={() => onSelect(studio.id)}
+      className="studio-card-button"
       style={UI.studioCard(active)}
     >
       <span aria-hidden="true" style={UI.studioCardIcon}>
@@ -747,7 +784,7 @@ function DesignPalette({ colors }) {
                 colorHex={color}
                 label={`Polish Color ${color}`}
                 size="small"
-              />
+                />
               <span
                 style={{
                   fontSize: 11,
@@ -2146,8 +2183,8 @@ function DesignStudio(_, ref) {
         <section data-testid="brush-studio-panel" style={UI.panelSection}>
           <div style={UI.panelBody}>
             <DrawingToolbar
-              brush={brush}
-              mode={mode}
+                brush={brush}
+                mode={mode}
               onBrushChange={(patch) =>
                 setBrush((prev) => ({ ...prev, ...patch }))
               }
@@ -2192,6 +2229,7 @@ function DesignStudio(_, ref) {
 
   return (
     <div style={UI.shell}>
+      <StudioMicrointeractionStyles />
       <header
         data-testid="artist-command-bar"
         aria-label="Artist Command Bar"
@@ -2220,7 +2258,9 @@ function DesignStudio(_, ref) {
             data-testid="artist-command-autosave"
             style={{ ...UI.autoSaveBadge, color: statusColor }}
           >
-            {saving || loading ? "Saving…" : "● Auto Saved"}
+            <span className={saving || loading ? "studio-status-loading" : ""}>
+              {saving || loading ? "Saving…" : "● Auto Saved"}
+            </span>
           </div>
           <div style={UI.commandGroup}>
             <button
@@ -2229,6 +2269,7 @@ function DesignStudio(_, ref) {
               aria-expanded={commandPopover === "polish"}
               aria-controls="command-polish-color-popover"
               onClick={openPolishRack}
+              className="studio-current-polish"
               style={UI.currentPolishButton}
               aria-label="Open Polish Color controls for Current Polish Bottle"
             >
@@ -2238,7 +2279,7 @@ function DesignStudio(_, ref) {
                 selected
                 size="medium"
                 polishType={activePolish.polishType}
-              />
+                />
               <span style={UI.currentPolishText}>
                 Current Polish Bottle™
                 <strong style={UI.currentPolishMeta}>
@@ -2251,6 +2292,7 @@ function DesignStudio(_, ref) {
                 id="command-polish-color-popover"
                 data-testid="command-polish-color-popover"
                 data-canvas-safe-placement="left-creative-library-anchor"
+                className="studio-popover-motion"
                 style={UI.commandPolishPopover}
               >
                 {/* Canvas-safe marker: this quick polish popover is fixed to the Creative Library side rail instead of the centered hero canvas. */}
@@ -2281,6 +2323,7 @@ function DesignStudio(_, ref) {
             type="button"
             onClick={save}
             disabled={saving}
+            className="studio-motion-button"
             style={UI.commandButton(false, saving)}
           >
             Save Version
@@ -2292,6 +2335,8 @@ function DesignStudio(_, ref) {
               aria-expanded={commandPopover === "nailBasics"}
               aria-controls="command-nail-basics-popover"
               onClick={() => toggleCommandPopover("nailBasics")}
+              className="studio-motion-button"
+              aria-pressed={commandPopover === "nailBasics"}
               style={UI.commandButton(commandPopover === "nailBasics")}
             >
               Nail Basics™
@@ -2300,6 +2345,7 @@ function DesignStudio(_, ref) {
               <div
                 id="command-nail-basics-popover"
                 data-testid="command-nail-basics-popover"
+                className="studio-popover-motion"
                 style={UI.commandPopover}
               >
                 <div style={UI.sectionTitle}>Nail Basics™</div>
@@ -2328,21 +2374,24 @@ function DesignStudio(_, ref) {
                   <button
                     type="button"
                     onClick={() => showNotice("Nail basics already applied to the active nail.")}
-                    style={UI.iconButton(false)}
+                    className="studio-motion-button"
+          style={UI.iconButton(false)}
                   >
                     Active Nail
                   </button>
                   <button
                     type="button"
                     onClick={() => applyShape("hand")}
-                    style={UI.iconButton(false)}
+                    className="studio-motion-button"
+          style={UI.iconButton(false)}
                   >
                     Current Hand
                   </button>
                   <button
                     type="button"
                     onClick={() => applyShape("all")}
-                    style={UI.iconButton(false)}
+                    className="studio-motion-button"
+          style={UI.iconButton(false)}
                   >
                     Full Set
                   </button>
@@ -2357,6 +2406,8 @@ function DesignStudio(_, ref) {
               aria-expanded={commandPopover === "set"}
               aria-controls="command-set-actions-popover"
               onClick={() => toggleCommandPopover("set")}
+              className="studio-motion-button"
+              aria-pressed={commandPopover === "set"}
               style={UI.commandButton(commandPopover === "set")}
             >
               Set Actions
@@ -2365,27 +2416,31 @@ function DesignStudio(_, ref) {
               <div
                 id="command-set-actions-popover"
                 data-testid="command-set-actions-popover"
+                className="studio-popover-motion"
                 style={UI.commandPopover}
               >
                 <div style={UI.sectionTitle}>Set Actions</div>
                 <button
                   type="button"
                   onClick={() => duplicateActive("all")}
-                  style={UI.iconButton(false)}
+                  className="studio-motion-button"
+          style={UI.iconButton(false)}
                 >
                   Apply current design to all nails
                 </button>
                 <button
                   type="button"
                   onClick={() => duplicateActive("opposite")}
-                  style={UI.iconButton(false)}
+                  className="studio-motion-button"
+          style={UI.iconButton(false)}
                 >
                   Duplicate current nail
                 </button>
                 <button
                   type="button"
                   onClick={copyActiveNail}
-                  style={UI.iconButton(false)}
+                  className="studio-motion-button"
+          style={UI.iconButton(false)}
                 >
                   Copy current nail
                 </button>
@@ -2393,6 +2448,7 @@ function DesignStudio(_, ref) {
                   type="button"
                   onClick={pasteToSelected}
                   disabled={!clipboardNail}
+                  className="studio-motion-button"
                   style={UI.iconButton(false, !clipboardNail)}
                 >
                   Paste to selected nails
@@ -2400,14 +2456,16 @@ function DesignStudio(_, ref) {
                 <button
                   type="button"
                   onClick={() => duplicateActive("hand")}
-                  style={UI.iconButton(false)}
+                  className="studio-motion-button"
+          style={UI.iconButton(false)}
                 >
                   Duplicate to current hand
                 </button>
                 <button
                   type="button"
                   onClick={() => mirrorHand(currentHand)}
-                  style={UI.iconButton(false)}
+                  className="studio-motion-button"
+          style={UI.iconButton(false)}
                 >
                   Mirror current hand
                 </button>
@@ -2425,6 +2483,8 @@ function DesignStudio(_, ref) {
               aria-expanded={commandPopover === "french"}
               aria-controls="command-french-tip-popover"
               onClick={openFrenchTipQuickAccess}
+              className="studio-motion-button"
+              aria-pressed={commandPopover === "french"}
               style={UI.commandButton(commandPopover === "french", false)}
             >
               French Tip
@@ -2434,6 +2494,7 @@ function DesignStudio(_, ref) {
                 id="command-french-tip-popover"
                 data-testid="command-french-tip-popover"
                 data-canvas-safe-placement="left-creative-wall-anchor"
+                className="studio-popover-motion"
                 style={UI.commandFrenchTipPopover}
               >
                 <FrenchTipControls
@@ -2450,6 +2511,7 @@ function DesignStudio(_, ref) {
             type="button"
             onClick={undo}
             disabled={!canUndo}
+            className="studio-motion-button"
             style={UI.commandButton(false, !canUndo)}
           >
             Undo
@@ -2458,6 +2520,7 @@ function DesignStudio(_, ref) {
             type="button"
             onClick={redo}
             disabled={!canRedo}
+            className="studio-motion-button"
             style={UI.commandButton(false, !canRedo)}
           >
             Redo
@@ -2467,6 +2530,7 @@ function DesignStudio(_, ref) {
               type="button"
               aria-label="Zoom Out"
               onClick={() => adjustZoom(-10)}
+              className="studio-motion-button"
               style={UI.zoomButton}
             >
               −
@@ -2476,6 +2540,7 @@ function DesignStudio(_, ref) {
               type="button"
               aria-label="Zoom In"
               onClick={() => adjustZoom(10)}
+              className="studio-motion-button"
               style={UI.zoomButton}
             >
               ＋
@@ -2484,6 +2549,8 @@ function DesignStudio(_, ref) {
           <button
             type="button"
             onClick={() => setMode("select")}
+            className="studio-motion-button studio-canvas-mode-button"
+            aria-pressed={mode === "select"}
             style={UI.canvasModeButton}
           >
             Canvas Mode
@@ -2529,7 +2596,7 @@ function DesignStudio(_, ref) {
                 onDuplicate={duplicateSignatureLook}
                 onRename={renameSignatureLook}
                 onDelete={deleteSignatureLook}
-              />
+                />
             </CollapsiblePanel>
             <CollapsiblePanel
               id="designDetails"
@@ -2625,21 +2692,23 @@ function DesignStudio(_, ref) {
               borderTopRightRadius: 24,
             }}
           >
-            <NailCanvas
-              debugOverlay={debugShapeOverlay}
-              zoom={commandZoom / 100}
-              nail={activeNail}
-              layers={activeNail.layers}
-              selectedLayerId={selectedLayerId}
-              mode={mode}
-              brush={brush}
-              notice={notice}
-              onSelectLayer={(id) => setSelectedLayerId(id || "")}
-              onTransformLayer={transformLayer}
-              onDrawingStroke={addStroke}
-              onStageEraseStroke={stageEraseStroke}
-              onEraseStroke={eraseStroke}
-            />
+            <div key={activeStudio} className="studio-hero-fade">
+              <NailCanvas
+                debugOverlay={debugShapeOverlay}
+                zoom={commandZoom / 100}
+                nail={activeNail}
+                layers={activeNail.layers}
+                selectedLayerId={selectedLayerId}
+                mode={mode}
+                brush={brush}
+                notice={notice}
+                onSelectLayer={(id) => setSelectedLayerId(id || "")}
+                onTransformLayer={transformLayer}
+                onDrawingStroke={addStroke}
+                onStageEraseStroke={stageEraseStroke}
+                onEraseStroke={eraseStroke}
+              />
+            </div>
           </section>
           <FullSetPreview
             blueprint={blueprint}
@@ -2677,7 +2746,7 @@ function DesignStudio(_, ref) {
                 }
                 onDuplicate={() => duplicateLayer()}
                 onDelete={() => deleteLayer()}
-              />
+                />
             </CollapsiblePanel>
             <CollapsiblePanel
               id="layers"
@@ -2693,7 +2762,7 @@ function DesignStudio(_, ref) {
                 onToggleLock={toggleLock}
                 onMove={moveLayer}
                 onDelete={deleteLayer}
-              />
+                />
             </CollapsiblePanel>
             <div
               data-testid="history-placeholder"
@@ -2725,6 +2794,7 @@ function DesignStudio(_, ref) {
             type="button"
             aria-pressed={dockMode === modeName}
             onClick={() => setDockMode(modeName)}
+            className="studio-dock-button"
             style={UI.dockButton(dockMode === modeName)}
           >
             {modeName}
