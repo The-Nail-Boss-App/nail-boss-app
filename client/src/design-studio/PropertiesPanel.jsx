@@ -99,6 +99,11 @@ export default function PropertiesPanel({ layer, onPatch, onDuplicate, onDelete 
         <div style={UI.field}><label style={S.label}>Pattern</label><select style={S.input} value={layer.data.pattern} disabled={disabled} onChange={(e) => onPatch({ data: { ...layer.data, pattern: e.target.value } })}>{PATTERNS.map((pattern) => <option key={pattern} value={pattern}>{pattern}</option>)}</select></div>
         <Color label="Pattern color" value={layer.data.colorHex} onChange={(colorHex) => onPatch({ data: { ...layer.data, colorHex } })} disabled={disabled} />
         <Color label="Secondary color" value={layer.data.secondaryColorHex || "#3B1F35"} onChange={(secondaryColorHex) => onPatch({ data: { ...layer.data, secondaryColorHex } })} disabled={disabled} />
+        <Range label="Pattern scale" value={Math.round((layer.transform?.scaleX ?? 1) * 100)} min={20} max={300} onChange={(v) => onPatch({ transform: { ...layer.transform, scaleX: v / 100, scaleY: v / 100 } })} disabled={disabled} />
+        <Range label="Pattern rotation" value={Math.round(layer.transform?.rotation ?? 0)} min={-180} max={180} onChange={(v) => onPatch({ transform: { ...layer.transform, rotation: v } })} disabled={disabled} />
+        <Range label="Pattern X offset" value={Math.round((layer.transform?.x ?? 0.5) * 100)} min={0} max={100} onChange={(v) => onPatch({ transform: { ...layer.transform, x: v / 100 } })} disabled={disabled} />
+        <Range label="Pattern Y offset" value={Math.round((layer.transform?.y ?? 0.5) * 100)} min={0} max={100} onChange={(v) => onPatch({ transform: { ...layer.transform, y: v / 100 } })} disabled={disabled} />
+        <Range label="Pattern spacing" value={Math.round((layer.data.density ?? 0.5) * 100)} min={0} max={100} onChange={(v) => onPatch({ data: { ...layer.data, density: v / 100 } })} disabled={disabled} />
         <Range label="Opacity" value={Math.round(layer.opacity * 100)} min={5} max={100} onChange={(v) => onPatch({ opacity: v / 100 })} disabled={disabled} />
       </>}
       {layer.type === "frenchTip" && <p style={UI.smallText}>Use the French Tip Precision panel on the left as the single home for French Tip presets, color, shape, and bulk apply controls.</p>}

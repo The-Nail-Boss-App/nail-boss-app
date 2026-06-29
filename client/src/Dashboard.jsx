@@ -41,14 +41,16 @@ export default function Dashboard({ techName, onStartLook, onViewProposals }) {
       {/* Stat cards */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 40, maxWidth: 500 }}>
         {[
-          { label: "Saved Designs",  value: counts.designs,   icon: "✦" },
-          { label: "Total Proposals", value: counts.proposals, icon: "◻" },
+          { label: "Saved Designs",  value: counts.designs,   icon: "✦", onClick: onStartLook, testId: "dashboard-saved-designs" },
+          { label: "Total Proposals", value: counts.proposals, icon: "◻", onClick: onViewProposals, testId: "dashboard-total-proposals" },
         ].map(c => (
-          <div key={c.label} style={{
+          <button key={c.label} type="button" onClick={c.onClick} data-testid={c.testId} style={{
             background: COLORS.surface,
             border: `1px solid ${COLORS.border}`,
             borderRadius: 16,
             padding: "22px 20px",
+            textAlign: "left",
+            cursor: "pointer",
           }}>
             <div style={{ fontSize: 22, marginBottom: 4 }}>{c.icon}</div>
             <div style={{ fontSize: 32, fontWeight: 800, color: COLORS.plum, lineHeight: 1 }}>
@@ -57,7 +59,7 @@ export default function Dashboard({ techName, onStartLook, onViewProposals }) {
             <div style={{ fontSize: 12, color: COLORS.textMuted, marginTop: 6, fontWeight: 600 }}>
               {c.label}
             </div>
-          </div>
+          </button>
         ))}
       </div>
 
