@@ -1,6 +1,7 @@
 import { COLORS, S } from "../styles.js";
 
 // commandPolishPopover: { position: "fixed", top: 132, left: 18 } keeps quick controls away from the hero canvas.
+// commandFrenchTipPopover uses the same fixed left Creative Wall anchor for canvas-safe quick access.
 export const UI = {
   shell: {
     height: "100%",
@@ -141,6 +142,20 @@ export const UI = {
     right: 0,
     zIndex: 20,
     width: "min(380px, 86vw)",
+    padding: 10,
+    border: "1px solid rgba(123,47,89,.18)",
+    borderRadius: 20,
+    background: "rgba(255,255,255,.98)",
+    boxShadow: "0 24px 58px rgba(60,20,50,.18)",
+  },
+  commandFrenchTipPopover: {
+    position: "fixed",
+    top: 132,
+    left: 18,
+    zIndex: 30,
+    width: "min(380px, calc(100vw - 36px))",
+    maxHeight: "calc(100vh - 154px)",
+    overflow: "auto",
     padding: 10,
     border: "1px solid rgba(123,47,89,.18)",
     borderRadius: 20,
