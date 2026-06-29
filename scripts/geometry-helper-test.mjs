@@ -14,15 +14,16 @@ const polishRendererSource = await readFile(new URL('../client/src/design-studio
 const propertiesPanelSource = await readFile(new URL('../client/src/design-studio/PropertiesPanel.jsx', import.meta.url), 'utf8');
 const blueprint = await import(`data:text/javascript;charset=utf-8,${encodeURIComponent(source)}`);
 
-assert(['Nail Basics', 'Signature Looks', 'Design Details', 'French Tip Precision', 'Full-Set Actions', 'Developer Geometry Tools', 'Art Tools', 'Properties', 'Layers'].every((title) => designStudioSource.includes(`title="${title}"`) || designStudioSource.includes(`>${title}<`) || designStudioSource.includes(`"${title}"`)), 'Design Studio exposes the required compact top-level section titles');
+assert(['Nail Basics', 'Signature Looks', 'Design Details', 'Art Tools', 'Properties', 'Layers'].every((title) => designStudioSource.includes(`title="${title}"`) || designStudioSource.includes(`>${title}<`) || designStudioSource.includes(`"${title}"`)), 'Design Studio exposes the required compact top-level section titles');
+assert(!designStudioSource.includes('title="Full-Set Actions"') && !designStudioSource.includes('title="Developer Geometry Tools"'), 'Legacy full-set and developer geometry panels are hidden from production UI');
 assert(designStudioSource.includes('aria-expanded={open}') && designStudioSource.includes('PANEL_PREFS_STORAGE_KEY') && designStudioSource.includes('localStorage.setItem(PANEL_PREFS_STORAGE_KEY'), 'collapsible panels can expand/collapse and remember panel state');
 assert(designStudioSource.includes('data-testid="signature-looks-select"') && designStudioSource.includes('<optgroup label="Starter Looks"') && designStudioSource.includes('<optgroup label="My Looks"'), 'Signature Looks Library exposes starter and custom looks in a grouped dropdown/select');
 assert(['Save active nail as Signature Look', 'Save full set as Signature Look', 'Apply selected Signature Look to active nail', 'Apply selected Signature Look to full set', 'Duplicate selected Signature Look', 'Rename selected custom Signature Look', 'Delete selected custom Signature Look'].every((label) => designStudioSource.includes(label)), 'Signature Look apply/save/manage actions are reachable with accessible labels near the dropdown');
 assert(designStudioSource.includes('selectedIsStarter') && designStudioSource.includes('disabled={!selected || selectedIsStarter}') && designStudioSource.includes('starter: false'), 'starter Signature Looks are protected while duplicated custom looks are editable');
 assert(designStudioSource.includes('Add gradient layer') && designStudioSource.includes('Add pattern layer') && designStudioSource.includes('Add French tip layer') && designStudioSource.includes('PATTERNS.map'), 'gradient, pattern, and French Tip add-layer controls remain reachable near the top Art Tools panel');
 assert((designStudioSource.match(/<AssetLibrary onAddAsset=\{addAsset\}/g) || []).length === 1 && !designStudioSource.includes('id="charmsJewelsDecals"'), 'Charms/Jewels/Decals appear only once through Art Tools and are not duplicated across panels');
-assert(designStudioSource.includes('Full-Set Actions') && bulkActionsPanelSource.includes('Copy active nail') && bulkActionsPanelSource.includes('Mirror hand'), 'Full-Set Actions remain available with compact labeled actions');
-assert(designStudioSource.includes('French Tip Precision') && designStudioSource.includes('Smile width'), 'French Tip Precision remains available');
+assert(designStudioSource.includes('Set Actions') && designStudioSource.includes('Copy current nail') && designStudioSource.includes('Mirror current hand') && bulkActionsPanelSource.includes('Copy active nail') && bulkActionsPanelSource.includes('Mirror hand'), 'Set Actions remain available with compact labeled actions from the command bar');
+assert(designStudioSource.includes('data-testid="command-french-tip-trigger"') && designStudioSource.includes('French Tip Precision') && designStudioSource.includes('Smile width'), 'French Tip Precision remains available from the command bar');
 assert(designStudioSource.includes('aria-label={label}') && designStudioSource.includes('title={label}') && bulkActionsPanelSource.includes('aria-label='), 'compact icon buttons provide accessible labels or titles');
 
 const {
@@ -724,7 +725,7 @@ assert(designStudioSource.includes('async function guardReplacement()') && desig
 assert(designStudioSource.includes('Save failed — changes kept locally'), 'failed autosaves preserve dirty frontend state with clear status');
 assert(designStudioSource.includes('Untitled Set'), 'new unnamed autosaved drafts get generated editable names');
 assert(designStudioSource.includes('<FullSetPreview'), 'Design Studio renders full-set preview navigation');
-assert(designStudioSource.includes('<BulkActionsPanel'), 'Design Studio renders bulk action controls');
+assert(!designStudioSource.includes('<BulkActionsPanel') && designStudioSource.includes('data-testid="command-set-actions-popover"'), 'Design Studio routes bulk action controls through the Artist Command Bar instead of the legacy sidebar panel');
 assert(designStudioSource.includes('useImperativeHandle(ref') && designStudioSource.includes('prepareToLeave()'), 'Design Studio exposes an app-level dirty-work leave guard');
 assert(designStudioSource.includes('beforeunload') && designStudioSource.includes('event.returnValue = ""'), 'Design Studio registers browser beforeunload protection for dirty work');
 assert(designStudioSource.includes('function markHistoryMutation') && designStudioSource.match(/function undo\(\)[\s\S]*scheduleAutosave\(\)/), 'Undo marks dirty and schedules the normal autosave debounce');
