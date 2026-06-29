@@ -67,6 +67,7 @@ const PANEL_GROUPS = [
 ];
 
 const DEFAULT_PANEL_STATE = {
+  polishStudio: true,
   nailBasics: true,
   signatureLooks: true,
   designDetails: false,
@@ -323,6 +324,7 @@ function DesignStudio(_, ref) {
   const selectedDesignIdRef = useRef("");
   const designNameRef = useRef("");
   const dragStartBlueprintRef = useRef(null);
+  const polishStudioRef = useRef(null);
 
   const activeNail = getActiveNail(blueprint);
   const selectedLayer = useMemo(() => layerById(activeNail, selectedLayerId), [activeNail, selectedLayerId]);
@@ -946,7 +948,9 @@ function DesignStudio(_, ref) {
 
   function openPolishRack() {
     setCommandPopover("polish");
-    showNotice("Polish Studio opened.");
+    setPanelState((prev) => ({ ...prev, polishStudio: true }));
+    requestAnimationFrame(() => polishStudioRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" }));
+    showNotice("Polish Studio opened in the Creative Library with quick controls available from the command bar.");
   }
 
   function adjustZoom(delta) {
@@ -975,6 +979,14 @@ function DesignStudio(_, ref) {
     const polish = normalizePolishData({ ...baseLayer?.data, polishType: draftPolish.polishType }, committedColor);
     rememberPolishColor(committedColor);
     commit(applyBaseToSlots(blueprint, { baseColorHex: committedColor, polishType: polish.polishType, shine: polish.shine, transparency: polish.transparency, topCoat: draftPolish.polishType === "Matte" ? "Matte" : polish.topCoat, effect: "Solid" }, targets));
+    setCommandPopover("");
+  };
+
+  const applyRackPolish = (value) => {
+    const colorHex = normalizeHex(value, activePolishColor);
+    setDraftPolish((prev) => ({ ...prev, colorHex }));
+    rememberPolishColor(colorHex);
+    updateBase({ baseColorHex: colorHex, polishType: draftPolish.polishType, topCoat: draftPolish.polishType === "Matte" ? "Matte" : "Gloss", effect: "Solid" });
   };
 
   return <div style={UI.shell}>
@@ -992,8 +1004,9 @@ function DesignStudio(_, ref) {
             <PolishBottle colorHex={activePolishColor} label={`Current Polish Bottle ${activePolishColor}`} selected size="medium" polishType={activePolish.polishType}/>
             <span style={UI.currentPolishText}>Current Polish Bottle™<strong style={UI.currentPolishMeta}>{activePolish.polishType} · {activePolishColor}</strong></span>
           </button>
-          {commandPopover === "polish" && <div id="command-polish-color-popover" data-testid="command-polish-color-popover" style={UI.commandPopoverWide}>
-            <PolishColorControls compact value={draftPolish.colorHex} recentPolish={recentPolish} polishType={draftPolish.polishType} onRackSelect={(value) => { const colorHex = normalizeHex(value, activePolishColor); setDraftPolish((prev) => ({ ...prev, colorHex })); rememberPolishColor(colorHex); updateBase({ baseColorHex: colorHex, polishType: draftPolish.polishType, topCoat: draftPolish.polishType === "Matte" ? "Matte" : "Gloss", effect: "Solid" }); }} onPolishTypeChange={(polishType) => setDraftPolish((prev) => ({ ...prev, polishType }))} onChange={(value) => setDraftPolish((prev) => ({ ...prev, colorHex: normalizeHex(value, prev.colorHex) }))} onApply={applyCurrentPolish}/>
+          {commandPopover === "polish" && <div id="command-polish-color-popover" data-testid="command-polish-color-popover" data-canvas-safe-placement="left-creative-library-anchor" style={UI.commandPolishPopover}>
+            {/* Canvas-safe marker: this quick polish popover is fixed to the Creative Library side rail instead of the centered hero canvas. */}
+            <PolishColorControls compact value={draftPolish.colorHex} recentPolish={recentPolish} polishType={draftPolish.polishType} onRackSelect={applyRackPolish} onPolishTypeChange={(polishType) => setDraftPolish((prev) => ({ ...prev, polishType }))} onChange={(value) => setDraftPolish((prev) => ({ ...prev, colorHex: normalizeHex(value, prev.colorHex) }))} onApply={applyCurrentPolish}/>
           </div>}
         </div>
       </div>
@@ -1032,6 +1045,11 @@ function DesignStudio(_, ref) {
 
     <div style={UI.layout}>
       <aside style={UI.panel}><div style={UI.panelPad}>
+        <CollapsiblePanel id="polishStudio" title="Polish Studio" open={panelState.polishStudio} onToggle={togglePanel}>
+          <div ref={polishStudioRef} data-testid="creative-library-polish-studio">
+            <PolishColorControls value={draftPolish.colorHex} recentPolish={recentPolish} polishType={draftPolish.polishType} onRackSelect={applyRackPolish} onPolishTypeChange={(polishType) => setDraftPolish((prev) => ({ ...prev, polishType }))} onChange={(value) => setDraftPolish((prev) => ({ ...prev, colorHex: normalizeHex(value, prev.colorHex) }))} onApply={applyCurrentPolish}/>
+          </div>
+        </CollapsiblePanel>
         <CollapsiblePanel id="nailBasics" title="Nail Basics" open={panelState.nailBasics} onToggle={togglePanel}>
           <Field label="Design name"><input style={S.input} value={designName} onChange={(e) => updateDesignName(e.target.value)} placeholder="Untitled Design" /></Field>
           <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}><button type="button" onClick={newDesign} style={{ ...S.btnSecondary, padding: "10px 12px" }}>New Design</button><button type="button" aria-label="Save design" title="Save design" onClick={save} disabled={saving} style={{ ...S.btnPrimary, padding: "10px 12px", opacity: saving ? .65 : 1 }}>💾 Save Version</button></div>
