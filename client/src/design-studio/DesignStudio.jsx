@@ -476,6 +476,21 @@ function FrenchTipControls({ layer, onAdd, onPatch, onApply, quickAccess = false
               style={{ width: "100%" }}
             />
           </Field>
+          <Field label={`Pattern spacing ${Math.round((data.patternSpacing ?? 0.5) * 100)}%`}>
+            <input type="range" min="0" max="100" value={Math.round((data.patternSpacing ?? 0.5) * 100)} data-testid="french-tip-pattern-spacing-slider" onChange={(e) => onPatch({ patternSpacing: Number(e.target.value) / 100 })} style={{ width: "100%" }} />
+          </Field>
+          <Field label={`Pattern rotation ${Math.round(data.patternRotation ?? 0)}°`}>
+            <input type="range" min="-180" max="180" value={Math.round(data.patternRotation ?? 0)} data-testid="french-tip-pattern-rotation-slider" onChange={(e) => onPatch({ patternRotation: Number(e.target.value) })} style={{ width: "100%" }} />
+          </Field>
+          <Field label={`Pattern X offset ${Math.round((data.patternOffsetX ?? 0.5) * 100)}%`}>
+            <input type="range" min="0" max="100" value={Math.round((data.patternOffsetX ?? 0.5) * 100)} data-testid="french-tip-pattern-x-offset-slider" onChange={(e) => onPatch({ patternOffsetX: Number(e.target.value) / 100 })} style={{ width: "100%" }} />
+          </Field>
+          <Field label={`Pattern Y offset ${Math.round((data.patternOffsetY ?? 0.5) * 100)}%`}>
+            <input type="range" min="0" max="100" value={Math.round((data.patternOffsetY ?? 0.5) * 100)} data-testid="french-tip-pattern-y-offset-slider" onChange={(e) => onPatch({ patternOffsetY: Number(e.target.value) / 100 })} style={{ width: "100%" }} />
+          </Field>
+          <Field label={`Pattern opacity ${Math.round((data.patternOpacity ?? 1) * 100)}%`}>
+            <input type="range" min="5" max="100" value={Math.round((data.patternOpacity ?? 1) * 100)} data-testid="french-tip-pattern-opacity-slider" onChange={(e) => onPatch({ patternOpacity: Number(e.target.value) / 100 })} style={{ width: "100%" }} />
+          </Field>
         </>
       ) : (
         <Field label="Tip color">
@@ -1006,6 +1021,7 @@ function DesignStudio(_, ref) {
   const [activeStudio, setActiveStudio] = useState("polishStudio");
   const [dockMode, setDockMode] = useState("Studio View");
   const [panelState, setPanelState] = useState(() => loadPanelState());
+  const [savedDesignsOpen, setSavedDesignsOpen] = useState(false);
   // POLISH_TYPES.map((type) => <option key={type} value={type}>{type}</option>)
   // >{SHAPES.map((shape) => <option key={shape}>{shape}</option>)}</select>
   // Workspace Memory placeholders: future local persistence should restore zoom, selected polish, drawer state, canvas mode, and selected nail without changing Blueprint data.
@@ -1081,6 +1097,11 @@ function DesignStudio(_, ref) {
 
   useEffect(() => {
     loadDesigns();
+    if (typeof window !== "undefined" && window.sessionStorage.getItem("nailBossOpenSavedDesigns") === "1") {
+      window.sessionStorage.removeItem("nailBossOpenSavedDesigns");
+      setSavedDesignsOpen(true);
+      setStatus({ type: "idle", message: "Saved designs ready to open" });
+    }
   }, []);
   useEffect(() => {
     dirtyRef.current = dirty;
@@ -1997,6 +2018,12 @@ function DesignStudio(_, ref) {
     showNotice("Technique Studio opened on the Creative Wall; French Tip quick access is anchored away from the Hero Canvas.");
   }
 
+
+  function openSavedDesignsBrowser() {
+    setSavedDesignsOpen(true);
+    void loadDesigns();
+  }
+
   function openPolishRack() {
     setCommandPopover("polish");
     setActiveStudio("polishStudio");
@@ -2581,6 +2608,30 @@ function DesignStudio(_, ref) {
             <div data-testid="studio-working-panel">
               {renderActiveStudioPanel()}
             </div>
+
+            <CollapsiblePanel
+              id="savedDesigns"
+              title="Saved Designs"
+              open={savedDesignsOpen}
+              onToggle={() => setSavedDesignsOpen((open) => !open)}
+            >
+              <div data-testid="saved-designs-browser" style={{ display: "grid", gap: 8 }}>
+                <button type="button" onClick={openSavedDesignsBrowser} disabled={loading} style={UI.iconButton(false, loading)}>
+                  {loading ? "Loading saved designs…" : "Refresh saved designs"}
+                </button>
+                {designs.length ? designs.map((design) => (
+                  <button
+                    key={design.id}
+                    type="button"
+                    data-testid="saved-design-open-button"
+                    onClick={() => loadDesign(design.id)}
+                    style={{ ...UI.iconButton(selectedDesignId === design.id), justifyContent: "flex-start", textAlign: "left" }}
+                  >
+                    {design.name || "Untitled design"}
+                  </button>
+                )) : <p style={UI.smallText}>No saved designs found yet.</p>}
+              </div>
+            </CollapsiblePanel>
             <CollapsiblePanel
               id="signatureLooks"
               title="Signature Looks"

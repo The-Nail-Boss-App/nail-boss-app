@@ -49,15 +49,27 @@ export function FrenchTipShape({ layer, nail, clipId, thumbnail = false }) {
   const frenchPatternId = `${clipId}-${layer.id}-french-pattern`;
   const patternLayer = {
     ...layer,
-    transform: { ...(layer.transform || {}), scaleX: data.patternScale ?? 1, scaleY: data.patternScale ?? 1 },
-    data: { pattern: data.pattern || "dots", colorHex: data.patternColorHex || data.colorHex, secondaryColorHex: data.patternSecondaryColorHex || "#3B1F35" },
+    transform: {
+      ...(layer.transform || {}),
+      scaleX: data.patternScale ?? 1,
+      scaleY: data.patternScale ?? 1,
+      rotation: data.patternRotation ?? 0,
+      x: data.patternOffsetX ?? 0.5,
+      y: data.patternOffsetY ?? 0.5,
+    },
+    data: {
+      pattern: data.pattern || "dots",
+      colorHex: data.patternColorHex || data.colorHex,
+      secondaryColorHex: data.patternSecondaryColorHex || "#3B1F35",
+      density: data.patternSpacing ?? 0.5,
+    },
   };
   const baseLayer = (nail?.layers || []).find((candidate) => candidate.type === "base");
   const material = resolvePolishDataForRender(baseLayer?.data || {}, nail?.baseColorHex || data.colorHex);
   return <g clipPath={`url(#${clipId})`} opacity={layer.opacity} pointerEvents="none" data-layer-type="frenchTip" data-french-tip-style={data.style} data-realism-renderer="shared-polish-material-engine">
     <defs><clipPath id={frenchMaterialClipId}><path d={path}/></clipPath><clipPath id={frenchPatternClipId}><path d={path}/></clipPath>{data.fillType === "pattern" && <PatternDefs layer={patternLayer} id={frenchPatternId}/>}</defs>
     <g transform={transform}>
-      {data.fillType === "pattern" ? <g clipPath={`url(#${frenchPatternClipId})`} data-french-tip-fill="pattern" data-french-tip-pattern={data.pattern}><rect x="0" y="0" width={VIEWBOX.width} height={VIEWBOX.height} fill={`url(#${frenchPatternId})`}/></g> : <path d={path} fill={data.colorHex} stroke={thumbnail ? "none" : "rgba(59,31,53,.08)"} strokeWidth={thumbnail ? 0 : 1.1}/>}
+      {data.fillType === "pattern" ? <g clipPath={`url(#${frenchPatternClipId})`} data-french-tip-fill="pattern" data-french-tip-pattern={data.pattern} opacity={data.patternOpacity ?? 1}><rect x="0" y="0" width={VIEWBOX.width} height={VIEWBOX.height} fill={`url(#${frenchPatternId})`}/></g> : <path d={path} fill={data.colorHex} stroke={thumbnail ? "none" : "rgba(59,31,53,.08)"} strokeWidth={thumbnail ? 0 : 1.1}/>}
       <SharedPolishRealismLayers nail={nail} path={path} clipId={frenchMaterialClipId} uid={clipId} shine={material.shine ?? 0.74} colorHex={data.fillType === "pattern" ? (data.patternColorHex || data.colorHex) : data.colorHex} polishType={material.polishType || "Cream"} materialScope="french-tip"/>
       <path data-realism-layer="top-coat-continuity-seam" d={path} fill="none" stroke="rgba(255,255,255,.18)" strokeWidth={thumbnail ? 0.8 : 1.2}/>
     </g>

@@ -610,6 +610,11 @@ export function normalizeFrenchTipData(data = {}) {
     patternColorHex: normalizeHex(data.patternColorHex || data.colorHex, "#FFFFFF"),
     patternSecondaryColorHex: normalizeHex(data.patternSecondaryColorHex || data.secondaryColorHex, "#3B1F35"),
     patternScale: clamp(data.patternScale ?? 1, 0.2, 3),
+    patternSpacing: clamp(data.patternSpacing ?? 0.5, 0, 1),
+    patternRotation: clamp(data.patternRotation ?? 0, -180, 180),
+    patternOffsetX: clamp(data.patternOffsetX ?? 0.5, 0, 1),
+    patternOffsetY: clamp(data.patternOffsetY ?? 0.5, 0, 1),
+    patternOpacity: clamp(data.patternOpacity ?? 1, 0.05, 1),
     rotation: clamp(data.rotation ?? preset.rotation, -45, 45),
   };
 }

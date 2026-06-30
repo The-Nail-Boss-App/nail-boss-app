@@ -103,8 +103,9 @@ function patternTransform(layer, baseRotation = 0) {
   const transform = layer.transform || {};
   const x = ((Number.isFinite(transform.x) ? transform.x : 0.5) - 0.5) * VIEWBOX.width;
   const y = ((Number.isFinite(transform.y) ? transform.y : 0.5) - 0.5) * VIEWBOX.height;
-  const scaleX = Number.isFinite(transform.scaleX) ? Math.max(0.2, transform.scaleX) : 1;
-  const scaleY = Number.isFinite(transform.scaleY) ? Math.max(0.2, transform.scaleY) : 1;
+  const spacing = Number.isFinite(layer.data?.density) ? 1.6 - layer.data.density : 1;
+  const scaleX = (Number.isFinite(transform.scaleX) ? Math.max(0.2, transform.scaleX) : 1) * spacing;
+  const scaleY = (Number.isFinite(transform.scaleY) ? Math.max(0.2, transform.scaleY) : 1) * spacing;
   const rotation = (Number.isFinite(transform.rotation) ? transform.rotation : 0) + baseRotation;
   return `translate(${x.toFixed(3)} ${y.toFixed(3)}) rotate(${rotation.toFixed(3)} ${VIEWBOX.cx} ${VIEWBOX.height / 2}) scale(${scaleX.toFixed(3)} ${scaleY.toFixed(3)})`;
 }
