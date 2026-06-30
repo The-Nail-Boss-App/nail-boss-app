@@ -6,6 +6,12 @@ import React, { useEffect, useState } from "react";
 import { COLORS, S, LogoMark } from "./styles.js";
 
 export default function Dashboard({ techName, onStartLook, onViewProposals }) {
+  const openSavedDesigns = () => {
+    if (typeof window !== "undefined") {
+      window.sessionStorage.setItem("nailBossOpenSavedDesigns", "1");
+    }
+    onStartLook();
+  };
   const [counts, setCounts] = useState({ designs: "–", proposals: "–" });
 
   useEffect(() => {
@@ -41,10 +47,10 @@ export default function Dashboard({ techName, onStartLook, onViewProposals }) {
       {/* Stat cards */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 40, maxWidth: 500 }}>
         {[
-          { label: "Saved Designs",  value: counts.designs,   icon: "✦", onClick: onStartLook, testId: "dashboard-saved-designs" },
+          { label: "Saved Designs",  value: counts.designs,   icon: "✦", onClick: onStartLook, savedDesigns: true, testId: "dashboard-saved-designs" },
           { label: "Total Proposals", value: counts.proposals, icon: "◻", onClick: onViewProposals, testId: "dashboard-total-proposals" },
         ].map(c => (
-          <button key={c.label} type="button" onClick={c.onClick} data-testid={c.testId} style={{
+          <button key={c.label} type="button" onClick={c.savedDesigns ? openSavedDesigns : c.onClick} data-testid={c.testId} style={{
             background: COLORS.surface,
             border: `1px solid ${COLORS.border}`,
             borderRadius: 16,
