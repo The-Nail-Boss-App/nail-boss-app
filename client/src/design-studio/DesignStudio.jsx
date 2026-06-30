@@ -44,6 +44,7 @@ import {
   getVisibleBaseColor,
   gradientLayer,
   isReusableDrawingLayer,
+  layerSort,
   normalizeHex,
   normalizeTags,
   patternLayer,
@@ -1098,9 +1099,8 @@ function DesignStudio(_, ref) {
   useEffect(() => {
     loadDesigns();
     if (typeof window !== "undefined" && window.sessionStorage.getItem("nailBossOpenSavedDesigns") === "1") {
-      window.sessionStorage.removeItem("nailBossOpenSavedDesigns");
       setSavedDesignsOpen(true);
-      setStatus({ type: "idle", message: "Saved designs ready to open" });
+      setStatus({ type: "idle", message: "Saved Designs browser opening" });
     }
   }, []);
   useEffect(() => {
@@ -1168,6 +1168,12 @@ function DesignStudio(_, ref) {
       if (!res.ok) throw new Error("Unable to load saved designs.");
       const data = await res.json();
       setDesigns(Array.isArray(data) ? data : []);
+      if (typeof window !== "undefined" && window.sessionStorage.getItem("nailBossOpenSavedDesigns") === "1") {
+        window.sessionStorage.removeItem("nailBossOpenSavedDesigns");
+        setSavedDesignsOpen(true);
+        setStatus({ type: "idle", message: "Saved Designs browser opened" });
+        return;
+      }
       setStatus({ type: "idle", message: "Saved designs loaded" });
     } catch (error) {
       setStatus({ type: "error", message: error.message });
@@ -1519,11 +1525,24 @@ function DesignStudio(_, ref) {
     const layer = layerById(activeNail, layerId);
     if (!layer || layer.type === "base") return;
     const next = updateActiveNail(blueprint, (nail) => {
-      const layers = [...nail.layers].sort((a, b) => a.order - b.order);
-      const index = layers.findIndex((item) => item.id === layerId);
-      const target = clamp(index + direction, 1, layers.length - 1);
-      [layers[index], layers[target]] = [layers[target], layers[index]];
-      return { ...nail, layers: renumberLayers(layers) };
+      const renderOrdered = [...nail.layers].sort(layerSort);
+      const index = renderOrdered.findIndex((item) => item.id === layerId);
+      if (index <= 0) return nail;
+      const target = clamp(index + direction, 1, renderOrdered.length - 1);
+      if (target === index) return nail;
+      [renderOrdered[index], renderOrdered[target]] = [
+        renderOrdered[target],
+        renderOrdered[index],
+      ];
+      const reorderedIds = new Set(renderOrdered.map((item) => item.id));
+      const normalizedById = new Map(
+        renderOrdered.map((item, order) => [item.id, { ...item, order }]),
+      );
+      const reorderedLayers = renderOrdered.map((item) => normalizedById.get(item.id));
+      const remainingLayers = nail.layers
+        .filter((item) => !reorderedIds.has(item.id))
+        .map((item) => normalizedById.get(item.id) || item);
+      return { ...nail, layers: [...reorderedLayers, ...remainingLayers] };
     });
     commit(next, { selectLayerId: layerId });
   }
@@ -2615,7 +2634,8 @@ function DesignStudio(_, ref) {
               open={savedDesignsOpen}
               onToggle={() => setSavedDesignsOpen((open) => !open)}
             >
-              <div data-testid="saved-designs-browser" style={{ display: "grid", gap: 8 }}>
+              <div data-testid="saved-designs-browser" aria-label="Saved Designs" style={{ display: "grid", gap: 8 }}>
+                <strong style={{ color: COLORS.plum }}>Saved Designs</strong>
                 <button type="button" onClick={openSavedDesignsBrowser} disabled={loading} style={UI.iconButton(false, loading)}>
                   {loading ? "Loading saved designs…" : "Refresh saved designs"}
                 </button>
