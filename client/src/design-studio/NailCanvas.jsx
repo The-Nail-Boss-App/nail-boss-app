@@ -57,8 +57,8 @@ export function GradientLayerShape({ layer, nail, baseLayer, path, clipId, uid, 
   const art = artMaterialProfile(baseLayer, nail);
   const softness = Math.max(0, Math.min(1, Number(layer.data?.softness ?? 0.62)));
   const filterId = `${id}-diffusion`;
-  const materialOpacity = (layer.opacity ?? 1) * art.artOpacity;
-  return <g key={layer.id} clipPath={`url(#${clipId})`} opacity={materialOpacity} pointerEvents="none" data-layer-type="gradient" data-gradient-renderer="shared-active-thumbnail-salon-ombre" data-gradient-direction={layer.data?.direction || "vertical"} data-gradient-material={art.polishType}>
+  const materialOpacity = (layer.opacity ?? 0.45) * art.artOpacity;
+  return <g key={layer.id} clipPath={`url(#${clipId})`} opacity={materialOpacity} pointerEvents="none" data-layer-type="gradient" style={{ mixBlendMode: layer.data?.blendMode || "multiply" }} data-gradient-renderer="shared-active-thumbnail-salon-ombre" data-gradient-direction={layer.data?.direction || "vertical"} data-gradient-material={art.polishType} data-gradient-blend="polish-preserving-default" data-gradient-opacity={materialOpacity.toFixed(2)}>
     <defs><LayerGradient layer={layer} id={id}/><filter id={filterId} x="-18%" y="-18%" width="136%" height="136%"><feGaussianBlur stdDeviation={(0.6 + softness * (thumbnail ? 2.6 : 3.8)).toFixed(2)}/></filter></defs>
     <rect data-realism-layer="soft-diffusion-blur-clipped-gradient-fill" x="-4" y="-4" width={VIEWBOX.width + 8} height={VIEWBOX.height + 8} fill={`url(#${id})`} filter={`url(#${filterId})`}/>
     {art.polishType === "Jelly" && <rect data-realism-layer="jelly-translucent-glassy-gradient-blend" width={VIEWBOX.width} height={VIEWBOX.height} fill={`url(#${id})`} opacity=".38" style={{ mixBlendMode: "multiply" }}/>}
@@ -333,6 +333,11 @@ export default function NailCanvas({ nail, layers, selectedLayerId, mode, brush,
         </defs>
         <rect width={VIEWBOX.width} height={VIEWBOX.height} fill="transparent"/>
         <PolishSurface nail={nail} baseLayer={baseLayer} path={path} clipId={clipId} uid={uid}/>
+        {baseLayer?.data?.polishFillMode === "gradient" && <g clipPath={`url(#${clipId})`} pointerEvents="none" data-testid="gradient-polish-color-fill" data-gradient-mode="polish-base-fill">
+          <defs><LayerGradient layer={{ id: "base-polish-gradient", data: baseLayer.data.gradient }} id={`${uid}-base-polish-gradient`}/></defs>
+          <path d={path} fill={`url(#${uid}-base-polish-gradient)`} opacity=".82"/>
+          <SharedPolishRealismLayers nail={nail} path={path} clipId={clipId} uid={uid} shine={baseLayer.data?.shine} colorHex={baseLayer.data?.colorHex} polishType={baseLayer.data?.polishType} materialScope="gradient-polish-color"/>
+        </g>}
         {artLayers.map(layerNode)}
         {drag?.kind === "drawing" && <g clipPath={`url(#${clipId})`}><path d={strokePath(drag.stroke.points, nail)} fill="none" stroke={drag.stroke.colorHex} strokeWidth={(drag.stroke.width || 0.04) * 100} strokeOpacity={drag.stroke.opacity} strokeLinecap="round" strokeLinejoin="round" data-realism-layer="in-progress-painted-stroke-preview"/></g>}
         {cursorPoint && mode === "draw" && <g pointerEvents="none" aria-hidden="true" transform={`translate(${cursorPoint.x} ${cursorPoint.y}) rotate(-34)`}>
