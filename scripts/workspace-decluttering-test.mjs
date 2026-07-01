@@ -184,6 +184,48 @@ assert.match(
   /Studio personalization hooks[\s\S]*work surface[\s\S]*walls[\s\S]*lighting[\s\S]*accent color[\s\S]*layout mode[\s\S]*left-handed mode[\s\S]*panel transparency/,
   "Personalization placeholders should be architecture-only comments.",
 );
+
+assert.match(
+  studio,
+  /const DESIGN_NAME_MAX_LENGTH = 32/,
+  "Design names should have a clear 32 character editing limit.",
+);
+assert.match(
+  studio,
+  /data-testid="artist-command-design-name"[\s\S]*maxLength=\{DESIGN_NAME_MAX_LENGTH\}/,
+  "Command-bar design name input should enforce the shared maxLength.",
+);
+assert.match(
+  studio,
+  /value\.slice\(0, DESIGN_NAME_MAX_LENGTH\)[\s\S]*setDesignName\(limitedName\)/,
+  "Design name edits should be limited without mutating existing over-limit saved names on load.",
+);
+assert.match(
+  studioStyles,
+  /commandDesignName:[\s\S]*maxWidth: "100%"[\s\S]*overflowWrap: "anywhere"[\s\S]*wordBreak: "break-word"/,
+  "Command title should wrap safely without horizontal overflow.",
+);
+assert.match(
+  studio,
+  /function HexInput[\s\S]*useState\(value \|\| "#FFFFFF"\)[\s\S]*onBlur=\{commitDraft\}[\s\S]*e\.key === "Enter"[\s\S]*commitDraft\(\)/,
+  "HEX inputs should be editable drafts committed on blur or Enter.",
+);
+assert.match(
+  studio,
+  /function normalizeHexDraft[\s\S]*replace\(\/\^#\/, ""\)[\s\S]*return `#\$\{cleaned\}`/,
+  "HEX input should normalize values to #-prefixed uppercase format.",
+);
+assert.match(
+  studio,
+  /\^#\?\[0-9A-F\]\{0,6\}\$[\s\S]*setDraft\(next\)/,
+  "HEX input typing should accept #FFFFFF and FFFFFF-style drafts.",
+);
+assert.doesNotMatch(
+  studio,
+  /onChange=\{\(e\) =>[\s\S]{0,160}rememberPolishColor/,
+  "Typing in HEX inputs should not immediately add Polish Rack history.",
+);
+
 assert.match(
   studio,
   /data-testid="polish-rack"/,

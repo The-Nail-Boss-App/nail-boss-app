@@ -66,6 +66,15 @@ export const UI = {
     wordBreak: "break-word",
     textOverflow: "clip",
   },
+  commandDesignNameCounter: {
+    marginTop: 4,
+    color: COLORS.textMuted,
+    fontSize: 12,
+    fontWeight: 800,
+    letterSpacing: ".08em",
+    textTransform: "uppercase",
+    textAlign: "right",
+  },
   commandCollection: {
     marginTop: 6,
     color: COLORS.textMuted,
