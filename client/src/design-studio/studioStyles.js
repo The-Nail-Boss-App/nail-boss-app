@@ -284,6 +284,26 @@ export const UI = {
     overscrollBehavior: "contain",
     paddingRight: 4,
   },
+  creativeWallPanel: {
+    position: "relative",
+    overflow: "visible",
+    zIndex: 5,
+  },
+  studioPopoutPanel: {
+    position: "absolute",
+    top: 16,
+    left: "calc(100% + 14px)",
+    width: "clamp(300px, 28vw, 380px)",
+    maxHeight: "calc(100vh - 236px)",
+    overflowY: "auto",
+    overscrollBehavior: "contain",
+    padding: 12,
+    border: "1px solid rgba(123,47,89,.18)",
+    borderRadius: 22,
+    background: "rgba(255,255,255,.98)",
+    boxShadow: "0 24px 58px rgba(60,20,50,.16)",
+    zIndex: 20,
+  },
   stickyPreview: {
     position: "sticky",
     top: 10,
@@ -293,7 +313,7 @@ export const UI = {
     minHeight: "clamp(360px, 52vh, 560px)",
     display: "grid",
     placeItems: "center",
-    overflow: "visible",
+    overflow: "hidden",
   },
   panelPad: { padding: 16 },
   sectionTitle: {
@@ -370,6 +390,25 @@ export const UI = {
   row: { display: "flex", gap: 8, alignItems: "center" },
   smallText: { fontSize: 12, color: COLORS.textMuted, lineHeight: 1.35 },
   creativeWall: { display: "grid", gap: 12, marginBottom: 14 },
+  techniqueChoiceGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+    gap: 10,
+    marginBottom: 12,
+  },
+  techniqueChoiceButton: (active = false) => ({
+    ...S.btnSecondary,
+    minHeight: 74,
+    padding: "12px 10px",
+    borderRadius: 18,
+    borderColor: active ? COLORS.plum : "rgba(123,47,89,.18)",
+    background: active ? COLORS.roseDim : "#fff",
+    color: active ? COLORS.plum : COLORS.text,
+    fontWeight: 900,
+    boxShadow: active
+      ? "0 0 0 3px rgba(255,214,232,.82), 0 14px 28px rgba(123,47,89,.14)"
+      : "0 10px 22px rgba(60,20,50,.06)",
+  }),
   studioCard: (active = false) => ({
     display: "grid",
     gridTemplateColumns: "44px 1fr",

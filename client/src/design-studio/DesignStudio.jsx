@@ -646,6 +646,29 @@ function GradientWorkflowControls({ layer, baseColor, polishFillMode, onAdd, onP
   );
 }
 
+function PatternWorkflowControls({ layer, onAdd, onPatch }) {
+  const data = layer?.data || { pattern: "dots", colorHex: "#FFFFFF", secondaryColorHex: "#3B1F35" };
+  return (
+    <section data-testid="pattern-workflow-controls" style={{ ...UI.panelSection, borderColor: "rgba(123,47,89,.24)" }}>
+      <div style={UI.panelBody}>
+        <div style={UI.sectionTitle}>Pattern Workflow</div>
+        {!layer && <button type="button" onClick={onAdd} style={{ ...S.btnSecondary, padding: "9px 12px", marginBottom: 10 }}>Add pattern layer</button>}
+        <Field label="Pattern">
+          <select style={S.input} value={data.pattern || "dots"} onChange={(e) => onPatch({ pattern: e.target.value })}>
+            {PATTERNS.map((pattern) => <option key={pattern} value={pattern}>{pattern}</option>)}
+          </select>
+        </Field>
+        {patternColorSlots(data.pattern || "dots").map((slot) => (
+          <Field key={slot.key} label={slot.label}>
+            <ColorInput value={data[slot.key] || slot.fallback} onChange={(value) => onPatch({ [slot.key]: normalizeHex(value, slot.fallback) })} />
+          </Field>
+        ))}
+        <p style={UI.smallText}>Advanced pattern size, rotation, placement, and layer ordering stay preserved in Nail Art Controls™ and Layers.</p>
+      </div>
+    </section>
+  );
+}
+
 function layerById(nail, id) {
   return nail?.layers?.find((layer) => layer.id === id) || null;
 }
@@ -1118,6 +1141,7 @@ function DesignStudio(_, ref) {
   const [commandZoom, setCommandZoom] = useState(100);
   const [commandPopover, setCommandPopover] = useState("");
   const [activeStudio, setActiveStudio] = useState("polishStudio");
+  const [selectedTechnique, setSelectedTechnique] = useState("");
   const [dockMode, setDockMode] = useState("Studio View");
   const [panelState, setPanelState] = useState(() => loadPanelState());
   const [savedDesignsOpen, setSavedDesignsOpen] = useState(false);
@@ -1585,6 +1609,22 @@ function DesignStudio(_, ref) {
     const layer = patternLayer(activeNail, "dots");
     commit(addLayerToBlueprint(blueprint, layer), { selectLayerId: layer.id });
     setTab("properties");
+  }
+
+  function activePatternLayer() {
+    return selectedLayer?.type === "pattern"
+      ? selectedLayer
+      : activeNail.layers.find((layer) => layer.type === "pattern");
+  }
+
+  function patchPatternData(patch) {
+    const layer = activePatternLayer();
+    if (!layer) {
+      showNotice("Add a pattern layer first.");
+      return;
+    }
+    patchLayer(layer.id, { data: { ...layer.data, ...patch } });
+    setSelectedLayerId(layer.id);
   }
 
   function addFrenchTip() {
@@ -2265,7 +2305,7 @@ function DesignStudio(_, ref) {
   }
 
   function adjustZoom(delta) {
-    setCommandZoom((value) => clamp(value + delta, 25, 200));
+    setCommandZoom((value) => clamp(value + delta, 25, 165));
   }
 
   function togglePanel(id) {
@@ -2349,7 +2389,10 @@ function DesignStudio(_, ref) {
     setActiveStudio(id);
     if (id === "polishStudio")
       setPanelState((prev) => ({ ...prev, polishStudio: true }));
-    if (id === "techniqueStudio") setTab("effects");
+    if (id === "techniqueStudio") {
+      setTab("effects");
+      setSelectedTechnique("");
+    }
     if (id === "gemStudio" || id === "charmStudio") setTab("assets");
     if (id === "brushStudio") setTab("brush");
   }
@@ -2384,57 +2427,79 @@ function DesignStudio(_, ref) {
       return (
         <section data-testid="technique-studio-panel" style={UI.panelSection}>
           <div style={UI.panelBody}>
-            <FrenchTipControls
-              layer={activeFrenchTip}
-              onAdd={addFrenchTip}
-              onPatch={patchFrenchTipData}
-              onApply={applyFrenchTip}
-            />
-            <GradientWorkflowControls
-              layer={activeGradientLayer()}
-              baseColor={activePolishColor}
-              polishFillMode={baseLayer?.data?.polishFillMode || "solid"}
-              onAdd={addGradient}
-              onPatch={patchGradientData}
-              onPatchStop={patchGradientStop}
-              onAddStop={addGradientStop}
-              onRemoveStop={removeGradientStop}
-              onOpacity={(opacity) => {
-                const layer = activeGradientLayer();
-                if (layer) patchLayer(layer.id, { opacity });
-              }}
-              onFillMode={setPolishFillMode}
-              onApply={applyGradient}
-            />
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <div style={UI.sectionTitle}>Choose Technique</div>
+            <div data-testid="technique-choice-grid" style={UI.techniqueChoiceGrid}>
               <button
                 type="button"
-                aria-label="Add gradient layer"
-                title="Add gradient layer"
-                onClick={addGradient}
-                style={{ ...S.btnSecondary, padding: "11px 14px" }}
+                data-testid="technique-choice-french"
+                aria-pressed={selectedTechnique === "french"}
+                onClick={() => setSelectedTechnique("french")}
+                style={UI.techniqueChoiceButton(selectedTechnique === "french")}
               >
-                ＋ Gradient
+                ◠ French Tip
               </button>
               <button
                 type="button"
-                aria-label="Add pattern layer"
-                title="Add pattern layer"
-                onClick={addPattern}
-                style={{ ...S.btnSecondary, padding: "11px 14px" }}
+                data-testid="technique-choice-gradient"
+                aria-pressed={selectedTechnique === "gradient"}
+                onClick={() => setSelectedTechnique("gradient")}
+                style={UI.techniqueChoiceButton(selectedTechnique === "gradient")}
+              >
+                ◐ Gradient
+              </button>
+              <button
+                type="button"
+                data-testid="technique-choice-pattern"
+                aria-pressed={selectedTechnique === "pattern"}
+                onClick={() => setSelectedTechnique("pattern")}
+                style={UI.techniqueChoiceButton(selectedTechnique === "pattern")}
               >
                 ▧ Pattern
               </button>
               <button
                 type="button"
-                aria-label="Add French tip layer"
-                title="Add French tip layer"
-                onClick={addFrenchTip}
-                style={{ ...S.btnSecondary, padding: "11px 14px" }}
+                data-testid="technique-choice-aura"
+                aria-pressed={selectedTechnique === "aura"}
+                onClick={() => setSelectedTechnique("gradient")}
+                style={UI.techniqueChoiceButton(selectedTechnique === "aura")}
               >
-                ◠ French
+                ✺ Aura
               </button>
             </div>
+            {!selectedTechnique && <p data-testid="technique-studio-choice-prompt" style={UI.smallText}>Pick a technique to open its controls in this pop-out panel while the Hero Canvas stays visible.</p>}
+            {selectedTechnique === "french" && (
+              <FrenchTipControls
+                layer={activeFrenchTip}
+                onAdd={addFrenchTip}
+                onPatch={patchFrenchTipData}
+                onApply={applyFrenchTip}
+              />
+            )}
+            {selectedTechnique === "gradient" && (
+              <GradientWorkflowControls
+                layer={activeGradientLayer()}
+                baseColor={activePolishColor}
+                polishFillMode={baseLayer?.data?.polishFillMode || "solid"}
+                onAdd={addGradient}
+                onPatch={patchGradientData}
+                onPatchStop={patchGradientStop}
+                onAddStop={addGradientStop}
+                onRemoveStop={removeGradientStop}
+                onOpacity={(opacity) => {
+                  const layer = activeGradientLayer();
+                  if (layer) patchLayer(layer.id, { opacity });
+                }}
+                onFillMode={setPolishFillMode}
+                onApply={applyGradient}
+              />
+            )}
+            {selectedTechnique === "pattern" && (
+              <PatternWorkflowControls
+                layer={activePatternLayer()}
+                onAdd={addPattern}
+                onPatch={patchPatternData}
+              />
+            )}
           </div>
         </section>
       );
@@ -2843,7 +2908,7 @@ function DesignStudio(_, ref) {
         <aside
           data-testid="creative-wall"
           aria-label="Creative Wall"
-          style={UI.panel}
+          style={{ ...UI.panel, ...UI.creativeWallPanel }}
         >
           <div style={UI.panelPad}>
             <div style={UI.sectionTitle}>Creative Wall™</div>
@@ -2858,7 +2923,11 @@ function DesignStudio(_, ref) {
                 />
               ))}
             </div>
-            <div data-testid="studio-working-panel" style={UI.activeStudioScroll}>
+            <div
+              data-testid="studio-working-panel"
+              data-panel-behavior="pop-out-beside-creative-wall"
+              style={UI.studioPopoutPanel}
+            >
               {renderActiveStudioPanel()}
             </div>
 
