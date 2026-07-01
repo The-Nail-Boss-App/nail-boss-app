@@ -320,9 +320,10 @@ export default function NailCanvas({ nail, layers, selectedLayerId, mode, brush,
   const brushCursorLength = Math.max(13, brushCursorRadius * 2.6);
   const brushCursorWidth = Math.max(3.5, brushCursorRadius * 0.72);
   const canvasCursor = mode === "draw" || mode === "eraser" ? "none" : "default";
+  const containedZoom = Math.max(0.25, Math.min(Number(zoom) || 1, 1.65));
 
-  return <div style={{ height: "100%", minHeight: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", position: "relative", overflow: "visible", padding: 18 }}>
-    <div data-testid="zoomable-nail-canvas" style={{ width: "min(42vh, 74%)", maxWidth: 340, aspectRatio: "2 / 3", transform: `scale(${zoom})`, transformOrigin: "center center", transition: "transform 160ms ease", background: "linear-gradient(180deg,#fff,#fbf1f8)", border: `1px solid ${COLORS.border}`, borderRadius: 28, boxShadow: "inset 0 0 0 12px rgba(255,255,255,.55), 0 18px 50px rgba(60,20,50,.10)", padding: 12 }}>
+  return <div data-testid="bounded-hero-canvas-area" style={{ height: "100%", minHeight: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden", padding: 18 }}>
+    <div data-testid="zoomable-nail-canvas" data-zoom-containment="bounded-hero-canvas" style={{ width: "min(32vh, 54%)", maxWidth: 250, aspectRatio: "2 / 3", transform: `scale(${containedZoom})`, transformOrigin: "center center", transition: "transform 160ms ease" }}>
       <svg ref={svgRef} viewBox={`0 0 ${VIEWBOX.width} ${VIEWBOX.height}`} width="100%" height="100%" role="img" aria-label="Editable single nail canvas" onPointerDown={canvasDown} onPointerMove={(e) => { pointerMove(e); canvasMove(e); }} onPointerUp={finishPointerGesture} onPointerCancel={cancelPointerGesture} onPointerLeave={() => setCursorPoint(null)} style={{ touchAction: "none", userSelect: "none", cursor: canvasCursor }}>
         <defs>
           <clipPath id={clipId}><path d={path}/></clipPath>

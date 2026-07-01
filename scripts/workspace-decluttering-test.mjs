@@ -319,3 +319,69 @@ assert.match(
 );
 
 console.log("Workspace Decluttering UI guardrails passed.");
+
+const nailCanvas = fs.readFileSync(
+  "client/src/design-studio/NailCanvas.jsx",
+  "utf8",
+);
+
+assert.match(
+  studio,
+  /data-testid="studio-working-panel"[\s\S]*data-panel-behavior="pop-out-beside-creative-wall"[\s\S]*style=\{UI\.studioPopoutPanel\}/,
+  "Studio controls should render as a pop-out panel beside the Creative Wall instead of a below-fold drawer.",
+);
+assert.match(
+  studioStyles,
+  /studioPopoutPanel:[\s\S]*position: "absolute"[\s\S]*left: "calc\(100% \+ 14px\)"[\s\S]*maxHeight: "calc\(100vh - 236px\)"[\s\S]*overflowY: "auto"/,
+  "Studio pop-out panel should sit beside the Creative Wall and scroll internally.",
+);
+assert.match(
+  studioStyles,
+  /stickyPreview:[\s\S]*overflow: "hidden"/,
+  "Hero Canvas preview should bound zoomed nail content away from the Studio Dock.",
+);
+assert.match(
+  nailCanvas,
+  /data-testid="bounded-hero-canvas-area"[\s\S]*overflow: "hidden"[\s\S]*data-zoom-containment="bounded-hero-canvas"/,
+  "Zoomable nail canvas should be contained inside the Hero Canvas area.",
+);
+assert.doesNotMatch(
+  nailCanvas,
+  /background: "linear-gradient\(180deg,#fff,#fbf1f8\)"|boxShadow: "inset 0 0 0 12px/,
+  "The extra inner white nail card should be removed so the nail stands on the Hero Canvas background.",
+);
+assert.match(
+  studio,
+  /data-testid="technique-choice-grid"[\s\S]*technique-choice-french[\s\S]*technique-choice-gradient[\s\S]*technique-choice-pattern[\s\S]*technique-choice-aura/,
+  "Technique Studio should open with equal technique choices including French, Gradient, Pattern, and Aura.",
+);
+assert.match(
+  studio,
+  /!selectedTechnique[\s\S]*data-testid="technique-studio-choice-prompt"/,
+  "Technique controls should not appear before a technique is selected.",
+);
+assert.match(
+  studio,
+  /selectedTechnique === "french"[\s\S]*<FrenchTipControls/,
+  "French Tip controls should render only after selecting French Tip.",
+);
+assert.match(
+  studio,
+  /selectedTechnique === "gradient"[\s\S]*<GradientWorkflowControls/,
+  "Gradient controls should render only after selecting Gradient.",
+);
+assert.match(
+  studio,
+  /selectedTechnique === "pattern"[\s\S]*<PatternWorkflowControls/,
+  "Pattern controls should render only after selecting Pattern.",
+);
+assert.match(
+  studio,
+  /defaultGradientData[\s\S]*colorA: baseColor[\s\S]*colorB: accent[\s\S]*opacity: 0\.45[\s\S]*mode: "overlayBlend"/,
+  "Gradient should blend current polish with one accent stop at partial opacity by default.",
+);
+assert.match(
+  studio,
+  /<option value="gradient">Gradient Polish Color<\/option>/,
+  "Gradient Polish Color option should exist.",
+);
