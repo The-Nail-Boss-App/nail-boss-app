@@ -256,14 +256,15 @@ export const UI = {
   layout: {
     flex: 1,
     minHeight: 0,
+    height: "min(100%, calc(100vh - 150px))",
     display: "grid",
     gridTemplateColumns:
       "minmax(220px, 0.9fr) minmax(320px, 1.7fr) minmax(220px, 0.85fr)",
     gap: 18,
     padding: "18px clamp(14px, 2vw, 22px)",
     overflowX: "hidden",
-    overflowY: "auto",
-    alignItems: "start",
+    overflow: "hidden",
+    alignItems: "stretch",
   },
   panel: {
     background: COLORS.surface,
@@ -274,6 +275,14 @@ export const UI = {
     minHeight: 0,
     minWidth: 0,
     overflow: "auto",
+    maxHeight: "calc(100vh - 188px)",
+  },
+  activeStudioScroll: {
+    maxHeight: "calc(100vh - 360px)",
+    minHeight: 0,
+    overflowY: "auto",
+    overscrollBehavior: "contain",
+    paddingRight: 4,
   },
   stickyPreview: {
     position: "sticky",
@@ -281,7 +290,7 @@ export const UI = {
     zIndex: 2,
     background:
       "radial-gradient(circle at 50% 10%, #fff 0%, #fff7fb 52%, #f7edf4 100%)",
-    minHeight: "clamp(420px, 58vh, 620px)",
+    minHeight: "clamp(360px, 52vh, 560px)",
     display: "grid",
     placeItems: "center",
     overflow: "visible",

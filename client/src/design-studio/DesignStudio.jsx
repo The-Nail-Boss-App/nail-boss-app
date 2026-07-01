@@ -44,6 +44,7 @@ import {
   getActiveNail,
   getVisibleBaseColor,
   gradientLayer,
+  normalizeGradientData,
   isReusableDrawingLayer,
   layerSort,
   normalizeHex,
@@ -71,6 +72,9 @@ import {
 const PANEL_PREFS_STORAGE_KEY = "anitaset.designStudio.panels.v1";
 const RECENT_POLISH_LIMIT = 12;
 const DESIGN_NAME_MAX_LENGTH = 32;
+const GRADIENT_DIRECTIONS = ["vertical", "reverse-vertical", "horizontal", "diagonal", "reverse-diagonal", "aura"];
+const DEFAULT_GRADIENT_ACCENT = "#F6A6CF";
+
 const PANEL_GROUPS = [
   ["nailBasics", "signatureLooks", "designDetails"],
   ["artTools", "properties", "layers"],
@@ -590,6 +594,54 @@ function FrenchTipControls({ layer, onAdd, onPatch, onApply, quickAccess = false
         Classic, deep, angled, V-French, and reverse French render as clipped
         vector layers inside each nail silhouette.
       </p>
+    </section>
+  );
+}
+
+function GradientWorkflowControls({ layer, baseColor, polishFillMode, onAdd, onPatch, onPatchStop, onAddStop, onRemoveStop, onOpacity, onFillMode, onApply }) {
+  const data = layer?.data || normalizeGradientData({
+    colorA: baseColor,
+    colorB: DEFAULT_GRADIENT_ACCENT,
+    gradientStops: [{ color: baseColor, position: 0 }, { color: DEFAULT_GRADIENT_ACCENT, position: 100 }],
+  });
+  const stops = data.gradientStops || [];
+  return (
+    <section data-testid="gradient-workflow-controls" style={{ ...UI.panelSection, borderColor: "rgba(123,47,89,.24)" }}>
+      <div style={UI.panelBody}>
+        <div style={UI.sectionTitle}>Gradient Workflow</div>
+        <p style={UI.smallText}>Gradients start with the current polish color plus one gradient color, then blend over the polish at partial opacity by default.</p>
+        <Field label="Polish color mode">
+          <select aria-label="Polish color mode" style={S.input} value={polishFillMode} onChange={(e) => onFillMode(e.target.value)}>
+            <option value="solid">Solid Polish Color</option>
+            <option value="gradient">Gradient Polish Color</option>
+          </select>
+        </Field>
+        {!layer && <button type="button" onClick={onAdd} style={{ ...S.btnSecondary, padding: "9px 12px", marginBottom: 10 }}>Add blended gradient</button>}
+        <Field label="Gradient color stop 1">
+          <input aria-label="Gradient color stop 1" type="color" value={stops[0]?.color || baseColor} onChange={(e) => onPatchStop(0, { color: e.target.value })} style={{ width: "100%", height: 38, border: `1px solid ${COLORS.border}`, borderRadius: 10 }} />
+        </Field>
+        <Field label="Gradient color stop 2">
+          <input aria-label="Gradient color stop 2" type="color" value={stops[1]?.color || DEFAULT_GRADIENT_ACCENT} onChange={(e) => onPatchStop(1, { color: e.target.value })} style={{ width: "100%", height: 38, border: `1px solid ${COLORS.border}`, borderRadius: 10 }} />
+        </Field>
+        {stops.slice(2).map((stop, offsetIndex) => (
+          <Field key={`${stop.color}-${offsetIndex}`} label={`Gradient color stop ${offsetIndex + 3}`}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 8 }}>
+              <input aria-label={`Gradient color stop ${offsetIndex + 3}`} type="color" value={stop.color} onChange={(e) => onPatchStop(offsetIndex + 2, { color: e.target.value })} style={{ width: "100%", height: 38, border: `1px solid ${COLORS.border}`, borderRadius: 10 }} />
+              <button type="button" onClick={() => onRemoveStop(offsetIndex + 2)} style={UI.iconButton(false)}>Remove</button>
+            </div>
+          </Field>
+        ))}
+        <button type="button" onClick={onAddStop} style={{ ...S.btnSecondary, padding: "8px 12px" }}>Add color stop</button>
+        <Field label="Direction">
+          <select aria-label="Gradient direction" style={S.input} value={data.direction || "vertical"} onChange={(e) => onPatch({ direction: e.target.value })}>{GRADIENT_DIRECTIONS.map((direction) => <option key={direction} value={direction}>{direction}</option>)}</select>
+        </Field>
+        <GeometrySlider label="Gradient opacity / blend" value={layer?.opacity ?? 0.45} onChange={onOpacity} />
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          <button type="button" onClick={() => onApply("active")} style={UI.iconButton(false)}>Apply to active nail</button>
+          <button type="button" onClick={() => onApply("hand")} style={UI.iconButton(false)}>Apply to current hand</button>
+          <button type="button" onClick={() => onApply("all")} style={UI.iconButton(false)}>Apply to full set</button>
+        </div>
+      </div>
     </section>
   );
 }
@@ -1416,10 +1468,117 @@ function DesignStudio(_, ref) {
     setTab("properties");
   }
 
+  function defaultGradientData(nail = activeNail, accent = DEFAULT_GRADIENT_ACCENT) {
+    const baseColor = normalizeHex(nail?.baseColorHex || baseLayer?.data?.colorHex, activePolishColor);
+    return normalizeGradientData({
+      colorA: baseColor,
+      colorB: accent,
+      direction: "vertical",
+      blendPosition: 0.5,
+      softness: 0.62,
+      angle: 90,
+      gradientStops: [
+        { color: baseColor, position: 0 },
+        { color: accent, position: 100 },
+      ],
+    });
+  }
+
   function addGradient() {
-    const layer = gradientLayer(activeNail);
+    const layer = {
+      ...gradientLayer(activeNail),
+      name: "Blended Gradient Overlay",
+      opacity: 0.45,
+      data: { ...defaultGradientData(), mode: "overlayBlend" },
+    };
     commit(addLayerToBlueprint(blueprint, layer), { selectLayerId: layer.id });
     setTab("properties");
+  }
+
+  function activeGradientLayer() {
+    return selectedLayer?.type === "gradient"
+      ? selectedLayer
+      : activeNail.layers.find((layer) => layer.type === "gradient");
+  }
+
+  function patchGradientData(patch) {
+    const layer = activeGradientLayer();
+    if (!layer) {
+      showNotice("Add a gradient layer first.");
+      return;
+    }
+    const nextData = normalizeGradientData({ ...layer.data, ...patch });
+    patchLayer(layer.id, { data: nextData });
+    setSelectedLayerId(layer.id);
+  }
+
+  function patchGradientStop(index, patch) {
+    const layer = activeGradientLayer();
+    if (!layer) return;
+    const stops = layer.data?.gradientStops || defaultGradientData().gradientStops;
+    const nextStops = stops.map((stop, stopIndex) =>
+      stopIndex === index ? { ...stop, ...patch } : stop,
+    );
+    patchGradientData({
+      gradientStops: nextStops,
+      colorA: nextStops[0]?.color,
+      colorB: nextStops.at(-1)?.color,
+    });
+  }
+
+  function addGradientStop() {
+    const layer = activeGradientLayer();
+    if (!layer) {
+      addGradient();
+      return;
+    }
+    const stops = layer.data?.gradientStops || defaultGradientData().gradientStops;
+    if (stops.length >= 7) return;
+    const nextCount = stops.length + 1;
+    const nextStops = [...stops, { color: "#FFFFFF", position: 50 }].map((stop, index) => ({
+      ...stop,
+      position: index === 0 ? 0 : index === nextCount - 1 ? 100 : Math.round((index / (nextCount - 1)) * 100),
+    }));
+    patchGradientData({ gradientStops: nextStops, colorA: nextStops[0].color, colorB: nextStops.at(-1).color });
+  }
+
+  function removeGradientStop(index) {
+    const layer = activeGradientLayer();
+    if (!layer) return;
+    const stops = layer.data?.gradientStops || defaultGradientData().gradientStops;
+    if (stops.length <= 2) return;
+    const nextStops = stops.filter((_, stopIndex) => stopIndex !== index);
+    patchGradientData({ gradientStops: nextStops, colorA: nextStops[0].color, colorB: nextStops.at(-1).color });
+  }
+
+  function setPolishFillMode(mode) {
+    const gradientData = baseLayer?.data?.gradient || defaultGradientData();
+    updateBase({ polishFillMode: mode, gradient: gradientData, effect: mode === "gradient" ? "Gradient" : "Solid" });
+  }
+
+  function applyGradient(scope) {
+    const sourceLayer = activeGradientLayer();
+    if (!sourceLayer) {
+      showNotice("Add a gradient layer first.");
+      return;
+    }
+    const targets = scope === "active" ? [activeSlot] : slotsFor(scope);
+    const next = updateActiveNail(blueprint, (nail) => nail);
+    const patched = ensureFullSetBlueprint({
+      ...next,
+      nails: next.nails.map((nail) => {
+        if (!targets.includes(nail.slot)) return nail;
+        const exists = nail.layers.some((layer) => layer.id === sourceLayer.id || layer.type === "gradient");
+        const copied = { ...sourceLayer, id: exists ? sourceLayer.id : uid("gradient") };
+        return {
+          ...nail,
+          layers: exists
+            ? nail.layers.map((layer) => layer.type === "gradient" ? { ...copied, id: layer.id } : layer)
+            : renumberLayers([...nail.layers, copied]),
+        };
+      }),
+    });
+    commit(patched, { selectLayerId: sourceLayer.id, noticeMessage: "Gradient applied." });
   }
 
   function addPattern() {
@@ -2231,6 +2390,22 @@ function DesignStudio(_, ref) {
               onPatch={patchFrenchTipData}
               onApply={applyFrenchTip}
             />
+            <GradientWorkflowControls
+              layer={activeGradientLayer()}
+              baseColor={activePolishColor}
+              polishFillMode={baseLayer?.data?.polishFillMode || "solid"}
+              onAdd={addGradient}
+              onPatch={patchGradientData}
+              onPatchStop={patchGradientStop}
+              onAddStop={addGradientStop}
+              onRemoveStop={removeGradientStop}
+              onOpacity={(opacity) => {
+                const layer = activeGradientLayer();
+                if (layer) patchLayer(layer.id, { opacity });
+              }}
+              onFillMode={setPolishFillMode}
+              onApply={applyGradient}
+            />
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               <button
                 type="button"
@@ -2683,7 +2858,7 @@ function DesignStudio(_, ref) {
                 />
               ))}
             </div>
-            <div data-testid="studio-working-panel">
+            <div data-testid="studio-working-panel" style={UI.activeStudioScroll}>
               {renderActiveStudioPanel()}
             </div>
 
