@@ -70,6 +70,7 @@ import {
 // localStorage.setItem(PANEL_PREFS_STORAGE_KEY) preserves collapsible panel memory.
 const PANEL_PREFS_STORAGE_KEY = "anitaset.designStudio.panels.v1";
 const RECENT_POLISH_LIMIT = 12;
+const DESIGN_NAME_MAX_LENGTH = 32;
 const PANEL_GROUPS = [
   ["nailBasics", "signatureLooks", "designDetails"],
   ["artTools", "properties", "layers"],
@@ -283,6 +284,65 @@ function GeometrySlider({ label, value = 0.5, onChange }) {
   );
 }
 
+function normalizeHexDraft(value) {
+  const cleaned = String(value || "")
+    .trim()
+    .replace(/^#/, "")
+    .toUpperCase();
+  if (!/^[0-9A-F]{3}$|^[0-9A-F]{6}$/.test(cleaned)) return "";
+  return `#${cleaned}`;
+}
+
+function HexInput({ value, onCommit, label = "HEX" }) {
+  const [draft, setDraft] = useState(value || "#FFFFFF");
+  const [invalid, setInvalid] = useState(false);
+
+  useEffect(() => {
+    setDraft(value || "#FFFFFF");
+    setInvalid(false);
+  }, [value]);
+
+  function commitDraft() {
+    const normalized = normalizeHexDraft(draft);
+    if (!normalized) {
+      setInvalid(true);
+      setDraft(value || "#FFFFFF");
+      return;
+    }
+    setInvalid(false);
+    setDraft(normalized);
+    onCommit(normalized);
+  }
+
+  return (
+    <input
+      aria-label={label}
+      aria-invalid={invalid}
+      style={{
+        ...S.input,
+        fontFamily: "monospace",
+        borderColor: invalid ? "#b91c1c" : S.input.borderColor,
+      }}
+      value={draft}
+      maxLength={7}
+      onChange={(e) => {
+        const next = e.target.value.toUpperCase();
+        if (/^#?[0-9A-F]{0,6}$/.test(next)) {
+          setDraft(next);
+          setInvalid(false);
+        }
+      }}
+      onBlur={commitDraft}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          commitDraft();
+        }
+      }}
+    />
+  );
+}
+
 function ColorInput({ value, onChange }) {
   return (
     <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
@@ -305,15 +365,7 @@ function ColorInput({ value, onChange }) {
           background: "transparent",
         }}
       />
-      <input
-        style={{ ...S.input, fontFamily: "monospace" }}
-        value={value}
-        maxLength={7}
-        onChange={(e) =>
-          /^#[0-9a-fA-F]{0,6}$/.test(e.target.value) &&
-          onChange(e.target.value.toUpperCase())
-        }
-      />
+      <HexInput value={value} onCommit={onChange} label="Polish HEX" />
     </div>
   );
 }
@@ -612,16 +664,7 @@ function PolishColorControls({
         <ColorInput value={value} onChange={onChange} />
       </Field>
       <Field label="HEX">
-        <input
-          aria-label="Polish HEX"
-          style={{ ...S.input, fontFamily: "monospace" }}
-          value={value}
-          maxLength={7}
-          onChange={(e) =>
-            /^#[0-9a-fA-F]{0,6}$/.test(e.target.value) &&
-            onChange(e.target.value.toUpperCase())
-          }
-        />
+        <HexInput value={value} onCommit={onChange} label="Polish HEX" />
       </Field>
       <Field label="Polish Type">
         <select
@@ -2019,11 +2062,12 @@ function DesignStudio(_, ref) {
   }
 
   function updateDesignName(value) {
+    const limitedName = value.slice(0, DESIGN_NAME_MAX_LENGTH);
     markEdited();
     generatedDraftNameRef.current = "";
-    designNameRef.current = value;
+    designNameRef.current = limitedName;
     dirtyRef.current = true;
-    setDesignName(value);
+    setDesignName(limitedName);
     setDirty(true);
     setSaveStatus("Unsaved changes");
     scheduleAutosave();
@@ -2290,10 +2334,14 @@ function DesignStudio(_, ref) {
             aria-label="Design Name"
             data-testid="artist-command-design-name"
             value={designName}
+            maxLength={DESIGN_NAME_MAX_LENGTH}
             onChange={(e) => updateDesignName(e.target.value)}
             placeholder="Untitled Design"
             style={UI.commandDesignName}
           />
+          <div data-testid="artist-command-design-name-counter" style={UI.commandDesignNameCounter}>
+            {Math.min(designName.length, DESIGN_NAME_MAX_LENGTH)}/{DESIGN_NAME_MAX_LENGTH}
+          </div>
           <div
             data-testid="artist-command-collection"
             style={UI.commandCollection}
