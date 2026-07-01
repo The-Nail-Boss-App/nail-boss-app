@@ -1,6 +1,6 @@
 import { VIEWBOX, clamp, getNailFreeEdgeExtent, getNailGeometry, normalizeFrenchTipData } from "./blueprint.js";
 import { SharedPolishRealismLayers } from "./PolishRenderer.jsx";
-import { PatternDefs } from "./NailCanvas.jsx";
+import { PatternDefs, resolvePatternColors } from "./NailCanvas.jsx";
 import { resolvePolishDataForRender } from "./polish.js";
 
 function rotatePath(rotation, cx, cy) {
@@ -47,6 +47,13 @@ export function FrenchTipShape({ layer, nail, clipId, thumbnail = false }) {
   const frenchMaterialClipId = `${clipId}-${layer.id}-french-realism-clip`;
   const frenchPatternClipId = `${clipId}-${layer.id}-french-pattern-clip`;
   const frenchPatternId = `${clipId}-${layer.id}-french-pattern`;
+  const patternColors = resolvePatternColors({
+    pattern: data.pattern || "dots",
+    colorHex: data.patternColorHex || data.colorHex,
+    secondaryColorHex: data.patternSecondaryColorHex || "#3B1F35",
+    patternColorHex3: data.patternColorHex3,
+    patternColorHex4: data.patternColorHex4,
+  });
   const patternLayer = {
     ...layer,
     transform: {
@@ -59,8 +66,10 @@ export function FrenchTipShape({ layer, nail, clipId, thumbnail = false }) {
     },
     data: {
       pattern: data.pattern || "dots",
-      colorHex: data.patternColorHex || data.colorHex,
-      secondaryColorHex: data.patternSecondaryColorHex || "#3B1F35",
+      colorHex: patternColors.colorHex,
+      secondaryColorHex: patternColors.secondaryColorHex,
+      patternColorHex3: patternColors.patternColorHex3,
+      patternColorHex4: patternColors.patternColorHex4,
       density: data.patternSpacing ?? 0.5,
     },
   };
