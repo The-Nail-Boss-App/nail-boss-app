@@ -1,6 +1,7 @@
 import { COLORS, S } from "../styles.js";
 import { ASSET_SIZE_RANGE, POLISH_TYPES, TOP_COATS, GRADIENT_COLOR_LIMITS, normalizeGradientData, normalizeGradientStops, normalizePolishData } from "./blueprint.js";
 import { PATTERNS, GRADIENT_DIRECTIONS, FRENCH_TIP_PRESETS, FRENCH_TIP_STYLES } from "./blueprint.js";
+import { patternColorSlots } from "./NailCanvas.jsx";
 import { findAsset } from "./assets.js";
 import { UI } from "./studioStyles.js";
 
@@ -97,8 +98,15 @@ export default function PropertiesPanel({ layer, onPatch, onDuplicate, onDelete 
       </>}
       {layer.type === "pattern" && <>
         <div style={UI.field}><label style={S.label}>Pattern</label><select style={S.input} value={layer.data.pattern} disabled={disabled} onChange={(e) => onPatch({ data: { ...layer.data, pattern: e.target.value } })}>{PATTERNS.map((pattern) => <option key={pattern} value={pattern}>{pattern}</option>)}</select></div>
-        <Color label="Pattern color" value={layer.data.colorHex} onChange={(colorHex) => onPatch({ data: { ...layer.data, colorHex } })} disabled={disabled} />
-        <Color label="Secondary color" value={layer.data.secondaryColorHex || "#3B1F35"} onChange={(secondaryColorHex) => onPatch({ data: { ...layer.data, secondaryColorHex } })} disabled={disabled} />
+        {patternColorSlots(layer.data.pattern).map((slot) => (
+          <Color
+            key={slot.key}
+            label={slot.label}
+            value={layer.data[slot.key] || slot.fallback}
+            onChange={(colorHex) => onPatch({ data: { ...layer.data, [slot.key]: colorHex } })}
+            disabled={disabled}
+          />
+        ))}
         <Range label="Pattern scale" value={Math.round((layer.transform?.scaleX ?? 1) * 100)} min={20} max={300} onChange={(v) => onPatch({ transform: { ...layer.transform, scaleX: v / 100, scaleY: v / 100 } })} disabled={disabled} />
         <Range label="Pattern rotation" value={Math.round(layer.transform?.rotation ?? 0)} min={-180} max={180} onChange={(v) => onPatch({ transform: { ...layer.transform, rotation: v } })} disabled={disabled} />
         <Range label="Pattern X offset" value={Math.round((layer.transform?.x ?? 0.5) * 100)} min={0} max={100} onChange={(v) => onPatch({ transform: { ...layer.transform, x: v / 100 } })} disabled={disabled} />

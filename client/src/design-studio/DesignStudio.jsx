@@ -6,8 +6,9 @@ import {
   useRef,
   useState,
 } from "react";
+import { createPortal } from "react-dom";
 import { COLORS, S } from "../styles.js";
-import NailCanvas from "./NailCanvas.jsx";
+import NailCanvas, { patternColorSlots } from "./NailCanvas.jsx";
 import AssetLibrary from "./AssetLibrary.jsx";
 import LayersPanel from "./LayersPanel.jsx";
 import PropertiesPanel from "./PropertiesPanel.jsx";
@@ -73,6 +74,12 @@ const PANEL_GROUPS = [
   ["nailBasics", "signatureLooks", "designDetails"],
   ["artTools", "properties", "layers"],
 ];
+
+
+function CommandPopoverPortal({ children }) {
+  if (typeof document === "undefined") return children;
+  return createPortal(children, document.body);
+}
 
 const STUDIO_CARDS = [
   {
@@ -445,24 +452,20 @@ function FrenchTipControls({ layer, onAdd, onPatch, onApply, quickAccess = false
               ))}
             </select>
           </Field>
-          <Field label="Pattern primary color">
-            <ColorInput
-              value={data.patternColorHex || data.colorHex || "#FFFFFF"}
-              onChange={(value) =>
-                onPatch({ patternColorHex: normalizeHex(value, "#FFFFFF") })
-              }
-            />
-          </Field>
-          <Field label="Pattern secondary color">
-            <ColorInput
-              value={data.patternSecondaryColorHex || "#3B1F35"}
-              onChange={(value) =>
-                onPatch({
-                  patternSecondaryColorHex: normalizeHex(value, "#3B1F35"),
-                })
-              }
-            />
-          </Field>
+          {patternColorSlots(data.pattern || "dots").map((slot, index) => {
+            const frenchKey = index === 0 ? "patternColorHex" : index === 1 ? "patternSecondaryColorHex" : slot.key;
+            const fallback = index === 0 ? data.colorHex || slot.fallback : slot.fallback;
+            return (
+              <Field key={slot.key} label={index === 0 ? "Pattern primary color" : index === 1 ? "Pattern secondary color" : slot.label}>
+                <ColorInput
+                  value={data[frenchKey] || fallback}
+                  onChange={(value) =>
+                    onPatch({ [frenchKey]: normalizeHex(value, fallback) })
+                  }
+                />
+              </Field>
+            );
+          })}
           <Field
             label={`Pattern scale ${Math.round((data.patternScale ?? 1) * 100)}%`}
           >
@@ -2334,6 +2337,7 @@ function DesignStudio(_, ref) {
               </span>
             </button>
             {commandPopover === "polish" && (
+              <CommandPopoverPortal>
               <div
                 id="command-polish-color-popover"
                 data-testid="command-polish-color-popover"
@@ -2360,6 +2364,7 @@ function DesignStudio(_, ref) {
                   onApply={applyCurrentPolish}
                 />
               </div>
+              </CommandPopoverPortal>
             )}
           </div>
         </div>
@@ -2388,6 +2393,7 @@ function DesignStudio(_, ref) {
               Nail Basics™
             </button>
             {commandPopover === "nailBasics" && (
+              <CommandPopoverPortal>
               <div
                 id="command-nail-basics-popover"
                 data-testid="command-nail-basics-popover"
@@ -2443,6 +2449,7 @@ function DesignStudio(_, ref) {
                   </button>
                 </div>
               </div>
+              </CommandPopoverPortal>
             )}
           </div>
           <div style={UI.commandGroup}>
@@ -2459,6 +2466,7 @@ function DesignStudio(_, ref) {
               Set Actions
             </button>
             {commandPopover === "set" && (
+              <CommandPopoverPortal>
               <div
                 id="command-set-actions-popover"
                 data-testid="command-set-actions-popover"
@@ -2520,6 +2528,7 @@ function DesignStudio(_, ref) {
                   Actions.
                 </p>
               </div>
+              </CommandPopoverPortal>
             )}
           </div>
           <div style={UI.commandGroup}>
@@ -2536,6 +2545,7 @@ function DesignStudio(_, ref) {
               French Tip
             </button>
             {commandPopover === "french" && (
+              <CommandPopoverPortal>
               <div
                 id="command-french-tip-popover"
                 data-testid="command-french-tip-popover"
@@ -2551,6 +2561,7 @@ function DesignStudio(_, ref) {
                   quickAccess
                 />
               </div>
+              </CommandPopoverPortal>
             )}
           </div>
           <button
@@ -2649,7 +2660,7 @@ function DesignStudio(_, ref) {
                   >
                     {design.name || "Untitled design"}
                   </button>
-                )) : <p style={UI.smallText}>No saved designs found yet.</p>}
+                )) : <p style={UI.smallText}>No saved designs yet.</p>}
               </div>
             </CollapsiblePanel>
             <CollapsiblePanel

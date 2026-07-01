@@ -32,13 +32,23 @@ assert.match(dashboardSource, /sessionStorage\.setItem\("nailBossOpenSavedDesign
 assert.match(studioSource, /sessionStorage\.getItem\("nailBossOpenSavedDesigns"\)[\s\S]*setSavedDesignsOpen\(true\)/, 'DesignStudio consumes saved-design intent on load');
 assert.match(studioSource, /data-testid="saved-designs-browser"[\s\S]*Saved Designs[\s\S]*designs\.length \? designs\.map[\s\S]*onClick=\{\(\) => loadDesign\(design\.id\)\}/, 'Saved Designs browser is visible, lists records, and opens with loadDesign');
 assert.doesNotMatch(studioSource.slice(studioSource.indexOf('function openSavedDesignsBrowser'), studioSource.indexOf('function openPolishRack')), /newDesign\(/, 'Saved Designs flow does not invoke New Design');
+assert.match(stylesSource, /commandPopover:[\s\S]*position: "fixed"[\s\S]*zIndex: 1200/, 'command popover z-index layer uses fixed high layer above workspace');
+assert.match(studioSource, /function CommandPopoverPortal[\s\S]*createPortal\(children, document\.body\)/, 'command popovers render through a document.body portal outside clipped workspace containers');
+assert.match(studioSource, /data-testid="command-nail-basics-popover"[\s\S]*style=\{UI\.commandPopover\}/, 'Nail Basics popover uses the shared command popover layer');
+assert.match(studioSource, /data-testid="command-french-tip-popover"[\s\S]*style=\{UI\.commandFrenchTipPopover\}/, 'French Tip popover uses visible fixed layer above workspace');
+assert.match(nailCanvasSource, /patternColorSlots[\s\S]*pattern === "camo"[\s\S]*patternColorHex3[\s\S]*patternColorHex4/, 'camo pattern exposes more than two renderer-backed color slots');
+assert.match(nailCanvasSource, /const accent = colors\.patternColorHex3[\s\S]*const deep = colors\.patternColorHex4[\s\S]*fill=\{deep\}/, 'additional camo color slots affect rendered pattern data');
+assert.match(frenchTipSource, /patternColorHex3: data\.patternColorHex3[\s\S]*patternColorHex4: data\.patternColorHex4/, 'French Tip pattern fill passes through the same multi-color slots');
+assert.match(studioSource, /patternColorSlots\(data\.pattern \|\| "dots"\)\.map[\s\S]*const frenchKey[\s\S]*slot\.key/, 'French Tip controls render dynamic multi-color pattern slot inputs');
+assert.match(studioSource, /No saved designs yet\./, 'Saved Designs browser renders requested empty state copy');
+
 
 assert.match(frenchTipSource, /const patternOpacity = clamp\(Number\(data\.patternOpacity \?\? 1\), 0, 1\)/, 'French Tip pattern opacity maps 100% to 1 and 50% to 0.5');
 assert.match(frenchTipSource, /data-french-tip-pattern-opacity=\{patternOpacity\} opacity=\{patternOpacity\}/, 'French Tip pattern render applies only the intended opacity');
 assert.match(frenchTipSource, /clipPath=\{`url\(\#\$\{frenchPatternClipId\}\)`\}/, 'French Tip pattern remains clipped to the tip area');
 assert.doesNotMatch(frenchTipSource, /mixBlendMode|patternOpacity\s*\*\s*0\./, 'French Tip pattern does not add unintended transparency or blend mode');
 
-assert.match(stylesSource, /artistCommandBar:[\s\S]*maxWidth: "100%"[\s\S]*overflowX: "hidden"/, 'command bar prevents horizontal overflow');
-assert.match(stylesSource, /commandDesignName:[\s\S]*fontSize: "clamp\([\s\S]*whiteSpace: "normal"[\s\S]*overflow: "visible"[\s\S]*textOverflow: "clip"/, 'long design names use responsive wrapping/fit styles without hard clipping');
+assert.match(stylesSource, /artistCommandBar:[\s\S]*maxWidth: "100%"[\s\S]*overflowX: "clip"/, 'command bar prevents horizontal overflow');
+assert.match(stylesSource, /commandDesignName:[\s\S]*fontSize: "clamp\([\s\S]*whiteSpace: "normal"[\s\S]*overflow: "visible"[\s\S]*overflowWrap: "anywhere"[\s\S]*textOverflow: "clip"/, 'long design names use responsive wrapping/fit styles without hard clipping');
 
 console.log('workflow behavior reality checks passed');
