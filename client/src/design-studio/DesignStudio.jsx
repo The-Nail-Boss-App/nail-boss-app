@@ -2466,7 +2466,7 @@ function DesignStudio(_, ref) {
                 ✺ Aura
               </button>
             </div>
-            {!selectedTechnique && <p data-testid="technique-studio-choice-prompt" style={UI.smallText}>Pick a technique to open its controls in this pop-out panel while the Hero Canvas stays visible.</p>}
+            {!selectedTechnique && <p data-testid="technique-studio-choice-prompt" style={UI.smallText}>Pick a technique to open its controls in this active Studio panel while the Hero Canvas stays visible.</p>}
             {selectedTechnique === "french" && (
               <FrenchTipControls
                 layer={activeFrenchTip}
@@ -2923,14 +2923,6 @@ function DesignStudio(_, ref) {
                 />
               ))}
             </div>
-            <div
-              data-testid="studio-working-panel"
-              data-panel-behavior="pop-out-beside-creative-wall"
-              style={UI.studioPopoutPanel}
-            >
-              {renderActiveStudioPanel()}
-            </div>
-
             <CollapsiblePanel
               id="savedDesigns"
               title="Saved Designs"
@@ -3045,6 +3037,19 @@ function DesignStudio(_, ref) {
               inside the active nail surface for realistic product-use planning.
             </p>
           </div>
+        </aside>
+
+        <aside
+          data-testid="studio-working-panel"
+          data-panel-behavior="stable-column-beside-creative-wall"
+          aria-label="Active Studio Panel"
+          style={{ ...UI.panel, ...UI.activeStudioPanel }}
+        >
+          <div style={UI.activeStudioHeader}>
+            <span>Active Studio™</span>
+            <span style={UI.smallText}>One tool panel beside Creative Wall</span>
+          </div>
+          <div style={UI.activeStudioScroll}>{renderActiveStudioPanel()}</div>
         </aside>
 
         <main
