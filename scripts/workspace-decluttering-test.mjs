@@ -129,8 +129,8 @@ for (const card of [
   assert.ok(studio.includes(card), `${card} card should exist.`);
 assert.match(
   studioStyles,
-  /gridTemplateColumns:[\s\S]*"minmax\(220px, 0\.9fr\) minmax\(320px, 1\.7fr\) minmax\(220px, 0\.85fr\)"[\s\S]*overflowX: "hidden"/,
-  "Hero Canvas should remain the dominant responsive workspace column without horizontal overflow.",
+  /gridTemplateColumns:[\s\S]*"minmax\(190px, 0\.72fr\) minmax\(280px, 0\.95fr\) minmax\(340px, 1\.45fr\) minmax\(220px, 0\.78fr\)"[\s\S]*overflowX: "hidden"/,
+  "Workspace should use stable Creative Wall, Active Studio, Hero Canvas, and Nail Stack columns without horizontal overflow.",
 );
 assert.match(
   studio,
@@ -327,13 +327,33 @@ const nailCanvas = fs.readFileSync(
 
 assert.match(
   studio,
-  /data-testid="studio-working-panel"[\s\S]*data-panel-behavior="pop-out-beside-creative-wall"[\s\S]*style=\{UI\.studioPopoutPanel\}/,
-  "Studio controls should render as a pop-out panel beside the Creative Wall instead of a below-fold drawer.",
+  /data-testid="creative-workspace-layout"[\s\S]*data-testid="creative-wall"[\s\S]*data-testid="studio-working-panel"[\s\S]*data-panel-behavior="stable-column-beside-creative-wall"[\s\S]*data-testid="hero-canvas"[\s\S]*data-testid="nail-stack-right-panel"/,
+  "Studio controls should render once in a stable column between the Creative Wall and Hero Canvas.",
+);
+assert.equal(
+  (studio.match(/data-testid="studio-working-panel"/g) || []).length,
+  1,
+  "Only one active Studio panel container should render.",
+);
+assert.equal(
+  (studio.match(/data-testid="creative-library-polish-studio"/g) || []).length,
+  1,
+  "Polish Studio should not have duplicate panel render paths.",
+);
+assert.doesNotMatch(
+  studio,
+  /style=\{UI\.studioPopoutPanel\}|data-panel-behavior="pop-out-beside-creative-wall"/,
+  "Active Studio panel should not render as a floating pop-out copy.",
 );
 assert.match(
   studioStyles,
-  /studioPopoutPanel:[\s\S]*position: "absolute"[\s\S]*left: "calc\(100% \+ 14px\)"[\s\S]*maxHeight: "calc\(100vh - 236px\)"[\s\S]*overflowY: "auto"/,
-  "Studio pop-out panel should sit beside the Creative Wall and scroll internally.",
+  /activeStudioPanel:[\s\S]*overflow: "hidden"[\s\S]*maxHeight: "calc\(100vh - 188px\)"[\s\S]*position: "relative"/,
+  "Active Studio panel should be bounded in the workspace column instead of floating over other zones.",
+);
+assert.match(
+  studioStyles,
+  /activeStudioScroll:[\s\S]*flex: "1 1 auto"[\s\S]*overflowY: "auto"[\s\S]*overscrollBehavior: "contain"/,
+  "Tall Studio controls should scroll inside the active Studio panel only.",
 );
 assert.match(
   studioStyles,
