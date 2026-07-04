@@ -24,12 +24,16 @@ const assetRendering = fs.readFileSync(
 );
 const dashboard = fs.readFileSync("client/src/Dashboard.jsx", "utf8");
 
-const creativeWallStart = studio.indexOf('data-testid="creative-wall"');
+const studioBarStart = studio.indexOf('data-testid="studio-bar"');
+const activePanelStart = studio.indexOf('data-testid="studio-working-panel"');
 const mainStart = studio.indexOf(
   'data-testid="hero-canvas"',
-  creativeWallStart,
+  activePanelStart,
 );
-const leftSidebar = studio.slice(creativeWallStart, mainStart);
+const studioBarMarkup = studio.slice(studioBarStart, activePanelStart);
+const activePanelMarkup = studio.slice(activePanelStart, mainStart);
+const preHeroWorkspace = studio.slice(studio.indexOf('data-testid="creative-workspace-layout"'), mainStart);
+const leftSidebar = activePanelMarkup;
 const nailStackStart = studio.indexOf('data-testid="nail-stack-right-panel"');
 const nailStackEnd = studio.indexOf(
   'data-testid="studio-dock"',
@@ -65,12 +69,12 @@ assert.doesNotMatch(
 assert.match(
   studio,
   /PANEL_GROUPS[\s\S]*nailBasics[\s\S]*signatureLooks[\s\S]*designDetails[\s\S]*artTools[\s\S]*properties[\s\S]*layers/,
-  "Creative Drawer panel groups should be defined.",
+  "Panel groups should be defined.",
 );
 assert.match(
   studio,
   /group\.reduce\([\s\S]*\(state, panelId\)[\s\S]*panelId === id \? !prev\[id\] : false/,
-  "Opening one Creative Drawer panel should collapse siblings.",
+  "Opening one panel should collapse siblings.",
 );
 assert.match(
   studio,
@@ -114,10 +118,20 @@ assert.match(
 );
 assert.match(
   studio,
-  /data-testid="creative-workspace-layout"[\s\S]*data-testid="creative-wall"[\s\S]*data-testid="hero-canvas"[\s\S]*data-testid="nail-stack-right-panel"/,
-  "Creative Workspace layout should expose Creative Wall, central Hero Canvas, and Nail Stack zones.",
+  /data-testid="artist-command-bar"[\s\S]*data-testid="studio-bar"[\s\S]*data-testid="creative-workspace-layout"/,
+  "Studio Bar should render directly under the Artist Command Bar before the workspace.",
 );
-assert.match(studio, /Creative Wall™/, "Creative Wall should be present.");
+assert.match(
+  studio,
+  /data-testid="creative-workspace-layout"[\s\S]*data-testid="studio-working-panel"[\s\S]*data-testid="hero-canvas"[\s\S]*data-testid="nail-stack-right-panel"/,
+  "Creative Workspace layout should expose Active Studio Panel, expanded central Hero Canvas, and Nail Stack zones.",
+);
+assert.equal(
+  studio.match(/data-testid="creative-wall"/g)?.length || 0,
+  0,
+  "Old vertical Creative Wall should no longer be rendered as the primary studio selector.",
+);
+assert.doesNotMatch(studio, /Creative Wall™/, "Creative Wall label should not be present.");
 for (const card of [
   "Polish Studio™",
   "Technique Studio™",
@@ -126,11 +140,35 @@ for (const card of [
   "Brush Studio™",
   "Top Coat Studio™",
 ])
-  assert.ok(studio.includes(card), `${card} card should exist.`);
+  assert.ok(studio.includes(card), `${card} Studio Bar button should exist.`);
+assert.match(
+  studio,
+  /function StudioCard[\s\S]*aria-pressed=\{active\}[\s\S]*active=\{activeStudio === studio\.id\}/,
+  "Studio Bar buttons should preserve selected Studio state.",
+);
 assert.match(
   studioStyles,
-  /gridTemplateColumns:[\s\S]*"minmax\(190px, 0\.72fr\) minmax\(280px, 0\.95fr\) minmax\(340px, 1\.45fr\) minmax\(220px, 0\.78fr\)"[\s\S]*overflowX: "hidden"/,
-  "Workspace should use stable Creative Wall, Active Studio, Hero Canvas, and Nail Stack columns without horizontal overflow.",
+  /studioBar:[\s\S]*gridTemplateColumns: "repeat\(6, minmax\(132px, 1fr\)\)"[\s\S]*overflowY: "hidden"/,
+  "Studio Bar should keep Studio choices compact and horizontal without vertical drawer scrolling.",
+);
+assert.match(
+  studioStyles,
+  /gridTemplateColumns:[\s\S]*"minmax\(260px, 0\.86fr\) minmax\(420px, 1\.7fr\) minmax\(220px, 0\.72fr\)"[\s\S]*overflowX: "hidden"/,
+  "Workspace should use Active Studio, expanded Hero Canvas, and Nail Stack columns without horizontal overflow.",
+);
+assert.ok(
+  activePanelStart < mainStart,
+  "Active Studio panel should be left of the Hero Canvas.",
+);
+assert.match(
+  studioStyles,
+  /activeStudioScroll:[\s\S]*overflowY: "auto"[\s\S]*overflowX: "hidden"/,
+  "Active Studio panel should use internal vertical scrolling without horizontal overflow.",
+);
+assert.equal(
+  studio.match(/data-testid="studio-working-panel"/g)?.length || 0,
+  1,
+  "There should be no duplicate Active Studio panels.",
 );
 assert.match(
   studio,
@@ -289,7 +327,7 @@ assert.ok(
 assert.match(
   studio,
   /data-testid="command-french-tip-popover"[\s\S]*data-canvas-safe-placement="left-creative-wall-anchor"[\s\S]*style=\{UI\.commandFrenchTipPopover\}/,
-  "French Tip quick access should be anchored to the Creative Wall side instead of over the hero canvas.",
+  "French Tip quick access should be anchored to the Studio Bar side instead of over the hero canvas.",
 );
 assert.match(
   studioStyles,
@@ -327,8 +365,8 @@ const nailCanvas = fs.readFileSync(
 
 assert.match(
   studio,
-  /data-testid="creative-workspace-layout"[\s\S]*data-testid="creative-wall"[\s\S]*data-testid="studio-working-panel"[\s\S]*data-panel-behavior="stable-column-beside-creative-wall"[\s\S]*data-testid="hero-canvas"[\s\S]*data-testid="nail-stack-right-panel"/,
-  "Studio controls should render once in a stable column between the Creative Wall and Hero Canvas.",
+  /data-testid="creative-workspace-layout"[\s\S]*data-testid="studio-working-panel"[\s\S]*data-panel-behavior="left-column-beside-hero-canvas"[\s\S]*data-testid="hero-canvas"[\s\S]*data-testid="nail-stack-right-panel"/,
+  "Studio controls should render once in a stable left column beside the Hero Canvas.",
 );
 assert.equal(
   (studio.match(/data-testid="studio-working-panel"/g) || []).length,
@@ -347,7 +385,7 @@ assert.doesNotMatch(
 );
 assert.match(
   studioStyles,
-  /activeStudioPanel:[\s\S]*overflow: "hidden"[\s\S]*maxHeight: "calc\(100vh - 188px\)"[\s\S]*position: "relative"/,
+  /activeStudioPanel:[\s\S]*overflow: "hidden"[\s\S]*maxHeight: "calc\(100vh - 270px\)"[\s\S]*position: "relative"/,
   "Active Studio panel should be bounded in the workspace column instead of floating over other zones.",
 );
 assert.match(

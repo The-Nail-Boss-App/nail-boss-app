@@ -2280,7 +2280,7 @@ function DesignStudio(_, ref) {
     setCommandPopover((current) => (current === "french" ? "" : "french"));
     setActiveStudio("techniqueStudio");
     setTab("effects");
-    showNotice("Technique Studio opened on the Creative Wall; French Tip quick access is anchored away from the Hero Canvas.");
+    showNotice("Technique Studio opened from the Studio Bar; French Tip quick access is anchored away from the Hero Canvas.");
   }
 
 
@@ -2903,26 +2903,36 @@ function DesignStudio(_, ref) {
         </nav>
       </header>
 
+      <nav
+        data-testid="studio-bar"
+        aria-label="Studio Bar"
+        style={UI.studioBar}
+      >
+        {STUDIO_CARDS.map((studio) => (
+          <StudioCard
+            key={studio.id}
+            studio={studio}
+            active={activeStudio === studio.id}
+            onSelect={selectStudioCard}
+          />
+        ))}
+      </nav>
+
       {/* Studio personalization hooks (architecture only): work surface, walls, lighting, accent color, layout mode, left-handed mode, panel transparency. */}
       <div data-testid="creative-workspace-layout" style={UI.layout}>
         <aside
-          data-testid="creative-wall"
-          aria-label="Creative Wall"
-          style={{ ...UI.panel, ...UI.creativeWallPanel }}
+          data-testid="studio-working-panel"
+          data-panel-behavior="left-column-beside-hero-canvas"
+          aria-label="Active Studio Panel"
+          style={{ ...UI.panel, ...UI.activeStudioPanel }}
         >
-          <div style={UI.panelPad}>
-            <div style={UI.sectionTitle}>Creative Wall™</div>
+          <div style={UI.activeStudioHeader}>
+            <span>Active Studio™</span>
+            <span style={UI.smallText}>Controls stay left of the Hero Canvas</span>
+          </div>
+          <div style={UI.activeStudioScroll}>
             <div style={{ display: "none" }}>Art Tools</div>
-            <div style={UI.creativeWall}>
-              {STUDIO_CARDS.map((studio) => (
-                <StudioCard
-                  key={studio.id}
-                  studio={studio}
-                  active={activeStudio === studio.id}
-                  onSelect={selectStudioCard}
-                />
-              ))}
-            </div>
+            {renderActiveStudioPanel()}
             <CollapsiblePanel
               id="savedDesigns"
               title="Saved Designs"
@@ -3039,19 +3049,6 @@ function DesignStudio(_, ref) {
           </div>
         </aside>
 
-        <aside
-          data-testid="studio-working-panel"
-          data-panel-behavior="stable-column-beside-creative-wall"
-          aria-label="Active Studio Panel"
-          style={{ ...UI.panel, ...UI.activeStudioPanel }}
-        >
-          <div style={UI.activeStudioHeader}>
-            <span>Active Studio™</span>
-            <span style={UI.smallText}>One tool panel beside Creative Wall</span>
-          </div>
-          <div style={UI.activeStudioScroll}>{renderActiveStudioPanel()}</div>
-        </aside>
-
         <main
           data-testid="hero-canvas"
           aria-label="Hero Canvas"
@@ -3109,7 +3106,7 @@ function DesignStudio(_, ref) {
               <div style={UI.sectionTitle}>Nail Stack™</div>
               <p style={{ ...UI.smallText, margin: 0 }}>
                 Selected nail and layer properties stay here while creation
-                tools live on the Creative Wall.
+                tools live in the Active Studio panel.
               </p>
             </div>
             <CollapsiblePanel
