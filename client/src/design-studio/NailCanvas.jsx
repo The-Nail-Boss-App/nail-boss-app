@@ -321,12 +321,14 @@ export default function NailCanvas({ nail, layers, selectedLayerId, mode, brush,
   const brushCursorWidth = Math.max(3.5, brushCursorRadius * 0.72);
   const canvasCursor = mode === "draw" || mode === "eraser" ? "none" : "default";
   const NAIL_BASELINE_SCALE = 1.65;
-  const containedZoom = Math.max(0.25, Math.min(Number(zoom) || 1, 1.65));
+  const HERO_MAX_ZOOM = 1.48;
+  const containedZoom = Math.max(0.25, Math.min(Number(zoom) || 1, HERO_MAX_ZOOM));
   const visualScale = containedZoom * NAIL_BASELINE_SCALE;
-  const zoomLift = Math.max(0, visualScale - NAIL_BASELINE_SCALE) * 46;
+  const defaultNailLift = 32;
+  const zoomLift = defaultNailLift + Math.max(0, visualScale - NAIL_BASELINE_SCALE) * 58;
 
-  return <div data-testid="bounded-hero-canvas-area" data-zoom-containment-padding="dock-safe" style={{ height: "100%", minHeight: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-start", position: "relative", overflow: "hidden", padding: "clamp(10px, 2.2vh, 18px) 18px clamp(42px, 7vh, 72px)" }}>
-    <div data-testid="zoomable-nail-canvas" data-zoom-containment="bounded-hero-canvas" data-zoom-transform-origin="center 38%" data-zoom-lift="dock-safe-upward" data-baseline-scale="165-as-100" style={{ width: "min(32vh, 54%)", maxWidth: 250, aspectRatio: "2 / 3", transform: `translateY(-${zoomLift}px) scale(${visualScale})`, transformOrigin: "center 38%", transition: "transform 160ms ease", marginTop: "clamp(2px, 1vh, 10px)" }}>
+  return <div data-testid="bounded-hero-canvas-area" data-zoom-containment-padding="dock-safe-expanded" data-default-nail-bottom-clip="prevented" style={{ height: "100%", minHeight: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-start", position: "relative", overflow: "hidden", padding: "clamp(6px, 1.4vh, 14px) 18px clamp(88px, 13vh, 132px)" }}>
+    <div data-testid="zoomable-nail-canvas" data-zoom-containment="bounded-hero-canvas" data-zoom-transform-origin="center 34%" data-zoom-lift="dock-safe-upward-default-and-zoom" data-baseline-scale="165-as-100" data-max-contained-zoom={HERO_MAX_ZOOM} style={{ width: "min(32vh, 54%)", maxWidth: 250, aspectRatio: "2 / 3", transform: `translateY(-${zoomLift}px) scale(${visualScale})`, transformOrigin: "center 34%", transition: "transform 160ms ease", marginTop: "clamp(0px, .4vh, 6px)" }}>
       <svg ref={svgRef} viewBox={`0 0 ${VIEWBOX.width} ${VIEWBOX.height}`} width="100%" height="100%" role="img" aria-label="Editable single nail canvas" onPointerDown={canvasDown} onPointerMove={(e) => { pointerMove(e); canvasMove(e); }} onPointerUp={finishPointerGesture} onPointerCancel={cancelPointerGesture} onPointerLeave={() => setCursorPoint(null)} style={{ touchAction: "none", userSelect: "none", cursor: canvasCursor }}>
         <defs>
           <clipPath id={clipId}><path d={path}/></clipPath>

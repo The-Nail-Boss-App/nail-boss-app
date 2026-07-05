@@ -323,7 +323,8 @@ export const UI = {
     zIndex: 2,
     background:
       "radial-gradient(circle at 50% 10%, #fff 0%, #fff7fb 52%, #f7edf4 100%)",
-    minHeight: "clamp(440px, 64vh, 720px)",
+    minHeight: "clamp(500px, 70vh, 780px)",
+    paddingBottom: "clamp(22px, 4vh, 42px)",
     display: "grid",
     placeItems: "center",
     overflow: "hidden",
