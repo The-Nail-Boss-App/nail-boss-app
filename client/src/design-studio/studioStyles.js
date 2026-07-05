@@ -528,6 +528,9 @@ export const UI = {
     borderTop: "1px solid rgba(123,47,89,.14)",
     background: "linear-gradient(90deg, #fffaf7, #fff4fb)",
     overflowX: "auto",
+    flexShrink: 0,
+    position: "relative",
+    zIndex: 2,
   },
   dockButton: (active = false) => ({
     minHeight: 44,
