@@ -182,7 +182,7 @@ assert.match(
 );
 assert.match(
   studioStyles,
-  /stickyPreview:[\s\S]*minHeight: "clamp\(440px, 64vh, 720px\)"[\s\S]*overflow: "hidden"/,
+  /stickyPreview:[\s\S]*minHeight: "clamp\(500px, 70vh, 780px\)"[\s\S]*paddingBottom: "clamp\(22px, 4vh, 42px\)"[\s\S]*overflow: "hidden"/,
   "Hero Canvas should receive increased clamp-based vertical room while bounding zoomed content.",
 );
 
@@ -286,8 +286,8 @@ assert.match(
 );
 assert.match(
   nailCanvas,
-  /data-testid="bounded-hero-canvas-area"[\s\S]*data-zoom-containment-padding="dock-safe"[\s\S]*overflow: "hidden"[\s\S]*padding: "clamp\(10px, 2\.2vh, 18px\) 18px clamp\(42px, 7vh, 72px\)"/,
-  "Nail should remain bounded above the Studio Dock.",
+  /data-testid="bounded-hero-canvas-area"[\s\S]*data-zoom-containment-padding="dock-safe-expanded"[\s\S]*overflow: "hidden"[\s\S]*padding: "clamp\(6px, 1\.4vh, 14px\) 18px clamp\(88px, 13vh, 132px\)"/,
+  "Nail should remain bounded above the Studio Dock with expanded bottom containment.",
 );
 assert.match(
   studioStyles,
