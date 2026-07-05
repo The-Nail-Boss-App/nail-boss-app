@@ -233,6 +233,42 @@ assert.match(
   /studioDock:[\s\S]*padding: "8px 14px 10px"[\s\S]*overflowX: "auto"[\s\S]*dockButton: \(active = false\) => \(\{[\s\S]*minHeight: 44/,
   "Studio Dock should stay visible and compact below the expanded Hero Canvas.",
 );
+assert.match(
+  studio,
+  /function adjustZoom\(delta\) \{[\s\S]*setCommandZoom\(\(value\) => clamp\(value \+ delta, 25, 240\)\)/,
+  "Zoom plus and minus should update a real zoom state up to a useful high-zoom range.",
+);
+assert.match(
+  studio,
+  /<span>\{commandZoom\}%<\/span>[\s\S]*onClick=\{\(\) => adjustZoom\(10\)\}/,
+  "Zoom percentage label should be bound to the same commandZoom state used by the zoom-in control.",
+);
+assert.match(
+  studio,
+  /onClick=\{\(\) => adjustZoom\(-10\)\}[\s\S]*<span>\{commandZoom\}%<\/span>/,
+  "Zoom-out control should reduce the same visible zoom state shown in the percentage label.",
+);
+assert.match(
+  nailCanvas,
+  /const HERO_CANVAS_SAFE_PADDING = "clamp\(12px, 2vh, 24px\) 18px clamp\(112px, 16vh, 164px\)"/,
+  "Hero Canvas should reserve a large bottom safe area so the Studio Dock cannot crop the nail tip.",
+);
+assert.match(
+  nailCanvas,
+  /justifyContent: "flex-start"[\s\S]*marginTop: "clamp\(2px, 1vh, 10px\)"[\s\S]*marginBottom: "clamp\(16px, 3vh, 36px\)"/,
+  "Default nail placement should start higher than the previously centered clipped placement while preserving bottom breathing room.",
+);
+assert.match(
+  nailCanvas,
+  /overflow: fit\.panEnabled \? "auto" : "hidden"[\s\S]*data-zoom-containment=\{fit\.panEnabled \? "internal-pan-at-high-zoom" : "bounded-fit-to-container"\}/,
+  "High zoom should use internal Hero Canvas pan while default view stays clipped to its safe area.",
+);
+assert.match(
+  nailCanvas,
+  /const HERO_MAX_ZOOM = 2\.4[\s\S]*visualZoom = Math\.min\(requestedZoom, HERO_MAX_ZOOM\)/,
+  "High zoom should have a safe cap only after a visibly useful zoom range.",
+);
+
 
 assert.ok(
   activePanelStart < mainStart,
@@ -281,12 +317,12 @@ assert.match(
 );
 assert.match(
   studio,
-  /function adjustZoom\(delta\)[\s\S]*setCommandZoom\(\(value\) => clamp\(value \+ delta, 25, 165\)\)/,
+  /function adjustZoom\(delta\)[\s\S]*setCommandZoom\(\(value\) => clamp\(value \+ delta, 25, 240\)\)/,
   "Zoom controls should still scale from the new larger baseline.",
 );
 assert.match(
   nailCanvas,
-  /data-testid="bounded-hero-canvas-area"[\s\S]*data-zoom-containment-padding="dock-safe-expanded"[\s\S]*justifyContent: "center"[\s\S]*overflow: "hidden"[\s\S]*padding: HERO_CANVAS_SAFE_PADDING/,
+  /data-testid="bounded-hero-canvas-area"[\s\S]*data-zoom-containment-padding="dock-safe-expanded"[\s\S]*justifyContent: "flex-start"[\s\S]*overflow: fit\.panEnabled \? "auto" : "hidden"[\s\S]*padding: HERO_CANVAS_SAFE_PADDING/,
   "Nail should remain centered and bounded above the Studio Dock with expanded bottom containment.",
 );
 assert.match(
@@ -538,7 +574,7 @@ assert.match(
 );
 assert.match(
   nailCanvas,
-  /data-testid="bounded-hero-canvas-area"[\s\S]*overflow: "hidden"[\s\S]*data-zoom-containment="bounded-fit-to-container"[\s\S]*data-zoom-fit-helper="heroZoomFit"/,
+  /data-testid="bounded-hero-canvas-area"[\s\S]*overflow: fit\.panEnabled \? "auto" : "hidden"[\s\S]*data-zoom-containment=\{fit\.panEnabled \? "internal-pan-at-high-zoom" : "bounded-fit-to-container"\}[\s\S]*data-zoom-fit-helper="heroZoomFit"/,
   "Zoomable nail canvas should be contained inside the Hero Canvas area.",
 );
 assert.doesNotMatch(

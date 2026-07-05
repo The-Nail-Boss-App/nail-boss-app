@@ -2307,7 +2307,7 @@ function DesignStudio(_, ref) {
   }
 
   function adjustZoom(delta) {
-    setCommandZoom((value) => clamp(value + delta, 25, 165));
+    setCommandZoom((value) => clamp(value + delta, 25, 240));
   }
 
   function togglePanel(id) {

@@ -71,23 +71,26 @@ export function GradientLayerShape({ layer, nail, baseLayer, path, clipId, uid, 
 
 
 const NAIL_BASELINE_SCALE = 1.65;
-const HERO_MAX_ZOOM = 1.65;
-const HERO_CANVAS_SAFE_PADDING = "clamp(18px, 3vh, 32px) 18px clamp(92px, 13vh, 136px)";
+const HERO_SAFE_CONTAINED_ZOOM = 1.55;
+const HERO_MAX_ZOOM = 2.4;
+const HERO_CANVAS_SAFE_PADDING = "clamp(12px, 2vh, 24px) 18px clamp(112px, 16vh, 164px)";
 const HERO_CANVAS_VERTICAL_SAFE_GAP = 24;
 const HERO_BASE_HEIGHT_VH = 42;
-const HERO_MAX_HEIGHT_VH = 64;
+const HERO_MAX_HEIGHT_VH = 96;
 
 export function heroZoomFit(zoom = 1) {
   const requestedZoom = Math.max(0.25, Number(zoom) || 1);
   const visualZoom = Math.min(requestedZoom, HERO_MAX_ZOOM);
   const heightVh = `${Math.min(HERO_BASE_HEIGHT_VH * visualZoom, HERO_MAX_HEIGHT_VH).toFixed(2)}vh`;
+  const panEnabled = visualZoom > HERO_SAFE_CONTAINED_ZOOM;
 
-  // The zoom label remains tied to requestedZoom in DesignStudio; this helper caps
-  // only the rendered nail size so the complete silhouette fits the padded Hero Canvas.
+  // The zoom label remains tied to requestedZoom in DesignStudio; high zoom remains
+  // visible by growing the stage and enabling internal Hero Canvas pan before capping.
   return {
     requestedZoom: requestedZoom.toFixed(2),
     visualZoom: visualZoom.toFixed(2),
     capped: visualZoom < requestedZoom,
+    panEnabled,
     heightVh,
     baselineScale: NAIL_BASELINE_SCALE,
   };
@@ -346,8 +349,8 @@ export default function NailCanvas({ nail, layers, selectedLayerId, mode, brush,
   const canvasCursor = mode === "draw" || mode === "eraser" ? "none" : "default";
   const fit = heroZoomFit(zoom);
 
-  return <div data-testid="bounded-hero-canvas-area" data-zoom-containment-padding="dock-safe-expanded" data-default-nail-bottom-clip="prevented" style={{ height: "100%", minHeight: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden", boxSizing: "border-box", padding: HERO_CANVAS_SAFE_PADDING }}>
-    <div data-testid="zoomable-nail-canvas" data-zoom-containment="bounded-fit-to-container" data-zoom-fit-helper="heroZoomFit" data-zoom-requested={fit.requestedZoom} data-zoom-visual={fit.visualZoom} data-zoom-capped={fit.capped ? "true" : "false"} data-baseline-scale="165-as-100" data-max-contained-zoom={HERO_MAX_ZOOM} style={{ height: `min(${fit.heightVh}, calc(100% - ${HERO_CANVAS_VERTICAL_SAFE_GAP}px))`, maxHeight: "100%", maxWidth: "min(66%, calc((100% - 36px)))", aspectRatio: "2 / 3", transition: "height 160ms ease", flex: "0 1 auto" }}>
+  return <div data-testid="bounded-hero-canvas-area" data-zoom-containment-padding="dock-safe-expanded" data-default-nail-bottom-clip="prevented" style={{ height: "100%", minHeight: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-start", position: "relative", overflow: fit.panEnabled ? "auto" : "hidden", overscrollBehavior: "contain", boxSizing: "border-box", padding: HERO_CANVAS_SAFE_PADDING }}>
+    <div data-testid="zoomable-nail-canvas" data-zoom-containment={fit.panEnabled ? "internal-pan-at-high-zoom" : "bounded-fit-to-container"} data-zoom-fit-helper="heroZoomFit" data-zoom-requested={fit.requestedZoom} data-zoom-visual={fit.visualZoom} data-zoom-capped={fit.capped ? "true" : "false"} data-zoom-pan-enabled={fit.panEnabled ? "true" : "false"} data-baseline-scale="165-as-100" data-safe-contained-zoom={HERO_SAFE_CONTAINED_ZOOM} data-max-contained-zoom={HERO_MAX_ZOOM} style={{ height: fit.panEnabled ? fit.heightVh : `min(${fit.heightVh}, calc(100% - ${HERO_CANVAS_VERTICAL_SAFE_GAP}px))`, maxHeight: fit.panEnabled ? "none" : "100%", maxWidth: "min(66%, calc((100% - 36px)))", aspectRatio: "2 / 3", transition: "height 160ms ease", flex: "0 0 auto", marginTop: "clamp(2px, 1vh, 10px)", marginBottom: "clamp(16px, 3vh, 36px)" }}>
       <svg ref={svgRef} viewBox={`0 0 ${VIEWBOX.width} ${VIEWBOX.height}`} width="100%" height="100%" role="img" aria-label="Editable single nail canvas" onPointerDown={canvasDown} onPointerMove={(e) => { pointerMove(e); canvasMove(e); }} onPointerUp={finishPointerGesture} onPointerCancel={cancelPointerGesture} onPointerLeave={() => setCursorPoint(null)} style={{ touchAction: "none", userSelect: "none", cursor: canvasCursor }}>
         <defs>
           <clipPath id={clipId}><path d={path}/></clipPath>
