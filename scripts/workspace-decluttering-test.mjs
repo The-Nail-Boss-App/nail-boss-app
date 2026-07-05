@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 
 const studio = fs.readFileSync(
   "client/src/design-studio/DesignStudio.jsx",
@@ -148,14 +149,41 @@ assert.match(
 );
 assert.match(
   studioStyles,
-  /studioBar:[\s\S]*gridTemplateColumns: "repeat\(6, minmax\(132px, 1fr\)\)"[\s\S]*overflowY: "hidden"/,
-  "Studio Bar should keep Studio choices compact and horizontal without vertical drawer scrolling.",
+  /studioBar:[\s\S]*gridTemplateColumns: "repeat\(6, minmax\(118px, 1fr\)\)"[\s\S]*padding: "8px clamp\(12px, 1\.6vw, 18px\)"[\s\S]*overflowY: "hidden"/,
+  "Studio Bar should keep all Studio choices in a slimmer compact horizontal row without vertical drawer scrolling.",
 );
 assert.match(
   studioStyles,
-  /gridTemplateColumns:[\s\S]*"minmax\(260px, 0\.86fr\) minmax\(420px, 1\.7fr\) minmax\(220px, 0\.72fr\)"[\s\S]*overflowX: "hidden"/,
-  "Workspace should use Active Studio, expanded Hero Canvas, and Nail Stack columns without horizontal overflow.",
+  /height: "min\(100%, calc\(100vh - 206px\)\)"[\s\S]*gridTemplateColumns:[\s\S]*"minmax\(260px, 0\.86fr\) minmax\(420px, 1\.7fr\) minmax\(220px, 0\.72fr\)"[\s\S]*gap: 14[\s\S]*overflowX: "hidden"/,
+  "Workspace should reclaim vertical space for Active Studio, expanded Hero Canvas, and Nail Stack columns without horizontal overflow.",
 );
+
+assert.match(
+  studioStyles,
+  /studioCard: \(active = false\) => \(\{[\s\S]*gridTemplateColumns: "30px 1fr"[\s\S]*minHeight: 48[\s\S]*padding: "7px 10px"/,
+  "Studio cards should be shorter while preserving a touch-friendly minimum hit target.",
+);
+assert.match(
+  studioStyles,
+  /studioCardIcon:[\s\S]*width: 30[\s\S]*height: 30[\s\S]*fontSize: 16/,
+  "Studio card icons should be slightly reduced so the Studio Bar is less visually dominant.",
+);
+assert.match(
+  studioStyles,
+  /studioCardCopy:[\s\S]*fontSize: 10[\s\S]*lineHeight: 1\.18/,
+  "Studio card descriptions should be reduced while keeping readable titles.",
+);
+assert.match(
+  studioStyles,
+  /stickyPreview:[\s\S]*minHeight: "clamp\(440px, 64vh, 720px\)"[\s\S]*overflow: "hidden"/,
+  "Hero Canvas should receive increased clamp-based vertical room while bounding zoomed content.",
+);
+assert.match(
+  studioStyles,
+  /studioDock:[\s\S]*padding: "8px 14px 10px"[\s\S]*overflowX: "auto"[\s\S]*dockButton: \(active = false\) => \(\{[\s\S]*minHeight: 44/,
+  "Studio Dock should stay visible and compact below the expanded Hero Canvas.",
+);
+
 assert.ok(
   activePanelStart < mainStart,
   "Active Studio panel should be left of the Hero Canvas.",
@@ -356,6 +384,19 @@ assert.match(
   "Applying a French Tip scope from quick access should close the command popover without closing during slider changes.",
 );
 
+
+for (const protectedPath of [
+  "client/src/Proposals.jsx",
+  "client/src/blueprintEngine.js",
+  "server.js",
+  "scripts/migrate.js",
+]) {
+  assert.doesNotThrow(
+    () => execFileSync("git", ["diff", "--", protectedPath, "--exit-code"], { stdio: "pipe" }),
+    `${protectedPath} should remain unchanged by Design Studio proportion work.`,
+  );
+}
+
 console.log("Workspace Decluttering UI guardrails passed.");
 
 const nailCanvas = fs.readFileSync(
@@ -385,7 +426,7 @@ assert.doesNotMatch(
 );
 assert.match(
   studioStyles,
-  /activeStudioPanel:[\s\S]*overflow: "hidden"[\s\S]*maxHeight: "calc\(100vh - 270px\)"[\s\S]*position: "relative"/,
+  /activeStudioPanel:[\s\S]*overflow: "hidden"[\s\S]*maxHeight: "calc\(100vh - 232px\)"[\s\S]*position: "relative"/,
   "Active Studio panel should be bounded in the workspace column instead of floating over other zones.",
 );
 assert.match(
