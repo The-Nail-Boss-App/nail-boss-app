@@ -27,6 +27,10 @@ const dashboard = fs.readFileSync("client/src/Dashboard.jsx", "utf8");
 const appShell = fs.readFileSync("client/src/App.jsx", "utf8");
 const sharedStyles = fs.readFileSync("client/src/styles.js", "utf8");
 const assetLibrary = fs.readFileSync("client/src/design-studio/AssetLibrary.jsx", "utf8");
+const nailCanvas = fs.readFileSync(
+  "client/src/design-studio/NailCanvas.jsx",
+  "utf8",
+);
 
 const studioBarStart = studio.indexOf('data-testid="studio-bar"');
 const activePanelStart = studio.indexOf('data-testid="studio-working-panel"');
@@ -244,6 +248,58 @@ assert.equal(
   1,
   "There should be no duplicate Active Studio panels.",
 );
+
+assert.match(
+  studio,
+  /data-testid="command-saved-designs-trigger"[\s\S]*Saved Designs[\s\S]*data-testid="command-saved-designs-popover"[\s\S]*renderSavedDesignsBrowser\(\)/,
+  "Saved Designs should be available from the Artist Command Bar document tools.",
+);
+assert.match(
+  studio,
+  /data-testid="command-signature-looks-trigger"[\s\S]*Signature Looks[\s\S]*data-testid="command-signature-looks-popover"[\s\S]*renderSignatureLooksTools\(\)/,
+  "Signature Looks should be available from the Artist Command Bar document tools.",
+);
+assert.match(
+  studio,
+  /data-testid="command-design-details-trigger"[\s\S]*Design Details[\s\S]*data-testid="command-design-details-popover"[\s\S]*renderDesignDetailsTools\(\)/,
+  "Design Details should be available from the Artist Command Bar document tools.",
+);
+assert.doesNotMatch(
+  activePanelMarkup,
+  /id="savedDesigns"|title="Saved Designs"|id="signatureLooks"|title="Signature Looks"|id="designDetails"|title="Design Details"/,
+  "Document-management sections should be removed from the Active Studio panel.",
+);
+assert.match(
+  studio,
+  /const \[commandZoom, setCommandZoom\] = useState\(100\)[\s\S]*<span>\{commandZoom\}%<\/span>/,
+  "Default zoom label should remain 100%.",
+);
+assert.match(
+  nailCanvas,
+  /const NAIL_BASELINE_SCALE = 1\.65[\s\S]*const visualScale = containedZoom \* NAIL_BASELINE_SCALE[\s\S]*data-baseline-scale="165-as-100"[\s\S]*scale\(\$\{visualScale\}\)/,
+  "NailCanvas should treat the former 165% visual size as the new 100% baseline.",
+);
+assert.match(
+  studio,
+  /function adjustZoom\(delta\)[\s\S]*setCommandZoom\(\(value\) => clamp\(value \+ delta, 25, 165\)\)/,
+  "Zoom controls should still scale from the new larger baseline.",
+);
+assert.match(
+  nailCanvas,
+  /data-testid="bounded-hero-canvas-area"[\s\S]*data-zoom-containment-padding="dock-safe"[\s\S]*overflow: "hidden"[\s\S]*padding: "clamp\(10px, 2\.2vh, 18px\) 18px clamp\(42px, 7vh, 72px\)"/,
+  "Nail should remain bounded above the Studio Dock.",
+);
+assert.match(
+  studioStyles,
+  /nailStackPanel:[\s\S]*overflow: "hidden"[\s\S]*nailStackPad:[\s\S]*padding: "10px 10px 8px"[\s\S]*gap: 8[\s\S]*panelBody: \{ padding: 8/,
+  "Right drawer compact styling should reduce padding and gaps.",
+);
+assert.doesNotMatch(
+  studioStyles.slice(studioStyles.indexOf('nailStackPanel:'), studioStyles.indexOf('sectionTitle:')),
+  /overflow: "auto"|overflowY: "auto"/,
+  "Right drawer should not force internal scrolling by default.",
+);
+
 assert.match(
   studio,
   /data-testid="hero-canvas"[\s\S]*<NailCanvas/,
@@ -444,11 +500,6 @@ for (const protectedPath of [
 }
 
 console.log("Workspace Decluttering UI guardrails passed.");
-
-const nailCanvas = fs.readFileSync(
-  "client/src/design-studio/NailCanvas.jsx",
-  "utf8",
-);
 
 assert.match(
   studio,

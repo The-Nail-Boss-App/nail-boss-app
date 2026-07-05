@@ -2562,6 +2562,104 @@ function DesignStudio(_, ref) {
     );
   };
 
+  const renderSavedDesignsBrowser = () => (
+    <div data-testid="saved-designs-browser" aria-label="Saved Designs" style={{ display: "grid", gap: 8 }}>
+      <strong style={{ color: COLORS.plum }}>Saved Designs</strong>
+      <button type="button" onClick={openSavedDesignsBrowser} disabled={loading} style={UI.iconButton(false, loading)}>
+        {loading ? "Loading saved designs…" : "Refresh saved designs"}
+      </button>
+      {designs.length ? designs.map((design) => (
+        <button
+          key={design.id}
+          type="button"
+          data-testid="saved-design-open-button"
+          onClick={() => loadDesign(design.id)}
+          style={{ ...UI.iconButton(selectedDesignId === design.id), justifyContent: "flex-start", textAlign: "left" }}
+        >
+          {design.name || "Untitled design"}
+        </button>
+      )) : <p style={UI.smallText}>No saved designs yet.</p>}
+    </div>
+  );
+
+  const renderSignatureLooksTools = () => (
+    <SignatureLooksPanel
+      looks={signatureLooks}
+      selectedId={selectedSignatureLookId}
+      onSelect={setSelectedSignatureLookId}
+      onSave={saveSignatureLook}
+      onApply={applySignatureLook}
+      onDuplicate={duplicateSignatureLook}
+      onRename={renameSignatureLook}
+      onDelete={deleteSignatureLook}
+    />
+  );
+
+  const renderDesignDetailsTools = () => (
+    <div data-testid="design-details-command-panel" style={{ display: "grid", gap: 8 }}>
+      <DesignPalette colors={designPalette} />
+      <Field label="Tags">
+        <input
+          style={S.input}
+          value={tagsString}
+          onChange={(e) => updateBase({ tags: e.target.value })}
+          placeholder="bridal, chrome, accent"
+        />
+      </Field>
+      <Field label="Style category">
+        <select
+          style={S.input}
+          value={blueprint.metadata?.styleCategory || "Custom"}
+          onChange={(e) =>
+            commit({
+              ...blueprint,
+              metadata: {
+                ...blueprint.metadata,
+                styleCategory: e.target.value,
+              },
+            })
+          }
+        >
+          {STYLE_CATEGORIES.map((category) => (
+            <option key={category}>{category}</option>
+          ))}
+        </select>
+      </Field>
+      <Field label="Internal notes">
+        <textarea
+          style={{ ...S.input, minHeight: 70 }}
+          value={blueprint.metadata?.internalNotes || ""}
+          onChange={(e) =>
+            commit({
+              ...blueprint,
+              metadata: {
+                ...blueprint.metadata,
+                internalNotes: e.target.value,
+              },
+            })
+          }
+          placeholder="Optional artist-only notes"
+        />
+      </Field>
+      <Field label="Estimated service price">
+        <input
+          style={S.input}
+          value={blueprint.metadata?.estimatedServicePrice || ""}
+          onChange={(e) =>
+            commit({
+              ...blueprint,
+              metadata: {
+                ...blueprint.metadata,
+                estimatedServicePrice: e.target.value,
+              },
+            })
+          }
+          placeholder="Placeholder for later pricing"
+        />
+      </Field>
+    </div>
+  );
+
   return (
     <div style={UI.shell}>
       <StudioMicrointeractionStyles />
@@ -2854,6 +2952,68 @@ function DesignStudio(_, ref) {
               </CommandPopoverPortal>
             )}
           </div>
+          <div style={UI.commandGroup} data-testid="command-document-tools-group">
+            <button
+              type="button"
+              data-testid="command-saved-designs-trigger"
+              title="Saved Designs"
+              aria-expanded={commandPopover === "savedDesigns"}
+              aria-controls="command-saved-designs-popover"
+              onClick={() => toggleCommandPopover("savedDesigns")}
+              className="studio-motion-button"
+              aria-pressed={commandPopover === "savedDesigns"}
+              style={UI.commandButton(commandPopover === "savedDesigns")}
+            >
+              Saved Designs
+            </button>
+            <button
+              type="button"
+              data-testid="command-signature-looks-trigger"
+              title="Signature Looks"
+              aria-expanded={commandPopover === "signatureLooks"}
+              aria-controls="command-signature-looks-popover"
+              onClick={() => toggleCommandPopover("signatureLooks")}
+              className="studio-motion-button"
+              aria-pressed={commandPopover === "signatureLooks"}
+              style={UI.commandButton(commandPopover === "signatureLooks")}
+            >
+              Signature Looks
+            </button>
+            <button
+              type="button"
+              data-testid="command-design-details-trigger"
+              title="Design Details"
+              aria-expanded={commandPopover === "designDetails"}
+              aria-controls="command-design-details-popover"
+              onClick={() => toggleCommandPopover("designDetails")}
+              className="studio-motion-button"
+              aria-pressed={commandPopover === "designDetails"}
+              style={UI.commandButton(commandPopover === "designDetails")}
+            >
+              Design Details
+            </button>
+            {commandPopover === "savedDesigns" && (
+              <CommandPopoverPortal>
+                <div id="command-saved-designs-popover" data-testid="command-saved-designs-popover" className="studio-popover-motion" style={UI.commandPopoverWide}>
+                  {renderSavedDesignsBrowser()}
+                </div>
+              </CommandPopoverPortal>
+            )}
+            {commandPopover === "signatureLooks" && (
+              <CommandPopoverPortal>
+                <div id="command-signature-looks-popover" data-testid="command-signature-looks-popover" className="studio-popover-motion" style={UI.commandPopoverWide}>
+                  {renderSignatureLooksTools()}
+                </div>
+              </CommandPopoverPortal>
+            )}
+            {commandPopover === "designDetails" && (
+              <CommandPopoverPortal>
+                <div id="command-design-details-popover" data-testid="command-design-details-popover" className="studio-popover-motion" style={UI.commandPopoverWide}>
+                  {renderDesignDetailsTools()}
+                </div>
+              </CommandPopoverPortal>
+            )}
+          </div>
           <button
             type="button"
             onClick={undo}
@@ -2935,114 +3095,6 @@ function DesignStudio(_, ref) {
           <div style={UI.activeStudioScroll}>
             <div style={{ display: "none" }}>Art Tools</div>
             {renderActiveStudioPanel()}
-            <CollapsiblePanel
-              id="savedDesigns"
-              title="Saved Designs"
-              open={savedDesignsOpen}
-              onToggle={() => setSavedDesignsOpen((open) => !open)}
-            >
-              <div data-testid="saved-designs-browser" aria-label="Saved Designs" style={{ display: "grid", gap: 8 }}>
-                <strong style={{ color: COLORS.plum }}>Saved Designs</strong>
-                <button type="button" onClick={openSavedDesignsBrowser} disabled={loading} style={UI.iconButton(false, loading)}>
-                  {loading ? "Loading saved designs…" : "Refresh saved designs"}
-                </button>
-                {designs.length ? designs.map((design) => (
-                  <button
-                    key={design.id}
-                    type="button"
-                    data-testid="saved-design-open-button"
-                    onClick={() => loadDesign(design.id)}
-                    style={{ ...UI.iconButton(selectedDesignId === design.id), justifyContent: "flex-start", textAlign: "left" }}
-                  >
-                    {design.name || "Untitled design"}
-                  </button>
-                )) : <p style={UI.smallText}>No saved designs yet.</p>}
-              </div>
-            </CollapsiblePanel>
-            <CollapsiblePanel
-              id="signatureLooks"
-              title="Signature Looks"
-              open={panelState.signatureLooks}
-              onToggle={togglePanel}
-            >
-              <SignatureLooksPanel
-                looks={signatureLooks}
-                selectedId={selectedSignatureLookId}
-                onSelect={setSelectedSignatureLookId}
-                onSave={saveSignatureLook}
-                onApply={applySignatureLook}
-                onDuplicate={duplicateSignatureLook}
-                onRename={renameSignatureLook}
-                onDelete={deleteSignatureLook}
-                />
-            </CollapsiblePanel>
-            <CollapsiblePanel
-              id="designDetails"
-              title="Design Details"
-              open={panelState.designDetails}
-              onToggle={togglePanel}
-            >
-              <DesignPalette colors={designPalette} />
-              <Field label="Tags">
-                <input
-                  style={S.input}
-                  value={tagsString}
-                  onChange={(e) => updateBase({ tags: e.target.value })}
-                  placeholder="bridal, chrome, accent"
-                />
-              </Field>
-              <Field label="Style category">
-                <select
-                  style={S.input}
-                  value={blueprint.metadata?.styleCategory || "Custom"}
-                  onChange={(e) =>
-                    commit({
-                      ...blueprint,
-                      metadata: {
-                        ...blueprint.metadata,
-                        styleCategory: e.target.value,
-                      },
-                    })
-                  }
-                >
-                  {STYLE_CATEGORIES.map((category) => (
-                    <option key={category}>{category}</option>
-                  ))}
-                </select>
-              </Field>
-              <Field label="Internal notes">
-                <textarea
-                  style={{ ...S.input, minHeight: 70 }}
-                  value={blueprint.metadata?.internalNotes || ""}
-                  onChange={(e) =>
-                    commit({
-                      ...blueprint,
-                      metadata: {
-                        ...blueprint.metadata,
-                        internalNotes: e.target.value,
-                      },
-                    })
-                  }
-                  placeholder="Optional artist-only notes"
-                />
-              </Field>
-              <Field label="Estimated service price">
-                <input
-                  style={S.input}
-                  value={blueprint.metadata?.estimatedServicePrice || ""}
-                  onChange={(e) =>
-                    commit({
-                      ...blueprint,
-                      metadata: {
-                        ...blueprint.metadata,
-                        estimatedServicePrice: e.target.value,
-                      },
-                    })
-                  }
-                  placeholder="Placeholder for later pricing"
-                />
-              </Field>
-            </CollapsiblePanel>
             {/* Developer Geometry Tools implementation is intentionally hidden until a future Developer Mode gate is available. */}
             <p style={UI.smallText}>
               Strict-fit mode keeps all editable vectors clipped and clamped
@@ -3101,14 +3153,13 @@ function DesignStudio(_, ref) {
         <aside
           data-testid="nail-stack-right-panel"
           aria-label="Nail Stack"
-          style={UI.panel}
+          style={{ ...UI.panel, ...UI.nailStackPanel }}
         >
-          <div style={UI.panelPad}>
+          <div style={{ ...UI.panelPad, ...UI.nailStackPad }}>
             <div style={UI.nailStackHeader}>
               <div style={UI.sectionTitle}>Nail Stack™</div>
               <p style={{ ...UI.smallText, margin: 0 }}>
-                Selected nail and layer properties stay here while creation
-                tools live in the Active Studio panel.
+                Layer tools and order in a compact stack.
               </p>
             </div>
             <CollapsiblePanel
