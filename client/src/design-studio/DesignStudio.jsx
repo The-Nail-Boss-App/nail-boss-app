@@ -197,6 +197,8 @@ function StudioMicrointeractionStyles() {
       .polish-rack-bottle { animation: anitasetRackInsert 260ms cubic-bezier(.2,.8,.2,1); will-change: transform, opacity; }
       .studio-popover-motion { animation: anitasetDrawerSettle 220ms cubic-bezier(.2,.8,.2,1); transform-origin: top right; }
       .studio-hero-fade { animation: anitasetHeroFade 180ms ease both; will-change: transform, opacity; }
+      [data-testid="visual-asset-button"] { min-height: 58px !important; padding: 4px !important; border-radius: 12px !important; }
+      [data-testid="visual-asset-button"] svg { width: 50px !important; height: 50px !important; max-width: 100%; display: block; margin: 0 auto; }
       .studio-status-loading { color: transparent; min-width: 116px; background: linear-gradient(90deg, rgba(123,47,89,.10), rgba(123,47,89,.24), rgba(123,47,89,.10)); background-size: 220% 100%; animation: anitasetStatusSheen 950ms ease-in-out infinite; }
       @media (prefers-reduced-motion: reduce) { .studio-motion-button, .studio-card-button, .studio-dock-button, .studio-current-polish, .polish-bottle-button, .polish-bottle-figure, .polish-rack-bottle, .studio-popover-motion, .studio-hero-fade, .studio-status-loading { animation: none !important; transition-duration: 1ms !important; } }
     `}</style>
