@@ -8,7 +8,9 @@ const assetRenderingSource = await readFile(new URL('../client/src/design-studio
 const bulkActionsPanelSource = await readFile(new URL('../client/src/design-studio/BulkActionsPanel.jsx', import.meta.url), 'utf8');
 const designStudioSource = await readFile(new URL('../client/src/design-studio/DesignStudio.jsx', import.meta.url), 'utf8');
 const frenchTipRenderingSource = await readFile(new URL('../client/src/design-studio/frenchTipRendering.js', import.meta.url), 'utf8');
+const studioStylesSource = await readFile(new URL('../client/src/design-studio/studioStyles.js', import.meta.url), 'utf8');
 const assetsSource = await readFile(new URL('../client/src/design-studio/assets.js', import.meta.url), 'utf8');
+const assetLibrarySource = await readFile(new URL('../client/src/design-studio/AssetLibrary.jsx', import.meta.url), 'utf8');
 
 const polishRendererSource = await readFile(new URL('../client/src/design-studio/PolishRenderer.jsx', import.meta.url), 'utf8');
 const propertiesPanelSource = await readFile(new URL('../client/src/design-studio/PropertiesPanel.jsx', import.meta.url), 'utf8');
@@ -25,6 +27,11 @@ assert((designStudioSource.match(/<AssetLibrary onAddAsset=\{addAsset\}/g) || []
 assert(designStudioSource.includes('Set Actions') && designStudioSource.includes('Copy current nail') && designStudioSource.includes('Mirror current hand') && bulkActionsPanelSource.includes('Copy active nail') && bulkActionsPanelSource.includes('Mirror hand'), 'Set Actions remain available with compact labeled actions from the command bar');
 assert(designStudioSource.includes('data-testid="command-french-tip-trigger"') && designStudioSource.includes('French Tip Precision') && designStudioSource.includes('Smile width'), 'French Tip Precision remains available from the command bar');
 assert(designStudioSource.includes('aria-label={label}') && designStudioSource.includes('title={label}') && bulkActionsPanelSource.includes('aria-label='), 'compact icon buttons provide accessible labels or titles');
+assert(nailCanvasSource.includes('data-zoom-containment-padding="dock-safe"') && nailCanvasSource.includes('justifyContent: "flex-start"') && nailCanvasSource.includes('padding: "clamp(10px, 2.2vh, 18px) 18px clamp(42px, 7vh, 72px)"'), 'Hero Canvas keeps zoomed nail lifted with dock-safe bottom containment padding');
+assert(nailCanvasSource.includes('data-zoom-transform-origin="center 38%"') && nailCanvasSource.includes('transformOrigin: "center 38%"') && nailCanvasSource.includes('translateY(-${zoomLift}px) scale(${containedZoom})'), 'Hero Canvas transform origin and upward zoom lift prevent bottom clipping at high zoom');
+assert(studioStylesSource.includes('compactAssetGridDensity') && studioStylesSource.includes('gridGap: 6') && studioStylesSource.includes('tileMinHeight: 58') && studioStylesSource.includes('minTouchTarget: 44'), 'Design Studio asset grid density tokens keep compact spacing with touch-friendly targets');
+assert(designStudioSource.includes('[data-testid="visual-asset-button"] { min-height: 58px !important; padding: 4px !important;') && designStudioSource.includes('[data-testid="visual-asset-button"] svg { width: 50px !important; height: 50px !important;'), 'visual asset tiles render denser cards with larger artwork');
+assert(assetLibrarySource.includes('data-testid="visual-asset-button"') && assetLibrarySource.includes('aria-label={`Add ${asset.name}`}') && assetLibrarySource.includes('onClick={() => onAddAsset(asset)}'), 'compact asset tiles preserve accessible labels and click behavior');
 
 const {
   SHAPES,
@@ -303,7 +310,7 @@ assert(designStudioSource.includes('Smile width') && propertiesPanelSource.inclu
 assert(frenchTipRenderingSource.includes('const width = g.width * data.smileWidth') && frenchTipRenderingSource.includes('Q ${g.cx} ${qY} ${right}'), 'French Tip width changes the rendered smile path endpoints');
 assert(frenchTipRenderingSource.includes('getNailFreeEdgeExtent(nail)') && frenchTipRenderingSource.includes('L ${g.right} ${renderBottomY} L ${g.left} ${renderBottomY} Z'), 'French Tip free-edge fill closes against shared smooth silhouette extent to prevent Round/Oval base-color crescents');
 
-assert(nailCanvasSource.includes('justifyContent: "center"') && nailCanvasSource.includes('width: "min(32vh, 54%)"') && nailCanvasSource.includes('maxWidth: 250') && nailCanvasSource.includes('containedZoom') && nailCanvasSource.includes('data-zoom-containment="bounded-hero-canvas"'), 'active nail canvas stays centered, zoomable, and bounded to avoid responsive clipping');
+assert(nailCanvasSource.includes('justifyContent: "flex-start"') && nailCanvasSource.includes('width: "min(32vh, 54%)"') && nailCanvasSource.includes('maxWidth: 250') && nailCanvasSource.includes('containedZoom') && nailCanvasSource.includes('data-zoom-containment="bounded-hero-canvas"'), 'active nail canvas stays horizontally centered, zoomable, lifted, and bounded to avoid responsive clipping');
 
 assert(!designStudioSource.includes('Taper') && !designStudioSource.includes('Apex height') && !designStudioSource.includes('Sidewall curve') && !designStudioSource.includes('Free-edge thickness'), 'advanced taper/apex/sidewall/free-edge controls are not exposed in the editor flow');
 

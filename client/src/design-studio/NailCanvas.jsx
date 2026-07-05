@@ -321,9 +321,10 @@ export default function NailCanvas({ nail, layers, selectedLayerId, mode, brush,
   const brushCursorWidth = Math.max(3.5, brushCursorRadius * 0.72);
   const canvasCursor = mode === "draw" || mode === "eraser" ? "none" : "default";
   const containedZoom = Math.max(0.25, Math.min(Number(zoom) || 1, 1.65));
+  const zoomLift = Math.max(0, containedZoom - 1) * 46;
 
-  return <div data-testid="bounded-hero-canvas-area" style={{ height: "100%", minHeight: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden", padding: 18 }}>
-    <div data-testid="zoomable-nail-canvas" data-zoom-containment="bounded-hero-canvas" style={{ width: "min(32vh, 54%)", maxWidth: 250, aspectRatio: "2 / 3", transform: `scale(${containedZoom})`, transformOrigin: "center center", transition: "transform 160ms ease" }}>
+  return <div data-testid="bounded-hero-canvas-area" data-zoom-containment-padding="dock-safe" style={{ height: "100%", minHeight: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-start", position: "relative", overflow: "hidden", padding: "clamp(10px, 2.2vh, 18px) 18px clamp(42px, 7vh, 72px)" }}>
+    <div data-testid="zoomable-nail-canvas" data-zoom-containment="bounded-hero-canvas" data-zoom-transform-origin="center 38%" data-zoom-lift="dock-safe-upward" style={{ width: "min(32vh, 54%)", maxWidth: 250, aspectRatio: "2 / 3", transform: `translateY(-${zoomLift}px) scale(${containedZoom})`, transformOrigin: "center 38%", transition: "transform 160ms ease", marginTop: "clamp(2px, 1vh, 10px)" }}>
       <svg ref={svgRef} viewBox={`0 0 ${VIEWBOX.width} ${VIEWBOX.height}`} width="100%" height="100%" role="img" aria-label="Editable single nail canvas" onPointerDown={canvasDown} onPointerMove={(e) => { pointerMove(e); canvasMove(e); }} onPointerUp={finishPointerGesture} onPointerCancel={cancelPointerGesture} onPointerLeave={() => setCursorPoint(null)} style={{ touchAction: "none", userSelect: "none", cursor: canvasCursor }}>
         <defs>
           <clipPath id={clipId}><path d={path}/></clipPath>

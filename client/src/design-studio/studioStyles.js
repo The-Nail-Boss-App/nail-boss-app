@@ -503,6 +503,13 @@ export const UI = {
     border: "1px dashed rgba(123,47,89,.26)",
     background: "rgba(255,247,251,.75)",
   },
+  compactAssetGridDensity: {
+    cardPadding: 4,
+    gridGap: 6,
+    tileMinHeight: 58,
+    iconSize: 50,
+    minTouchTarget: 44,
+  },
   studioDock: {
     display: "flex",
     gap: 8,
