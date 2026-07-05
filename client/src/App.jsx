@@ -59,6 +59,7 @@ const PAGES = {
 export default function App() {
   const [page, setPage] = useState(PAGES.LOGIN);
   const [techName, setTechName] = useState('');
+  const [sidebarExpanded, setSidebarExpanded] = useState(false);
   const designStudioRef = useRef(null);
 
   const handleLogin = (name) => {
@@ -136,15 +137,32 @@ export default function App() {
   ];
 
   // ── Sidebar ───────────────────────────────────────────
+  const isDesignStudioSidebarCollapsed = page === PAGES.STUDIO && !sidebarExpanded;
   const sidebar = (
-    <aside style={S.sidebar}>
+    <aside
+      data-testid="app-sidebar"
+      data-sidebar-mode={page === PAGES.STUDIO ? (isDesignStudioSidebarCollapsed ? "collapsed" : "expanded") : "expanded"}
+      onMouseEnter={() => setSidebarExpanded(true)}
+      onMouseLeave={() => setSidebarExpanded(false)}
+      onFocus={() => setSidebarExpanded(true)}
+      onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setSidebarExpanded(false); }}
+      style={{
+        ...S.sidebar,
+        ...(page === PAGES.STUDIO ? (isDesignStudioSidebarCollapsed ? S.sidebarCollapsed : S.sidebarExpanded) : S.sidebarExpanded),
+      }}
+    >
       {/* Logo */}
-      <div style={{ padding: '24px 20px 20px', borderBottom: `1px solid rgba(255,255,255,0.12)` }}>
-        <LogoMark variant="icon" size={48} />
+      <div style={{
+        padding: isDesignStudioSidebarCollapsed ? '12px 0 14px' : '24px 20px 20px',
+        borderBottom: `1px solid rgba(255,255,255,0.12)`,
+        display: 'grid',
+        placeItems: isDesignStudioSidebarCollapsed ? 'center' : 'start',
+      }}>
+        <LogoMark variant="icon" size={isDesignStudioSidebarCollapsed ? 34 : 48} />
       </div>
 
       {/* Nav */}
-      <nav style={{ flex: 1, padding: '16px 12px' }}>
+      <nav aria-label="Primary navigation" style={{ flex: 1, padding: isDesignStudioSidebarCollapsed ? '14px 0' : '16px 12px' }}>
         {navItems.map((item) => (
           <NavItem
             key={item.id}
@@ -152,31 +170,33 @@ export default function App() {
             label={item.label}
             active={page === item.id}
             onClick={() => { void navigateTo(item.id); }}
+            collapsed={isDesignStudioSidebarCollapsed}
           />
         ))}
       </nav>
 
       {/* Tech info + logout */}
       <div style={{
-        padding: '16px 20px',
+        padding: isDesignStudioSidebarCollapsed ? '14px 0' : '16px 20px',
         borderTop: `1px solid rgba(255,255,255,0.12)`,
         fontSize: 13,
         color: 'rgba(255,255,255,0.7)',
       }}>
-        <div style={{ fontWeight: 600, color: '#fff', marginBottom: 6 }}>{techName}</div>
+        <div style={{ fontWeight: 600, color: '#fff', marginBottom: 6, display: isDesignStudioSidebarCollapsed ? 'none' : 'block' }}>{techName}</div>
         <button
+          aria-label="Sign out"
           onClick={handleLogout}
           style={{
             background: 'none',
             border: 'none',
             color: 'rgba(255,255,255,0.6)',
             cursor: 'pointer',
-            padding: 0,
+            padding: isDesignStudioSidebarCollapsed ? 8 : 0,
             fontSize: 12,
             textDecoration: 'underline',
           }}
         >
-          Sign out
+          {isDesignStudioSidebarCollapsed ? '↩' : 'Sign out'}
         </button>
       </div>
     </aside>

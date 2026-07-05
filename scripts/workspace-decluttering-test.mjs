@@ -24,6 +24,9 @@ const assetRendering = fs.readFileSync(
   "utf8",
 );
 const dashboard = fs.readFileSync("client/src/Dashboard.jsx", "utf8");
+const appShell = fs.readFileSync("client/src/App.jsx", "utf8");
+const sharedStyles = fs.readFileSync("client/src/styles.js", "utf8");
+const assetLibrary = fs.readFileSync("client/src/design-studio/AssetLibrary.jsx", "utf8");
 
 const studioBarStart = studio.indexOf('data-testid="studio-bar"');
 const activePanelStart = studio.indexOf('data-testid="studio-working-panel"');
@@ -149,7 +152,7 @@ assert.match(
 );
 assert.match(
   studioStyles,
-  /studioBar:[\s\S]*gridTemplateColumns: "repeat\(6, minmax\(118px, 1fr\)\)"[\s\S]*padding: "8px clamp\(12px, 1\.6vw, 18px\)"[\s\S]*overflowY: "hidden"/,
+  /studioBar:[\s\S]*gridTemplateColumns: "repeat\(6, minmax\(104px, 1fr\)\)"[\s\S]*padding: "6px clamp\(10px, 1\.3vw, 14px\)"[\s\S]*overflowY: "hidden"/,
   "Studio Bar should keep all Studio choices in a slimmer compact horizontal row without vertical drawer scrolling.",
 );
 assert.match(
@@ -160,17 +163,17 @@ assert.match(
 
 assert.match(
   studioStyles,
-  /studioCard: \(active = false\) => \(\{[\s\S]*gridTemplateColumns: "30px 1fr"[\s\S]*minHeight: 48[\s\S]*padding: "7px 10px"/,
+  /studioCard: \(active = false\) => \(\{[\s\S]*gridTemplateColumns: "26px 1fr"[\s\S]*minHeight: 40[\s\S]*padding: "5px 8px"/,
   "Studio cards should be shorter while preserving a touch-friendly minimum hit target.",
 );
 assert.match(
   studioStyles,
-  /studioCardIcon:[\s\S]*width: 30[\s\S]*height: 30[\s\S]*fontSize: 16/,
+  /studioCardIcon:[\s\S]*width: 26[\s\S]*height: 26[\s\S]*fontSize: 14/,
   "Studio card icons should be slightly reduced so the Studio Bar is less visually dominant.",
 );
 assert.match(
   studioStyles,
-  /studioCardCopy:[\s\S]*fontSize: 10[\s\S]*lineHeight: 1\.18/,
+  /studioCardCopy:[\s\S]*display: "none"[\s\S]*fontSize: 10[\s\S]*lineHeight: 1\.18/,
   "Studio card descriptions should be reduced while keeping readable titles.",
 );
 assert.match(
@@ -178,6 +181,49 @@ assert.match(
   /stickyPreview:[\s\S]*minHeight: "clamp\(440px, 64vh, 720px\)"[\s\S]*overflow: "hidden"/,
   "Hero Canvas should receive increased clamp-based vertical room while bounding zoomed content.",
 );
+
+assert.match(
+  studioStyles,
+  /commandButton: \(active = false, disabled = false\) => \(\{[\s\S]*minHeight: 40[\s\S]*padding: "7px 10px"[\s\S]*fontSize: 11/,
+  "Command buttons should be compact while retaining a touch-friendly height.",
+);
+assert.match(
+  studioStyles,
+  /zoomPill:[\s\S]*minHeight: 40[\s\S]*padding: "4px 6px"[\s\S]*zoomButton:[\s\S]*width: 32[\s\S]*height: 30/,
+  "Zoom controls should be compact.",
+);
+assert.match(
+  studioStyles,
+  /canvasModeButton:[\s\S]*minHeight: 42[\s\S]*background: "linear-gradient\(135deg, #3B1F35, #7B2F59\)"/,
+  "Canvas Mode should stay visually distinct without oversized sizing.",
+);
+assert.match(
+  appShell,
+  /data-testid="app-sidebar"[\s\S]*data-sidebar-mode=\{page === PAGES\.STUDIO \? \(isDesignStudioSidebarCollapsed \? "collapsed" : "expanded"\) : "expanded"\}/,
+  "Design Studio app sidebar should default to collapsed mode with an expanded state.",
+);
+assert.match(
+  appShell,
+  /onMouseEnter=\{\(\) => setSidebarExpanded\(true\)\}[\s\S]*onFocus=\{\(\) => setSidebarExpanded\(true\)\}[\s\S]*onBlur=\{\(event\) => \{ if \(!event\.currentTarget\.contains\(event\.relatedTarget\)\) setSidebarExpanded\(false\); \}\}/,
+  "Sidebar should expand on hover and keyboard focus, then collapse when focus leaves.",
+);
+assert.match(
+  sharedStyles,
+  /sidebarCollapsed:[\s\S]*width: 72[\s\S]*overflow: "hidden"[\s\S]*export function NavItem\([\s\S]*collapsed = false[\s\S]*aria-hidden="true"[\s\S]*whiteSpace: "nowrap"/,
+  "Collapsed sidebar should keep icons visible while labels are visually collapsed.",
+);
+for (const routeLabel of ["Dashboard", "Design Studio", "Proposals", "Nail Shop"]) assert.ok(appShell.includes(`label: '${routeLabel}'`), `${routeLabel} navigation should remain available.`);
+assert.match(
+  assetLibrary,
+  /aria-label=\{`Add \${asset\.name}`\}[\s\S]*title=\{asset\.name\}[\s\S]*data-asset-label-visibility="tooltip-only"/,
+  "Visual asset grid labels should move to accessible names/tooltips instead of repeated visible captions.",
+);
+assert.doesNotMatch(
+  assetLibrary,
+  /<div[^>]*>\{asset\.name\}<\/div>/,
+  "Visual asset buttons should not repeat obvious labels under every icon.",
+);
+
 assert.match(
   studioStyles,
   /studioDock:[\s\S]*padding: "8px 14px 10px"[\s\S]*overflowX: "auto"[\s\S]*dockButton: \(active = false\) => \(\{[\s\S]*minHeight: 44/,

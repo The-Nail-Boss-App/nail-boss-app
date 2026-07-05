@@ -92,6 +92,18 @@ export const S = {
     padding: "24px 14px",
     gap: 4,
     flexShrink: 0,
+    transition: "width .18s ease, padding .18s ease",
+  },
+
+  sidebarCollapsed: {
+    width: 72,
+    padding: "18px 10px",
+    overflow: "hidden",
+  },
+
+  sidebarExpanded: {
+    width: 220,
+    padding: "24px 14px",
   },
 
   // Main content area
@@ -228,15 +240,17 @@ export function StatusBadge({ status }) {
 
 // ── Sidebar nav item ──────────────────────────────────────────────────────────
 
-export function NavItem({ label, icon, active, onClick }) {
+export function NavItem({ label, icon, active, onClick, collapsed = false }) {
   return (
     <button
       onClick={onClick}
       style={{
         display: "flex",
         alignItems: "center",
-        gap: 9,
-        padding: "9px 12px",
+        gap: collapsed ? 0 : 9,
+        justifyContent: collapsed ? "center" : "flex-start",
+        minHeight: 42,
+        padding: collapsed ? "9px 8px" : "9px 12px",
         borderRadius: 10,
         fontSize: 13,
         fontWeight: 500,
@@ -249,8 +263,14 @@ export function NavItem({ label, icon, active, onClick }) {
         transition: "background .15s, color .15s",
       }}
     >
-      <span style={{ fontSize: 15 }}>{icon}</span>
-      {label}
+      <span aria-hidden="true" style={{ fontSize: 15, display: "inline-flex", flexShrink: 0 }}>{icon}</span>
+      <span style={{
+        opacity: collapsed ? 0 : 1,
+        width: collapsed ? 0 : "auto",
+        overflow: "hidden",
+        whiteSpace: "nowrap",
+        transition: "opacity .15s ease",
+      }}>{label}</span>
     </button>
   );
 }
