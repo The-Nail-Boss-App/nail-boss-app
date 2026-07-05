@@ -276,8 +276,8 @@ assert.match(
 );
 assert.match(
   nailCanvas,
-  /const NAIL_BASELINE_SCALE = 1\.65[\s\S]*const visualScale = containedZoom \* NAIL_BASELINE_SCALE[\s\S]*data-baseline-scale="165-as-100"[\s\S]*scale\(\$\{visualScale\}\)/,
-  "NailCanvas should treat the former 165% visual size as the new 100% baseline.",
+  /const NAIL_BASELINE_SCALE = 1\.65[\s\S]*export function heroZoomFit[\s\S]*baselineScale: NAIL_BASELINE_SCALE[\s\S]*data-baseline-scale="165-as-100"/,
+  "NailCanvas should preserve the larger baseline while using a bounded zoom fit helper.",
 );
 assert.match(
   studio,
@@ -286,8 +286,8 @@ assert.match(
 );
 assert.match(
   nailCanvas,
-  /data-testid="bounded-hero-canvas-area"[\s\S]*data-zoom-containment-padding="dock-safe-expanded"[\s\S]*overflow: "hidden"[\s\S]*padding: "clamp\(6px, 1\.4vh, 14px\) 18px clamp\(88px, 13vh, 132px\)"/,
-  "Nail should remain bounded above the Studio Dock with expanded bottom containment.",
+  /data-testid="bounded-hero-canvas-area"[\s\S]*data-zoom-containment-padding="dock-safe-expanded"[\s\S]*justifyContent: "center"[\s\S]*overflow: "hidden"[\s\S]*padding: HERO_CANVAS_SAFE_PADDING/,
+  "Nail should remain centered and bounded above the Studio Dock with expanded bottom containment.",
 );
 assert.match(
   studioStyles,
@@ -538,7 +538,7 @@ assert.match(
 );
 assert.match(
   nailCanvas,
-  /data-testid="bounded-hero-canvas-area"[\s\S]*overflow: "hidden"[\s\S]*data-zoom-containment="bounded-hero-canvas"/,
+  /data-testid="bounded-hero-canvas-area"[\s\S]*overflow: "hidden"[\s\S]*data-zoom-containment="bounded-fit-to-container"[\s\S]*data-zoom-fit-helper="heroZoomFit"/,
   "Zoomable nail canvas should be contained inside the Hero Canvas area.",
 );
 assert.doesNotMatch(
