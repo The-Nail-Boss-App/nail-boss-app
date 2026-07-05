@@ -14,9 +14,17 @@ export default function AssetLibrary({ onAddAsset }) {
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10 }}>
         {assets.map((asset) => (
-          <button key={asset.id} type="button" onClick={() => onAddAsset(asset)} style={{ border: `1px solid ${COLORS.border}`, borderRadius: 14, background: "#fff", padding: 10, cursor: "pointer", textAlign: "center" }}>
-            <svg viewBox="-42 -42 84 84" width="58" height="58" aria-hidden="true">{renderAssetShapes(asset.id, asset.defaultColor)}</svg>
-            <div style={{ fontSize: 12, color: COLORS.text, fontWeight: 700 }}>{asset.name}</div>
+          <button
+            key={asset.id}
+            type="button"
+            aria-label={`Add ${asset.name}`}
+            title={asset.name}
+            data-testid="visual-asset-button"
+            data-asset-label-visibility="tooltip-only"
+            onClick={() => onAddAsset(asset)}
+            style={{ border: `1px solid ${COLORS.border}`, borderRadius: 14, background: "#fff", padding: 8, cursor: "pointer", textAlign: "center", minHeight: 76 }}
+          >
+            <svg viewBox="-42 -42 84 84" width="54" height="54" aria-hidden="true">{renderAssetShapes(asset.id, asset.defaultColor)}</svg>
           </button>
         ))}
       </div>
