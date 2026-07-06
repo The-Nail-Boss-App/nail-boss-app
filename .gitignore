@@ -6,3 +6,6 @@ yarn-error.log*
 .env
 
 .tmp/
+
+# Generated React build output
+client/build/
