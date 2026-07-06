@@ -158,7 +158,11 @@ export default function App() {
         display: 'grid',
         placeItems: isDesignStudioSidebarCollapsed ? 'center' : 'start',
       }}>
-        <LogoMark variant={isDesignStudioSidebarCollapsed ? "icon" : "wordmark"} size={48} style={isDesignStudioSidebarCollapsed ? {} : { width: 176 }} />
+        {isDesignStudioSidebarCollapsed ? (
+          <img src="/anitaset-favicon.png" alt="AnitaSet" width="42" height="42" style={{ display: "block", width: 42, height: 42, objectFit: "contain" }} />
+        ) : (
+          <LogoMark variant="wordmark" style={{ width: 210 }} />
+        )}
       </div>
 
       {/* Nav */}
