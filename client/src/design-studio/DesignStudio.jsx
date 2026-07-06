@@ -2573,7 +2573,7 @@ function DesignStudio(_, ref) {
         style={UI.artistCommandBar}
       >
         <div style={UI.commandIdentity}>
-          <img src="/anitaset-logo.svg" alt="AnitaSet" style={UI.commandLogoImage} />
+          <img src="/anitaset-logo-main.png" alt="AnitaSet" style={UI.commandLogoImage} />
           <input
             aria-label="Design Name"
             data-testid="artist-command-design-name"
