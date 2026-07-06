@@ -282,7 +282,7 @@ export function LogoMark({ size = 36, variant = "icon", style = {} }) {
 
   return (
     <img
-      src={isWordmark ? "/anitaset-logo.svg" : "/anitaset-icon.svg"}
+      src={isWordmark ? "/anitaset-logo-main.png" : "/anitaset-logo-secondary.png"}
       alt="AnitaSet"
       width={isWordmark ? undefined : size}
       height={isWordmark ? undefined : size}
