@@ -21,22 +21,22 @@ export default function Login({ onLogin }) {
 
   return (
     <div style={S.page}>
-      <div style={S.centered}>
-        <div style={S.card(420)}>
+      <div style={{ ...S.centered, alignItems: "flex-start", paddingTop: "clamp(54px, 12vh, 96px)", paddingBottom: 18 }}>
+        <div style={{ ...S.card(420), padding: "26px 30px 28px" }}>
           {/* Logo */}
-          <div style={{ display: "flex", alignItems: "center", marginBottom: 28 }}>
+          <div style={{ display: "flex", alignItems: "center", marginBottom: 16 }}>
             <LogoMark variant="wordmark" style={{ width: 320 }} />
           </div>
 
-          <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 6 }}>
+          <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 4 }}>
             Welcome back 💅
           </h1>
-          <p style={{ fontSize: 14, color: COLORS.textMuted, marginBottom: 28, lineHeight: 1.5 }}>
+          <p style={{ fontSize: 14, color: COLORS.textMuted, marginBottom: 18, lineHeight: 1.35 }}>
             Start with a nail design. Turn that design into money.
           </p>
 
           <form onSubmit={handleSubmit} noValidate>
-            <div style={{ marginBottom: 20 }}>
+            <div style={{ marginBottom: 14 }}>
               <label style={S.label} htmlFor="tech-name">Your name</label>
               <input
                 id="tech-name"
@@ -48,7 +48,7 @@ export default function Login({ onLogin }) {
                 style={{
                   ...S.input,
                   fontSize: 15,
-                  padding: "12px 14px",
+                  padding: "11px 14px",
                   borderColor: error ? COLORS.statusDeclined : COLORS.border,
                 }}
                 data-testid="input-tech-name"
@@ -62,7 +62,7 @@ export default function Login({ onLogin }) {
 
             <button
               type="submit"
-              style={{ ...S.btnPrimary, width: "100%", justifyContent: "center", padding: "13px 0", fontSize: 15 }}
+              style={{ ...S.btnPrimary, width: "100%", justifyContent: "center", padding: "12px 0", fontSize: 15 }}
               data-testid="button-login"
             >
               Enter AnitaSet →
