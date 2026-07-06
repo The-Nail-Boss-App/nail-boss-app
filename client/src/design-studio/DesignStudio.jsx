@@ -2293,7 +2293,7 @@ function DesignStudio(_, ref) {
       }),
     );
     showNotice(
-      "Polish Studio opened in the Creative Library with quick controls available from the command bar.",
+      "Polish Studio opened in the Creative Library with quick controls available from the Artist Toolkit™.",
     );
   }
 
@@ -2568,8 +2568,8 @@ function DesignStudio(_, ref) {
     <div style={UI.shell}>
       <StudioMicrointeractionStyles />
       <header
-        data-testid="artist-command-bar"
-        aria-label="Artist Command Bar"
+        data-testid="artist-command-bar" data-workspace-term="Artist Toolkit™"
+        aria-label="Artist Toolkit™"
         style={UI.artistCommandBar}
       >
         <div style={UI.commandIdentity}>

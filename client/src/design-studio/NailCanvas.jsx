@@ -74,8 +74,8 @@ const NAIL_BASELINE_SCALE = 1.65;
 const HERO_SAFE_CONTAINED_ZOOM = 1.55;
 const HERO_MAX_ZOOM = 2.4;
 const HERO_CANVAS_SAFE_PADDING = "clamp(12px, 2vh, 24px) 18px clamp(112px, 16vh, 164px)";
-const HERO_CANVAS_VERTICAL_SAFE_GAP = 24;
-const HERO_BASE_HEIGHT_VH = 42;
+const HERO_CANVAS_VERTICAL_SAFE_GAP = 12;
+const HERO_BASE_HEIGHT_VH = 54;
 const HERO_MAX_HEIGHT_VH = 96;
 
 export function heroZoomFit(zoom = 1) {
