@@ -10,7 +10,7 @@ export const UI = {
     minHeight: 0,
     display: "flex",
     flexDirection: "column",
-    background: COLORS.bg,
+    background: "linear-gradient(135deg, rgba(255,255,255,.96), rgba(250,247,252,.94)), radial-gradient(circle at 20% 12%, rgba(123,47,89,.10), transparent 26%), repeating-linear-gradient(135deg, rgba(120,111,120,.08) 0 1px, transparent 1px 22px)",
   },
   toolbar: {
     display: "flex",
@@ -45,6 +45,13 @@ export const UI = {
     textTransform: "uppercase",
     color: COLORS.plum,
     fontWeight: 800,
+    marginBottom: 6,
+  },
+  commandLogoImage: {
+    width: 132,
+    maxWidth: "48vw",
+    height: "auto",
+    display: "block",
     marginBottom: 6,
   },
   commandDesignName: {
@@ -277,6 +284,14 @@ export const UI = {
     overflow: "hidden",
     alignItems: "stretch",
   },
+  focusLayout: {
+    flex: 1,
+    minHeight: 0,
+    display: "grid",
+    gridTemplateColumns: "minmax(0, 1fr)",
+    padding: "8px clamp(8px, 1vw, 12px)",
+    overflow: "hidden",
+  },
   panel: {
     background: COLORS.surface,
     border: `1px solid ${COLORS.border}`,
@@ -480,6 +495,9 @@ export const UI = {
     fontSize: 10,
     lineHeight: 1.18,
     color: COLORS.textMuted,
+  },
+  focusPreviewPanel: {
+    maxHeight: "calc(100vh - 112px)",
   },
   heroCanvasPanel: {
     display: "flex",
