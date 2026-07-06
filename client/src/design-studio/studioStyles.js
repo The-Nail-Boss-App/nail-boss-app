@@ -1,5 +1,7 @@
 import { COLORS, S } from "../styles.js";
 
+const ANITASET_MARBLE_BACKGROUND = "linear-gradient(135deg, rgba(255,255,255,.92), rgba(250,247,252,.88)), radial-gradient(circle at 18% 12%, rgba(255,255,255,.95), transparent 24%), radial-gradient(circle at 78% 18%, rgba(123,47,89,.08), transparent 28%), repeating-linear-gradient(118deg, rgba(120,111,120,.10) 0 1px, transparent 1px 34px), repeating-linear-gradient(36deg, rgba(255,255,255,.44) 0 1px, transparent 1px 46px)";
+
 const LUXURY_TRANSITION = "transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease, background 180ms ease, color 180ms ease, opacity 180ms ease";
 
 // Artist Toolkit™ popovers share a fixed high z-index layer so quick controls are never clipped by the workspace.
@@ -10,7 +12,7 @@ export const UI = {
     minHeight: 0,
     display: "flex",
     flexDirection: "column",
-    background: "linear-gradient(135deg, rgba(255,255,255,.96), rgba(250,247,252,.94)), radial-gradient(circle at 20% 12%, rgba(123,47,89,.10), transparent 26%), repeating-linear-gradient(135deg, rgba(120,111,120,.08) 0 1px, transparent 1px 22px)",
+    background: ANITASET_MARBLE_BACKGROUND,
   },
   toolbar: {
     display: "flex",
@@ -283,6 +285,8 @@ export const UI = {
     overflowX: "hidden",
     overflow: "hidden",
     alignItems: "stretch",
+    background: ANITASET_MARBLE_BACKGROUND,
+    backgroundAttachment: "local",
   },
   focusLayout: {
     flex: 1,
@@ -291,6 +295,8 @@ export const UI = {
     gridTemplateColumns: "minmax(0, 1fr)",
     padding: "8px clamp(8px, 1vw, 12px)",
     overflow: "hidden",
+    background: ANITASET_MARBLE_BACKGROUND,
+    backgroundAttachment: "local",
   },
   panel: {
     background: COLORS.surface,
@@ -336,8 +342,7 @@ export const UI = {
     position: "sticky",
     top: 0,
     zIndex: 2,
-    background:
-      "radial-gradient(circle at 50% 10%, #fff 0%, #fff7fb 52%, #f7edf4 100%)",
+    background: ANITASET_MARBLE_BACKGROUND,
     minHeight: "clamp(500px, 70vh, 780px)",
     paddingBottom: "clamp(22px, 4vh, 42px)",
     display: "grid",
@@ -506,7 +511,7 @@ export const UI = {
     overflow: "visible",
     minWidth: 0,
     border: "1px solid rgba(123,47,89,.12)",
-    background: "linear-gradient(180deg, #fff 0%, #fff7fb 100%)",
+    background: ANITASET_MARBLE_BACKGROUND,
     transition: "box-shadow 220ms ease, border-color 220ms ease",
   },
   heroCanvasHeader: {

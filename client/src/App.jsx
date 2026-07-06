@@ -1,5 +1,5 @@
 import { Component, useRef, useState } from 'react';
-import { COLORS, S, LogoMark, NavItem } from './styles';
+import { COLORS, S, NavItem } from './styles';
 import Login from './Login';
 import Dashboard from './Dashboard';
 import DesignStudio from './DesignStudio';
@@ -161,7 +161,7 @@ export default function App() {
         {isDesignStudioSidebarCollapsed ? (
           <img src="/anitaset-favicon.png" alt="AnitaSet" width="42" height="42" style={{ display: "block", width: 42, height: 42, objectFit: "contain" }} />
         ) : (
-          <LogoMark variant="wordmark" style={{ width: 210 }} />
+          <img src="/anitaset-logo-secondary.png" alt="AnitaSet" style={{ display: "block", width: 210, maxWidth: "100%", height: "auto", objectFit: "contain" }} />
         )}
       </div>
 
