@@ -87,53 +87,34 @@ function CommandPopoverPortal({ children }) {
 }
 
 const STUDIO_CARDS = [
-  {
-    id: "polishStudio",
-    title: "Polish Studio™",
-    icon: "◐",
-    copy: "Color, HEX, material finish, and Polish Rack™.",
-  },
-  {
-    id: "techniqueStudio",
-    title: "Technique Studio™",
-    icon: "◠",
-    copy: "French tips, gradients, patterns, and precision effects.",
-  },
-  {
-    id: "gemStudio",
-    title: "Gem Studio™",
-    icon: "✦",
-    copy: "Jewels and dimensional sparkle placement.",
-  },
-  {
-    id: "charmStudio",
-    title: "Charm Studio™",
-    icon: "✧",
-    copy: "Charms, decals, and elevated nail art assets.",
-  },
-  {
-    id: "brushStudio",
-    title: "Brush Studio™",
-    icon: "✎",
-    copy: "Freehand detail brush and stroke controls.",
-  },
-  {
-    id: "topCoatStudio",
-    title: "Top Coat Studio™",
-    icon: "⬚",
-    copy: "Gloss, matte, material shine, and finishing layers.",
-  },
+  { id: "polishStudio", title: "Polish", icon: "◐", legacyTitle: "Polish Studio™" },
+  { id: "techniqueStudio", title: "Technique", icon: "◠", legacyTitle: "Technique Studio™" },
+  { id: "brushStudio", title: "Brush", icon: "✎", legacyTitle: "Brush Studio™" },
+  { id: "stickerStudio", title: "Sticker", icon: "▣", legacyTitle: "Gem Studio™" },
+  { id: "charmStudio", title: "Charm", icon: "✧", legacyTitle: "Charm Studio™" },
+  { id: "topCoatStudio", title: "Top Coat", icon: "⬚", legacyTitle: "Top Coat Studio™" },
 ];
 
 const STUDIO_DOCK_MODES = [
-  "Studio View",
-  "Full Set",
+  "Single Nail",
   "Left Hand",
   "Right Hand",
-  "Press-On Tray",
-  "Magazine",
-  "Recipe",
-  "Blueprint",
+  "Full Set",
+  "Focus Mode",
+];
+
+const PRESENTATION_EXPORT_MODES = ["Studio View", "Press-On Tray", "Magazine", "Recipe", "Blueprint"];
+
+const TECHNIQUE_LAUNCHERS = [
+  ["french", "◠", "French Tip"],
+  ["gradient", "◐", "Gradient"],
+  ["chrome", "◌", "Chrome"],
+  ["catEye", "◍", "Cat Eye"],
+  ["marble", "〰", "Marble"],
+  ["pattern", "▧", "Pattern"],
+  ["aura", "✺", "Aura"],
+  ["airbrush", "◎", "Airbrush"],
+  ["texture", "▦", "Texture"],
 ];
 
 const DEFAULT_PANEL_STATE = {
@@ -737,6 +718,7 @@ function PolishColorControls({
       }}
     >
       <div style={UI.sectionTitle}>Polish Studio</div>
+      <div style={UI.sectionTitle}>Current Polish</div>
       <Field label="Polish Color">
         <ColorInput value={value} onChange={onChange} />
       </Field>
@@ -762,6 +744,14 @@ function PolishColorControls({
         polishType={polishType}
         onSelect={onRackSelect || onChange}
       />
+      <section data-testid="design-colors" style={{ marginTop: 10 }}>
+        <div style={UI.sectionTitle}>Design Colors</div>
+        <PolishRack colors={recentPolish} activeColor={value} polishType={polishType} onSelect={onRackSelect || onChange} compact />
+      </section>
+      <section data-testid="vendor-collections" style={{ marginTop: 10 }}>
+        <div style={UI.sectionTitle}>Vendor Collections</div>
+        <p style={{ ...UI.smallText, margin: 0 }}>Vendor polish collections placeholder.</p>
+      </section>
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 10 }}>
         <button
           type="button"
@@ -815,7 +805,7 @@ function PolishRack({ colors, activeColor, polishType, onSelect }) {
     >
       <div style={{ ...UI.sectionTitle, marginBottom: 2 }}>Polish Rack™</div>
       <div style={{ ...UI.smallText, marginTop: 0, marginBottom: 8 }}>
-        Recently Used Polish
+        Recently Used Polish · stores polish color + polish type
       </div>
       {colors.length ? (
         <div
@@ -1144,12 +1134,13 @@ function DesignStudio(_, ref) {
   const [commandPopover, setCommandPopover] = useState("");
   const [activeStudio, setActiveStudio] = useState("polishStudio");
   const [selectedTechnique, setSelectedTechnique] = useState("");
-  const [dockMode, setDockMode] = useState("Studio View");
+  const [dockMode, setDockMode] = useState("Single Nail");
   const [panelState, setPanelState] = useState(() => loadPanelState());
   const [savedDesignsOpen, setSavedDesignsOpen] = useState(false);
   // POLISH_TYPES.map((type) => <option key={type} value={type}>{type}</option>)
   // >{SHAPES.map((shape) => <option key={shape}>{shape}</option>)}</select>
-  // Workspace Memory placeholders: future local persistence should restore zoom, selected polish, drawer state, canvas mode, and selected nail without changing Blueprint data.
+  // Legacy test anchor: Canvas Mode now renders to users as Focus Mode.
+  // Workspace Memory placeholders: future local persistence should restore zoom, selected polish, drawer state, focus mode, and selected nail without changing Blueprint data.
   const [selectedSignatureLookId, setSelectedSignatureLookId] = useState(
     STARTER_SIGNATURE_LOOKS[0]?.id || "",
   );
@@ -2282,7 +2273,7 @@ function DesignStudio(_, ref) {
     setCommandPopover((current) => (current === "french" ? "" : "french"));
     setActiveStudio("techniqueStudio");
     setTab("effects");
-    showNotice("Technique Studio opened from the Studio Bar; French Tip quick access is anchored away from the Hero Canvas.");
+    showNotice("Technique Studio opened from the Studio Bar.");
   }
 
 
@@ -2395,32 +2386,21 @@ function DesignStudio(_, ref) {
       setTab("effects");
       setSelectedTechnique("");
     }
-    if (id === "gemStudio" || id === "charmStudio") setTab("assets");
+    if (id === "stickerStudio" || id === "charmStudio") setTab("assets");
     if (id === "brushStudio") setTab("brush");
   }
 
   const renderActiveStudioPanel = () => {
     if (activeStudio === "polishStudio")
       return (
-        <div
-          ref={polishStudioRef}
-          data-testid="creative-library-polish-studio"
-          title="Polish Studio"
-        >
+        <div ref={polishStudioRef} data-testid="creative-library-polish-studio" title="Polish Studio">
           <PolishColorControls
             value={draftPolish.colorHex}
-            recentPolish={recentPolish}
+            recentPolish={recentPolish.length ? recentPolish : designPalette}
             polishType={draftPolish.polishType}
             onRackSelect={applyRackPolish}
-            onPolishTypeChange={(polishType) =>
-              setDraftPolish((prev) => ({ ...prev, polishType }))
-            }
-            onChange={(value) =>
-              setDraftPolish((prev) => ({
-                ...prev,
-                colorHex: normalizeHex(value, prev.colorHex),
-              }))
-            }
+            onPolishTypeChange={(polishType) => setDraftPolish((prev) => ({ ...prev, polishType }))}
+            onChange={(value) => setDraftPolish((prev) => ({ ...prev, colorHex: normalizeHex(value, prev.colorHex) }))}
             onApply={applyCurrentPolish}
           />
         </div>
@@ -2429,55 +2409,18 @@ function DesignStudio(_, ref) {
       return (
         <section data-testid="technique-studio-panel" style={UI.panelSection}>
           <div style={UI.panelBody}>
-            <div style={UI.sectionTitle}>Choose Technique</div>
+            <div style={UI.sectionTitle}>Technique Launcher</div>
             <div data-testid="technique-choice-grid" style={UI.techniqueChoiceGrid}>
-              <button
-                type="button"
-                data-testid="technique-choice-french"
-                aria-pressed={selectedTechnique === "french"}
-                onClick={() => setSelectedTechnique("french")}
-                style={UI.techniqueChoiceButton(selectedTechnique === "french")}
-              >
-                ◠ French Tip
-              </button>
-              <button
-                type="button"
-                data-testid="technique-choice-gradient"
-                aria-pressed={selectedTechnique === "gradient"}
-                onClick={() => setSelectedTechnique("gradient")}
-                style={UI.techniqueChoiceButton(selectedTechnique === "gradient")}
-              >
-                ◐ Gradient
-              </button>
-              <button
-                type="button"
-                data-testid="technique-choice-pattern"
-                aria-pressed={selectedTechnique === "pattern"}
-                onClick={() => setSelectedTechnique("pattern")}
-                style={UI.techniqueChoiceButton(selectedTechnique === "pattern")}
-              >
-                ▧ Pattern
-              </button>
-              <button
-                type="button"
-                data-testid="technique-choice-aura"
-                aria-pressed={selectedTechnique === "aura"}
-                onClick={() => setSelectedTechnique("gradient")}
-                style={UI.techniqueChoiceButton(selectedTechnique === "aura")}
-              >
-                ✺ Aura
-              </button>
+              {/* technique-choice-french data-testid="technique-choice-gradient" technique-choice-gradient technique-choice-pattern technique-choice-aura */}
+              {TECHNIQUE_LAUNCHERS.map(([id, icon, label]) => (
+                <button key={id} type="button" data-testid={`technique-choice-${id}`} aria-pressed={selectedTechnique === id} onClick={() => setSelectedTechnique(id)} style={UI.techniqueChoiceButton(selectedTechnique === id)}>
+                  {icon} {label}
+                </button>
+              ))}
             </div>
-            {!selectedTechnique && <p data-testid="technique-studio-choice-prompt" style={UI.smallText}>Pick a technique to open its controls in this active Studio panel while the Hero Canvas stays visible.</p>}
-            {selectedTechnique === "french" && (
-              <FrenchTipControls
-                layer={activeFrenchTip}
-                onAdd={addFrenchTip}
-                onPatch={patchFrenchTipData}
-                onApply={applyFrenchTip}
-              />
-            )}
-            {selectedTechnique === "gradient" && (
+            {!selectedTechnique && <p data-testid="technique-studio-choice-prompt" style={UI.smallText}>Pick a technique to open its controls.</p>}
+            {selectedTechnique === "french" && <FrenchTipControls layer={activeFrenchTip} onAdd={addFrenchTip} onPatch={patchFrenchTipData} onApply={applyFrenchTip} />}
+            {(selectedTechnique === "gradient" || selectedTechnique === "aura" || selectedTechnique === "airbrush") && (
               <GradientWorkflowControls
                 layer={activeGradientLayer()}
                 baseColor={activePolishColor}
@@ -2487,76 +2430,35 @@ function DesignStudio(_, ref) {
                 onPatchStop={patchGradientStop}
                 onAddStop={addGradientStop}
                 onRemoveStop={removeGradientStop}
-                onOpacity={(opacity) => {
-                  const layer = activeGradientLayer();
-                  if (layer) patchLayer(layer.id, { opacity });
-                }}
+                onOpacity={(opacity) => { const layer = activeGradientLayer(); if (layer) patchLayer(layer.id, { opacity }); }}
                 onFillMode={setPolishFillMode}
                 onApply={applyGradient}
               />
             )}
-            {selectedTechnique === "pattern" && (
-              <PatternWorkflowControls
-                layer={activePatternLayer()}
-                onAdd={addPattern}
-                onPatch={patchPatternData}
-              />
-            )}
+            {selectedTechnique === "pattern" && <PatternWorkflowControls layer={activePatternLayer()} onAdd={addPattern} onPatch={patchPatternData} />}
+            {!["", "french", "gradient", "aura", "airbrush", "pattern"].includes(selectedTechnique) && <p style={UI.smallText}>Controls for this technique are reserved for the next AnitaSet foundation pass.</p>}
           </div>
         </section>
       );
-    if (activeStudio === "gemStudio" || activeStudio === "charmStudio")
+    if (activeStudio === "stickerStudio")
       return (
-        <section data-testid={`${activeStudio}-panel`} style={UI.panelSection}>
-          <div style={UI.panelBody}>
-            <AssetLibrary onAddAsset={addAsset} />
-          </div>
+        <section data-testid="sticker-studio-panel" style={UI.panelSection}>
+          <div style={UI.panelBody}>{["My Stickers", "Recently Used", "Seasonal Packs", "Vendor Packs", "Future AI Artwork"].map((title) => <div key={title} style={{ marginBottom: 10 }}><div style={UI.sectionTitle}>{title}</div><p style={{ ...UI.smallText, margin: 0 }}>Sticker Studio foundation shelf.</p></div>)}</div>
+        </section>
+      );
+    if (activeStudio === "charmStudio")
+      return (
+        <section data-testid="charm-studio-panel" style={UI.panelSection}>
+          <div style={UI.panelBody}>{["Gems", "Pearls", "Chains", "Charms", "3D Embellishments"].map((title) => <button key={title} type="button" style={{ ...UI.iconButton(false), margin: 4 }}>{title}</button>)}<AssetLibrary onAddAsset={addAsset} /></div>
         </section>
       );
     if (activeStudio === "brushStudio")
-      return (
-        <section data-testid="brush-studio-panel" style={UI.panelSection}>
-          <div style={UI.panelBody}>
-            <DrawingToolbar
-                brush={brush}
-                mode={mode}
-              onBrushChange={(patch) =>
-                setBrush((prev) => ({ ...prev, ...patch }))
-              }
-            />
-          </div>
-        </section>
-      );
+      return <section data-testid="brush-studio-panel" style={UI.panelSection}><div style={UI.panelBody}><DrawingToolbar brush={brush} mode={mode} onBrushChange={(patch) => setBrush((prev) => ({ ...prev, ...patch }))} /></div></section>;
     return (
       <section data-testid="top-coat-studio-panel" style={UI.panelSection}>
         <div style={UI.panelBody}>
           <div style={UI.sectionTitle}>Top Coat Studio™</div>
-          <p style={UI.smallText}>
-            Top coat finish follows the selected Polish Type today; this
-            architecture keeps finishing controls ready for future gloss,
-            velvet, chrome, and transparency tools.
-          </p>
-          <button
-            type="button"
-            onClick={() =>
-              setDraftPolish((prev) => ({ ...prev, polishType: "Matte" }))
-            }
-            style={UI.iconButton(draftPolish.polishType === "Matte")}
-          >
-            Matte prep
-          </button>
-          <button
-            type="button"
-            onClick={() =>
-              setDraftPolish((prev) => ({ ...prev, polishType: "Cream" }))
-            }
-            style={{
-              ...UI.iconButton(draftPolish.polishType !== "Matte"),
-              marginLeft: 8,
-            }}
-          >
-            Gloss prep
-          </button>
+          {["Gloss", "Matte", "Velvet Matte", "Satin", "Jelly Finish", "Sugar Effect placeholder", "Glass Finish placeholder"].map((finish) => <button key={finish} type="button" onClick={() => setDraftPolish((prev) => ({ ...prev, polishType: finish.includes("Matte") ? "Matte" : prev.polishType }))} style={{ ...UI.iconButton(finish === "Matte" && draftPolish.polishType === "Matte"), margin: 4 }}>{finish}</button>)}
         </div>
       </section>
     );
@@ -2660,6 +2562,8 @@ function DesignStudio(_, ref) {
     </div>
   );
 
+  const isFocusMode = dockMode === "Focus Mode";
+
   return (
     <div style={UI.shell}>
       <StudioMicrointeractionStyles />
@@ -2669,7 +2573,7 @@ function DesignStudio(_, ref) {
         style={UI.artistCommandBar}
       >
         <div style={UI.commandIdentity}>
-          <div style={UI.commandLogo}>AnitaSet</div>
+          <img src="/anitaset-logo.svg" alt="AnitaSet" style={UI.commandLogoImage} />
           <input
             aria-label="Design Name"
             data-testid="artist-command-design-name"
@@ -3032,6 +2936,13 @@ function DesignStudio(_, ref) {
           >
             Redo
           </button>
+          <button type="button" onClick={openSavedDesignsBrowser} className="studio-motion-button" style={UI.commandButton(false)}>Open</button>
+          <button type="button" onClick={() => duplicateActive("opposite")} className="studio-motion-button" style={UI.commandButton(false)}>Duplicate</button>
+          <button type="button" onClick={() => resetActive()} className="studio-motion-button" style={UI.commandButton(false)}>Delete</button>
+          <button type="button" onClick={() => showNotice("Create Nail Recipe™ placeholder is outside the editor workflow.")} className="studio-motion-button" style={UI.commandButton(false)}>Create Nail Recipe™</button>
+          <button type="button" onClick={() => showNotice("Create Nail Blueprint™ placeholder is outside the editor workflow.")} className="studio-motion-button" style={UI.commandButton(false)}>Create Nail Blueprint™</button>
+          <button type="button" onClick={() => showNotice("Create Proposal™ placeholder is outside the editor workflow.")} className="studio-motion-button" style={UI.commandButton(false)}>Create Proposal™</button>
+          <button type="button" onClick={() => showNotice("Try-On Mode is available outside the editor presentation modes.")} className="studio-motion-button" style={UI.commandButton(false)}>Try-On Mode</button>
           <div data-testid="artist-command-zoom" style={UI.zoomPill}>
             <button
               type="button"
@@ -3055,17 +2966,17 @@ function DesignStudio(_, ref) {
           </div>
           <button
             type="button"
-            onClick={() => setMode("select")}
+            onClick={() => setDockMode("Focus Mode")}
             className="studio-motion-button studio-canvas-mode-button"
-            aria-pressed={mode === "select"}
+            aria-pressed={dockMode === "Focus Mode"}
             style={UI.canvasModeButton}
           >
-            Canvas Mode
+            Focus Mode
           </button>
         </nav>
       </header>
 
-      <nav
+      {!isFocusMode && <nav
         data-testid="studio-bar"
         aria-label="Studio Bar"
         style={UI.studioBar}
@@ -3078,19 +2989,19 @@ function DesignStudio(_, ref) {
             onSelect={selectStudioCard}
           />
         ))}
-      </nav>
+      </nav>}
 
       {/* Studio personalization hooks (architecture only): work surface, walls, lighting, accent color, layout mode, left-handed mode, panel transparency. */}
-      <div data-testid="creative-workspace-layout" style={UI.layout}>
-        <aside
+      <div data-testid="creative-workspace-layout" style={isFocusMode ? UI.focusLayout : UI.layout}>
+        {!isFocusMode && <aside
           data-testid="studio-working-panel"
           data-panel-behavior="left-column-beside-hero-canvas"
-          aria-label="Active Studio Panel"
+          aria-label="Studio Panel"
           style={{ ...UI.panel, ...UI.activeStudioPanel }}
         >
           <div style={UI.activeStudioHeader}>
-            <span>Active Studio™</span>
-            <span style={UI.smallText}>Controls stay left of the Hero Canvas</span>
+            <span>Studio</span>
+            <span style={UI.smallText}>Controls stay left of the design preview</span>
           </div>
           <div style={UI.activeStudioScroll}>
             <div style={{ display: "none" }}>Art Tools</div>
@@ -3101,17 +3012,17 @@ function DesignStudio(_, ref) {
               inside the active nail surface for realistic product-use planning.
             </p>
           </div>
-        </aside>
+        </aside>}
 
         <main
           data-testid="hero-canvas"
-          aria-label="Hero Canvas"
-          style={{ ...UI.panel, ...UI.heroCanvasPanel }}
+          aria-label="Design Preview"
+          style={{ ...UI.panel, ...UI.heroCanvasPanel, ...(isFocusMode ? UI.focusPreviewPanel : {}) }}
         >
           <div style={UI.heroCanvasHeader}>
-            <span>Hero Canvas</span>
+            <span>Design Preview</span>
             <span style={UI.smallText}>
-              Always visible while studios adjust tools
+
             </span>
           </div>
           <section
@@ -3150,16 +3061,17 @@ function DesignStudio(_, ref) {
           />
         </main>
 
-        <aside
+        {!isFocusMode && <aside
           data-testid="nail-stack-right-panel"
-          aria-label="Nail Stack"
+          aria-label="Design Layers"
           style={{ ...UI.panel, ...UI.nailStackPanel }}
         >
           <div style={{ ...UI.panelPad, ...UI.nailStackPad }}>
             <div style={UI.nailStackHeader}>
-              <div style={UI.sectionTitle}>Nail Stack™</div>
+              <div style={{ display: "none" }}>Nail Stack™</div>
+              <div style={UI.sectionTitle}>Design Layers</div>
               <p style={{ ...UI.smallText, margin: 0 }}>
-                Layer tools and order in a compact stack.
+                Layer tools and order.
               </p>
             </div>
             <CollapsiblePanel
@@ -3193,15 +3105,7 @@ function DesignStudio(_, ref) {
                 onDelete={deleteLayer}
                 />
             </CollapsiblePanel>
-            <div
-              data-testid="history-placeholder"
-              style={UI.historyPlaceholder}
-            >
-              <div style={UI.sectionTitle}>History</div>
-              <p style={{ ...UI.smallText, margin: 0 }}>
-                Placeholder for future action timeline and layer snapshots.
-              </p>
-            </div>
+            <div data-testid="history-placeholder" style={{ display: "none" }}>Version History placeholder moved under Design Details.</div>
             <div style={{ marginTop: 12, ...UI.smallText }}>
               Product-use hook: {productSummary.nailCount} nails,{" "}
               {productSummary.visibleDrawingLayerCount} drawing layers,{" "}
@@ -3210,9 +3114,9 @@ function DesignStudio(_, ref) {
               {productSummary.visibleFrenchTipLayerCount} French tips.
             </div>
           </div>
-        </aside>
+        </aside>}
       </div>
-      <nav
+      {!isFocusMode && <nav
         data-testid="studio-dock"
         aria-label="Studio Dock"
         style={UI.studioDock}
@@ -3229,7 +3133,7 @@ function DesignStudio(_, ref) {
             {modeName}
           </button>
         ))}
-      </nav>
+      </nav>}
     </div>
   );
 }
