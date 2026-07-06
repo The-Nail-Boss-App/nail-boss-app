@@ -1163,6 +1163,7 @@ function DesignStudio(_, ref) {
   const designNameRef = useRef("");
   const dragStartBlueprintRef = useRef(null);
   const polishStudioRef = useRef(null);
+  const commandMenuRootRef = useRef(null);
 
   const activeNail = getActiveNail(blueprint);
   const selectedLayer = useMemo(
@@ -1256,6 +1257,29 @@ function DesignStudio(_, ref) {
     window.addEventListener("beforeunload", onBeforeUnload);
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
   }, []);
+
+  useEffect(() => {
+    if (!commandPopover) return undefined;
+
+    function closeOpenCommandMenu(event) {
+      if (event.key === "Escape") {
+        setCommandPopover("");
+        return;
+      }
+
+      if (event.type !== "pointerdown") return;
+      const target = event.target;
+      if (target instanceof Element && target.closest("[data-artist-menu-root]")) return;
+      setCommandPopover("");
+    }
+
+    document.addEventListener("pointerdown", closeOpenCommandMenu);
+    document.addEventListener("keydown", closeOpenCommandMenu);
+    return () => {
+      document.removeEventListener("pointerdown", closeOpenCommandMenu);
+      document.removeEventListener("keydown", closeOpenCommandMenu);
+    };
+  }, [commandPopover]);
 
   useEffect(() => {
     setDraftPolish({
@@ -2603,7 +2627,7 @@ function DesignStudio(_, ref) {
               {saving || loading ? "Saving…" : "● Auto Saved"}
             </span>
           </div>
-          <div style={UI.commandGroup}>
+          <div data-artist-menu-root style={UI.commandGroup}>
             <button
               type="button"
               data-testid="current-polish-bottle"
@@ -2634,6 +2658,7 @@ function DesignStudio(_, ref) {
                 id="command-polish-color-popover"
                 data-testid="command-polish-color-popover"
                 data-canvas-safe-placement="left-creative-library-anchor"
+                data-artist-menu-root
                 className="studio-popover-motion"
                 style={UI.commandPolishPopover}
               >
@@ -2661,11 +2686,11 @@ function DesignStudio(_, ref) {
           </div>
         </div>
 
-        <nav aria-label="Artist workspace actions" style={UI.commandActions}>
+        <nav ref={commandMenuRootRef} data-artist-menu-root aria-label="Artist workspace actions" style={UI.commandActions}>
           <div style={UI.commandGroup}>
             <button type="button" aria-expanded={commandPopover === "ribbonDesign"} onClick={() => toggleCommandPopover("ribbonDesign")} className="studio-motion-button" style={UI.commandButton(commandPopover === "ribbonDesign")}>Design ▼</button>
             {commandPopover === "ribbonDesign" && (
-              <CommandPopoverPortal><div className="studio-popover-motion" style={UI.commandPopover}>
+              <CommandPopoverPortal><div data-artist-menu-root className="studio-popover-motion" style={UI.commandPopover}>
                 <div style={UI.sectionTitle}>Design</div>
                 <button type="button" onClick={save} disabled={saving} className="studio-motion-button" style={UI.iconButton(false, saving)}>Save Version</button>
                 <button type="button" onClick={openSavedDesignsBrowser} className="studio-motion-button" style={UI.iconButton(false)}>Open Saved Designs</button>
@@ -2677,7 +2702,7 @@ function DesignStudio(_, ref) {
           <div style={UI.commandGroup}>
             <button type="button" aria-expanded={commandPopover === "ribbonEdit"} onClick={() => toggleCommandPopover("ribbonEdit")} className="studio-motion-button" style={UI.commandButton(commandPopover === "ribbonEdit")}>Edit ▼</button>
             {commandPopover === "ribbonEdit" && (
-              <CommandPopoverPortal><div className="studio-popover-motion" style={UI.commandPopover}>
+              <CommandPopoverPortal><div data-artist-menu-root className="studio-popover-motion" style={UI.commandPopover}>
                 <div style={UI.sectionTitle}>Edit</div>
                 <button type="button" onClick={undo} disabled={!canUndo} className="studio-motion-button" style={UI.iconButton(false, !canUndo)}>Undo</button>
                 <button type="button" onClick={redo} disabled={!canRedo} className="studio-motion-button" style={UI.iconButton(false, !canRedo)}>Redo</button>
@@ -2689,7 +2714,7 @@ function DesignStudio(_, ref) {
           <div style={UI.commandGroup}>
             <button type="button" data-testid="command-set-actions-trigger" aria-expanded={commandPopover === "ribbonActions"} onClick={() => toggleCommandPopover("ribbonActions")} className="studio-motion-button" style={UI.commandButton(commandPopover === "ribbonActions")}>Design Actions ▼</button>
             {commandPopover === "ribbonActions" && (
-              <CommandPopoverPortal><div id="command-set-actions-popover" data-testid="command-set-actions-popover" className="studio-popover-motion" style={UI.commandPopover}>
+              <CommandPopoverPortal><div data-artist-menu-root id="command-set-actions-popover" data-testid="command-set-actions-popover" className="studio-popover-motion" style={UI.commandPopover}>
                 <div style={UI.sectionTitle}>Design Actions · Set Actions</div>
                 <button type="button" onClick={() => toggleCommandPopover("nailBasics")} className="studio-motion-button" style={UI.iconButton(false)}>Nail Basics™</button>
                 <button type="button" onClick={() => duplicateActive("all")} className="studio-motion-button" style={UI.iconButton(false)}>Apply current design to all nails</button>
@@ -2706,7 +2731,7 @@ function DesignStudio(_, ref) {
           <div style={UI.commandGroup}>
             <button type="button" aria-expanded={commandPopover === "ribbonView"} onClick={() => toggleCommandPopover("ribbonView")} className="studio-motion-button" style={UI.commandButton(commandPopover === "ribbonView")}>View ▼</button>
             {commandPopover === "ribbonView" && (
-              <CommandPopoverPortal><div className="studio-popover-motion" style={UI.commandPopover}>
+              <CommandPopoverPortal><div data-artist-menu-root className="studio-popover-motion" style={UI.commandPopover}>
                 <div style={UI.sectionTitle}>View</div>
                 <div data-testid="artist-command-zoom" style={UI.zoomPill}>
                   <button type="button" aria-label="Zoom Out" onClick={() => adjustZoom(-10)} className="studio-motion-button" style={UI.zoomButton}>−</button>

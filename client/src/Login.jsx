@@ -21,22 +21,22 @@ export default function Login({ onLogin }) {
 
   return (
     <div style={S.page}>
-      <div style={{ ...S.centered, alignItems: "flex-start", paddingTop: "clamp(20px, 6vh, 54px)", paddingBottom: 12 }}>
-        <div style={{ ...S.card(420), padding: "20px 28px 24px" }}>
+      <div style={{ ...S.centered, alignItems: "flex-start", paddingTop: "clamp(10px, 3.5vh, 34px)", paddingBottom: 10 }}>
+        <div style={{ ...S.card(420), padding: "16px 28px 22px" }}>
           {/* Logo */}
-          <div style={{ display: "flex", alignItems: "center", marginBottom: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", marginBottom: 6 }}>
             <LogoMark variant="wordmark" style={{ width: 320 }} />
           </div>
 
-          <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 2 }}>
+          <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 1 }}>
             Welcome back 💅
           </h1>
-          <p style={{ fontSize: 14, color: COLORS.textMuted, marginBottom: 12, lineHeight: 1.28 }}>
+          <p style={{ fontSize: 14, color: COLORS.textMuted, marginBottom: 9, lineHeight: 1.24 }}>
             Start with a nail design. Turn that design into money.
           </p>
 
           <form onSubmit={handleSubmit} noValidate>
-            <div style={{ marginBottom: 10 }}>
+            <div style={{ marginBottom: 8 }}>
               <label style={S.label} htmlFor="tech-name">Your name</label>
               <input
                 id="tech-name"
@@ -62,7 +62,7 @@ export default function Login({ onLogin }) {
 
             <button
               type="submit"
-              style={{ ...S.btnPrimary, width: "100%", justifyContent: "center", padding: "11px 0", fontSize: 15 }}
+              style={{ ...S.btnPrimary, width: "100%", justifyContent: "center", padding: "10px 0", fontSize: 15 }}
               data-testid="button-login"
             >
               Enter AnitaSet →
