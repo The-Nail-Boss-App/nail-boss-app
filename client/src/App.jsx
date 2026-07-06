@@ -153,12 +153,12 @@ export default function App() {
     >
       {/* Logo */}
       <div style={{
-        padding: isDesignStudioSidebarCollapsed ? '12px 0 14px' : '24px 20px 20px',
+        padding: isDesignStudioSidebarCollapsed ? '10px 0 12px' : '18px 14px 16px',
         borderBottom: `1px solid rgba(255,255,255,0.12)`,
         display: 'grid',
         placeItems: isDesignStudioSidebarCollapsed ? 'center' : 'start',
       }}>
-        <LogoMark variant="icon" size={isDesignStudioSidebarCollapsed ? 34 : 48} />
+        <LogoMark variant={isDesignStudioSidebarCollapsed ? "icon" : "wordmark"} size={48} style={isDesignStudioSidebarCollapsed ? {} : { width: 176 }} />
       </div>
 
       {/* Nav */}

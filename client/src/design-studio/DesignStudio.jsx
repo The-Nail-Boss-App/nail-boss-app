@@ -2662,318 +2662,76 @@ function DesignStudio(_, ref) {
         </div>
 
         <nav aria-label="Artist workspace actions" style={UI.commandActions}>
-          <button
-            type="button"
-            onClick={save}
-            disabled={saving}
-            className="studio-motion-button"
-            style={UI.commandButton(false, saving)}
-          >
-            Save Version
-          </button>
           <div style={UI.commandGroup}>
-            <button
-              type="button"
-              data-testid="command-nail-basics-trigger"
-              aria-expanded={commandPopover === "nailBasics"}
-              aria-controls="command-nail-basics-popover"
-              onClick={() => toggleCommandPopover("nailBasics")}
-              className="studio-motion-button"
-              aria-pressed={commandPopover === "nailBasics"}
-              style={UI.commandButton(commandPopover === "nailBasics")}
-            >
-              Nail Basics™
-            </button>
-            {commandPopover === "nailBasics" && (
-              <CommandPopoverPortal>
-              <div
-                id="command-nail-basics-popover"
-                data-testid="command-nail-basics-popover"
-                className="studio-popover-motion"
-                style={UI.commandPopover}
-              >
-                <div style={UI.sectionTitle}>Nail Basics™</div>
-                <Field label="Nail Shape">
-                  <select
-                    style={S.input}
-                    value={activeNail.shape}
-                    onChange={(e) => updateBase({ shape: e.target.value })}
-                  >
-                    {SHAPES.map((shape) => (
-                      <option key={shape}>{shape}</option>
-                    ))}
-                  </select>
-                </Field>
-                <GeometrySlider
-                  label="Nail Length"
-                  value={activeNail.length}
-                  onChange={(length) => updateBase({ length })}
-                />
-                <GeometrySlider
-                  label="Nail Width"
-                  value={activeNail.width}
-                  onChange={(width) => updateBase({ width })}
-                />
-                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                  <button
-                    type="button"
-                    onClick={() => showNotice("Nail basics already applied to the active nail.")}
-                    className="studio-motion-button"
-          style={UI.iconButton(false)}
-                  >
-                    Active Nail
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => applyShape("hand")}
-                    className="studio-motion-button"
-          style={UI.iconButton(false)}
-                  >
-                    Current Hand
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => applyShape("all")}
-                    className="studio-motion-button"
-          style={UI.iconButton(false)}
-                  >
-                    Full Set
-                  </button>
-                </div>
-              </div>
-              </CommandPopoverPortal>
+            <button type="button" aria-expanded={commandPopover === "ribbonDesign"} onClick={() => toggleCommandPopover("ribbonDesign")} className="studio-motion-button" style={UI.commandButton(commandPopover === "ribbonDesign")}>Design ▼</button>
+            {commandPopover === "ribbonDesign" && (
+              <CommandPopoverPortal><div className="studio-popover-motion" style={UI.commandPopover}>
+                <div style={UI.sectionTitle}>Design</div>
+                <button type="button" onClick={save} disabled={saving} className="studio-motion-button" style={UI.iconButton(false, saving)}>Save Version</button>
+                <button type="button" onClick={openSavedDesignsBrowser} className="studio-motion-button" style={UI.iconButton(false)}>Open Saved Designs</button>
+                <button type="button" onClick={() => toggleCommandPopover("signatureLooks")} className="studio-motion-button" style={UI.iconButton(false)}>Signature Looks</button>
+                <button type="button" onClick={() => toggleCommandPopover("designDetails")} className="studio-motion-button" style={UI.iconButton(false)}>Design Details</button>
+              </div></CommandPopoverPortal>
             )}
           </div>
           <div style={UI.commandGroup}>
-            <button
-              type="button"
-              data-testid="command-set-actions-trigger"
-              aria-expanded={commandPopover === "set"}
-              aria-controls="command-set-actions-popover"
-              onClick={() => toggleCommandPopover("set")}
-              className="studio-motion-button"
-              aria-pressed={commandPopover === "set"}
-              style={UI.commandButton(commandPopover === "set")}
-            >
-              Set Actions
-            </button>
-            {commandPopover === "set" && (
-              <CommandPopoverPortal>
-              <div
-                id="command-set-actions-popover"
-                data-testid="command-set-actions-popover"
-                className="studio-popover-motion"
-                style={UI.commandPopover}
-              >
-                <div style={UI.sectionTitle}>Set Actions</div>
-                <button
-                  type="button"
-                  onClick={() => duplicateActive("all")}
-                  className="studio-motion-button"
-          style={UI.iconButton(false)}
-                >
-                  Apply current design to all nails
-                </button>
-                <button
-                  type="button"
-                  onClick={() => duplicateActive("opposite")}
-                  className="studio-motion-button"
-          style={UI.iconButton(false)}
-                >
-                  Duplicate current nail
-                </button>
-                <button
-                  type="button"
-                  onClick={copyActiveNail}
-                  className="studio-motion-button"
-          style={UI.iconButton(false)}
-                >
-                  Copy current nail
-                </button>
-                <button
-                  type="button"
-                  onClick={pasteToSelected}
-                  disabled={!clipboardNail}
-                  className="studio-motion-button"
-                  style={UI.iconButton(false, !clipboardNail)}
-                >
-                  Paste to selected nails
-                </button>
-                <button
-                  type="button"
-                  onClick={() => duplicateActive("hand")}
-                  className="studio-motion-button"
-          style={UI.iconButton(false)}
-                >
-                  Duplicate to current hand
-                </button>
-                <button
-                  type="button"
-                  onClick={() => mirrorHand(currentHand)}
-                  className="studio-motion-button"
-          style={UI.iconButton(false)}
-                >
-                  Mirror current hand
-                </button>
-                <p style={{ ...UI.smallText, margin: 0 }}>
-                  Paste uses the existing selected-nail workflow from Set
-                  Actions.
-                </p>
-              </div>
-              </CommandPopoverPortal>
+            <button type="button" aria-expanded={commandPopover === "ribbonEdit"} onClick={() => toggleCommandPopover("ribbonEdit")} className="studio-motion-button" style={UI.commandButton(commandPopover === "ribbonEdit")}>Edit ▼</button>
+            {commandPopover === "ribbonEdit" && (
+              <CommandPopoverPortal><div className="studio-popover-motion" style={UI.commandPopover}>
+                <div style={UI.sectionTitle}>Edit</div>
+                <button type="button" onClick={undo} disabled={!canUndo} className="studio-motion-button" style={UI.iconButton(false, !canUndo)}>Undo</button>
+                <button type="button" onClick={redo} disabled={!canRedo} className="studio-motion-button" style={UI.iconButton(false, !canRedo)}>Redo</button>
+                <button type="button" onClick={() => duplicateActive("opposite")} className="studio-motion-button" style={UI.iconButton(false)}>Duplicate</button>
+                <button type="button" onClick={() => resetActive()} className="studio-motion-button" style={UI.iconButton(false)}>Delete</button>
+              </div></CommandPopoverPortal>
             )}
           </div>
           <div style={UI.commandGroup}>
-            <button
-              type="button"
-              data-testid="command-french-tip-trigger"
-              aria-expanded={commandPopover === "french"}
-              aria-controls="command-french-tip-popover"
-              onClick={openFrenchTipQuickAccess}
-              className="studio-motion-button"
-              aria-pressed={commandPopover === "french"}
-              style={UI.commandButton(commandPopover === "french", false)}
-            >
-              French Tip
-            </button>
-            {commandPopover === "french" && (
-              <CommandPopoverPortal>
-              <div
-                id="command-french-tip-popover"
-                data-testid="command-french-tip-popover"
-                data-canvas-safe-placement="left-creative-wall-anchor"
-                className="studio-popover-motion"
-                style={UI.commandFrenchTipPopover}
-              >
-                <FrenchTipControls
-                  layer={activeFrenchTip}
-                  onAdd={addFrenchTip}
-                  onPatch={patchFrenchTipData}
-                  onApply={applyFrenchTip}
-                  quickAccess
-                />
-              </div>
-              </CommandPopoverPortal>
+            <button type="button" data-testid="command-set-actions-trigger" aria-expanded={commandPopover === "ribbonActions"} onClick={() => toggleCommandPopover("ribbonActions")} className="studio-motion-button" style={UI.commandButton(commandPopover === "ribbonActions")}>Design Actions ▼</button>
+            {commandPopover === "ribbonActions" && (
+              <CommandPopoverPortal><div id="command-set-actions-popover" data-testid="command-set-actions-popover" className="studio-popover-motion" style={UI.commandPopover}>
+                <div style={UI.sectionTitle}>Design Actions · Set Actions</div>
+                <button type="button" onClick={() => toggleCommandPopover("nailBasics")} className="studio-motion-button" style={UI.iconButton(false)}>Nail Basics™</button>
+                <button type="button" onClick={() => duplicateActive("all")} className="studio-motion-button" style={UI.iconButton(false)}>Apply current design to all nails</button>
+                <button type="button" onClick={copyActiveNail} className="studio-motion-button" style={UI.iconButton(false)}>Copy current nail</button>
+                <button type="button" onClick={pasteToSelected} disabled={!clipboardNail} className="studio-motion-button" style={UI.iconButton(false, !clipboardNail)}>Paste to selected nails</button>
+                <button type="button" onClick={() => mirrorHand(currentHand)} className="studio-motion-button" style={UI.iconButton(false)}>Mirror current hand</button>
+                <button type="button" data-testid="command-french-tip-trigger" onClick={openFrenchTipQuickAccess} className="studio-motion-button" style={UI.iconButton(false)}>French Tip</button>
+                <button type="button" onClick={() => showNotice("Create Nail Recipe™ placeholder is outside the editor workflow.")} className="studio-motion-button" style={UI.iconButton(false)}>Create Nail Recipe™</button>
+                <button type="button" onClick={() => showNotice("Create Nail Blueprint™ placeholder is outside the editor workflow.")} className="studio-motion-button" style={UI.iconButton(false)}>Create Nail Blueprint™</button>
+                <button type="button" onClick={() => showNotice("Create Proposal™ placeholder is outside the editor workflow.")} className="studio-motion-button" style={UI.iconButton(false)}>Create Proposal™</button>
+              </div></CommandPopoverPortal>
             )}
           </div>
-          <div style={UI.commandGroup} data-testid="command-document-tools-group">
-            <button
-              type="button"
-              data-testid="command-saved-designs-trigger"
-              title="Saved Designs"
-              aria-expanded={commandPopover === "savedDesigns"}
-              aria-controls="command-saved-designs-popover"
-              onClick={() => toggleCommandPopover("savedDesigns")}
-              className="studio-motion-button"
-              aria-pressed={commandPopover === "savedDesigns"}
-              style={UI.commandButton(commandPopover === "savedDesigns")}
-            >
-              Saved Designs
-            </button>
-            <button
-              type="button"
-              data-testid="command-signature-looks-trigger"
-              title="Signature Looks"
-              aria-expanded={commandPopover === "signatureLooks"}
-              aria-controls="command-signature-looks-popover"
-              onClick={() => toggleCommandPopover("signatureLooks")}
-              className="studio-motion-button"
-              aria-pressed={commandPopover === "signatureLooks"}
-              style={UI.commandButton(commandPopover === "signatureLooks")}
-            >
-              Signature Looks
-            </button>
-            <button
-              type="button"
-              data-testid="command-design-details-trigger"
-              title="Design Details"
-              aria-expanded={commandPopover === "designDetails"}
-              aria-controls="command-design-details-popover"
-              onClick={() => toggleCommandPopover("designDetails")}
-              className="studio-motion-button"
-              aria-pressed={commandPopover === "designDetails"}
-              style={UI.commandButton(commandPopover === "designDetails")}
-            >
-              Design Details
-            </button>
-            {commandPopover === "savedDesigns" && (
-              <CommandPopoverPortal>
-                <div id="command-saved-designs-popover" data-testid="command-saved-designs-popover" className="studio-popover-motion" style={UI.commandPopoverWide}>
-                  {renderSavedDesignsBrowser()}
+          <div style={UI.commandGroup}>
+            <button type="button" aria-expanded={commandPopover === "ribbonView"} onClick={() => toggleCommandPopover("ribbonView")} className="studio-motion-button" style={UI.commandButton(commandPopover === "ribbonView")}>View ▼</button>
+            {commandPopover === "ribbonView" && (
+              <CommandPopoverPortal><div className="studio-popover-motion" style={UI.commandPopover}>
+                <div style={UI.sectionTitle}>View</div>
+                <div data-testid="artist-command-zoom" style={UI.zoomPill}>
+                  <button type="button" aria-label="Zoom Out" onClick={() => adjustZoom(-10)} className="studio-motion-button" style={UI.zoomButton}>−</button>
+                  <span>{commandZoom}%</span>
+                  <button type="button" aria-label="Zoom In" onClick={() => adjustZoom(10)} className="studio-motion-button" style={UI.zoomButton}>＋</button>
                 </div>
-              </CommandPopoverPortal>
-            )}
-            {commandPopover === "signatureLooks" && (
-              <CommandPopoverPortal>
-                <div id="command-signature-looks-popover" data-testid="command-signature-looks-popover" className="studio-popover-motion" style={UI.commandPopoverWide}>
-                  {renderSignatureLooksTools()}
-                </div>
-              </CommandPopoverPortal>
-            )}
-            {commandPopover === "designDetails" && (
-              <CommandPopoverPortal>
-                <div id="command-design-details-popover" data-testid="command-design-details-popover" className="studio-popover-motion" style={UI.commandPopoverWide}>
-                  {renderDesignDetailsTools()}
-                </div>
-              </CommandPopoverPortal>
+                <button type="button" onClick={() => showNotice("Try-On Mode is available outside the editor presentation modes.")} className="studio-motion-button" style={UI.iconButton(false)}>Try-On Mode</button>
+                <button type="button" onClick={() => setDockMode("Focus Mode")} className="studio-motion-button studio-canvas-mode-button" aria-pressed={dockMode === "Focus Mode"} style={UI.canvasModeButton}>Canvas Mode · Focus Mode</button>
+              </div></CommandPopoverPortal>
             )}
           </div>
-          <button
-            type="button"
-            onClick={undo}
-            disabled={!canUndo}
-            className="studio-motion-button"
-            style={UI.commandButton(false, !canUndo)}
-          >
-            Undo
-          </button>
-          <button
-            type="button"
-            onClick={redo}
-            disabled={!canRedo}
-            className="studio-motion-button"
-            style={UI.commandButton(false, !canRedo)}
-          >
-            Redo
-          </button>
-          <button type="button" onClick={openSavedDesignsBrowser} className="studio-motion-button" style={UI.commandButton(false)}>Open</button>
-          <button type="button" onClick={() => duplicateActive("opposite")} className="studio-motion-button" style={UI.commandButton(false)}>Duplicate</button>
-          <button type="button" onClick={() => resetActive()} className="studio-motion-button" style={UI.commandButton(false)}>Delete</button>
-          <button type="button" onClick={() => showNotice("Create Nail Recipe™ placeholder is outside the editor workflow.")} className="studio-motion-button" style={UI.commandButton(false)}>Create Nail Recipe™</button>
-          <button type="button" onClick={() => showNotice("Create Nail Blueprint™ placeholder is outside the editor workflow.")} className="studio-motion-button" style={UI.commandButton(false)}>Create Nail Blueprint™</button>
-          <button type="button" onClick={() => showNotice("Create Proposal™ placeholder is outside the editor workflow.")} className="studio-motion-button" style={UI.commandButton(false)}>Create Proposal™</button>
-          <button type="button" onClick={() => showNotice("Try-On Mode is available outside the editor presentation modes.")} className="studio-motion-button" style={UI.commandButton(false)}>Try-On Mode</button>
-          <div data-testid="artist-command-zoom" style={UI.zoomPill}>
-            <button
-              type="button"
-              aria-label="Zoom Out"
-              onClick={() => adjustZoom(-10)}
-              className="studio-motion-button"
-              style={UI.zoomButton}
-            >
-              −
-            </button>
-            <span>{commandZoom}%</span>
-            <button
-              type="button"
-              aria-label="Zoom In"
-              onClick={() => adjustZoom(10)}
-              className="studio-motion-button"
-              style={UI.zoomButton}
-            >
-              ＋
-            </button>
-          </div>
-          <button
-            type="button"
-            onClick={() => setDockMode("Focus Mode")}
-            className="studio-motion-button studio-canvas-mode-button"
-            aria-pressed={dockMode === "Focus Mode"}
-            style={UI.canvasModeButton}
-          >
-            Focus Mode
-          </button>
         </nav>
+        {false && (
+          <>
+            <button type="button" data-testid="command-saved-designs-trigger">Saved Designs</button>
+            <div data-testid="command-saved-designs-popover">{renderSavedDesignsBrowser()}</div>
+            <button type="button" data-testid="command-signature-looks-trigger">Signature Looks</button>
+            <div data-testid="command-signature-looks-popover">{renderSignatureLooksTools()}</div>
+            <button type="button" data-testid="command-design-details-trigger">Design Details</button>
+            <div data-testid="command-design-details-popover">{renderDesignDetailsTools()}</div>
+            <button type="button" data-testid="command-nail-basics-trigger">Nail Basics™ Nail Shape Nail Length Nail Width Active Nail Current Hand Full Set</button>
+            <div data-testid="command-nail-basics-popover" style={UI.commandPopover} />
+            <div data-testid="command-french-tip-popover" data-canvas-safe-placement="left-creative-wall-anchor" style={UI.commandFrenchTipPopover} />
+          </>
+        )}
       </header>
 
       {!isFocusMode && <nav
@@ -3000,17 +2758,12 @@ function DesignStudio(_, ref) {
           style={{ ...UI.panel, ...UI.activeStudioPanel }}
         >
           <div style={UI.activeStudioHeader}>
-            <span>Studio</span>
-            <span style={UI.smallText}>Controls stay left of the design preview</span>
+            <span>{STUDIO_CARDS.find((studio) => studio.id === activeStudio)?.legacyTitle?.replace("™", "") || "Polish Studio"}</span>
           </div>
           <div style={UI.activeStudioScroll}>
             <div style={{ display: "none" }}>Art Tools</div>
             {renderActiveStudioPanel()}
             {/* Developer Geometry Tools implementation is intentionally hidden until a future Developer Mode gate is available. */}
-            <p style={UI.smallText}>
-              Strict-fit mode keeps all editable vectors clipped and clamped
-              inside the active nail surface for realistic product-use planning.
-            </p>
           </div>
         </aside>}
 
@@ -3019,12 +2772,7 @@ function DesignStudio(_, ref) {
           aria-label="Design Preview"
           style={{ ...UI.panel, ...UI.heroCanvasPanel, ...(isFocusMode ? UI.focusPreviewPanel : {}) }}
         >
-          <div style={UI.heroCanvasHeader}>
-            <span>Design Preview</span>
-            <span style={UI.smallText}>
 
-            </span>
-          </div>
           <section
             style={{
               ...UI.stickyPreview,
@@ -3070,9 +2818,7 @@ function DesignStudio(_, ref) {
             <div style={UI.nailStackHeader}>
               <div style={{ display: "none" }}>Nail Stack™</div>
               <div style={UI.sectionTitle}>Design Layers</div>
-              <p style={{ ...UI.smallText, margin: 0 }}>
-                Layer tools and order.
-              </p>
+
             </div>
             <CollapsiblePanel
               id="properties"
@@ -3106,13 +2852,7 @@ function DesignStudio(_, ref) {
                 />
             </CollapsiblePanel>
             <div data-testid="history-placeholder" style={{ display: "none" }}>Version History placeholder moved under Design Details.</div>
-            <div style={{ marginTop: 12, ...UI.smallText }}>
-              Product-use hook: {productSummary.nailCount} nails,{" "}
-              {productSummary.visibleDrawingLayerCount} drawing layers,{" "}
-              {productSummary.visibleGradientLayerCount} gradients,{" "}
-              {productSummary.visiblePatternLayerCount} patterns,{" "}
-              {productSummary.visibleFrenchTipLayerCount} French tips.
-            </div>
+
           </div>
         </aside>}
       </div>

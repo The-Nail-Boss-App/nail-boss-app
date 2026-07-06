@@ -15,7 +15,7 @@ export const UI = {
   toolbar: {
     display: "flex",
     alignItems: "center",
-    gap: 8,
+    gap: 6,
     padding: "12px 18px",
     borderBottom: `1px solid ${COLORS.border}`,
     background: COLORS.surface,
@@ -24,14 +24,14 @@ export const UI = {
   artistCommandBar: {
     display: "grid",
     gridTemplateColumns:
-      "minmax(0, 1fr) minmax(190px, .72fr) minmax(260px, 1.2fr)",
+      "minmax(0, 1fr) minmax(180px, .64fr) minmax(240px, .82fr)",
     width: "100%",
     maxWidth: "100%",
     boxSizing: "border-box",
     overflowX: "clip",
-    gap: 12,
+    gap: 10,
     alignItems: "center",
-    padding: "clamp(10px, 1.4vw, 16px) clamp(12px, 1.8vw, 22px)",
+    padding: "clamp(8px, 1.1vw, 12px) clamp(10px, 1.4vw, 18px)",
     borderBottom: "1px solid rgba(123,47,89,.14)",
     background: "linear-gradient(135deg, #fffaf7 0%, #fff 48%, #fff4fb 100%)",
     boxShadow: "0 18px 45px rgba(60,20,50,.08)",
@@ -48,7 +48,7 @@ export const UI = {
     marginBottom: 6,
   },
   commandLogoImage: {
-    width: 132,
+    width: 116,
     maxWidth: "48vw",
     height: "auto",
     display: "block",
@@ -144,7 +144,7 @@ export const UI = {
     display: "flex",
     justifyContent: "flex-end",
     alignItems: "center",
-    gap: 6,
+    gap: 8,
     flexWrap: "wrap",
   },
   commandGroup: {
@@ -162,7 +162,7 @@ export const UI = {
     overflow: "auto",
     display: "grid",
     gap: 8,
-    padding: 12,
+    padding: 10,
     border: "1px solid rgba(123,47,89,.18)",
     borderRadius: 14,
     background: "rgba(255,255,255,.98)",
@@ -279,7 +279,7 @@ export const UI = {
     gridTemplateColumns:
       "minmax(260px, 0.86fr) minmax(420px, 1.7fr) minmax(220px, 0.72fr)",
     gap: 14,
-    padding: "12px clamp(12px, 1.6vw, 18px)",
+    padding: "9px clamp(10px, 1.2vw, 14px)",
     overflowX: "hidden",
     overflow: "hidden",
     alignItems: "stretch",
@@ -295,7 +295,7 @@ export const UI = {
   panel: {
     background: COLORS.surface,
     border: `1px solid ${COLORS.border}`,
-    borderRadius: 24,
+    borderRadius: 20,
     boxShadow: "0 18px 46px rgba(60,20,50,.08)",
     transition: "box-shadow 220ms ease, transform 220ms ease",
     minHeight: 0,
@@ -314,8 +314,8 @@ export const UI = {
   },
   activeStudioHeader: {
     flex: "0 0 auto",
-    padding: "16px 16px 10px",
-    borderBottom: "1px solid rgba(123,47,89,.14)",
+    padding: "12px 14px 8px",
+    borderBottom: "1px solid rgba(123,47,89,.12)",
     color: COLORS.plum,
     fontSize: 12,
     fontWeight: 900,
@@ -334,7 +334,7 @@ export const UI = {
   },
   stickyPreview: {
     position: "sticky",
-    top: 10,
+    top: 0,
     zIndex: 2,
     background:
       "radial-gradient(circle at 50% 10%, #fff 0%, #fff7fb 52%, #f7edf4 100%)",
@@ -344,7 +344,7 @@ export const UI = {
     placeItems: "center",
     overflow: "hidden",
   },
-  panelPad: { padding: 16 },
+  panelPad: { padding: 10 },
   nailStackPanel: {
     overflow: "hidden",
     maxHeight: "calc(100vh - 232px)",
@@ -521,9 +521,9 @@ export const UI = {
     textTransform: "uppercase",
   },
   nailStackHeader: {
-    padding: "4px 2px 12px",
-    borderBottom: "1px solid rgba(123,47,89,.12)",
-    marginBottom: 12,
+    padding: "2px 1px 7px",
+    borderBottom: "1px solid rgba(123,47,89,.08)",
+    marginBottom: 6,
   },
   historyPlaceholder: {
     marginTop: 12,
