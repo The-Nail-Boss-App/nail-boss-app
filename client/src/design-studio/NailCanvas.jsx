@@ -30,6 +30,35 @@ function gradientStops(layer) {
   return { stops, softness };
 }
 
+const MATERIAL_QA_PRESETS = ["Cream", "Jelly", "Matte", "Chrome", "Glitter"];
+
+function MaterialQAStrip({ nail }) {
+  if (!import.meta.env.DEV) return null;
+  const qaNail = { ...nail, shape: nail?.shape || "Almond", length: nail?.length || 0.64, width: nail?.width || 0.5 };
+  const qaPath = buildNailPath(qaNail);
+  return (
+    <div data-testid="renderer-material-qa-strip" data-renderer-version="nail-surface-v2" style={{ position: "absolute", right: 12, bottom: 46, display: "flex", gap: 8, padding: "8px 10px", border: "1px solid rgba(123,47,89,.16)", borderRadius: 14, background: "rgba(255,255,255,.86)", boxShadow: "0 12px 28px rgba(60,20,50,.10)", pointerEvents: "none", zIndex: 2 }}>
+      {MATERIAL_QA_PRESETS.map((preset) => {
+        const uid = `material-qa-${preset.toLowerCase()}`;
+        const clipId = `${uid}-clip`;
+        const baseLayer = { id: uid, type: "base", data: { colorHex: preset === "Matte" ? "#252025" : preset === "Chrome" ? "#C68AD5" : preset === "Glitter" ? "#B84E8A" : "#E8A0BF", polishType: preset, materialPreset: preset, shine: preset === "Matte" ? 0.08 : 0.82, transparency: preset === "Jelly" ? 0.5 : 0 } };
+        return (
+          <figure key={preset} data-material-preset={preset.toLowerCase()} style={{ margin: 0, width: 44, textAlign: "center", color: COLORS.plum, fontSize: 9, fontWeight: 700, letterSpacing: ".02em" }}>
+            <svg viewBox={`0 0 ${VIEWBOX.width} ${VIEWBOX.height}`} width="44" height="66" aria-label={`${preset} renderer QA swatch`}>
+              <defs>
+                <clipPath id={clipId}><path d={qaPath}/></clipPath>
+                <PolishDefs uid={uid}/>
+              </defs>
+              <PolishSurface nail={qaNail} baseLayer={baseLayer} path={qaPath} clipId={clipId} uid={uid}/>
+            </svg>
+            <figcaption>{preset}</figcaption>
+          </figure>
+        );
+      })}
+    </div>
+  );
+}
+
 function renderGradientStops(stops, aura = false) {
   return stops.map((stop, index) => {
     const offset = `${Math.round(stop.position)}%`;
@@ -350,8 +379,9 @@ export default function NailCanvas({ nail, layers, selectedLayerId, mode, brush,
   const brushCursorWidth = Math.max(3.5, brushCursorRadius * 0.72);
   const canvasCursor = mode === "draw" || mode === "eraser" ? "none" : "default";
   const fit = heroZoomFit(zoom);
+  const activeSurfacePreset = polishSurfacePreset(resolvePolishDataForRender(baseLayer?.data || {}, nail?.baseColorHex));
 
-  return <div data-testid="bounded-hero-canvas-area" data-zoom-containment-padding="dock-safe-expanded" data-default-nail-bottom-clip="prevented" style={{ height: "100%", minHeight: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-start", position: "relative", overflow: fit.panEnabled ? "auto" : "hidden", overscrollBehavior: "contain", boxSizing: "border-box", padding: HERO_CANVAS_SAFE_PADDING }}>
+  return <div data-testid="bounded-hero-canvas-area" data-renderer-version="nail-surface-v2" data-material-preset={activeSurfacePreset.toLowerCase()} data-zoom-containment-padding="dock-safe-expanded" data-default-nail-bottom-clip="prevented" style={{ height: "100%", minHeight: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-start", position: "relative", overflow: fit.panEnabled ? "auto" : "hidden", overscrollBehavior: "contain", boxSizing: "border-box", padding: HERO_CANVAS_SAFE_PADDING }}>
     <div data-testid="zoomable-nail-canvas" data-zoom-containment={fit.panEnabled ? "internal-pan-at-high-zoom" : "bounded-fit-to-container"} data-zoom-fit-helper="heroZoomFit" data-zoom-requested={fit.requestedZoom} data-zoom-visual={fit.visualZoom} data-zoom-capped={fit.capped ? "true" : "false"} data-zoom-pan-enabled={fit.panEnabled ? "true" : "false"} data-baseline-scale="165-as-100" data-safe-contained-zoom={HERO_SAFE_CONTAINED_ZOOM} data-max-contained-zoom={HERO_MAX_ZOOM} style={{ height: fit.panEnabled ? fit.heightVh : `min(${fit.heightVh}, calc(100% - ${HERO_CANVAS_VERTICAL_SAFE_GAP}px))`, maxHeight: fit.panEnabled ? "none" : "100%", maxWidth: "min(66%, calc((100% - 36px)))", aspectRatio: "2 / 3", transition: "height 160ms ease", flex: "0 0 auto", marginTop: "clamp(2px, 1vh, 10px)", marginBottom: "clamp(16px, 3vh, 36px)" }}>
       <svg ref={svgRef} viewBox={`0 0 ${VIEWBOX.width} ${VIEWBOX.height}`} width="100%" height="100%" role="img" aria-label="Editable single nail canvas" onPointerDown={canvasDown} onPointerMove={(e) => { pointerMove(e); canvasMove(e); }} onPointerUp={finishPointerGesture} onPointerCancel={cancelPointerGesture} onPointerLeave={() => setCursorPoint(null)} style={{ touchAction: "none", userSelect: "none", cursor: canvasCursor }}>
         <defs>
@@ -388,6 +418,7 @@ export default function NailCanvas({ nail, layers, selectedLayerId, mode, brush,
         </g>}
       </svg>
     </div>
+    <MaterialQAStrip nail={nail} />
     <p style={{ marginTop: 6, color: COLORS.textMuted, fontSize: 13 }}>{selectedLayerId ? "Drag selected artwork inside the strict nail boundary. Use Nail Art Controls™ for size and rotation." : "Choose Draw for a visible brush cursor, set nail color, or select a board layer."}</p>
     {notice && <div style={{ position: "absolute", bottom: 18, left: "50%", transform: "translateX(-50%)", background: COLORS.plum, color: "#fff", padding: "10px 14px", borderRadius: 999, fontSize: 12, boxShadow: "0 10px 30px rgba(60,20,50,.2)" }}>{notice}</div>}
   </div>;
