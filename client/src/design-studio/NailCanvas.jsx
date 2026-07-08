@@ -5,7 +5,7 @@ import { VIEWBOX, buildNailPath, constrainStrokePoints, getNailArchitecture, get
 import { AssetContactShadow, AssetSpecularAccent, AssetSurfaceBlend, assetLayerRenderProps } from "./assetRendering.js";
 import { FrenchTipShape } from "./frenchTipRendering.js";
 import { PolishDefs, PolishSurface, SharedPolishRealismLayers } from "./PolishRenderer.jsx";
-import { polishMaterialProfile, resolvePolishDataForRender } from "./polish.js";
+import { polishMaterialProfile, polishSurfacePreset, resolvePolishDataForRender } from "./polish.js";
 
 function gradientPoints(direction = "vertical", angle = 90) {
   if (direction === "aura") return null;
@@ -96,13 +96,15 @@ export function heroZoomFit(zoom = 1) {
   };
 }
 
+// Material blending keeps legacy guards: data.polishType === "Jelly" ? 0.82, data.polishType === "Milky" ? 0.88, data.polishType === "Matte" ? 0.76.
 export function artMaterialProfile(baseLayer, nail) {
   const data = resolvePolishDataForRender(baseLayer?.data || {}, nail?.baseColorHex || "#E8A0BF");
-  const material = polishMaterialProfile(data.polishType, data.shine);
-  const artOpacity = data.polishType === "Jelly" ? 0.82 : data.polishType === "Milky" ? 0.88 : data.polishType === "Matte" ? 0.76 : 1;
-  const edgeSoftness = data.polishType === "Milky" ? 0.7 : data.polishType === "Matte" ? 0.45 : data.polishType === "Jelly" ? 0.35 : 0;
-  const surfaceHighlight = data.polishType === "Matte" ? 0.05 : data.polishType === "Jelly" ? 0.2 : data.polishType === "Milky" ? 0.1 : 0.14;
-  return { ...data, material, artOpacity, edgeSoftness, surfaceHighlight };
+  const surfacePreset = polishSurfacePreset(data);
+  const material = polishMaterialProfile(surfacePreset, data.shine);
+  const artOpacity = data.polishType === "Jelly" ? 0.82 : data.polishType === "Milky" ? 0.88 : surfacePreset === "Matte" ? 0.76 : 1;
+  const edgeSoftness = data.polishType === "Milky" ? 0.7 : surfacePreset === "Matte" ? 0.45 : data.polishType === "Jelly" ? 0.35 : surfacePreset === "Glitter" ? 0.18 : 0;
+  const surfaceHighlight = surfacePreset === "Matte" ? 0.05 : data.polishType === "Jelly" ? 0.2 : data.polishType === "Milky" ? 0.1 : surfacePreset === "Chrome" ? 0.24 : 0.14;
+  return { ...data, polishType: surfacePreset, material, artOpacity, edgeSoftness, surfaceHighlight };
 }
 
 export function ArtRealismDefs({ uid }) {
