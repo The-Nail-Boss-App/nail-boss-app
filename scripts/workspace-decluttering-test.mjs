@@ -161,7 +161,7 @@ assert.match(
 );
 assert.match(
   studioStyles,
-  /height: "min\(100%, calc\(100vh - 206px\)\)"[\s\S]*gridTemplateColumns:[\s\S]*"minmax\(260px, 0\.86fr\) minmax\(420px, 1\.7fr\) minmax\(220px, 0\.72fr\)"[\s\S]*gap: 14[\s\S]*overflowX: "hidden"/,
+  /height: "min\(100%, calc\(100vh - 154px\)\)"[\s\S]*gridTemplateColumns:[\s\S]*"minmax\(240px, 0\.74fr\) minmax\(520px, 2\.15fr\) minmax\(210px, 0\.58fr\)"[\s\S]*gap: 10[\s\S]*overflowX: "hidden"/,
   "Workspace should reclaim vertical space for Active Studio, expanded Hero Canvas, and Nail Stack columns without horizontal overflow.",
 );
 
@@ -182,7 +182,7 @@ assert.match(
 );
 assert.match(
   studioStyles,
-  /stickyPreview:[\s\S]*minHeight: "clamp\(500px, 70vh, 780px\)"[\s\S]*paddingBottom: "clamp\(22px, 4vh, 42px\)"[\s\S]*overflow: "hidden"/,
+  /stickyPreview:[\s\S]*minHeight: "clamp\(520px, calc\(100vh - 300px\), 820px\)"[\s\S]*placeItems: "stretch"[\s\S]*overflow: "hidden"/,
   "Hero Canvas should receive increased clamp-based vertical room while bounding zoomed content.",
 );
 
@@ -250,13 +250,13 @@ assert.match(
 );
 assert.match(
   nailCanvas,
-  /const HERO_CANVAS_SAFE_PADDING = "clamp\(12px, 2vh, 24px\) 18px clamp\(112px, 16vh, 164px\)"/,
-  "Hero Canvas should reserve a large bottom safe area so the Studio Dock cannot crop the nail tip.",
+  /const HERO_CANVAS_SAFE_PADDING = "clamp\(10px, 1\.6vh, 18px\) 18px clamp\(18px, 2\.6vh, 28px\)"/,
+  "Hero Canvas should use balanced safe padding so the full nail can center without tip crop.",
 );
 assert.match(
   nailCanvas,
-  /justifyContent: "flex-start"[\s\S]*marginTop: "clamp\(2px, 1vh, 10px\)"[\s\S]*marginBottom: "clamp\(16px, 3vh, 36px\)"/,
-  "Default nail placement should start higher than the previously centered clipped placement while preserving bottom breathing room.",
+  /justifyContent: "center"[\s\S]*marginTop: "0"[\s\S]*marginBottom: "0"/,
+  "Default nail placement should be vertically centered while preserving bounded breathing room.",
 );
 assert.match(
   nailCanvas,
@@ -322,8 +322,8 @@ assert.match(
 );
 assert.match(
   nailCanvas,
-  /data-testid="bounded-hero-canvas-area"[\s\S]*data-zoom-containment-padding="dock-safe-expanded"[\s\S]*justifyContent: "flex-start"[\s\S]*overflow: fit\.panEnabled \? "auto" : "hidden"[\s\S]*padding: HERO_CANVAS_SAFE_PADDING/,
-  "Nail should remain centered and bounded above the Studio Dock with expanded bottom containment.",
+  /data-testid="bounded-hero-canvas-area"[\s\S]*data-zoom-containment-padding="dock-safe-expanded"[\s\S]*justifyContent: "center"[\s\S]*overflow: fit\.panEnabled \? "auto" : "hidden"[\s\S]*padding: HERO_CANVAS_SAFE_PADDING/,
+  "Nail should remain centered and bounded in balanced containment.",
 );
 assert.match(
   studioStyles,
@@ -559,7 +559,7 @@ assert.doesNotMatch(
 );
 assert.match(
   studioStyles,
-  /activeStudioPanel:[\s\S]*overflow: "hidden"[\s\S]*maxHeight: "calc\(100vh - 232px\)"[\s\S]*position: "relative"/,
+  /activeStudioPanel:[\s\S]*overflow: "hidden"[\s\S]*maxHeight: "calc\(100vh - 168px\)"[\s\S]*position: "relative"/,
   "Active Studio panel should be bounded in the workspace column instead of floating over other zones.",
 );
 assert.match(
