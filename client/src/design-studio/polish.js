@@ -1,4 +1,4 @@
-export const POLISH_TYPES = ["Cream", "Jelly", "Milky", "Matte"];
+export const POLISH_TYPES = ["Cream", "Jelly", "Milky", "Matte", "Chrome", "Glitter"];
 export const TOP_COATS = ["Gloss", "Matte", "No-Wipe Shine", "Velvet"];
 export const POLISH_DEFAULTS = {
   polishType: "Cream",
@@ -79,6 +79,8 @@ export function polishSurfacePreset(data = {}) {
   if (data.effect === "Glitter" || data.pattern === "glitter" || data.glitter === true) return "Glitter";
   if (data.polishType === "Jelly") return "Jelly";
   if (data.polishType === "Matte") return "Matte";
+  if (data.polishType === "Chrome") return "Chrome";
+  if (data.polishType === "Glitter") return "Glitter";
   return "Cream";
 }
 
@@ -87,13 +89,13 @@ export function polishMaterialProfile(polishType = "Cream", shine = 0.62) {
     return { gloss: 0.035, reflection: 0.045, apex: 0.10, depth: 0.72, edge: 0.50, blur: 2.8, diffusion: 0.035, glass: 0.04, colorPreservation: 0.96, microTexture: 0.22, metallic: 0, sparkle: 0 };
   }
   if (polishType === "Chrome") {
-    return { gloss: Math.max(0.9, shine), reflection: 0.92, apex: 0.68, depth: 0.86, edge: 0.84, blur: 0.55, diffusion: 0.01, glass: 0.36, colorPreservation: 0.82, microTexture: 0.03, metallic: 0.78, sparkle: 0.12 };
+    return { gloss: Math.max(0.96, shine), reflection: 1, apex: 0.82, depth: 0.92, edge: 0.92, blur: 0.36, diffusion: 0, glass: 0.44, colorPreservation: 0.78, microTexture: 0.02, metallic: 1, sparkle: 0.16 };
   }
   if (polishType === "Glitter") {
-    return { gloss: Math.max(0.74, shine), reflection: 0.70, apex: 0.58, depth: 0.82, edge: 0.72, blur: 0.95, diffusion: 0.025, glass: 0.30, colorPreservation: 0.86, microTexture: 0.10, metallic: 0.22, sparkle: 0.76 };
+    return { gloss: Math.max(0.8, shine), reflection: 0.78, apex: 0.64, depth: 0.86, edge: 0.78, blur: 0.8, diffusion: 0.018, glass: 0.34, colorPreservation: 0.84, microTexture: 0.12, metallic: 0.30, sparkle: 1 };
   }
   if (polishType === "Jelly") {
-    return { gloss: Math.max(0.82, shine), reflection: 0.76, apex: 0.52, depth: 0.90, edge: 0.76, blur: 0.85, diffusion: 0.015, glass: 0.50, colorPreservation: 0.92, microTexture: 0.02, metallic: 0, sparkle: 0 };
+    return { gloss: Math.max(0.86, shine), reflection: 0.82, apex: 0.62, depth: 1, edge: 0.84, blur: 0.72, diffusion: 0.01, glass: 0.68, colorPreservation: 0.88, microTexture: 0.02, metallic: 0, sparkle: 0 };
   }
   if (polishType === "Milky") {
     return { gloss: Math.min(0.56, shine), reflection: 0.32, apex: 0.72, depth: 0.72, edge: 0.52, blur: 1.45, diffusion: 0.44, glass: 0.18, colorPreservation: 0.68, microTexture: 0.08, metallic: 0, sparkle: 0 };
