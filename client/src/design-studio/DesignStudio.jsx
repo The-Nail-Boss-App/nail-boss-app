@@ -2807,7 +2807,7 @@ function DesignStudio(_, ref) {
               borderTopRightRadius: 24,
             }}
           >
-            <div key={activeStudio} className="studio-hero-fade">
+            <div key={activeStudio} className="studio-hero-fade" style={UI.previewFrame}>
               <NailCanvas
                 debugOverlay={debugShapeOverlay}
                 zoom={commandZoom / 100}

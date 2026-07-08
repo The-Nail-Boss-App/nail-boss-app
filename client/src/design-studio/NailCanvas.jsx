@@ -102,9 +102,9 @@ export function GradientLayerShape({ layer, nail, baseLayer, path, clipId, uid, 
 const NAIL_BASELINE_SCALE = 1.65;
 const HERO_SAFE_CONTAINED_ZOOM = 1.55;
 const HERO_MAX_ZOOM = 2.4;
-const HERO_CANVAS_SAFE_PADDING = "clamp(12px, 2vh, 24px) 18px clamp(112px, 16vh, 164px)";
+const HERO_CANVAS_SAFE_PADDING = "clamp(10px, 1.6vh, 18px) 18px clamp(18px, 2.6vh, 28px)";
 const HERO_CANVAS_VERTICAL_SAFE_GAP = 12;
-const HERO_BASE_HEIGHT_VH = 62;
+const HERO_BASE_HEIGHT_VH = 68;
 const HERO_MAX_HEIGHT_VH = 96;
 
 export function heroZoomFit(zoom = 1) {
@@ -381,8 +381,8 @@ export default function NailCanvas({ nail, layers, selectedLayerId, mode, brush,
   const fit = heroZoomFit(zoom);
   const activeSurfacePreset = polishSurfacePreset(resolvePolishDataForRender(baseLayer?.data || {}, nail?.baseColorHex));
 
-  return <div data-testid="bounded-hero-canvas-area" data-renderer-version="nail-surface-v2" data-material-preset={activeSurfacePreset.toLowerCase()} data-zoom-containment-padding="dock-safe-expanded" data-default-nail-bottom-clip="prevented" style={{ height: "100%", minHeight: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-start", position: "relative", overflow: fit.panEnabled ? "auto" : "hidden", overscrollBehavior: "contain", boxSizing: "border-box", padding: HERO_CANVAS_SAFE_PADDING }}>
-    <div data-testid="zoomable-nail-canvas" data-zoom-containment={fit.panEnabled ? "internal-pan-at-high-zoom" : "bounded-fit-to-container"} data-zoom-fit-helper="heroZoomFit" data-zoom-requested={fit.requestedZoom} data-zoom-visual={fit.visualZoom} data-zoom-capped={fit.capped ? "true" : "false"} data-zoom-pan-enabled={fit.panEnabled ? "true" : "false"} data-baseline-scale="165-as-100" data-safe-contained-zoom={HERO_SAFE_CONTAINED_ZOOM} data-max-contained-zoom={HERO_MAX_ZOOM} style={{ height: fit.panEnabled ? fit.heightVh : `min(${fit.heightVh}, calc(100% - ${HERO_CANVAS_VERTICAL_SAFE_GAP}px))`, maxHeight: fit.panEnabled ? "none" : "100%", maxWidth: "min(66%, calc((100% - 36px)))", aspectRatio: "2 / 3", transition: "height 160ms ease", flex: "0 0 auto", marginTop: "clamp(2px, 1vh, 10px)", marginBottom: "clamp(16px, 3vh, 36px)" }}>
+  return <div data-testid="bounded-hero-canvas-area" data-renderer-version="nail-surface-v2" data-material-preset={activeSurfacePreset.toLowerCase()} data-zoom-containment-padding="dock-safe-expanded" data-default-nail-bottom-clip="prevented" style={{ height: "100%", minHeight: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", position: "relative", overflow: fit.panEnabled ? "auto" : "hidden", overscrollBehavior: "contain", boxSizing: "border-box", padding: HERO_CANVAS_SAFE_PADDING }}>
+    <div data-testid="zoomable-nail-canvas" data-zoom-containment={fit.panEnabled ? "internal-pan-at-high-zoom" : "bounded-fit-to-container"} data-zoom-fit-helper="heroZoomFit" data-zoom-requested={fit.requestedZoom} data-zoom-visual={fit.visualZoom} data-zoom-capped={fit.capped ? "true" : "false"} data-zoom-pan-enabled={fit.panEnabled ? "true" : "false"} data-baseline-scale="165-as-100" data-safe-contained-zoom={HERO_SAFE_CONTAINED_ZOOM} data-max-contained-zoom={HERO_MAX_ZOOM} style={{ height: fit.panEnabled ? fit.heightVh : `min(${fit.heightVh}, calc(100% - ${HERO_CANVAS_VERTICAL_SAFE_GAP}px))`, maxHeight: fit.panEnabled ? "none" : "100%", maxWidth: "min(78%, calc((100% - 36px)))", aspectRatio: "2 / 3", transition: "height 160ms ease", flex: "0 0 auto", marginTop: "0", marginBottom: "0" }}>
       <svg ref={svgRef} viewBox={`0 0 ${VIEWBOX.width} ${VIEWBOX.height}`} width="100%" height="100%" role="img" aria-label="Editable single nail canvas" onPointerDown={canvasDown} onPointerMove={(e) => { pointerMove(e); canvasMove(e); }} onPointerUp={finishPointerGesture} onPointerCancel={cancelPointerGesture} onPointerLeave={() => setCursorPoint(null)} style={{ touchAction: "none", userSelect: "none", cursor: canvasCursor }}>
         <defs>
           <clipPath id={clipId}><path d={path}/></clipPath>
