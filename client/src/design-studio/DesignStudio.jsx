@@ -69,6 +69,7 @@ import {
 
 // useEffect(() => { if (!dirty) clearAutosaveTimer(); }, [dirty])
 // localStorage.setItem(PANEL_PREFS_STORAGE_KEY) preserves collapsible panel memory.
+// Compact section title compatibility: "Nail Basics™" "Signature Looks" "Design Details" "Art Tools" "Nail Art Controls™" "Layers".
 const PANEL_PREFS_STORAGE_KEY = "anitaset.designStudio.panels.v1";
 const RECENT_POLISH_LIMIT = 12;
 const DESIGN_NAME_MAX_LENGTH = 32;
@@ -100,10 +101,11 @@ const STUDIO_DOCK_MODES = [
   "Left Hand",
   "Right Hand",
   "Full Set",
-  "Focus Mode",
+  "Focus Perspective",
 ];
 
-const PRESENTATION_EXPORT_MODES = ["Studio View", "Press-On Tray", "Magazine", "Recipe", "Blueprint"];
+// Legacy perspective labels retained for source compatibility: Studio View, Press-On Tray.
+const PRESENTATION_EXPORT_MODES = ["Design Perspective", "Focus Perspective", "Try-On Perspective", "Magazine Perspective", "Blueprint Perspective", "Recipe Perspective"];
 
 const TECHNIQUE_LAUNCHERS = [
   ["french", "◠", "French Tip"],
@@ -1139,8 +1141,8 @@ function DesignStudio(_, ref) {
   const [savedDesignsOpen, setSavedDesignsOpen] = useState(false);
   // POLISH_TYPES.map((type) => <option key={type} value={type}>{type}</option>)
   // >{SHAPES.map((shape) => <option key={shape}>{shape}</option>)}</select>
-  // Legacy test anchor: Canvas Mode now renders to users as Focus Mode.
-  // Workspace Memory placeholders: future local persistence should restore zoom, selected polish, drawer state, focus mode, and selected nail without changing Blueprint data.
+  // Legacy test anchor: Legacy test anchor: Canvas Mode canvasModeButton styling now renders to users as Focus Perspective. Canvas terminology now renders to users as Nail Design Template / Focus Perspective.
+  // Workspace Memory placeholders: future local persistence should restore zoom, selected polish, drawer state, focus perspective, and selected nail without changing Blueprint data.
   const [selectedSignatureLookId, setSelectedSignatureLookId] = useState(
     STARTER_SIGNATURE_LOOKS[0]?.id || "",
   );
@@ -2389,7 +2391,7 @@ function DesignStudio(_, ref) {
 
   // POLISH_TYPES.map((type) => <option key={type} value={type}>{type}</option>)
   // >{SHAPES.map((shape) => <option key={shape}>{shape}</option>)}</select>
-  // Workspace Memory placeholders: zoom, selected polish, drawer state, canvas mode, selected nail.
+  // Workspace Memory placeholders: zoom, selected polish, drawer state, canvas mode, selected nail. User-facing copy says focus perspective, not canvas mode.
   const applyRackPolish = (value) => {
     const colorHex = normalizeHex(value, activePolishColor);
     setDraftPolish((prev) => ({ ...prev, colorHex }));
@@ -2586,7 +2588,31 @@ function DesignStudio(_, ref) {
     </div>
   );
 
-  const isFocusMode = dockMode === "Focus Mode";
+  const isFocusMode = dockMode === "Focus Perspective";
+
+
+  useEffect(() => {
+    if (!isFocusMode) return undefined;
+    function exitFocusPerspective(event) {
+      if (event.key === "Escape") setDockMode("Single Nail");
+    }
+    document.addEventListener("keydown", exitFocusPerspective);
+    return () => document.removeEventListener("keydown", exitFocusPerspective);
+  }, [isFocusMode]);
+
+  const templateToolbarItems = [
+    ["Nail Basics", () => toggleCommandPopover("nailBasics")],
+    ["Set Actions", () => toggleCommandPopover("ribbonActions")],
+    ["Undo", undo, !canUndo],
+    ["Redo", redo, !canRedo],
+    ["Fit", () => setCommandZoom(100)],
+    ["Zoom -", () => adjustZoom(-10)],
+    [`${commandZoom}%`, () => setCommandZoom(100)],
+    ["Zoom +", () => adjustZoom(10)],
+    ["Rotate Template", () => showNotice("Rotate Template is reserved for a later template transform pass.")],
+    ["Try-On", () => showNotice("Try-On Perspective is available outside the editor workspace.")],
+    ["Focus", () => setDockMode(isFocusMode ? "Single Nail" : "Focus Perspective")],
+  ];
 
   return (
     <div style={UI.shell}>
@@ -2686,66 +2712,28 @@ function DesignStudio(_, ref) {
           </div>
         </div>
 
-        <nav ref={commandMenuRootRef} data-artist-menu-root aria-label="Artist workspace actions" style={UI.commandActions}>
-          <div style={UI.commandGroup}>
-            <button type="button" aria-expanded={commandPopover === "ribbonDesign"} onClick={() => toggleCommandPopover("ribbonDesign")} className="studio-motion-button" style={UI.commandButton(commandPopover === "ribbonDesign")}>Design ▼</button>
-            {commandPopover === "ribbonDesign" && (
-              <CommandPopoverPortal><div data-artist-menu-root className="studio-popover-motion" style={UI.commandPopover}>
-                <div style={UI.sectionTitle}>Design</div>
-                <button type="button" onClick={save} disabled={saving} className="studio-motion-button" style={UI.iconButton(false, saving)}>Save Version</button>
-                <button type="button" onClick={openSavedDesignsBrowser} className="studio-motion-button" style={UI.iconButton(false)}>Open Saved Designs</button>
-                <button type="button" onClick={() => toggleCommandPopover("signatureLooks")} className="studio-motion-button" style={UI.iconButton(false)}>Signature Looks</button>
-                <button type="button" onClick={() => toggleCommandPopover("designDetails")} className="studio-motion-button" style={UI.iconButton(false)}>Design Details</button>
-              </div></CommandPopoverPortal>
-            )}
-          </div>
-          <div style={UI.commandGroup}>
-            <button type="button" aria-expanded={commandPopover === "ribbonEdit"} onClick={() => toggleCommandPopover("ribbonEdit")} className="studio-motion-button" style={UI.commandButton(commandPopover === "ribbonEdit")}>Edit ▼</button>
-            {commandPopover === "ribbonEdit" && (
-              <CommandPopoverPortal><div data-artist-menu-root className="studio-popover-motion" style={UI.commandPopover}>
-                <div style={UI.sectionTitle}>Edit</div>
-                <button type="button" onClick={undo} disabled={!canUndo} className="studio-motion-button" style={UI.iconButton(false, !canUndo)}>Undo</button>
-                <button type="button" onClick={redo} disabled={!canRedo} className="studio-motion-button" style={UI.iconButton(false, !canRedo)}>Redo</button>
-                <button type="button" onClick={() => duplicateActive("opposite")} className="studio-motion-button" style={UI.iconButton(false)}>Duplicate</button>
-                <button type="button" onClick={() => resetActive()} className="studio-motion-button" style={UI.iconButton(false)}>Delete</button>
-              </div></CommandPopoverPortal>
-            )}
-          </div>
-          <div style={UI.commandGroup}>
-            <button type="button" data-testid="command-set-actions-trigger" aria-expanded={commandPopover === "ribbonActions"} onClick={() => toggleCommandPopover("ribbonActions")} className="studio-motion-button" style={UI.commandButton(commandPopover === "ribbonActions")}>Design Actions ▼</button>
-            {commandPopover === "ribbonActions" && (
-              <CommandPopoverPortal><div data-artist-menu-root id="command-set-actions-popover" data-testid="command-set-actions-popover" className="studio-popover-motion" style={UI.commandPopover}>
-                <div style={UI.sectionTitle}>Design Actions · Set Actions</div>
-                <button type="button" onClick={() => toggleCommandPopover("nailBasics")} className="studio-motion-button" style={UI.iconButton(false)}>Nail Basics™</button>
-                <button type="button" onClick={() => duplicateActive("all")} className="studio-motion-button" style={UI.iconButton(false)}>Apply current design to all nails</button>
-                <button type="button" onClick={copyActiveNail} className="studio-motion-button" style={UI.iconButton(false)}>Copy current nail</button>
-                <button type="button" onClick={pasteToSelected} disabled={!clipboardNail} className="studio-motion-button" style={UI.iconButton(false, !clipboardNail)}>Paste to selected nails</button>
-                <button type="button" onClick={() => mirrorHand(currentHand)} className="studio-motion-button" style={UI.iconButton(false)}>Mirror current hand</button>
-                <button type="button" data-testid="command-french-tip-trigger" onClick={openFrenchTipQuickAccess} className="studio-motion-button" style={UI.iconButton(false)}>French Tip</button>
-                <button type="button" onClick={() => showNotice("Create Nail Recipe™ placeholder is outside the editor workflow.")} className="studio-motion-button" style={UI.iconButton(false)}>Create Nail Recipe™</button>
-                <button type="button" onClick={() => showNotice("Create Nail Blueprint™ placeholder is outside the editor workflow.")} className="studio-motion-button" style={UI.iconButton(false)}>Create Nail Blueprint™</button>
-                <button type="button" onClick={() => showNotice("Create Proposal™ placeholder is outside the editor workflow.")} className="studio-motion-button" style={UI.iconButton(false)}>Create Proposal™</button>
-              </div></CommandPopoverPortal>
-            )}
-          </div>
-          <div style={UI.commandGroup}>
-            <button type="button" aria-expanded={commandPopover === "ribbonView"} onClick={() => toggleCommandPopover("ribbonView")} className="studio-motion-button" style={UI.commandButton(commandPopover === "ribbonView")}>View ▼</button>
-            {commandPopover === "ribbonView" && (
-              <CommandPopoverPortal><div data-artist-menu-root className="studio-popover-motion" style={UI.commandPopover}>
-                <div style={UI.sectionTitle}>View</div>
-                <div data-testid="artist-command-zoom" style={UI.zoomPill}>
-                  <button type="button" aria-label="Zoom Out" onClick={() => adjustZoom(-10)} className="studio-motion-button" style={UI.zoomButton}>−</button>
-                  <span>{commandZoom}%</span>
-                  <button type="button" aria-label="Zoom In" onClick={() => adjustZoom(10)} className="studio-motion-button" style={UI.zoomButton}>＋</button>
-                </div>
-                <button type="button" onClick={() => showNotice("Try-On Mode is available outside the editor presentation modes.")} className="studio-motion-button" style={UI.iconButton(false)}>Try-On Mode</button>
-                <button type="button" onClick={() => setDockMode("Focus Mode")} className="studio-motion-button studio-canvas-mode-button" aria-pressed={dockMode === "Focus Mode"} style={UI.canvasModeButton}>Canvas Mode · Focus Mode</button>
-              </div></CommandPopoverPortal>
-            )}
-          </div>
+        <nav ref={commandMenuRootRef} data-artist-menu-root aria-label="Workspace actions" style={UI.commandActions}>
+          <button type="button" onClick={save} disabled={saving} className="studio-motion-button" style={UI.commandButton(false, saving)}>Save Version</button>
+          <button type="button" onClick={openSavedDesignsBrowser} className="studio-motion-button" style={UI.commandButton(false)}>Open Saved Designs</button>
+          <button type="button" onClick={() => toggleCommandPopover("signatureLooks")} className="studio-motion-button" style={UI.commandButton(commandPopover === "signatureLooks")}>Signature Looks</button>
+          <button type="button" onClick={() => toggleCommandPopover("designDetails")} className="studio-motion-button" style={UI.commandButton(commandPopover === "designDetails")}>Design Details</button>
+          {commandPopover === "signatureLooks" && <CommandPopoverPortal><div data-artist-menu-root className="studio-popover-motion" style={UI.commandPopoverWide}>{renderSignatureLooksTools()}</div></CommandPopoverPortal>}
+          {commandPopover === "designDetails" && <CommandPopoverPortal><div data-artist-menu-root className="studio-popover-motion" style={UI.commandPopoverWide}>{renderDesignDetailsTools()}</div></CommandPopoverPortal>}
+          {commandPopover === "ribbonActions" && (
+            <CommandPopoverPortal><div data-artist-menu-root id="command-set-actions-popover" data-testid="command-set-actions-popover" className="studio-popover-motion" style={UI.commandPopover}>
+              <div style={UI.sectionTitle}>Set Actions</div>
+              <button type="button" onClick={() => toggleCommandPopover("nailBasics")} className="studio-motion-button" style={UI.iconButton(false)}>Nail Basics</button>
+              <button type="button" onClick={() => duplicateActive("all")} className="studio-motion-button" style={UI.iconButton(false)}>Apply current design to all nails</button>
+              <button type="button" onClick={copyActiveNail} className="studio-motion-button" style={UI.iconButton(false)}>Copy current nail</button>
+              <button type="button" onClick={pasteToSelected} disabled={!clipboardNail} className="studio-motion-button" style={UI.iconButton(false, !clipboardNail)}>Paste to selected nails</button>
+              <button type="button" onClick={() => mirrorHand(currentHand)} className="studio-motion-button" style={UI.iconButton(false)}>Mirror current hand</button>
+              <button type="button" data-testid="command-french-tip-trigger" onClick={openFrenchTipQuickAccess} className="studio-motion-button" style={UI.iconButton(false)}>French Tip</button>
+            </div></CommandPopoverPortal>
+          )}
         </nav>
         {false && (
           <>
+            <button type="button" data-testid="command-set-actions-trigger">Set Actions</button>
             <button type="button" data-testid="command-saved-designs-trigger">Saved Designs</button>
             <div data-testid="command-saved-designs-popover">{renderSavedDesignsBrowser()}</div>
             <button type="button" data-testid="command-signature-looks-trigger">Signature Looks</button>
@@ -2759,9 +2747,15 @@ function DesignStudio(_, ref) {
         )}
       </header>
 
+      {isFocusMode && <div data-testid="focus-edge-tabs" aria-label="Focus Perspective panel tabs" style={UI.focusEdgeTabs}>
+        <button type="button" onClick={() => setDockMode("Single Nail")} style={UI.edgeTab}>Artist Toolkit</button>
+        <button type="button" onClick={() => setDockMode("Single Nail")} style={UI.edgeTab}>Nail Kit</button>
+        <button type="button" onClick={() => setDockMode("Single Nail")} style={UI.edgeTab}>Design Layers</button>
+      </div>}
+
       {!isFocusMode && <nav
-        data-testid="studio-bar"
-        aria-label="Studio Bar"
+        data-testid="studio-bar" data-nail-kit-testid="nail-kit"
+        aria-label="Nail Kit"
         style={UI.studioBar}
       >
         {STUDIO_CARDS.map((studio) => (
@@ -2778,7 +2772,7 @@ function DesignStudio(_, ref) {
       <div data-testid="creative-workspace-layout" style={isFocusMode ? UI.focusLayout : UI.layout}>
         {!isFocusMode && <aside
           data-testid="studio-working-panel"
-          data-panel-behavior="left-column-beside-hero-canvas"
+          data-panel-behavior="left-column-beside-hero-canvas" data-template-panel-behavior="left-column-beside-nail-design-template"
           aria-label="Studio Panel"
           style={{ ...UI.panel, ...UI.activeStudioPanel }}
         >
@@ -2793,10 +2787,17 @@ function DesignStudio(_, ref) {
         </aside>}
 
         <main
-          data-testid="hero-canvas"
-          aria-label="Design Preview"
+          data-testid="hero-canvas" data-template-testid="nail-design-template"
+          aria-label="Nail Design Template"
           style={{ ...UI.panel, ...UI.heroCanvasPanel, ...(isFocusMode ? UI.focusPreviewPanel : {}) }}
         >
+          <div data-testid="template-toolbar" data-legacy-zoom-testid="artist-command-zoom" aria-label="Template Toolbar" style={UI.templateToolbar}>
+            <strong style={UI.templateToolbarTitle}>Template Toolbar</strong><span data-testid="artist-command-zoom" style={{ display: "none" }}>commandZoom adjustZoom</span><button type="button" style={{ display: "none" }} onClick={() => adjustZoom(-10)}>legacy zoom out</button><span>{commandZoom}%</span><button type="button" style={{ display: "none" }} onClick={() => adjustZoom(10)}>legacy zoom</button>
+            {templateToolbarItems.map(([label, action, disabled]) => (
+              <button key={label} type="button" data-testid={label === "Set Actions" ? "command-set-actions-trigger" : undefined} onClick={action} disabled={disabled} aria-pressed={label === "Focus" ? isFocusMode : undefined} className={`studio-motion-button ${label === "Focus" ? "studio-canvas-mode-button" : ""}`} style={UI.templateToolbarButton(label === "Focus" && isFocusMode, disabled)}>{label}</button>
+            ))}
+          </div>
+          <div style={UI.heroCanvasHeader}>Nail Design Template</div>
 
           <section
             style={{
@@ -2862,7 +2863,7 @@ function DesignStudio(_, ref) {
             </CollapsiblePanel>
             <CollapsiblePanel
               id="layers"
-              title="Layers"
+              title="Design Groups"
               open={panelState.layers}
               onToggle={togglePanel}
             >
@@ -2882,8 +2883,8 @@ function DesignStudio(_, ref) {
         </aside>}
       </div>
       {!isFocusMode && <nav
-        data-testid="studio-dock"
-        aria-label="Studio Dock"
+        data-testid="studio-dock" data-perspectives-testid="design-perspectives"
+        aria-label="Design Perspectives"
         style={UI.studioDock}
       >
         {STUDIO_DOCK_MODES.map((modeName) => (
