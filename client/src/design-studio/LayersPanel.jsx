@@ -21,29 +21,32 @@ function rowForLayer(layer) {
 function layerRowStyle(active, enabled) {
   return {
     display: "grid",
-    gridTemplateColumns: "18px 30px 30px 1fr auto",
+    gridTemplateColumns: "28px 30px 30px 1fr 34px",
     alignItems: "center",
-    gap: 8,
-    minHeight: 48,
-    padding: "8px 9px",
-    border: `1px solid ${active ? COLORS.plum : enabled ? "rgba(123,47,89,.24)" : "rgba(123,47,89,.13)"}`,
-    borderRadius: 15,
+    gap: 9,
+    minHeight: 54,
+    padding: "9px 10px",
+    border: `1px solid ${active ? COLORS.softGold : enabled ? "rgba(240,79,150,.30)" : "rgba(123,47,89,.14)"}`,
+    borderRadius: 14,
     background: active
-      ? "linear-gradient(135deg, #fff0f8, #fffaf7)"
+      ? "linear-gradient(135deg, rgba(91,15,47,.96), rgba(59,31,53,.96))"
       : enabled
-        ? "linear-gradient(135deg, #fff, #fff8fc)"
-        : "linear-gradient(135deg, rgba(255,250,247,.86), rgba(245,232,240,.54))",
-    boxShadow: active ? "0 14px 30px rgba(123,47,89,.16)" : "0 8px 18px rgba(60,20,50,.055)",
+        ? "linear-gradient(135deg, rgba(255,250,247,.98), rgba(245,200,232,.28))"
+        : "linear-gradient(135deg, rgba(255,250,247,.72), rgba(245,232,240,.42))",
+    color: active ? COLORS.cream : enabled ? COLORS.text : COLORS.textMuted,
+    boxShadow: active ? "0 16px 34px rgba(60,20,50,.22)" : "0 8px 18px rgba(60,20,50,.07)",
   };
 }
 
-const iconButton = (disabled = false) => ({
-  border: 0,
-  background: "transparent",
-  color: disabled ? COLORS.textFaint : COLORS.plum,
-  fontSize: 15,
+const iconButton = (active = false, disabled = false) => ({
+  border: "1px solid transparent",
+  background: active ? "rgba(240,79,150,.16)" : "transparent",
+  color: disabled ? COLORS.textFaint : "inherit",
+  fontSize: 16,
   cursor: disabled ? "default" : "pointer",
-  padding: 0,
+  padding: 3,
+  borderRadius: 9,
+  minHeight: 28,
 });
 
 export default function LayersPanel({ layers, selectedLayerId, onSelect, onToggleVisible, onToggleLock, onMove, onDelete }) {
@@ -56,9 +59,9 @@ export default function LayersPanel({ layers, selectedLayerId, onSelect, onToggl
   const topMovableId = movableLayers.at(-1)?.id;
 
   return (
-    <section style={{ marginBottom: 8 }}>
-      <div style={{ ...UI.sectionTitle, color: COLORS.plum }}>Layer Stack</div>
-      <div style={{ display: "grid", gap: 8 }}>
+    <section style={{ marginBottom: 8 }} data-testid="layer-stack-panel">
+      <div style={{ ...UI.sectionTitle, color: COLORS.rose }}>Design Layers</div>
+      <div role="list" aria-label="Layer stack" style={{ display: "grid", gap: 8 }}>
         {DEFAULT_ROWS.map((row) => {
           const rowLayers = layersByRow[row.key] || [];
           const firstLayer = rowLayers[0];
@@ -68,19 +71,15 @@ export default function LayersPanel({ layers, selectedLayerId, onSelect, onToggl
           const disableUp = !firstLayer || isBase || firstLayer.id === topMovableId;
           const disableDown = !firstLayer || isBase || firstLayer.id === bottomMovableId;
           return (
-            <div key={row.key} style={layerRowStyle(active, enabled)}>
-              <button type="button" title="Drag handle" disabled={!enabled} onClick={() => firstLayer && onMove(firstLayer.id, 1)} style={iconButton(!enabled || disableUp)}>Up</button>
-              <button type="button" title={firstLayer?.visible === false ? "Hidden" : "Visible"} disabled={!enabled} onClick={() => firstLayer && onToggleVisible(firstLayer.id)} style={iconButton(!enabled)}>{firstLayer?.visible === false ? "○" : "👁"}</button>
-              <button type="button" title={firstLayer?.locked ? "Locked" : "Unlocked"} disabled={!enabled || isBase} onClick={() => firstLayer && onToggleLock(firstLayer.id)} style={iconButton(!enabled || isBase)}>{firstLayer?.locked ? "🔒" : "🔓"}</button>
-              <button type="button" disabled={!enabled} onClick={() => firstLayer && onSelect(firstLayer.id)} style={{ border: 0, background: "transparent", textAlign: "left", padding: 0, cursor: enabled ? "pointer" : "default", color: enabled ? COLORS.text : COLORS.textMuted }}>
-                <strong style={{ display: "block", fontSize: 13 }}>{row.name}</strong>
-                <span style={{ display: "block", fontSize: 11, color: active ? COLORS.plum : COLORS.textMuted }}>{enabled ? `${LABELS[firstLayer.type] || row.name} · ${rowLayers.length} layer${rowLayers.length > 1 ? "s" : ""}` : `Inactive · ${row.type}`}</span>
+            <div key={row.key} role="listitem" style={layerRowStyle(active, enabled)} data-layer-active={active ? "true" : "false"} data-layer-enabled={enabled ? "true" : "false"}>
+              <button type="button" aria-label={`Move ${row.name}`} title="Drag handle / move up" disabled={disableUp} onClick={() => firstLayer && onMove(firstLayer.id, 1)} style={iconButton(false, !enabled || disableUp)}>Up</button>
+              <button type="button" aria-label={`${firstLayer?.visible === false ? "Show" : "Hide"} ${row.name}`} title={firstLayer?.visible === false ? "Hidden" : "Visible"} disabled={!enabled} onClick={() => firstLayer && onToggleVisible(firstLayer.id)} style={iconButton(firstLayer?.visible !== false, !enabled)}>{firstLayer?.visible === false ? "◌" : "◉"}</button>
+              <button type="button" aria-label={`${firstLayer?.locked ? "Unlock" : "Lock"} ${row.name}`} title={firstLayer?.locked ? "Locked" : "Unlocked"} disabled={!enabled || isBase} onClick={() => firstLayer && onToggleLock(firstLayer.id)} style={iconButton(firstLayer?.locked, !enabled || isBase)}>{firstLayer?.locked ? "🔒" : "◇"}</button>
+              <button type="button" disabled={!enabled} onClick={() => firstLayer && onSelect(firstLayer.id)} style={{ border: 0, background: "transparent", textAlign: "left", padding: 0, cursor: enabled ? "pointer" : "default", color: "inherit" }}>
+                <strong style={{ display: "block", fontSize: 14, letterSpacing: ".02em" }}>{row.name}</strong>
+                <span style={{ display: "block", fontSize: 11, color: active ? COLORS.roseDim : COLORS.textMuted }}>{enabled ? `${LABELS[firstLayer.type] || row.name} · ${rowLayers.length} layer${rowLayers.length > 1 ? "s" : ""}` : `Inactive · ${row.type}`}</span>
               </button>
-              <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                <span style={{ width: 26, height: 26, borderRadius: 9, display: "grid", placeItems: "center", background: active ? COLORS.plum : "rgba(123,47,89,.08)", color: active ? "#fff" : COLORS.plum, fontWeight: 900 }}>{row.icon}</span>
-                <button type="button" disabled={disableDown} onClick={() => firstLayer && onMove(firstLayer.id, -1)} style={UI.iconOnlyButton(false, disableDown)}>Down</button>
-                <button type="button" title="Delete layer" disabled={!firstLayer || isBase || firstLayer.locked} onClick={() => firstLayer && onDelete(firstLayer.id)} style={UI.iconOnlyButton(false, !firstLayer || isBase || firstLayer.locked)}>×</button>
-              </div>
+              <div style={{ display: "grid", gap: 2 }}><button type="button" aria-label={`Move ${row.name} down`} disabled={disableDown} onClick={() => firstLayer && onMove(firstLayer.id, -1)} style={{ ...iconButton(false, !enabled || disableDown), fontSize: 10 }}>Down</button><button type="button" title="Delete layer" disabled={!firstLayer || isBase || firstLayer.locked} onClick={() => firstLayer && onDelete(firstLayer.id)} style={iconButton(false, !firstLayer || isBase || firstLayer.locked)}>{row.icon}</button></div>
             </div>
           );
         })}
