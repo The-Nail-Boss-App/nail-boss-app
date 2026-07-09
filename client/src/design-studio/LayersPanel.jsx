@@ -2,96 +2,86 @@ import { COLORS } from "../styles.js";
 import { UI } from "./studioStyles.js";
 import { layerSort } from "./blueprint.js";
 
-const LABELS = { base: "Base Polish", gradient: "Technique", pattern: "Technique", drawing: "Brush / Drawing", charm: "Charm", decal: "Sticker", jewel: "Charm", frenchTip: "Technique", topCoat: "Top Coat" };
+const LABELS = { base: "Base Polish", gradient: "Gradient", pattern: "Pattern", drawing: "Drawing", charm: "Charm", decal: "Sticker", jewel: "Charm", frenchTip: "Pattern", topCoat: "Top Coat" };
 const DEFAULT_ROWS = [
-  { key: "base", name: "Base Polish", type: "Finish", icon: "◐" },
-  { key: "technique", name: "Technique", type: "Effect", icon: "◠" },
-  { key: "drawing", name: "Brush / Drawing", type: "Artwork", icon: "✎" },
-  { key: "decal", name: "Sticker", type: "Asset", icon: "▣" },
-  { key: "charm", name: "Charm", type: "Embellishment", icon: "◇" },
-  { key: "topCoat", name: "Top Coat", type: "Finish", icon: "◌" },
+  { key: "base", match: ["base"], name: "Base Polish", type: "Color foundation", icon: "◐" },
+  { key: "gradient", match: ["gradient"], name: "Gradient", type: "Technique", icon: "◒" },
+  { key: "pattern", match: ["pattern", "frenchTip"], name: "Pattern", type: "Technique", icon: "▧" },
+  { key: "drawing", match: ["drawing"], name: "Drawing", type: "Brush artwork", icon: "✎" },
+  { key: "decal", match: ["decal"], name: "Sticker", type: "Sticker Studio™", icon: "▣" },
+  { key: "charm", match: ["charm", "jewel"], name: "Charm", type: "Embellishment", icon: "◇" },
+  { key: "topCoat", match: ["topCoat"], name: "Top Coat", type: "Finish seal", icon: "◌" },
 ];
-const TECHNIQUE_TYPES = new Set(["gradient", "pattern", "frenchTip"]);
-const STICKER_TYPES = new Set(["decal"]);
-const CHARM_TYPES = new Set(["charm", "jewel"]);
 
-function rowKeyForLayer(layer) {
-  if (!layer) return "";
-  if (layer?.data?.topCoat || layer.type === "topCoat") return "topCoat";
-  if (TECHNIQUE_TYPES.has(layer.type)) return "technique";
-  if (STICKER_TYPES.has(layer.type)) return "decal";
-  if (CHARM_TYPES.has(layer.type)) return "charm";
-  return layer.type;
+function rowForLayer(layer) {
+  if (layer?.data?.topCoat || layer?.type === "topCoat") return "topCoat";
+  return DEFAULT_ROWS.find((row) => row.match.includes(layer?.type))?.key || layer?.type || "";
 }
 
 function layerRowStyle(active, enabled) {
   return {
-    border: `1px solid ${active ? COLORS.plum : enabled ? "rgba(123,47,89,.22)" : "rgba(123,47,89,.14)"}`,
-    borderRadius: 14,
+    display: "grid",
+    gridTemplateColumns: "18px 30px 30px 1fr auto",
+    alignItems: "center",
+    gap: 8,
+    minHeight: 48,
+    padding: "8px 9px",
+    border: `1px solid ${active ? COLORS.plum : enabled ? "rgba(123,47,89,.24)" : "rgba(123,47,89,.13)"}`,
+    borderRadius: 15,
     background: active
       ? "linear-gradient(135deg, #fff0f8, #fffaf7)"
       : enabled
         ? "linear-gradient(135deg, #fff, #fff8fc)"
-        : "linear-gradient(135deg, rgba(255,250,247,.84), rgba(245,232,240,.58))",
-    boxShadow: active ? "0 12px 28px rgba(123,47,89,.14)" : "0 8px 18px rgba(60,20,50,.055)",
-    overflow: "hidden",
+        : "linear-gradient(135deg, rgba(255,250,247,.86), rgba(245,232,240,.54))",
+    boxShadow: active ? "0 14px 30px rgba(123,47,89,.16)" : "0 8px 18px rgba(60,20,50,.055)",
   };
 }
+
+const iconButton = (disabled = false) => ({
+  border: 0,
+  background: "transparent",
+  color: disabled ? COLORS.textFaint : COLORS.plum,
+  fontSize: 15,
+  cursor: disabled ? "default" : "pointer",
+  padding: 0,
+});
 
 export default function LayersPanel({ layers, selectedLayerId, onSelect, onToggleVisible, onToggleLock, onMove, onDelete }) {
   const renderOrdered = [...layers].sort(layerSort);
   const visibleOrdered = [...renderOrdered].reverse();
   const layersByRow = DEFAULT_ROWS.reduce((acc, row) => ({ ...acc, [row.key]: [] }), {});
-  visibleOrdered.forEach((layer) => {
-    const key = rowKeyForLayer(layer);
-    (layersByRow[key] || (layersByRow[key] = [])).push(layer);
-  });
+  visibleOrdered.forEach((layer) => (layersByRow[rowForLayer(layer)] || (layersByRow[rowForLayer(layer)] = [])).push(layer));
   const movableLayers = renderOrdered.filter((layer) => layer.type !== "base");
   const bottomMovableId = movableLayers[0]?.id;
   const topMovableId = movableLayers.at(-1)?.id;
 
   return (
     <section style={{ marginBottom: 8 }}>
-      <div style={{ ...UI.sectionTitle, color: COLORS.plum }}>Default Layer Stack</div>
-      <div style={{ display: "grid", gap: 7 }}>
+      <div style={{ ...UI.sectionTitle, color: COLORS.plum }}>Layer Stack</div>
+      <div style={{ display: "grid", gap: 8 }}>
         {DEFAULT_ROWS.map((row) => {
           const rowLayers = layersByRow[row.key] || [];
-          const active = rowLayers.some((layer) => layer.id === selectedLayerId);
-          const enabled = rowLayers.length > 0;
           const firstLayer = rowLayers[0];
+          const enabled = rowLayers.length > 0;
+          const active = rowLayers.some((layer) => layer.id === selectedLayerId);
+          const isBase = firstLayer?.type === "base";
+          const disableUp = !firstLayer || isBase || firstLayer.id === topMovableId;
+          const disableDown = !firstLayer || isBase || firstLayer.id === bottomMovableId;
           return (
-            <section key={row.key} style={layerRowStyle(active, enabled)}>
-              <div style={{ display: "grid", gridTemplateColumns: "24px 1fr auto auto", alignItems: "center", gap: 7, padding: "9px 9px" }}>
-                <span aria-hidden="true" style={{ width: 24, height: 24, borderRadius: 9, display: "grid", placeItems: "center", background: active ? COLORS.plum : enabled ? COLORS.roseDim : "rgba(123,47,89,.08)", color: active ? "#fff" : COLORS.plum, fontSize: 14, fontWeight: 900 }}>{row.icon}</span>
-                <button type="button" onClick={() => firstLayer && onSelect(firstLayer.id)} disabled={!enabled} style={{ border: 0, background: "transparent", textAlign: "left", cursor: enabled ? "pointer" : "default", padding: 0, color: COLORS.text }}>
-                  <strong style={{ display: "block", fontSize: 12 }}>{row.name}</strong>
-                  <span style={{ display: "block", fontSize: 11, color: COLORS.textMuted }}>{enabled ? `${rowLayers.length} active ${row.type.toLowerCase()} layer${rowLayers.length > 1 ? "s" : ""}` : `Ready ${row.type.toLowerCase()} layer`}</span>
-                </button>
-                <span title={enabled && firstLayer?.visible === false ? "Hidden" : "Visible"} aria-label={enabled && firstLayer?.visible === false ? "Hidden" : "Visible"} style={{ color: enabled && firstLayer?.visible === false ? COLORS.textFaint : COLORS.plum, fontSize: 15 }}>{enabled && firstLayer?.visible === false ? "◌" : "👁"}</span>
-                <span title={firstLayer?.locked ? "Locked" : "Layer options"} aria-label={firstLayer?.locked ? "Locked" : "Layer options"} style={{ minWidth: 22, color: firstLayer?.locked ? COLORS.plum : COLORS.textMuted, fontSize: 13 }}>{firstLayer?.locked ? "🔒" : "⋯"}</span>
+            <div key={row.key} style={layerRowStyle(active, enabled)}>
+              <button type="button" title="Drag handle" disabled={!enabled} onClick={() => firstLayer && onMove(firstLayer.id, 1)} style={iconButton(!enabled || disableUp)}>Up</button>
+              <button type="button" title={firstLayer?.visible === false ? "Hidden" : "Visible"} disabled={!enabled} onClick={() => firstLayer && onToggleVisible(firstLayer.id)} style={iconButton(!enabled)}>{firstLayer?.visible === false ? "○" : "👁"}</button>
+              <button type="button" title={firstLayer?.locked ? "Locked" : "Unlocked"} disabled={!enabled || isBase} onClick={() => firstLayer && onToggleLock(firstLayer.id)} style={iconButton(!enabled || isBase)}>{firstLayer?.locked ? "🔒" : "🔓"}</button>
+              <button type="button" disabled={!enabled} onClick={() => firstLayer && onSelect(firstLayer.id)} style={{ border: 0, background: "transparent", textAlign: "left", padding: 0, cursor: enabled ? "pointer" : "default", color: enabled ? COLORS.text : COLORS.textMuted }}>
+                <strong style={{ display: "block", fontSize: 13 }}>{row.name}</strong>
+                <span style={{ display: "block", fontSize: 11, color: active ? COLORS.plum : COLORS.textMuted }}>{enabled ? `${LABELS[firstLayer.type] || row.name} · ${rowLayers.length} layer${rowLayers.length > 1 ? "s" : ""}` : `Inactive · ${row.type}`}</span>
+              </button>
+              <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                <span style={{ width: 26, height: 26, borderRadius: 9, display: "grid", placeItems: "center", background: active ? COLORS.plum : "rgba(123,47,89,.08)", color: active ? "#fff" : COLORS.plum, fontWeight: 900 }}>{row.icon}</span>
+                <button type="button" disabled={disableDown} onClick={() => firstLayer && onMove(firstLayer.id, -1)} style={UI.iconOnlyButton(false, disableDown)}>Down</button>
+                <button type="button" title="Delete layer" disabled={!firstLayer || isBase || firstLayer.locked} onClick={() => firstLayer && onDelete(firstLayer.id)} style={UI.iconOnlyButton(false, !firstLayer || isBase || firstLayer.locked)}>×</button>
               </div>
-              {rowLayers.map((layer) => {
-                const selected = layer.id === selectedLayerId;
-                const isBase = layer.type === "base";
-                const disableUp = isBase || layer.id === topMovableId;
-                const disableDown = isBase || layer.id === bottomMovableId;
-                return (
-                  <div key={layer.id} style={{ margin: "0 7px 7px 40px", padding: 7, borderRadius: 10, border: `1px solid ${selected ? COLORS.plum : "rgba(123,47,89,.12)"}`, background: selected ? COLORS.roseDim : "#fff" }}>
-                    <button type="button" onClick={() => onSelect(layer.id)} style={{ display: "block", width: "100%", textAlign: "left", background: "none", border: 0, cursor: "pointer", color: COLORS.text, padding: 0 }}>
-                      <strong style={{ fontSize: 12 }}>{layer.name}</strong>
-                      <span style={{ display: "block", fontSize: 11, color: COLORS.textMuted }}>{LABELS[layer.type] || layer.type} · order {layer.order}</span>
-                    </button>
-                    <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginTop: 6 }}>
-                      <button type="button" onClick={() => onToggleVisible(layer.id)} style={UI.iconButton(false)}>{layer.visible ? "👁 Visible" : "○ Hidden"}</button>
-                      <button type="button" onClick={() => onToggleLock(layer.id)} disabled={isBase} style={UI.iconButton(false, isBase)}>{layer.locked ? "🔒 Locked" : "Lock"}</button>
-                      <button type="button" onClick={() => onMove(layer.id, 1)} disabled={disableUp} style={UI.iconButton(false, disableUp)}>Up</button>
-                      <button type="button" onClick={() => onMove(layer.id, -1)} disabled={disableDown} style={UI.iconButton(false, disableDown)}>Down</button>
-                      <button type="button" onClick={() => onDelete(layer.id)} disabled={isBase || layer.locked} style={UI.iconButton(false, isBase || layer.locked)}>Delete</button>
-                    </div>
-                  </div>
-                );
-              })}
-            </section>
+            </div>
           );
         })}
       </div>

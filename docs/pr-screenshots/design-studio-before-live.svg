@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1360" height="582" viewBox="0 0 1360 582">
+  <rect width="1360" height="582" fill="#fbf6f8"/>
+  <rect width="67" height="582" fill="#3b1f35"/>
+  <rect x="67" width="1293" height="80" fill="#6b2451"/>
+  <rect x="80" y="34" width="1268" height="39" rx="18" fill="#9c6f89"/>
+  <rect x="77" y="85" width="267" height="432" rx="14" fill="#fff" stroke="#ede8eb"/>
+  <text x="89" y="107" font-family="Arial" font-size="12" font-weight="700" fill="#2b1024">GEM STUDIO</text>
+  <rect x="354" y="85" width="776" height="432" fill="#fff" stroke="#ede8eb"/>
+  <rect x="354" y="85" width="776" height="19" fill="#111" opacity=".9"/>
+  <text x="364" y="99" font-family="Arial" font-size="11" font-weight="700" fill="#2b1024">TEMPLATE TOOLBAR</text>
+  <rect x="410" y="167" width="664" height="354" rx="30" fill="#fff9fc" stroke="#eadce5"/>
+  <path d="M703 263 C726 256 770 256 787 266 C830 320 796 449 743 521 C690 448 650 320 703 263Z" fill="#d88aaf"/>
+  <rect x="1141" y="85" width="210" height="432" rx="14" fill="#fff" stroke="#ede8eb"/>
+  <text x="1153" y="108" font-family="Arial" font-size="11" font-weight="700" fill="#9c8a96">DESIGN LAYERS</text>
+  <rect x="1152" y="135" width="187" height="41" rx="10" fill="#f3e8f0"/>
+  <rect x="1152" y="190" width="187" height="41" rx="10" fill="#f3e8f0"/>
+</svg>

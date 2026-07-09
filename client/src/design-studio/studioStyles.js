@@ -1,7 +1,7 @@
 import { COLORS, S } from "../styles.js";
 
 const ANITASET_MARBLE_BACKGROUND = "radial-gradient(circle at 20% 8%, rgba(245,200,232,.20), transparent 28%), radial-gradient(circle at 82% 16%, rgba(199,154,93,.14), transparent 24%), linear-gradient(135deg, rgba(59,31,53,.96), rgba(123,47,89,.88) 46%, rgba(250,232,240,.82))";
-const ANITASET_STUDIO_SURFACE = "linear-gradient(rgba(255,250,247,.86), rgba(255,244,251,.82)), radial-gradient(circle at 50% 26%, rgba(255,255,255,.96), transparent 28%), repeating-linear-gradient(0deg, rgba(123,47,89,.055) 0 1px, transparent 1px 34px), repeating-linear-gradient(90deg, rgba(123,47,89,.045) 0 1px, transparent 1px 34px), linear-gradient(135deg, #fffaf7, #f7e8f1)";
+const ANITASET_STUDIO_SURFACE = "radial-gradient(circle at 18% 16%, rgba(255,255,255,.82), transparent 20%), radial-gradient(circle at 78% 12%, rgba(245,200,232,.28), transparent 24%), radial-gradient(ellipse at 52% 78%, rgba(199,154,93,.12), transparent 34%), linear-gradient(115deg, rgba(255,255,255,.18) 0 12%, transparent 12% 25%, rgba(123,47,89,.025) 25% 26%, transparent 26% 48%, rgba(255,255,255,.16) 48% 60%, transparent 60%), linear-gradient(135deg, #fffaf7 0%, #fbf1f6 46%, #f7e8f1 100%)";
 
 const LUXURY_TRANSITION = "transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease, background 180ms ease, color 180ms ease, opacity 180ms ease";
 
@@ -243,10 +243,12 @@ export const UI = {
   templateToolbar: {
     display: "flex",
     alignItems: "center",
-    gap: 5,
-    padding: "5px 8px",
-    borderBottom: "1px solid rgba(123,47,89,.12)",
-    background: "rgba(255,255,255,.9)",
+    gap: 10,
+    minHeight: 58,
+    padding: "10px 14px",
+    borderBottom: "1px solid rgba(123,47,89,.16)",
+    background: "linear-gradient(135deg, rgba(255,250,247,.98), rgba(253,241,247,.96))",
+    boxShadow: "0 14px 30px rgba(60,20,50,.08)",
     flexWrap: "nowrap",
     overflowX: "auto",
     overflowY: "hidden",
@@ -257,17 +259,17 @@ export const UI = {
   },
   templateToolbarTitle: {
     color: COLORS.plum,
-    fontSize: 12,
-    fontWeight: 900,
-    letterSpacing: ".12em",
+    fontSize: 15,
+    fontWeight: 950,
+    letterSpacing: ".14em",
     textTransform: "uppercase",
-    marginRight: 4,
+    marginRight: 8,
   },
   modeToggleGroup: {
     display: "inline-flex",
     alignItems: "center",
-    gap: 4,
-    padding: 4,
+    gap: 6,
+    padding: 5,
     marginRight: 6,
     border: "1px solid rgba(123,47,89,.24)",
     borderRadius: 999,
@@ -294,10 +296,10 @@ export const UI = {
     background: active ? COLORS.roseDim : "#fff",
     color: disabled ? COLORS.textFaint : active ? COLORS.plum : COLORS.text,
     borderRadius: 999,
-    minHeight: 30,
-    padding: "5px 8px",
-    fontSize: 11,
-    fontWeight: 800,
+    minHeight: 38,
+    padding: "8px 13px",
+    fontSize: 12,
+    fontWeight: 900,
     cursor: disabled ? "not-allowed" : "pointer",
     opacity: disabled ? 0.55 : 1,
     transition: LUXURY_TRANSITION,
@@ -320,7 +322,7 @@ export const UI = {
     height: 30,
     border: 0,
     borderRadius: 10,
-    background: COLORS.roseDim,
+    background: "linear-gradient(135deg, rgba(245,200,232,.42), rgba(255,250,247,.92))",
     color: COLORS.plum,
     fontSize: 14,
     fontWeight: 900,
@@ -359,7 +361,7 @@ export const UI = {
     height: "min(100%, calc(100vh - 154px))",
     display: "grid",
     gridTemplateColumns:
-      "minmax(240px, 0.74fr) minmax(520px, 2.15fr) minmax(210px, 0.58fr)",
+      "minmax(250px, 0.72fr) minmax(560px, 2.25fr) minmax(250px, 0.7fr)",
     gap: 10,
     padding: "5px clamp(6px, .8vw, 10px)",
     overflowX: "hidden",
@@ -379,8 +381,8 @@ export const UI = {
     backgroundAttachment: "local",
   },
   panel: {
-    background: COLORS.surface,
-    border: `1px solid ${COLORS.border}`,
+    background: "linear-gradient(180deg, rgba(255,250,247,.98), rgba(255,255,255,.96))",
+    border: "1px solid rgba(123,47,89,.14)",
     borderRadius: 17,
     boxShadow: "0 18px 46px rgba(60,20,50,.08)",
     transition: "box-shadow 220ms ease, transform 220ms ease",
@@ -479,7 +481,7 @@ export const UI = {
     padding: "6px 8px",
     border: 0,
     borderBottom: `1px solid ${COLORS.border}`,
-    background: COLORS.roseDim,
+    background: "linear-gradient(135deg, rgba(245,200,232,.42), rgba(255,250,247,.92))",
     cursor: "pointer",
     transition: LUXURY_TRANSITION,
   },

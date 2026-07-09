@@ -91,7 +91,7 @@ const STUDIO_CARDS = [
   { id: "polishStudio", title: "Polish", icon: "◐", family: "Finish", legacyTitle: "Polish Studio™" },
   { id: "techniqueStudio", title: "Technique", icon: "◠", family: "Create", legacyTitle: "Technique Studio™" },
   { id: "brushStudio", title: "Brush", icon: "✎", family: "Create", legacyTitle: "Brush Studio™" },
-  { id: "stickerStudio", title: "Sticker", icon: "▣", family: "Create", legacyTitle: "Gem Studio™" },
+  { id: "stickerStudio", title: "Sticker", icon: "▣", family: "Create", legacyTitle: "Sticker Studio™" },
   { id: "charmStudio", title: "Charm", icon: "◇", family: "Create", legacyTitle: "Charm Studio™" },
   { id: "topCoatStudio", title: "Top Coat", icon: "◌", family: "Finish", legacyTitle: "Top Coat Studio™" },
 ];
@@ -2810,7 +2810,7 @@ function DesignStudio(_, ref) {
           style={{ ...UI.panel, ...UI.activeStudioPanel }}
         >
           <div style={UI.activeStudioHeader}>
-            <span>{STUDIO_CARDS.find((studio) => studio.id === activeStudio)?.legacyTitle?.replace("™", "") || "Polish Studio"}</span>
+            <span>{STUDIO_CARDS.find((studio) => studio.id === activeStudio)?.legacyTitle || "Polish Studio"}</span>
           </div>
           <div style={UI.activeStudioScroll}>
             <div style={{ display: "none" }}>Art Tools</div>
