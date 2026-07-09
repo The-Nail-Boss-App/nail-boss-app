@@ -143,7 +143,7 @@ assert.doesNotMatch(studio, /Creative Wall™/, "Creative Wall label should not 
 for (const card of [
   "Polish Studio™",
   "Technique Studio™",
-  "Gem Studio™",
+  "Sticker Studio™",
   "Charm Studio™",
   "Brush Studio™",
   "Top Coat Studio™",
@@ -161,7 +161,7 @@ assert.match(
 );
 assert.match(
   studioStyles,
-  /height: "min\(100%, calc\(100vh - 154px\)\)"[\s\S]*gridTemplateColumns:[\s\S]*"minmax\(240px, 0\.74fr\) minmax\(520px, 2\.15fr\) minmax\(210px, 0\.58fr\)"[\s\S]*gap: 10[\s\S]*overflowX: "hidden"/,
+  /height: "min\(100%, calc\(100vh - 154px\)\)"[\s\S]*gridTemplateColumns:[\s\S]*"minmax\(250px, 0\.72fr\) minmax\(560px, 2\.25fr\) minmax\(250px, 0\.7fr\)"[\s\S]*gap: 10[\s\S]*overflowX: "hidden"/,
   "Workspace should reclaim vertical space for Active Studio, expanded Hero Canvas, and Nail Stack columns without horizontal overflow.",
 );
 
