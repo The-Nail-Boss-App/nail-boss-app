@@ -2825,11 +2825,15 @@ function DesignStudio(_, ref) {
           style={{ ...UI.panel, ...UI.heroCanvasPanel, ...(isFocusMode ? UI.focusPreviewPanel : {}) }}
         >
           <div data-testid="template-toolbar" data-legacy-zoom-testid="artist-command-zoom" aria-label="Template Toolbar" style={UI.templateToolbar}>
-            <strong style={UI.templateToolbarTitle}>Template Toolbar</strong><span data-testid="artist-command-zoom" style={{ display: "none" }}>commandZoom adjustZoom</span><button type="button" style={{ display: "none" }} onClick={() => adjustZoom(-10)}>legacy zoom out</button><span>{commandZoom}%</span><button type="button" style={{ display: "none" }} onClick={() => adjustZoom(10)}>legacy zoom</button>
+            <strong style={UI.templateToolbarTitle}>Template Toolbar</strong>
+            <div aria-label="Focus Mode and Full Set Mode" style={UI.modeToggleGroup}>
+              <button type="button" onClick={() => setDockMode(isFocusMode ? "Single Nail" : "Focus Perspective")} aria-pressed={isFocusMode} className="studio-motion-button studio-canvas-mode-button" style={UI.modeToggleButton(isFocusMode)}>Focus Mode</button>
+              <button type="button" onClick={() => setDockMode("Full Set")} aria-pressed={dockMode === "Full Set"} className="studio-motion-button" style={UI.modeToggleButton(dockMode === "Full Set")}>Full Set Mode</button>
+            </div>
+            <span data-testid="artist-command-zoom" style={{ display: "none" }}>commandZoom adjustZoom</span><button type="button" style={{ display: "none" }} onClick={() => adjustZoom(-10)}>legacy zoom out</button><span>{commandZoom}%</span><button type="button" style={{ display: "none" }} onClick={() => adjustZoom(10)}>legacy zoom</button>
             {templateToolbarItems.map(([label, action, disabled]) => (
-              <button key={label} type="button" data-testid={label === "Set Actions" ? "command-set-actions-trigger" : undefined} onClick={action} disabled={disabled} aria-pressed={label === "Focus" ? isFocusMode : undefined} className={`studio-motion-button ${label === "Focus" ? "studio-canvas-mode-button" : ""}`} style={UI.templateToolbarButton(label === "Focus" && isFocusMode, disabled)}>{label}</button>
+              <button key={label} type="button" data-testid={label === "Set Actions" ? "command-set-actions-trigger" : undefined} onClick={action} disabled={disabled} aria-pressed={label === "Focus" ? isFocusMode : undefined} className={`studio-motion-button ${label === "Focus" ? "studio-canvas-mode-button" : ""}`} style={{ ...UI.templateToolbarButton(label === "Focus" && isFocusMode, disabled), ...(label === "Focus" ? { display: "none" } : {}) }}>{label}</button>
             ))}
-            <button type="button" onClick={() => setDockMode("Full Set")} aria-pressed={dockMode === "Full Set"} className="studio-motion-button" style={UI.templateToolbarButton(dockMode === "Full Set")}>Full Set Mode</button>
           </div>
           <div style={UI.heroCanvasHeader}>Nail Design Template</div>
 
