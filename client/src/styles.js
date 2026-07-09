@@ -7,19 +7,23 @@ export const COLORS = {
   // Brand
   plum:        "#3b1f35",
   plumLight:   "#5a3050",
-  rose:        "#f5c8e8",
-  roseDim:     "#f3e8f0",
+  blackCherry: "#5b0f2f",
+  rose:        "#f04f96",
+  roseDim:     "#f5c8e8",
+  cream:       "#fffaf7",
+  softGold:    "#d8a642",
 
   // Surfaces
-  bg:          "#faf8f7",
-  surface:     "#ffffff",
-  border:      "#ede8eb",
+  bg:          "#fffaf7",
+  surface:     "#fffaf7",
+  border:      "#e8cddd",
   borderFocus: "#3b1f35",
 
   // Text
   text:        "#1a1018",
-  textMuted:   "#9c8a96",
-  textFaint:   "#c4b8bf",
+  textMuted:   "#7d6674",
+  textFaint:   "#b89baa",
+  muted:       "#7d6674",
 
   // Status
   statusSent:             "#6b7280",

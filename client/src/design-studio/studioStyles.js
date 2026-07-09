@@ -1,7 +1,7 @@
 import { COLORS, S } from "../styles.js";
 
-const ANITASET_MARBLE_BACKGROUND = "radial-gradient(circle at 20% 8%, rgba(245,200,232,.20), transparent 28%), radial-gradient(circle at 82% 16%, rgba(199,154,93,.14), transparent 24%), linear-gradient(135deg, rgba(59,31,53,.96), rgba(123,47,89,.88) 46%, rgba(250,232,240,.82))";
-const ANITASET_STUDIO_SURFACE = "radial-gradient(circle at 18% 16%, rgba(255,255,255,.82), transparent 20%), radial-gradient(circle at 78% 12%, rgba(245,200,232,.28), transparent 24%), radial-gradient(ellipse at 52% 78%, rgba(199,154,93,.12), transparent 34%), linear-gradient(115deg, rgba(255,255,255,.18) 0 12%, transparent 12% 25%, rgba(123,47,89,.025) 25% 26%, transparent 26% 48%, rgba(255,255,255,.16) 48% 60%, transparent 60%), linear-gradient(135deg, #fffaf7 0%, #fbf1f6 46%, #f7e8f1 100%)";
+const ANITASET_MARBLE_BACKGROUND = "radial-gradient(circle at 18% 10%, rgba(240,79,150,.18), transparent 30%), radial-gradient(circle at 84% 18%, rgba(216,166,66,.16), transparent 24%), linear-gradient(135deg, #120914 0%, #3B1F35 45%, #5B0F2F 100%)";
+const ANITASET_STUDIO_SURFACE = "radial-gradient(circle at 22% 12%, rgba(255,255,255,.82), transparent 22%), radial-gradient(circle at 78% 24%, rgba(245,200,232,.22), transparent 28%), linear-gradient(118deg, transparent 0 18%, rgba(216,166,66,.22) 18.15%, transparent 18.55% 39%, rgba(216,166,66,.16) 39.15%, transparent 39.45% 62%, rgba(216,166,66,.18) 62.15%, transparent 62.55%), linear-gradient(135deg, #fffaf7 0%, #fbf1ed 48%, #f6e7ef 100%)";
 
 const LUXURY_TRANSITION = "transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease, background 180ms ease, color 180ms ease, opacity 180ms ease";
 
@@ -244,10 +244,10 @@ export const UI = {
     display: "flex",
     alignItems: "center",
     gap: 10,
-    minHeight: 58,
-    padding: "10px 14px",
+    minHeight: 72,
+    padding: "14px 18px",
     borderBottom: "1px solid rgba(123,47,89,.16)",
-    background: "linear-gradient(135deg, rgba(255,250,247,.98), rgba(253,241,247,.96))",
+    background: "linear-gradient(135deg, rgba(255,250,247,.99), rgba(245,200,232,.30))",
     boxShadow: "0 14px 30px rgba(60,20,50,.08)",
     flexWrap: "nowrap",
     overflowX: "auto",
@@ -259,7 +259,7 @@ export const UI = {
   },
   templateToolbarTitle: {
     color: COLORS.plum,
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: 950,
     letterSpacing: ".14em",
     textTransform: "uppercase",
@@ -296,9 +296,9 @@ export const UI = {
     background: active ? COLORS.roseDim : "#fff",
     color: disabled ? COLORS.textFaint : active ? COLORS.plum : COLORS.text,
     borderRadius: 999,
-    minHeight: 38,
-    padding: "8px 13px",
-    fontSize: 12,
+    minHeight: 44,
+    padding: "10px 16px",
+    fontSize: 13,
     fontWeight: 900,
     cursor: disabled ? "not-allowed" : "pointer",
     opacity: disabled ? 0.55 : 1,
@@ -592,7 +592,7 @@ export const UI = {
     height: "100%",
     display: "grid",
     placeItems: "center",
-    padding: 18,
+    padding: 0,
   },
   focusPreviewPanel: {
     maxHeight: "calc(100vh - 154px)",

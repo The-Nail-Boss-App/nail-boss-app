@@ -2849,6 +2849,7 @@ function DesignStudio(_, ref) {
               {dockMode === "Full Set" ? (
                 <div style={UI.fullSetHeroPreview}>
                   <FullSetPreview
+                    hero
                     blueprint={blueprint}
                     activeNailId={activeNail.id}
                     onSelectSlot={selectSlot}

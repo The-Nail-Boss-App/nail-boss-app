@@ -1670,15 +1670,15 @@ export default function NailShop() {
     <main style={styles.page} aria-labelledby="nail-shop-title">
       <section style={styles.hero}>
         <p style={styles.kicker}>Business workspace</p>
-        <h1 id="nail-shop-title" style={styles.title}>Nail Shop</h1>
+        <h1 id="nail-shop-title" style={styles.title}>Nail Shop™</h1>
         <p style={styles.subtitle}>
-          Start shaping a public-facing storefront profile for your nail business. This is frontend-only
+          Start shaping a public-facing Nail Shop™ profile for your nail business. This is frontend-only
           customization saved to this browser with localStorage, so it is safe to experiment without saving changes to a backend.
         </p>
       </section>
 
       <section style={styles.workspace} aria-label="Nail Shop profile customization">
-        <aside style={styles.previewPanel} aria-label="Live storefront preview" data-testid="nail-shop-preview">
+        <aside style={styles.previewPanel} aria-label="Live Nail Shop™ preview" data-testid="nail-shop-preview">
           <div style={{ ...styles.previewHero, background: primaryColor }}>
             <div style={{ ...styles.previewBadge, color: primaryColor, background: accentColor }}>
               Live Preview
@@ -1729,11 +1729,11 @@ export default function NailShop() {
         </nav>
 
         {activeSection === 'profile' && (
-        <form style={styles.editor} aria-label="Edit storefront profile">
+        <form style={styles.editor} aria-label="Edit Nail Shop™ profile">
           <div style={styles.panelHeader}>
             <div>
               <p style={styles.kicker}>Profile details</p>
-              <h2 style={styles.sectionTitle}>Customize your storefront</h2>
+              <h2 style={styles.sectionTitle}>Customize your Nail Shop™</h2>
             </div>
             <div style={styles.headerActions}>
               <button type="button" onClick={saveProfile} style={styles.saveButton} data-testid="nail-shop-save">
@@ -1946,7 +1946,7 @@ export default function NailShop() {
             <div>
               <p style={styles.kicker}>Visual verification only</p>
               <h2 style={styles.sectionTitle}>Full Set Renderer Preview</h2>
-              <p style={styles.readinessIntro}>Reusable renderer sandbox only. Not connected to proposals, blueprints, storefront products, gallery, or Design Studio state.</p>
+              <p style={styles.readinessIntro}>Reusable renderer sandbox only. Not connected to proposals, blueprints, Nail Shop™ products, gallery, or Design Studio state.</p>
             </div>
           </div>
           <div style={styles.rendererHeroShowcase}>

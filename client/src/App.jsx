@@ -186,7 +186,10 @@ export default function App() {
         fontSize: 13,
         color: 'rgba(255,255,255,0.7)',
       }}>
-        <div style={{ fontWeight: 600, color: '#fff', marginBottom: 6, display: isDesignStudioSidebarCollapsed ? 'none' : 'block' }}>{techName}</div>
+        <div aria-label="Signature Nail artist identity" title="Signature Nail™" style={{ display: 'grid', placeItems: isDesignStudioSidebarCollapsed ? 'center' : 'start', marginBottom: 10 }}>
+          <div style={{ width: isDesignStudioSidebarCollapsed ? 30 : 54, height: isDesignStudioSidebarCollapsed ? 70 : 116, borderRadius: '50% 50% 46% 46% / 12% 12% 88% 88%', background: 'linear-gradient(90deg, rgba(255,255,255,.7), transparent 18%), linear-gradient(135deg, #f04f96, #5b0f2f)', boxShadow: '0 18px 24px rgba(0,0,0,.30), inset -10px 0 18px rgba(59,31,53,.22)', border: '1px solid rgba(216,166,66,.72)' }} />
+        </div>
+        <div style={{ fontWeight: 600, color: '#fff', marginBottom: 6, display: isDesignStudioSidebarCollapsed ? 'none' : 'block' }}>Signature Nail™</div>
         <button
           aria-label="Sign out"
           onClick={handleLogout}
