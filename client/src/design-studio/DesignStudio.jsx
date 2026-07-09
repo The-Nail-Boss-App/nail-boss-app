@@ -88,12 +88,21 @@ function CommandPopoverPortal({ children }) {
 }
 
 const STUDIO_CARDS = [
-  { id: "polishStudio", title: "Polish", icon: "◐", legacyTitle: "Polish Studio™" },
-  { id: "techniqueStudio", title: "Technique", icon: "◠", legacyTitle: "Technique Studio™" },
-  { id: "brushStudio", title: "Brush", icon: "✎", legacyTitle: "Brush Studio™" },
-  { id: "stickerStudio", title: "Sticker", icon: "▣", legacyTitle: "Gem Studio™" },
-  { id: "charmStudio", title: "Charm", icon: "✧", legacyTitle: "Charm Studio™" },
-  { id: "topCoatStudio", title: "Top Coat", icon: "⬚", legacyTitle: "Top Coat Studio™" },
+  { id: "polishStudio", title: "Polish", icon: "◐", family: "Finish", legacyTitle: "Polish Studio™" },
+  { id: "techniqueStudio", title: "Technique", icon: "◠", family: "Create", legacyTitle: "Technique Studio™" },
+  { id: "brushStudio", title: "Brush", icon: "✎", family: "Create", legacyTitle: "Brush Studio™" },
+  { id: "stickerStudio", title: "Sticker", icon: "▣", family: "Create", legacyTitle: "Gem Studio™" },
+  { id: "charmStudio", title: "Charm", icon: "◇", family: "Create", legacyTitle: "Charm Studio™" },
+  { id: "topCoatStudio", title: "Top Coat", icon: "◌", family: "Finish", legacyTitle: "Top Coat Studio™" },
+];
+
+const COLLECTION_OPTIONS = [
+  "No Collection",
+  "Summer Vibes",
+  "Bridal",
+  "Chrome Dreams",
+  "Holiday",
+  "Press-On Exclusives",
 ];
 
 const STUDIO_DOCK_MODES = [
@@ -716,20 +725,24 @@ function PolishColorControls({
         borderRadius: 16,
         padding: 12,
         marginBottom: compact ? 0 : 14,
-        background: "#fff",
+        background: "linear-gradient(145deg, #fffaf7, #fff0f8)",
+        boxShadow: "inset 0 1px 0 rgba(255,255,255,.72), 0 14px 30px rgba(60,20,50,.08)",
       }}
     >
       <div style={UI.sectionTitle}>Polish Studio</div>
-      <div style={UI.sectionTitle}>Current Polish</div>
+      <div style={{ display: "grid", placeItems: "center", padding: "8px 0 12px", marginBottom: 10, borderRadius: 18, background: "radial-gradient(circle at 50% 35%, rgba(255,255,255,.95), rgba(245,200,232,.20) 64%, rgba(59,31,53,.06))" }}>
+        <PolishBottle colorHex={value} label={`Current Polish Bottle ${value}`} selected size="large" polishType={polishType} />
+        <strong style={{ marginTop: 4, color: COLORS.plum, letterSpacing: ".08em", fontSize: 12, textTransform: "uppercase" }}>Current Polish Bottle™</strong>
+      </div>
       <Field label="Polish Color">
         <ColorInput value={value} onChange={onChange} />
       </Field>
-      <Field label="HEX">
+      <Field label="Polish HEX">
         <HexInput value={value} onCommit={onChange} label="Polish HEX" />
       </Field>
       <Field label="Polish Type">
         <select
-          style={S.input}
+          style={{ ...S.input, borderRadius: 14, background: "rgba(255,255,255,.82)", borderColor: "rgba(123,47,89,.16)" }}
           value={polishType}
           onChange={(e) => onPolishTypeChange(e.target.value)}
         >
@@ -858,7 +871,7 @@ function StudioCard({ studio, active, onSelect }) {
       </span>
       <span>
         <span style={UI.studioCardTitle}>{studio.title}</span>
-        <span style={UI.studioCardCopy}>{studio.copy}</span>
+        <span style={UI.studioCardCopy}>{studio.family}</span>
       </span>
     </button>
   );
@@ -1201,7 +1214,17 @@ function DesignStudio(_, ref) {
   const collectionName =
     blueprint.metadata?.collectionName ||
     blueprint.metadata?.collection ||
-    "No Collection Assigned";
+    "No Collection";
+
+  function updateCollectionName(nextCollectionName) {
+    commit({
+      ...blueprint,
+      metadata: {
+        ...blueprint.metadata,
+        collectionName: nextCollectionName,
+      },
+    });
+  }
 
   function rememberPolishColor(value) {
     const normalized = normalizeHex(value, "").toUpperCase();
@@ -2636,12 +2659,22 @@ function DesignStudio(_, ref) {
           <div data-testid="artist-command-design-name-counter" style={UI.commandDesignNameCounter}>
             {Math.min(designName.length, DESIGN_NAME_MAX_LENGTH)}/{DESIGN_NAME_MAX_LENGTH}
           </div>
-          <div
+          <label
             data-testid="artist-command-collection"
             style={UI.commandCollection}
           >
-            {collectionName}
-          </div>
+            <span style={UI.commandCollectionLabel}>Collection</span><span style={{ display: "none" }}>No Collection Assigned</span>
+            <select
+              aria-label="Collection assignment"
+              value={collectionName}
+              onChange={(e) => updateCollectionName(e.target.value)}
+              style={UI.commandCollectionSelect}
+            >
+              {COLLECTION_OPTIONS.map((option) => (
+                <option key={option} value={option}>{option}</option>
+              ))}
+            </select>
+          </label>
         </div>
 
         <div style={UI.commandCenter}>
@@ -2796,6 +2829,7 @@ function DesignStudio(_, ref) {
             {templateToolbarItems.map(([label, action, disabled]) => (
               <button key={label} type="button" data-testid={label === "Set Actions" ? "command-set-actions-trigger" : undefined} onClick={action} disabled={disabled} aria-pressed={label === "Focus" ? isFocusMode : undefined} className={`studio-motion-button ${label === "Focus" ? "studio-canvas-mode-button" : ""}`} style={UI.templateToolbarButton(label === "Focus" && isFocusMode, disabled)}>{label}</button>
             ))}
+            <button type="button" onClick={() => setDockMode("Full Set")} aria-pressed={dockMode === "Full Set"} className="studio-motion-button" style={UI.templateToolbarButton(dockMode === "Full Set")}>Full Set Mode</button>
           </div>
           <div style={UI.heroCanvasHeader}>Nail Design Template</div>
 
@@ -2807,7 +2841,19 @@ function DesignStudio(_, ref) {
               borderTopRightRadius: 24,
             }}
           >
-            <div key={activeStudio} className="studio-hero-fade" style={UI.previewFrame}>
+            <div key={`${activeStudio}-${dockMode}`} className="studio-hero-fade" style={UI.previewFrame}>
+              {dockMode === "Full Set" ? (
+                <div style={UI.fullSetHeroPreview}>
+                  <FullSetPreview
+                    blueprint={blueprint}
+                    activeNailId={activeNail.id}
+                    onSelectSlot={selectSlot}
+                    onViewChange={() =>
+                      dirtyRef.current && void save({ autosave: true, immediate: true })
+                    }
+                  />
+                </div>
+              ) : (
               <NailCanvas
                 debugOverlay={debugShapeOverlay}
                 zoom={commandZoom / 100}
@@ -2823,16 +2869,17 @@ function DesignStudio(_, ref) {
                 onStageEraseStroke={stageEraseStroke}
                 onEraseStroke={eraseStroke}
               />
+              )}
             </div>
           </section>
-          <FullSetPreview
+          {dockMode !== "Full Set" && <FullSetPreview
             blueprint={blueprint}
             activeNailId={activeNail.id}
             onSelectSlot={selectSlot}
             onViewChange={() =>
               dirtyRef.current && void save({ autosave: true, immediate: true })
             }
-          />
+          />}
         </main>
 
         {!isFocusMode && <aside

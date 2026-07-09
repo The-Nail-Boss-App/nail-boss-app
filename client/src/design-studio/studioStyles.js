@@ -1,6 +1,7 @@
 import { COLORS, S } from "../styles.js";
 
-const ANITASET_MARBLE_BACKGROUND = "linear-gradient(135deg, rgba(255,255,255,.92), rgba(250,247,252,.88)), radial-gradient(circle at 18% 12%, rgba(255,255,255,.95), transparent 24%), radial-gradient(circle at 78% 18%, rgba(123,47,89,.08), transparent 28%), repeating-linear-gradient(118deg, rgba(120,111,120,.10) 0 1px, transparent 1px 34px), repeating-linear-gradient(36deg, rgba(255,255,255,.44) 0 1px, transparent 1px 46px)";
+const ANITASET_MARBLE_BACKGROUND = "radial-gradient(circle at 20% 8%, rgba(245,200,232,.20), transparent 28%), radial-gradient(circle at 82% 16%, rgba(199,154,93,.14), transparent 24%), linear-gradient(135deg, rgba(59,31,53,.96), rgba(123,47,89,.88) 46%, rgba(250,232,240,.82))";
+const ANITASET_STUDIO_SURFACE = "linear-gradient(rgba(255,250,247,.86), rgba(255,244,251,.82)), radial-gradient(circle at 50% 26%, rgba(255,255,255,.96), transparent 28%), repeating-linear-gradient(0deg, rgba(123,47,89,.055) 0 1px, transparent 1px 34px), repeating-linear-gradient(90deg, rgba(123,47,89,.045) 0 1px, transparent 1px 34px), linear-gradient(135deg, #fffaf7, #f7e8f1)";
 
 const LUXURY_TRANSITION = "transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease, background 180ms ease, color 180ms ease, opacity 180ms ease";
 
@@ -35,7 +36,7 @@ export const UI = {
     alignItems: "center",
     padding: "4px clamp(8px, 1vw, 12px)",
     borderBottom: "1px solid rgba(123,47,89,.14)",
-    background: "linear-gradient(135deg, #fffaf7 0%, #fff 48%, #fff4fb 100%)",
+    background: "linear-gradient(135deg, #3B1F35 0%, #7B2F59 52%, #F5C8E8 140%)",
     boxShadow: "0 12px 32px rgba(60,20,50,.07)",
     flexWrap: "wrap",
   },
@@ -45,7 +46,7 @@ export const UI = {
     fontSize: 18,
     letterSpacing: ".16em",
     textTransform: "uppercase",
-    color: COLORS.plum,
+    color: "#fff7fb",
     fontWeight: 800,
     marginBottom: 3,
   },
@@ -62,7 +63,7 @@ export const UI = {
     border: 0,
     outline: 0,
     background: "transparent",
-    color: COLORS.text,
+    color: "#fffaf7",
     fontFamily: "Georgia, serif",
     fontSize: "clamp(15px, 1.9vw, 22px)",
     lineHeight: 1,
@@ -77,7 +78,7 @@ export const UI = {
   },
   commandDesignNameCounter: {
     marginTop: 1,
-    color: COLORS.textMuted,
+    color: "rgba(255,250,247,.70)",
     fontSize: 12,
     fontWeight: 800,
     letterSpacing: ".08em",
@@ -85,12 +86,29 @@ export const UI = {
     textAlign: "right",
   },
   commandCollection: {
-    marginTop: 2,
-    color: COLORS.textMuted,
-    fontSize: 11,
-    letterSpacing: ".16em",
+    marginTop: 5,
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 7,
+    maxWidth: "100%",
+    color: "#fff7fb",
+    fontSize: 10,
+    letterSpacing: ".14em",
     textTransform: "uppercase",
-    fontWeight: 800,
+    fontWeight: 900,
+  },
+  commandCollectionLabel: { opacity: .78 },
+  commandCollectionSelect: {
+    minWidth: 160,
+    border: "1px solid rgba(255,214,232,.38)",
+    borderRadius: 999,
+    padding: "6px 28px 6px 10px",
+    background: "rgba(255,250,247,.14)",
+    color: "#fff7fb",
+    fontSize: 11,
+    fontWeight: 900,
+    letterSpacing: ".04em",
+    outline: 0,
   },
   commandCenter: {
     display: "flex",
@@ -304,7 +322,7 @@ export const UI = {
     gap: 6,
     padding: "6px clamp(10px, 1.3vw, 14px)",
     borderBottom: "1px solid rgba(123,47,89,.12)",
-    background: "linear-gradient(90deg, #fff, #fff7fb)",
+    background: "linear-gradient(90deg, #2f182b, #5a3050 58%, #7B2F59)",
     overflowX: "auto",
     overflowY: "hidden",
     boxSizing: "border-box",
@@ -377,7 +395,7 @@ export const UI = {
   stickyPreview: {
     position: "relative",
     zIndex: 2,
-    background: ANITASET_MARBLE_BACKGROUND,
+    background: ANITASET_STUDIO_SURFACE,
     flex: "1 1 auto",
     minHeight: "clamp(520px, calc(100vh - 300px), 820px)",
     padding: "0",
@@ -504,8 +522,8 @@ export const UI = {
     border: `1px solid ${active ? COLORS.plum : "rgba(123,47,89,.16)"}`,
     borderRadius: 18,
     background: active
-      ? "linear-gradient(135deg, #fff0f8, #fff)"
-      : "linear-gradient(135deg, #fff, #fff8fb)",
+      ? "linear-gradient(135deg, #F5C8E8, #fff7fb)"
+      : "linear-gradient(135deg, rgba(255,250,247,.95), rgba(245,200,232,.18))",
     color: COLORS.text,
     textAlign: "left",
     cursor: "pointer",
@@ -542,6 +560,12 @@ export const UI = {
     lineHeight: 1.18,
     color: COLORS.textMuted,
   },
+  fullSetHeroPreview: {
+    height: "100%",
+    display: "grid",
+    placeItems: "center",
+    padding: 18,
+  },
   focusPreviewPanel: {
     maxHeight: "calc(100vh - 154px)",
   },
@@ -575,7 +599,7 @@ export const UI = {
     overflow: "visible",
     minWidth: 0,
     border: "1px solid rgba(123,47,89,.12)",
-    background: ANITASET_MARBLE_BACKGROUND,
+    background: ANITASET_STUDIO_SURFACE,
     transition: "box-shadow 220ms ease, border-color 220ms ease",
   },
   heroCanvasHeader: {
