@@ -360,10 +360,9 @@ export const UI = {
     minHeight: 0,
     height: "min(100%, calc(100vh - 154px))",
     display: "grid",
-    gridTemplateColumns:
-      "minmax(250px, 0.72fr) minmax(560px, 2.25fr) minmax(250px, 0.7fr)",
-    gap: 10,
-    padding: "5px clamp(6px, .8vw, 10px)",
+    gridTemplateColumns: "minmax(220px, 22fr) minmax(0, 58fr) minmax(210px, 20fr)",
+    gap: 8,
+    padding: "4px clamp(5px, .7vw, 8px)",
     overflowX: "hidden",
     overflow: "hidden",
     alignItems: "stretch",
@@ -425,7 +424,7 @@ export const UI = {
     zIndex: 2,
     background: ANITASET_STUDIO_SURFACE,
     flex: "1 1 auto",
-    minHeight: "clamp(520px, calc(100vh - 300px), 820px)",
+    minHeight: "clamp(500px, calc(100vh - 286px), 860px)",
     padding: "0",
     display: "grid",
     placeItems: "stretch",
@@ -590,8 +589,9 @@ export const UI = {
   },
   fullSetHeroPreview: {
     height: "100%",
+    minHeight: 0,
     display: "grid",
-    placeItems: "center",
+    placeItems: "stretch",
     padding: 0,
   },
   focusPreviewPanel: {

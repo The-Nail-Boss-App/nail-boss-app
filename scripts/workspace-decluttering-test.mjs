@@ -161,8 +161,8 @@ assert.match(
 );
 assert.match(
   studioStyles,
-  /height: "min\(100%, calc\(100vh - 154px\)\)"[\s\S]*gridTemplateColumns:[\s\S]*"minmax\(250px, 0\.72fr\) minmax\(560px, 2\.25fr\) minmax\(250px, 0\.7fr\)"[\s\S]*gap: 10[\s\S]*overflowX: "hidden"/,
-  "Workspace should reclaim vertical space for Active Studio, expanded Hero Canvas, and Nail Stack columns without horizontal overflow.",
+  /height: "min\(100%, calc\(100vh - 154px\)\)"[\s\S]*gridTemplateColumns: "minmax\(220px, 22fr\) minmax\(0, 58fr\) minmax\(210px, 20fr\)"[\s\S]*gap: 8[\s\S]*overflowX: "hidden"/,
+  "Workspace should implement the approved 22/58/20 Active Studio, Hero Canvas, and Nail Stack geometry without horizontal overflow.",
 );
 
 assert.match(
@@ -182,8 +182,8 @@ assert.match(
 );
 assert.match(
   studioStyles,
-  /stickyPreview:[\s\S]*minHeight: "clamp\(520px, calc\(100vh - 300px\), 820px\)"[\s\S]*placeItems: "stretch"[\s\S]*overflow: "hidden"/,
-  "Hero Canvas should receive increased clamp-based vertical room while bounding zoomed content.",
+  /stickyPreview:[\s\S]*minHeight: "clamp\(500px, calc\(100vh - 286px\), 860px\)"[\s\S]*display: "grid"/,
+  "Hero Canvas should receive increased clamp-based vertical room for the dominant Nail Design Template.",
 );
 
 assert.match(
@@ -250,7 +250,7 @@ assert.match(
 );
 assert.match(
   nailCanvas,
-  /const HERO_CANVAS_SAFE_PADDING = "clamp\(10px, 1\.6vh, 18px\) 18px clamp\(18px, 2\.6vh, 28px\)"/,
+  /const HERO_CANVAS_SAFE_PADDING = "clamp\(8px, 1\.2vh, 14px\) clamp\(10px, 1\.2vw, 16px\)"/,
   "Hero Canvas should use balanced safe padding so the full nail can center without tip crop.",
 );
 assert.match(
