@@ -4,7 +4,7 @@ import Login from './Login';
 import Dashboard from './Dashboard';
 import DesignStudio from './DesignStudio';
 import Proposals from './Proposals';
-import NailShop, { NailShopPreview } from './NailShop';
+import NailShop from './NailShop';
 
 class ProtectedAppErrorBoundary extends Component {
   constructor(props) {
@@ -46,12 +46,6 @@ class ProtectedAppErrorBoundary extends Component {
   }
 }
 
-const SAFE_REVIEW_PATHS = new Set(['/nail-shop-preview', '/nail-shop-preview/']);
-
-const isSafeNailShopPreviewPath = () => (
-  typeof window !== 'undefined' && SAFE_REVIEW_PATHS.has(window.location.pathname)
-);
-
 // ── Pages enum ───────────────────────────────────────────
 const PAGES = {
   LOGIN: 'login',
@@ -63,14 +57,6 @@ const PAGES = {
 
 // ── App Shell ────────────────────────────────────────────
 export default function App() {
-  if (isSafeNailShopPreviewPath()) {
-    return (
-      <ProtectedAppErrorBoundary boundaryKey="nail-shop-preview-route">
-        <NailShopPreview />
-      </ProtectedAppErrorBoundary>
-    );
-  }
-
   const [page, setPage] = useState(PAGES.LOGIN);
   const [techName, setTechName] = useState('');
   const [sidebarExpanded, setSidebarExpanded] = useState(false);
