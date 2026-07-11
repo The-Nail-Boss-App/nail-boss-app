@@ -1,5 +1,6 @@
 import React from 'react';
 import SignatureNail from './SignatureNail';
+import PublicTabs from './PublicTabs';
 import { nailShopPublicMediaStyles, nailShopPublicStyles as styles } from './nailShopPublicStyles';
 
 const DEFAULT_SHOP_NAME = 'Shop Name Placeholder';
@@ -7,7 +8,6 @@ const DEFAULT_TAGLINE = 'Tagline placeholder for an editorial Nail Shop™ prese
 const DEFAULT_LOCATION = 'Location Placeholder';
 
 const displayCards = ['Velvet Plum Set', 'Black Cherry Gloss', 'Cream Rose Marble', 'Soft Gold Detail'];
-const tabs = ['Overview', 'Services', 'Shop', 'Gallery', 'About'];
 
 export function NailShopPublicShell({
   shopName = DEFAULT_SHOP_NAME,
@@ -48,11 +48,7 @@ export function NailShopPublicShell({
           </div>
         </section>
 
-        <nav style={styles.tabs} aria-label="Public Nail Shop sections">
-          {tabs.map((tab) => (
-            <button key={tab} type="button" style={styles.tab}>{tab}</button>
-          ))}
-        </nav>
+        <PublicTabs />
 
         <section style={{ ...styles.panel, ...styles.tabContent }} className="nail-shop-public-panel" aria-label="Selected Nail Shop tab content">
           <p>Polished public tab content placeholder.</p>
