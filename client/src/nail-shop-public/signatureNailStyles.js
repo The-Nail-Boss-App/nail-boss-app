@@ -1,0 +1,90 @@
+export const signatureNailStyles = {
+  frame: (size = 220) => ({
+    width: size,
+    maxWidth: '100%',
+    display: 'grid',
+    justifyItems: 'center',
+    gap: 14,
+    color: '#fff7ed',
+    fontFamily: 'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+  }),
+  stage: (size = 220) => ({
+    position: 'relative',
+    width: size,
+    height: Math.round(size * 1.34),
+    display: 'grid',
+    placeItems: 'center',
+    borderRadius: Math.round(size * 0.28),
+    overflow: 'hidden',
+    background:
+      'radial-gradient(circle at 24% 18%, rgba(247, 211, 146, 0.34), transparent 28%), linear-gradient(145deg, #21091b 0%, #3d0924 44%, #12070f 100%)',
+    boxShadow:
+      '0 26px 60px rgba(18, 7, 15, 0.42), inset 0 1px 0 rgba(255, 246, 226, 0.16)',
+  }),
+  aura: {
+    position: 'absolute',
+    inset: '11% 7% 8%',
+    borderRadius: '999px',
+    background:
+      'radial-gradient(circle at 50% 38%, rgba(248, 214, 153, 0.28), rgba(107, 14, 56, 0.16) 42%, transparent 70%)',
+    filter: 'blur(4px)',
+  },
+  nail: (size = 220) => ({
+    position: 'relative',
+    width: Math.round(size * 0.44),
+    height: Math.round(size * 0.95),
+    borderRadius: '50% 50% 47% 47% / 12% 12% 64% 64%',
+    clipPath: 'polygon(50% 0%, 70% 6%, 86% 24%, 94% 60%, 84% 88%, 50% 100%, 16% 88%, 6% 60%, 14% 24%, 30% 6%)',
+    background:
+      'linear-gradient(108deg, #fff1d0 0%, #c88a96 13%, #6e123f 36%, #24071c 62%, #8f1b4b 83%, #f5d38f 100%)',
+    boxShadow:
+      '0 22px 36px rgba(12, 3, 11, 0.54), inset 10px 0 18px rgba(255, 242, 214, 0.18), inset -14px 0 22px rgba(0, 0, 0, 0.32)',
+    transform: 'rotate(2deg)',
+  }),
+  reflection: {
+    position: 'absolute',
+    top: '9%',
+    left: '25%',
+    width: '16%',
+    height: '55%',
+    borderRadius: '999px',
+    background: 'linear-gradient(180deg, rgba(255,255,255,0.62), rgba(255,255,255,0.08), transparent)',
+    filter: 'blur(0.4px)',
+    transform: 'rotate(6deg)',
+  },
+  goldEdge: {
+    position: 'absolute',
+    inset: '3% 7% 6%',
+    borderRadius: 'inherit',
+    border: '1px solid rgba(248, 214, 153, 0.5)',
+    boxShadow: 'inset 0 0 14px rgba(248, 214, 153, 0.18)',
+  },
+  text: {
+    display: 'grid',
+    gap: 4,
+    textAlign: 'center',
+  },
+  eyebrow: {
+    margin: 0,
+    color: '#f7d392',
+    fontSize: 11,
+    fontWeight: 700,
+    letterSpacing: '0.18em',
+    textTransform: 'uppercase',
+  },
+  title: {
+    margin: 0,
+    color: '#fff7ed',
+    fontFamily: 'Georgia, "Times New Roman", serif',
+    fontSize: 24,
+    lineHeight: 1.05,
+    letterSpacing: '0.01em',
+  },
+  subtitle: {
+    margin: 0,
+    maxWidth: 260,
+    color: 'rgba(255, 247, 237, 0.74)',
+    fontSize: 13,
+    lineHeight: 1.5,
+  },
+};
