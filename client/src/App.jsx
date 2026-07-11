@@ -4,7 +4,7 @@ import Login from './Login';
 import Dashboard from './Dashboard';
 import DesignStudio from './DesignStudio';
 import Proposals from './Proposals';
-import NailShop, { NailShopPreview } from './NailShop';
+import NailShop from './NailShop';
 
 class ProtectedAppErrorBoundary extends Component {
   constructor(props) {
@@ -65,9 +65,9 @@ const PAGES = {
 export default function App() {
   if (isSafeNailShopPreviewPath()) {
     return (
-      <ProtectedAppErrorBoundary boundaryKey="nail-shop-preview-route">
-        <NailShopPreview />
-      </ProtectedAppErrorBoundary>
+      <main>
+        <h1>Nail Shop Preview Works</h1>
+      </main>
     );
   }
 
