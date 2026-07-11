@@ -1073,6 +1073,61 @@ const SHOP_PRODUCTS = [
 
 const SHOP_GALLERY = ['Velvet French', 'Pearl Aura', 'Gold Foil Bloom', 'Plum Cat Eye', 'Rosewater Chrome', 'Marble Muse'];
 
+export function NailShopPreview() {
+  const [profile] = useState(loadSavedProfile);
+  const [activeBoutiqueTab, setActiveBoutiqueTab] = useState('Overview');
+
+  const preview = {
+    shopName: friendly(profile.shopName, 'Your nail shop name'),
+    tagline: friendly(profile.tagline, 'Add a tagline to welcome clients.'),
+    about: friendly(profile.about, 'Add a short bio so clients know your style, vibe, and specialties.'),
+    location: friendly(profile.location, 'Service area not added yet'),
+  };
+
+  const renderBoutiqueContent = () => {
+    if (activeBoutiqueTab === 'Services') {
+      return <div style={styles.boutiqueCardGrid}>{SHOP_SERVICES.map((service) => <article key={service.title} style={styles.boutiqueCard}><p style={styles.kicker}>Professional service</p><h3 style={styles.boutiqueCardTitle}>{service.title}</h3><p style={styles.boutiquePrice}>{service.price}</p><p style={styles.boutiqueMeta}>{service.duration}</p><button type="button" style={styles.boutiqueGhostButton}>{service.cta}</button></article>)}</div>;
+    }
+    if (activeBoutiqueTab === 'Shop') {
+      return <div style={styles.boutiqueCardGrid}>{SHOP_PRODUCTS.map((product, index) => <article key={product.name} style={styles.boutiqueCard}><div style={styles.productPreview}><FullSetRenderer designData={FULL_SET_RENDERER_SAMPLE} mode={index % 2 ? 'left' : 'hero'} compact /></div><h3 style={styles.boutiqueCardTitle}>{product.name}</h3><p style={styles.boutiquePrice}>{product.price}</p><div style={styles.tagRow}>{product.tags.map((tag) => <span key={tag} style={styles.luxuryTag}>{tag}</span>)}</div><button type="button" style={styles.boutiqueGhostButton}>Preview set</button></article>)}</div>;
+    }
+    if (activeBoutiqueTab === 'Gallery') {
+      return <div style={styles.galleryGrid}>{SHOP_GALLERY.map((item) => <article key={item} style={styles.galleryTile}><FullSetRenderer designData={FULL_SET_RENDERER_SAMPLE} mode="hero" compact /><h3 style={styles.boutiqueCardTitle}>{item}</h3><div style={styles.galleryActions}><button type="button" style={styles.boutiqueGhostButton}>View Look</button><button type="button" style={styles.boutiqueGhostButton}>Save to Look Book</button><button type="button" style={styles.boutiqueGhostButton}>Book this Look</button><button type="button" style={styles.boutiqueGhostButton}>Buy this Set</button></div></article>)}</div>;
+    }
+    if (activeBoutiqueTab === 'About') {
+      return <div style={styles.aboutGrid}><article style={styles.boutiqueCard}><h3 style={styles.boutiqueCardTitle}>Biography</h3><p style={styles.boutiqueBody}>{preview.about}</p></article><article style={styles.boutiqueCard}><h3 style={styles.boutiqueCardTitle}>Artistic style</h3><p style={styles.boutiqueBody}>Editorial almond silhouettes, soft marble movement, black cherry depth, rose gloss, and restrained gold accents.</p></article><article style={styles.boutiqueCard}><h3 style={styles.boutiqueCardTitle}>Service area</h3><p style={styles.boutiqueBody}>{preview.location}</p></article><article style={styles.boutiqueCard}><h3 style={styles.boutiqueCardTitle}>Policies</h3><p style={styles.boutiqueBody}>Consultation, booking, payments, reviews, messaging, analytics, and inventory remain placeholders for Sprint 13B.</p></article></div>;
+    }
+    return <div style={styles.overviewGrid}><section style={styles.boutiqueCard}><p style={styles.kicker}>Featured Looks</p><h3 style={styles.boutiqueCardTitle}>Boutique-ready nail stories</h3><p style={styles.boutiqueBody}>A curated edit of saved AnitaSet designs presented as a luxury retail window, not a social profile.</p></section><section style={styles.boutiqueCard}><p style={styles.kicker}>Artist Introduction</p><h3 style={styles.boutiqueCardTitle}>{preview.shopName}</h3><p style={styles.boutiqueBody}>{preview.tagline}</p></section><section style={styles.boutiqueCard}><p style={styles.kicker}>Style Specialties</p><div style={styles.tagRow}>{['Luxury chrome', 'Almond couture', 'Bridal pearl', 'Black cherry'].map((tag) => <span key={tag} style={styles.luxuryTag}>{tag}</span>)}</div></section><section style={styles.statsRow}>{[['Designs Created','148'],['Clients Served','320'],['Years Creating','6']].map(([label,value]) => <div key={label} style={styles.statCard}><strong>{value}</strong><span>{label}</span></div>)}</section></div>;
+  };
+
+  return (
+    <section style={styles.boutiquePage} aria-labelledby="nail-shop-title" data-testid="nail-shop-boutique">
+      <section style={styles.boutiqueHero}>
+        <div style={styles.heroCopy}>
+          <p style={styles.boutiqueKicker}>Nail Shop™ · Luxury boutique front door</p>
+          <h1 id="nail-shop-title" style={styles.boutiqueTitle}>{preview.shopName}</h1>
+          <p style={styles.boutiqueTagline}>{preview.tagline}</p>
+          <p style={styles.locationLine}>{preview.location}</p>
+          <div style={styles.heroActions}><button type="button" style={styles.boutiquePrimaryButton}>Book this Artist</button><button type="button" style={styles.boutiqueSecondaryButton}>Shop Sets</button></div>
+        </div>
+        <div style={styles.signatureNailShowcase} aria-label="Signature Nail identity">
+          <p style={styles.signatureLabel}>Signature Nail™</p>
+          <div style={styles.signatureNail}><FullSetRenderer designData={FULL_SET_RENDERER_SAMPLE} mode="hero" compact /></div>
+          <p style={styles.signatureNote}>Artist identity rendered from a saved AnitaSet design.</p>
+        </div>
+      </section>
+
+      <section style={styles.displayWindow} aria-labelledby="display-window-title">
+        <div style={styles.windowHeader}><p style={styles.boutiqueKicker}>Front window edit</p><h2 id="display-window-title" style={styles.sectionTitle}>Display Window™</h2></div>
+        <div style={styles.displayWindowGrid}>{DISPLAY_WINDOW_LOOKS.map((look, index) => <article key={look.name} style={styles.windowCard}><div style={{...styles.windowNailPreview, borderColor: look.tone}}><FullSetRenderer designData={FULL_SET_RENDERER_SAMPLE} mode={index % 2 ? 'left' : 'hero'} compact /></div><h3 style={styles.boutiqueCardTitle}>{look.name}</h3><div style={styles.windowActions}><button type="button" style={styles.boutiqueGhostButton}>Book this Look</button><button type="button" style={styles.boutiqueGhostButton}>Buy this Set</button><button type="button" style={styles.boutiqueGhostButton}>Save to Look Book</button></div></article>)}</div>
+      </section>
+
+      <nav style={styles.publicTabs} aria-label="Nail Shop public tabs">{BOUTIQUE_TABS.map((tab) => <button key={tab} type="button" onClick={() => setActiveBoutiqueTab(tab)} style={activeBoutiqueTab === tab ? styles.publicTabActive : styles.publicTab}>{tab}</button>)}</nav>
+      <section style={styles.tabContent} aria-live="polite">{renderBoutiqueContent()}</section>
+    </section>
+  );
+}
+
 export default function NailShop() {
   const [profile, setProfile] = useState(loadSavedProfile);
   const [saveMessage, setSaveMessage] = useState('');
@@ -1708,32 +1763,6 @@ export default function NailShop() {
     return <div style={styles.overviewGrid}><section style={styles.boutiqueCard}><p style={styles.kicker}>Featured Looks</p><h3 style={styles.boutiqueCardTitle}>Boutique-ready nail stories</h3><p style={styles.boutiqueBody}>A curated edit of saved AnitaSet designs presented as a luxury retail window, not a social profile.</p></section><section style={styles.boutiqueCard}><p style={styles.kicker}>Artist Introduction</p><h3 style={styles.boutiqueCardTitle}>{preview.shopName}</h3><p style={styles.boutiqueBody}>{preview.tagline}</p></section><section style={styles.boutiqueCard}><p style={styles.kicker}>Style Specialties</p><div style={styles.tagRow}>{['Luxury chrome', 'Almond couture', 'Bridal pearl', 'Black cherry'].map((tag) => <span key={tag} style={styles.luxuryTag}>{tag}</span>)}</div></section><section style={styles.statsRow}>{[['Designs Created','148'],['Clients Served','320'],['Years Creating','6']].map(([label,value]) => <div key={label} style={styles.statCard}><strong>{value}</strong><span>{label}</span></div>)}</section></div>;
   };
 
-  return (
-    <main style={styles.boutiquePage} aria-labelledby="nail-shop-title" data-testid="nail-shop-boutique">
-      <section style={styles.boutiqueHero}>
-        <div style={styles.heroCopy}>
-          <p style={styles.boutiqueKicker}>Nail Shop™ · Luxury boutique front door</p>
-          <h1 id="nail-shop-title" style={styles.boutiqueTitle}>{preview.shopName}</h1>
-          <p style={styles.boutiqueTagline}>{preview.tagline}</p>
-          <p style={styles.locationLine}>{preview.location}</p>
-          <div style={styles.heroActions}><button type="button" style={styles.boutiquePrimaryButton}>Book this Artist</button><button type="button" style={styles.boutiqueSecondaryButton}>Shop Sets</button></div>
-        </div>
-        <div style={styles.signatureNailShowcase} aria-label="Signature Nail identity">
-          <p style={styles.signatureLabel}>Signature Nail™</p>
-          <div style={styles.signatureNail}><FullSetRenderer designData={FULL_SET_RENDERER_SAMPLE} mode="hero" compact /></div>
-          <p style={styles.signatureNote}>Artist identity rendered from a saved AnitaSet design.</p>
-        </div>
-      </section>
-
-      <section style={styles.displayWindow} aria-labelledby="display-window-title">
-        <div style={styles.windowHeader}><p style={styles.boutiqueKicker}>Front window edit</p><h2 id="display-window-title" style={styles.sectionTitle}>Display Window™</h2></div>
-        <div style={styles.displayWindowGrid}>{DISPLAY_WINDOW_LOOKS.map((look, index) => <article key={look.name} style={styles.windowCard}><div style={{...styles.windowNailPreview, borderColor: look.tone}}><FullSetRenderer designData={FULL_SET_RENDERER_SAMPLE} mode={index % 2 ? 'left' : 'hero'} compact /></div><h3 style={styles.boutiqueCardTitle}>{look.name}</h3><div style={styles.windowActions}><button type="button" style={styles.boutiqueGhostButton}>Book this Look</button><button type="button" style={styles.boutiqueGhostButton}>Buy this Set</button><button type="button" style={styles.boutiqueGhostButton}>Save to Look Book</button></div></article>)}</div>
-      </section>
-
-      <nav style={styles.publicTabs} aria-label="Nail Shop public tabs">{BOUTIQUE_TABS.map((tab) => <button key={tab} type="button" onClick={() => setActiveBoutiqueTab(tab)} style={activeBoutiqueTab === tab ? styles.publicTabActive : styles.publicTab}>{tab}</button>)}</nav>
-      <section style={styles.tabContent} aria-live="polite">{renderBoutiqueContent()}</section>
-    </main>
-  );
 
   return (
     <main style={styles.page} aria-labelledby="nail-shop-title">
