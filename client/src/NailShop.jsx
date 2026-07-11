@@ -1048,86 +1048,6 @@ function GalleryActions({ blueprint, onExploreLook, onSaveToLookBook, onRequestL
   );
 }
 
-
-const BOUTIQUE_TABS = ['Overview', 'Services', 'Shop', 'Gallery', 'About'];
-
-const DISPLAY_WINDOW_LOOKS = [
-  { name: 'Black Cherry Veil', price: '$88', tags: ['Almond', 'Velvet gloss'], tone: '#5b0f2f' },
-  { name: 'Rose Gold Atelier', price: '$96', tags: ['Chrome', 'Soft gold'], tone: '#d8a642' },
-  { name: 'Cream Pearl Muse', price: '$78', tags: ['Milky', 'Bridal'], tone: '#f5c8e8' },
-  { name: 'Plum Couture Aura', price: '$104', tags: ['Aura', 'Editorial'], tone: '#3b1f35' },
-];
-
-const SHOP_SERVICES = [
-  { title: 'Custom Press-On Set', price: '$72+', duration: '7–10 days', cta: 'Request design' },
-  { title: 'Full Set Appointment', price: '$95+', duration: '120 min', cta: 'Book consult' },
-  { title: 'Fill', price: '$58+', duration: '75 min', cta: 'Reserve time' },
-  { title: 'Nail Art Add-On', price: '$18+', duration: '20 min', cta: 'Add artistry' },
-];
-
-const SHOP_PRODUCTS = [
-  { name: 'After Dark Almond Set', price: '$92', tags: ['Ready-to-order', 'Black Cherry', 'Almond'] },
-  { name: 'Fifth Avenue Pearl Set', price: '$86', tags: ['Bridal', 'Cream', 'Short almond'] },
-  { name: 'Rodeo Drive Chrome Set', price: '$108', tags: ['Chrome', 'Soft Gold', 'Statement'] },
-];
-
-const SHOP_GALLERY = ['Velvet French', 'Pearl Aura', 'Gold Foil Bloom', 'Plum Cat Eye', 'Rosewater Chrome', 'Marble Muse'];
-
-export function NailShopPreview() {
-  const [profile] = useState(loadSavedProfile);
-  const [activeBoutiqueTab, setActiveBoutiqueTab] = useState('Overview');
-
-  const preview = {
-    shopName: friendly(profile.shopName, 'Your nail shop name'),
-    tagline: friendly(profile.tagline, 'Add a tagline to welcome clients.'),
-    about: friendly(profile.about, 'Add a short bio so clients know your style, vibe, and specialties.'),
-    location: friendly(profile.location, 'Service area not added yet'),
-  };
-
-  const renderBoutiqueContent = () => {
-    if (activeBoutiqueTab === 'Services') {
-      return <div style={styles.boutiqueCardGrid}>{SHOP_SERVICES.map((service) => <article key={service.title} style={styles.boutiqueCard}><p style={styles.kicker}>Professional service</p><h3 style={styles.boutiqueCardTitle}>{service.title}</h3><p style={styles.boutiquePrice}>{service.price}</p><p style={styles.boutiqueMeta}>{service.duration}</p><button type="button" style={styles.boutiqueGhostButton}>{service.cta}</button></article>)}</div>;
-    }
-    if (activeBoutiqueTab === 'Shop') {
-      return <div style={styles.boutiqueCardGrid}>{SHOP_PRODUCTS.map((product, index) => <article key={product.name} style={styles.boutiqueCard}><div style={styles.productPreview}><FullSetRenderer designData={FULL_SET_RENDERER_SAMPLE} mode={index % 2 ? 'left' : 'hero'} compact /></div><h3 style={styles.boutiqueCardTitle}>{product.name}</h3><p style={styles.boutiquePrice}>{product.price}</p><div style={styles.tagRow}>{product.tags.map((tag) => <span key={tag} style={styles.luxuryTag}>{tag}</span>)}</div><button type="button" style={styles.boutiqueGhostButton}>Preview set</button></article>)}</div>;
-    }
-    if (activeBoutiqueTab === 'Gallery') {
-      return <div style={styles.galleryGrid}>{SHOP_GALLERY.map((item) => <article key={item} style={styles.galleryTile}><FullSetRenderer designData={FULL_SET_RENDERER_SAMPLE} mode="hero" compact /><h3 style={styles.boutiqueCardTitle}>{item}</h3><div style={styles.galleryActions}><button type="button" style={styles.boutiqueGhostButton}>View Look</button><button type="button" style={styles.boutiqueGhostButton}>Save to Look Book</button><button type="button" style={styles.boutiqueGhostButton}>Book this Look</button><button type="button" style={styles.boutiqueGhostButton}>Buy this Set</button></div></article>)}</div>;
-    }
-    if (activeBoutiqueTab === 'About') {
-      return <div style={styles.aboutGrid}><article style={styles.boutiqueCard}><h3 style={styles.boutiqueCardTitle}>Biography</h3><p style={styles.boutiqueBody}>{preview.about}</p></article><article style={styles.boutiqueCard}><h3 style={styles.boutiqueCardTitle}>Artistic style</h3><p style={styles.boutiqueBody}>Editorial almond silhouettes, soft marble movement, black cherry depth, rose gloss, and restrained gold accents.</p></article><article style={styles.boutiqueCard}><h3 style={styles.boutiqueCardTitle}>Service area</h3><p style={styles.boutiqueBody}>{preview.location}</p></article><article style={styles.boutiqueCard}><h3 style={styles.boutiqueCardTitle}>Policies</h3><p style={styles.boutiqueBody}>Consultation, booking, payments, reviews, messaging, analytics, and inventory remain placeholders for Sprint 13B.</p></article></div>;
-    }
-    return <div style={styles.overviewGrid}><section style={styles.boutiqueCard}><p style={styles.kicker}>Featured Looks</p><h3 style={styles.boutiqueCardTitle}>Boutique-ready nail stories</h3><p style={styles.boutiqueBody}>A curated edit of saved AnitaSet designs presented as a luxury retail window, not a social profile.</p></section><section style={styles.boutiqueCard}><p style={styles.kicker}>Artist Introduction</p><h3 style={styles.boutiqueCardTitle}>{preview.shopName}</h3><p style={styles.boutiqueBody}>{preview.tagline}</p></section><section style={styles.boutiqueCard}><p style={styles.kicker}>Style Specialties</p><div style={styles.tagRow}>{['Luxury chrome', 'Almond couture', 'Bridal pearl', 'Black cherry'].map((tag) => <span key={tag} style={styles.luxuryTag}>{tag}</span>)}</div></section><section style={styles.statsRow}>{[['Designs Created','148'],['Clients Served','320'],['Years Creating','6']].map(([label,value]) => <div key={label} style={styles.statCard}><strong>{value}</strong><span>{label}</span></div>)}</section></div>;
-  };
-
-  return (
-    <section style={styles.boutiquePage} aria-labelledby="nail-shop-title" data-testid="nail-shop-boutique">
-      <section style={styles.boutiqueHero}>
-        <div style={styles.heroCopy}>
-          <p style={styles.boutiqueKicker}>Nail Shop™ · Luxury boutique front door</p>
-          <h1 id="nail-shop-title" style={styles.boutiqueTitle}>{preview.shopName}</h1>
-          <p style={styles.boutiqueTagline}>{preview.tagline}</p>
-          <p style={styles.locationLine}>{preview.location}</p>
-          <div style={styles.heroActions}><button type="button" style={styles.boutiquePrimaryButton}>Book this Artist</button><button type="button" style={styles.boutiqueSecondaryButton}>Shop Sets</button></div>
-        </div>
-        <div style={styles.signatureNailShowcase} aria-label="Signature Nail identity">
-          <p style={styles.signatureLabel}>Signature Nail™</p>
-          <div style={styles.signatureNail}><FullSetRenderer designData={FULL_SET_RENDERER_SAMPLE} mode="hero" compact /></div>
-          <p style={styles.signatureNote}>Artist identity rendered from a saved AnitaSet design.</p>
-        </div>
-      </section>
-
-      <section style={styles.displayWindow} aria-labelledby="display-window-title">
-        <div style={styles.windowHeader}><p style={styles.boutiqueKicker}>Front window edit</p><h2 id="display-window-title" style={styles.sectionTitle}>Display Window™</h2></div>
-        <div style={styles.displayWindowGrid}>{DISPLAY_WINDOW_LOOKS.map((look, index) => <article key={look.name} style={styles.windowCard}><div style={{...styles.windowNailPreview, borderColor: look.tone}}><FullSetRenderer designData={FULL_SET_RENDERER_SAMPLE} mode={index % 2 ? 'left' : 'hero'} compact /></div><h3 style={styles.boutiqueCardTitle}>{look.name}</h3><div style={styles.windowActions}><button type="button" style={styles.boutiqueGhostButton}>Book this Look</button><button type="button" style={styles.boutiqueGhostButton}>Buy this Set</button><button type="button" style={styles.boutiqueGhostButton}>Save to Look Book</button></div></article>)}</div>
-      </section>
-
-      <nav style={styles.publicTabs} aria-label="Nail Shop public tabs">{BOUTIQUE_TABS.map((tab) => <button key={tab} type="button" onClick={() => setActiveBoutiqueTab(tab)} style={activeBoutiqueTab === tab ? styles.publicTabActive : styles.publicTab}>{tab}</button>)}</nav>
-      <section style={styles.tabContent} aria-live="polite">{renderBoutiqueContent()}</section>
-    </section>
-  );
-}
-
 export default function NailShop() {
   const [profile, setProfile] = useState(loadSavedProfile);
   const [saveMessage, setSaveMessage] = useState('');
@@ -1145,7 +1065,6 @@ export default function NailShop() {
   const [generatedProposalDraft, setGeneratedProposalDraft] = useState(null);
   const [proposalDraftMessage, setProposalDraftMessage] = useState('');
   const [activeSection, setActiveSection] = useState('profile');
-  const [activeBoutiqueTab, setActiveBoutiqueTab] = useState('Overview');
   const [selectedBlueprintThemeId, setSelectedBlueprintThemeId] = useState('classic');
   const [blueprintThemeOverrides, setBlueprintThemeOverrides] = useState({});
   const [blueprintLibrary, setBlueprintLibrary] = useState(loadSavedBlueprintLibrary);
@@ -1746,23 +1665,6 @@ export default function NailShop() {
     website: friendly(profile.website, 'Website not added yet'),
     bookingLink: friendly(profile.bookingLink, 'Booking link placeholder'),
   };
-
-  const renderBoutiqueContent = () => {
-    if (activeBoutiqueTab === 'Services') {
-      return <div style={styles.boutiqueCardGrid}>{SHOP_SERVICES.map((service) => <article key={service.title} style={styles.boutiqueCard}><p style={styles.kicker}>Professional service</p><h3 style={styles.boutiqueCardTitle}>{service.title}</h3><p style={styles.boutiquePrice}>{service.price}</p><p style={styles.boutiqueMeta}>{service.duration}</p><button type="button" style={styles.boutiqueGhostButton}>{service.cta}</button></article>)}</div>;
-    }
-    if (activeBoutiqueTab === 'Shop') {
-      return <div style={styles.boutiqueCardGrid}>{SHOP_PRODUCTS.map((product, index) => <article key={product.name} style={styles.boutiqueCard}><div style={styles.productPreview}><FullSetRenderer designData={FULL_SET_RENDERER_SAMPLE} mode={index % 2 ? 'left' : 'hero'} compact /></div><h3 style={styles.boutiqueCardTitle}>{product.name}</h3><p style={styles.boutiquePrice}>{product.price}</p><div style={styles.tagRow}>{product.tags.map((tag) => <span key={tag} style={styles.luxuryTag}>{tag}</span>)}</div><button type="button" style={styles.boutiqueGhostButton}>Preview set</button></article>)}</div>;
-    }
-    if (activeBoutiqueTab === 'Gallery') {
-      return <div style={styles.galleryGrid}>{SHOP_GALLERY.map((item) => <article key={item} style={styles.galleryTile}><FullSetRenderer designData={FULL_SET_RENDERER_SAMPLE} mode="hero" compact /><h3 style={styles.boutiqueCardTitle}>{item}</h3><div style={styles.galleryActions}><button type="button" style={styles.boutiqueGhostButton}>View Look</button><button type="button" style={styles.boutiqueGhostButton}>Save to Look Book</button><button type="button" style={styles.boutiqueGhostButton}>Book this Look</button><button type="button" style={styles.boutiqueGhostButton}>Buy this Set</button></div></article>)}</div>;
-    }
-    if (activeBoutiqueTab === 'About') {
-      return <div style={styles.aboutGrid}><article style={styles.boutiqueCard}><h3 style={styles.boutiqueCardTitle}>Biography</h3><p style={styles.boutiqueBody}>{preview.about}</p></article><article style={styles.boutiqueCard}><h3 style={styles.boutiqueCardTitle}>Artistic style</h3><p style={styles.boutiqueBody}>Editorial almond silhouettes, soft marble movement, black cherry depth, rose gloss, and restrained gold accents.</p></article><article style={styles.boutiqueCard}><h3 style={styles.boutiqueCardTitle}>Service area</h3><p style={styles.boutiqueBody}>{preview.location}</p></article><article style={styles.boutiqueCard}><h3 style={styles.boutiqueCardTitle}>Policies</h3><p style={styles.boutiqueBody}>Consultation, booking, payments, reviews, messaging, analytics, and inventory remain placeholders for Sprint 13B.</p></article></div>;
-    }
-    return <div style={styles.overviewGrid}><section style={styles.boutiqueCard}><p style={styles.kicker}>Featured Looks</p><h3 style={styles.boutiqueCardTitle}>Boutique-ready nail stories</h3><p style={styles.boutiqueBody}>A curated edit of saved AnitaSet designs presented as a luxury retail window, not a social profile.</p></section><section style={styles.boutiqueCard}><p style={styles.kicker}>Artist Introduction</p><h3 style={styles.boutiqueCardTitle}>{preview.shopName}</h3><p style={styles.boutiqueBody}>{preview.tagline}</p></section><section style={styles.boutiqueCard}><p style={styles.kicker}>Style Specialties</p><div style={styles.tagRow}>{['Luxury chrome', 'Almond couture', 'Bridal pearl', 'Black cherry'].map((tag) => <span key={tag} style={styles.luxuryTag}>{tag}</span>)}</div></section><section style={styles.statsRow}>{[['Designs Created','148'],['Clients Served','320'],['Years Creating','6']].map(([label,value]) => <div key={label} style={styles.statCard}><strong>{value}</strong><span>{label}</span></div>)}</section></div>;
-  };
-
 
   return (
     <main style={styles.page} aria-labelledby="nail-shop-title">
@@ -2748,96 +2650,6 @@ const styles = {
     whiteSpace: 'nowrap',
     width: 1,
   },
-
-  boutiquePage: {
-    minHeight: '100%',
-    padding: '34px clamp(20px, 4vw, 52px)',
-    background: 'radial-gradient(circle at 14% 4%, rgba(240,79,150,.16), transparent 26%), radial-gradient(circle at 84% 12%, rgba(216,166,66,.18), transparent 24%), linear-gradient(135deg, #fffaf7 0%, #fbf1ed 48%, #f6e7ef 100%)',
-  },
-  boutiqueHero: {
-    display: 'grid',
-    gridTemplateColumns: 'minmax(0, 1.4fr) minmax(280px, .6fr)',
-    gap: 28,
-    alignItems: 'stretch',
-    maxWidth: 1220,
-    margin: '0 auto 28px',
-    padding: 'clamp(28px, 5vw, 56px)',
-    border: '1px solid rgba(216,166,66,.36)',
-    borderRadius: 34,
-    background: 'radial-gradient(circle at 78% 20%, rgba(216,166,66,.24), transparent 22%), linear-gradient(135deg, #3B1F35 0%, #5B0F2F 52%, #1a1018 100%)',
-    boxShadow: '0 30px 80px rgba(60,20,50,.24)',
-    color: COLORS.cream,
-    overflow: 'hidden',
-  },
-  heroCopy: { display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 14 },
-  boutiqueKicker: {
-    color: COLORS.softGold,
-    fontSize: 12,
-    fontWeight: 900,
-    letterSpacing: '.16em',
-    margin: 0,
-    textTransform: 'uppercase',
-  },
-  boutiqueTitle: {
-    fontFamily: 'Georgia, Times, serif',
-    fontSize: 'clamp(42px, 7vw, 86px)',
-    lineHeight: .92,
-    margin: 0,
-    letterSpacing: '-.04em',
-  },
-  boutiqueTagline: { maxWidth: 680, color: 'rgba(255,250,247,.86)', fontSize: 20, lineHeight: 1.55, margin: 0 },
-  locationLine: { color: 'rgba(245,200,232,.86)', fontSize: 14, fontWeight: 800, letterSpacing: '.08em', textTransform: 'uppercase', margin: 0 },
-  heroActions: { display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 10 },
-  boutiquePrimaryButton: { ...S.btnPrimary, background: COLORS.cream, color: COLORS.plum, boxShadow: '0 18px 34px rgba(0,0,0,.18)' },
-  boutiqueSecondaryButton: { ...S.btnSecondary, background: 'rgba(255,250,247,.10)', color: COLORS.cream, border: '1px solid rgba(216,166,66,.55)' },
-  signatureNailShowcase: {
-    display: 'grid',
-    alignContent: 'center',
-    justifyItems: 'center',
-    gap: 12,
-    padding: 22,
-    border: '1px solid rgba(255,250,247,.18)',
-    borderRadius: 28,
-    background: 'linear-gradient(180deg, rgba(255,250,247,.12), rgba(255,250,247,.04))',
-  },
-  signatureLabel: { margin: 0, color: COLORS.softGold, fontWeight: 900, letterSpacing: '.14em', textTransform: 'uppercase', fontSize: 12 },
-  signatureNail: { width: 'min(260px, 100%)', filter: 'drop-shadow(0 24px 30px rgba(0,0,0,.34))' },
-  signatureNote: { margin: 0, color: 'rgba(255,250,247,.76)', textAlign: 'center', fontSize: 13, lineHeight: 1.5 },
-  displayWindow: {
-    maxWidth: 1220,
-    margin: '0 auto 26px',
-    padding: 24,
-    border: '1px solid rgba(123,45,95,.12)',
-    borderRadius: 30,
-    background: 'rgba(255,250,247,.78)',
-    boxShadow: '0 24px 60px rgba(60,20,50,.10)',
-  },
-  windowHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'end', gap: 16, marginBottom: 18 },
-  displayWindowGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 },
-  windowCard: { padding: 16, borderRadius: 24, border: '1px solid rgba(216,166,66,.28)', background: '#fff', boxShadow: '0 18px 42px rgba(60,20,50,.10)' },
-  windowNailPreview: { minHeight: 180, display: 'grid', placeItems: 'center', border: '1px solid', borderRadius: 20, background: 'linear-gradient(135deg, #fffaf7, #f7e8ef)', overflow: 'hidden' },
-  boutiqueCardTitle: { color: COLORS.plum, fontFamily: 'Georgia, Times, serif', fontSize: 22, lineHeight: 1.15, margin: '14px 0 8px' },
-  windowActions: { display: 'grid', gap: 8 },
-  boutiqueGhostButton: { border: '1px solid rgba(123,45,95,.18)', borderRadius: 999, padding: '10px 12px', background: '#fffaf7', color: COLORS.plum, fontSize: 12, fontWeight: 900, cursor: 'pointer' },
-  publicTabs: { maxWidth: 1220, margin: '0 auto', display: 'flex', gap: 10, flexWrap: 'wrap', padding: 8, borderRadius: 999, background: 'rgba(59,31,53,.08)' },
-  publicTab: { border: 0, borderRadius: 999, padding: '12px 18px', background: 'transparent', color: COLORS.plum, fontWeight: 900, cursor: 'pointer' },
-  publicTabActive: { border: 0, borderRadius: 999, padding: '12px 18px', background: COLORS.plum, color: '#fff', fontWeight: 900, cursor: 'pointer', boxShadow: '0 12px 24px rgba(60,20,50,.18)' },
-  tabContent: { maxWidth: 1220, margin: '18px auto 0' },
-  overviewGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 16 },
-  boutiqueCardGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 },
-  boutiqueCard: { padding: 20, borderRadius: 26, border: '1px solid rgba(123,45,95,.12)', background: 'rgba(255,255,255,.84)', boxShadow: '0 18px 44px rgba(60,20,50,.09)' },
-  boutiqueBody: { color: COLORS.textMuted, lineHeight: 1.65, margin: 0 },
-  tagRow: { display: 'flex', gap: 8, flexWrap: 'wrap' },
-  luxuryTag: { borderRadius: 999, padding: '7px 10px', background: 'rgba(216,166,66,.16)', color: COLORS.plum, fontSize: 12, fontWeight: 900 },
-  statsRow: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 },
-  statCard: { padding: 16, borderRadius: 22, background: COLORS.plum, color: '#fff', display: 'grid', gap: 6, textAlign: 'center' },
-  boutiquePrice: { color: COLORS.blackCherry, fontSize: 24, fontWeight: 900, margin: '0 0 4px' },
-  boutiqueMeta: { color: COLORS.textMuted, fontWeight: 800, margin: '0 0 16px' },
-  productPreview: { minHeight: 160, display: 'grid', placeItems: 'center', borderRadius: 20, background: 'linear-gradient(135deg, #fffaf7, #f5c8e8)' },
-  galleryGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: 16 },
-  galleryTile: { padding: 14, borderRadius: 24, background: '#fff', border: '1px solid rgba(123,45,95,.12)', boxShadow: '0 18px 44px rgba(60,20,50,.09)' },
-  galleryActions: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 },
-  aboutGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16 },
 
   page: {
     width: '100%',
