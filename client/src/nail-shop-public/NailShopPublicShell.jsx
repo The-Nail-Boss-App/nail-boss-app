@@ -1,13 +1,12 @@
 import React from 'react';
 import SignatureNail from './SignatureNail';
+import DisplayWindow from './DisplayWindow';
+import PublicTabs from './PublicTabs';
 import { nailShopPublicMediaStyles, nailShopPublicStyles as styles } from './nailShopPublicStyles';
 
 const DEFAULT_SHOP_NAME = 'Shop Name Placeholder';
 const DEFAULT_TAGLINE = 'Tagline placeholder for an editorial Nail Shop™ presence.';
 const DEFAULT_LOCATION = 'Location Placeholder';
-
-const displayCards = ['Velvet Plum Set', 'Black Cherry Gloss', 'Cream Rose Marble', 'Soft Gold Detail'];
-const tabs = ['Overview', 'Services', 'Shop', 'Gallery', 'About'];
 
 export function NailShopPublicShell({
   shopName = DEFAULT_SHOP_NAME,
@@ -35,24 +34,9 @@ export function NailShopPublicShell({
           </div>
         </section>
 
-        <section style={styles.panel} className="nail-shop-public-panel" aria-labelledby="display-window-title">
-          <h2 id="display-window-title" style={styles.sectionTitle}>Display Window™</h2>
-          <div style={styles.displayGrid}>
-            {displayCards.map((name) => (
-              <article key={name} style={styles.card}>
-                <div style={styles.visual} aria-label={`${name} visual placeholder`} />
-                <h3 style={styles.cardTitle}>{name}</h3>
-                <button type="button" style={styles.disabledAction} disabled>Preview coming soon</button>
-              </article>
-            ))}
-          </div>
-        </section>
+        <DisplayWindow />
 
-        <nav style={styles.tabs} aria-label="Public Nail Shop sections">
-          {tabs.map((tab) => (
-            <button key={tab} type="button" style={styles.tab}>{tab}</button>
-          ))}
-        </nav>
+        <PublicTabs />
 
         <section style={{ ...styles.panel, ...styles.tabContent }} className="nail-shop-public-panel" aria-label="Selected Nail Shop tab content">
           <p>Polished public tab content placeholder.</p>
