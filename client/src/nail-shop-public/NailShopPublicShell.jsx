@@ -1,46 +1,54 @@
-import React from 'react';
-import SignatureNail from './SignatureNail';
+import React, { useMemo, useState } from 'react';
+import ShopHeader from './ShopHeader';
 import DisplayWindow from './DisplayWindow';
 import PublicTabs from './PublicTabs';
+import { mockPublicShop } from './mockPublicShop';
 import { nailShopPublicMediaStyles, nailShopPublicStyles as styles } from './nailShopPublicStyles';
 
-const DEFAULT_SHOP_NAME = 'Shop Name Placeholder';
-const DEFAULT_TAGLINE = 'Tagline placeholder for an editorial Nail Shop™ presence.';
-const DEFAULT_LOCATION = 'Location Placeholder';
+const BASE_TABS = ['Overview', 'Gallery', 'Services', 'Shop', 'About'];
 
-export function NailShopPublicShell({
-  shopName = DEFAULT_SHOP_NAME,
-  tagline = DEFAULT_TAGLINE,
-  location = DEFAULT_LOCATION,
-}) {
+export function buildPublicTabs(hasMultipleArtists) {
+  return hasMultipleArtists ? [...BASE_TABS, 'Artists'] : BASE_TABS;
+}
+
+function TabPanel({ tab, shop }) {
+  const content = {
+    Overview: ['Public shop introduction', `${shop.shopName} highlights ${shop.specialtyTags.join(', ')} in a static public preview.`],
+    Gallery: ['Portfolio placeholder', 'A future gallery can showcase curated nail looks without connecting to production galleries.'],
+    Services: ['Services placeholder', 'Structured space for manicures, press-on styling, repairs, and detail sessions.'],
+    Shop: ['Products placeholder', 'Static shelf area for sets, charms, care items, and artist-approved essentials.'],
+    About: ['Story, policies, and location placeholder', `${shop.shopName} is presented as a safe isolated concept in ${shop.location}.`],
+    Artists: ['Multiple artist placeholder', 'Artist cards can live here when a public shop has multiple artists enabled.'],
+  }[tab];
+
+  return (
+    <section
+      id={`public-tab-panel-${tab.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}
+      role="tabpanel"
+      tabIndex={0}
+      aria-labelledby={`public-tab-${tab.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}
+      style={{ ...styles.panel, ...styles.tabContent }}
+      className="nail-shop-public-panel"
+    >
+      <h2 style={styles.panelTitle}>{content[0]}</h2>
+      <p style={styles.panelCopy}>{content[1]}</p>
+    </section>
+  );
+}
+
+export function NailShopPublicShell({ shop = mockPublicShop, specialtyTags }) {
+  const resolvedShop = { ...mockPublicShop, ...shop, specialtyTags: specialtyTags || shop.specialtyTags || mockPublicShop.specialtyTags };
+  const tabs = useMemo(() => buildPublicTabs(Boolean(resolvedShop.hasMultipleArtists)), [resolvedShop.hasMultipleArtists]);
+  const [activeTab, setActiveTab] = useState(tabs[0]);
+
   return (
     <main style={styles.page} aria-label="Nail Shop public shell">
       <style>{nailShopPublicMediaStyles}</style>
       <div style={styles.shell} className="nail-shop-public-shell">
-        <section style={styles.hero} className="nail-shop-public-hero" aria-labelledby="nail-shop-public-title">
-          <div style={styles.signatureWrap}>
-            <SignatureNail />
-          </div>
-
-          <div style={styles.heroCopy}>
-            <p style={styles.eyebrow}>Nail Shop™</p>
-            <h1 id="nail-shop-public-title" style={styles.title}>{shopName}</h1>
-            <p style={styles.tagline}>{tagline}</p>
-            <p style={styles.location}>{location}</p>
-            <div style={styles.actions} aria-label="Public shop placeholder actions">
-              <button type="button" style={styles.primaryButton}>Book this Artist</button>
-              <button type="button" style={styles.secondaryButton}>Shop Sets</button>
-            </div>
-          </div>
-        </section>
-
-        <DisplayWindow />
-
-        <PublicTabs />
-
-        <section style={{ ...styles.panel, ...styles.tabContent }} className="nail-shop-public-panel" aria-label="Selected Nail Shop tab content">
-          <p>Polished public tab content placeholder.</p>
-        </section>
+        <ShopHeader shop={resolvedShop} />
+        <DisplayWindow items={resolvedShop.featuredDisplayItems} />
+        <PublicTabs tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} />
+        <TabPanel tab={activeTab} shop={resolvedShop} />
       </div>
     </main>
   );

@@ -1,44 +1,8 @@
 import React from 'react';
 import { displayWindowMediaStyles, displayWindowStyles as styles } from './displayWindowStyles';
+import { mockPublicShop } from './mockPublicShop';
 
-export const defaultDisplayWindowItems = [
-  {
-    id: 'velvet-plum-set',
-    name: 'Velvet Plum Set',
-    category: 'Deep Plum Editorial',
-    priceLabel: 'From $68',
-    badge: 'Featured',
-    accent: '#6e123f',
-    description: 'A rich plum showcase with soft gold glints and boutique evening drama.',
-  },
-  {
-    id: 'black-cherry-gloss',
-    name: 'Black Cherry Gloss',
-    category: 'Black Cherry Shine',
-    priceLabel: 'From $72',
-    badge: 'Signature',
-    accent: '#8f1b4b',
-    description: 'High-gloss cherry depth styled for a polished luxury window moment.',
-  },
-  {
-    id: 'cream-rose-marble',
-    name: 'Cream Rose Marble',
-    category: 'Warm Marble',
-    priceLabel: 'From $76',
-    badge: 'Soft Rose',
-    accent: '#c88a96',
-    description: 'Cream and rose veining create a calm marble-inspired display set.',
-  },
-  {
-    id: 'soft-gold-detail',
-    name: 'Soft Gold Detail',
-    category: 'Gold Accent',
-    priceLabel: 'From $64',
-    badge: 'New Look',
-    accent: '#f7d392',
-    description: 'Restrained gold accents catch the light across a warm boutique finish.',
-  },
-];
+export const defaultDisplayWindowItems = mockPublicShop.featuredDisplayItems;
 
 export function DisplayWindow({ items = defaultDisplayWindowItems, title = 'Display Window™' }) {
   const displayItems = Array.isArray(items) ? items : [];
@@ -59,24 +23,23 @@ export function DisplayWindow({ items = defaultDisplayWindowItems, title = 'Disp
       ) : (
         <div style={styles.grid} className="display-window-grid">
           {displayItems.map((item, index) => {
-            const key = item.id || `${item.name || 'display-window-item'}-${index}`;
-            const name = item.name || 'Untitled Look';
-            const category = item.category || 'Editorial nail look';
-            const description = item.description || 'A polished placeholder look prepared for the public display window.';
-            const priceLabel = item.priceLabel || 'Price coming soon';
+            const key = item.id || `${item.title || 'display-window-item'}-${index}`;
+            const itemType = ['design', 'product', 'service'].includes(item.type) ? item.type : 'design';
+            const titleText = item.title || item.name || 'Untitled Look';
+            const subtitle = item.subtitle || item.category || 'Editorial nail look';
+            const visualLabel = item.visualLabel || `${titleText} safe ${itemType} visual placeholder`;
 
             return (
-              <article key={key} style={styles.card} aria-label={`${name} display card`}>
-                <div style={styles.visual(item.accent)} aria-label={`${name} premium visual placeholder`} />
+              <article key={key} style={styles.card} aria-label={`${titleText} ${itemType} display card`}>
+                <div style={styles.visualByType(itemType)} role="img" aria-label={visualLabel} />
                 {item.badge ? <span style={styles.badge}>{item.badge}</span> : null}
                 <div>
-                  <h3 style={styles.cardTitle}>{name}</h3>
-                  <p style={styles.category}>{category}</p>
+                  <p style={styles.category}>{itemType}</p>
+                  <h3 style={styles.cardTitle}>{titleText}</h3>
+                  <p style={styles.subtitle}>{subtitle}</p>
                 </div>
-                <p style={styles.description}>{description}</p>
                 <div style={styles.footer}>
-                  <p style={styles.price}>{priceLabel}</p>
-                  <button type="button" style={styles.disabledAction} disabled>View Look</button>
+                  <button type="button" style={styles.disabledAction} disabled aria-label={`View ${titleText} placeholder disabled`}>View Look</button>
                 </div>
               </article>
             );

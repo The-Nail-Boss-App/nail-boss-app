@@ -1,25 +1,32 @@
-import React from 'react';
-import { render, screen } from '@testing-library/react';
-import SignatureNail from './SignatureNail';
+import React, { act } from 'react';
+import { createRoot } from 'react-dom/client';
+import SignatureNail, { SUPPORTED_NAIL_SHAPES } from './SignatureNail';
+
+globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+let container; let root;
+function renderNail(props) { container = document.createElement('div'); document.body.appendChild(container); root = createRoot(container); act(() => root.render(<SignatureNail {...props} />)); }
 
 describe('SignatureNail', () => {
-  it('renders the Signature Nail artist identity placeholder', () => {
-    render(<SignatureNail />);
+  afterEach(() => { if (root) act(() => root.unmount()); container?.remove(); container = null; root = null; });
 
-    expect(screen.getByTestId('signature-nail')).toBeInTheDocument();
-    expect(screen.getByText('Signature Nail™')).toBeInTheDocument();
+  it('renders from a design prop', () => {
+    renderNail({ design: { title: 'Velvet Test Nail', subtitle: 'Custom public signature.', shape: 'square' } });
+    expect(container.querySelector('[data-testid="signature-nail"]').getAttribute('data-shape')).toBe('square');
+    expect(container.textContent).toContain('Velvet Test Nail');
+    expect(container.textContent).toContain('Custom public signature.');
   });
 
-  it('contains custom title and subtitle copy', () => {
-    render(<SignatureNail title="Signature Nail™ Atelier" subtitle="Editorial black cherry jewelry for the artist identity." />);
-
-    expect(screen.getByText('Signature Nail™ Atelier')).toBeInTheDocument();
-    expect(screen.getByText('Editorial black cherry jewelry for the artist identity.')).toBeInTheDocument();
+  it('renders all supported shapes safely', () => {
+    SUPPORTED_NAIL_SHAPES.forEach((shape) => {
+      renderNail({ design: { shape, title: `${shape} nail` } });
+      expect(container.querySelector('[data-testid="signature-nail"]').getAttribute('data-shape')).toBe(shape);
+      expect(container.querySelector(`[data-testid="signature-nail-shape-${shape}"]`)).not.toBeNull();
+      act(() => root.unmount()); container.remove(); container = null; root = null;
+    });
   });
 
   it('accepts a size prop', () => {
-    render(<SignatureNail size={180} />);
-
-    expect(screen.getByTestId('signature-nail')).toHaveAttribute('data-size', '180');
+    renderNail({ size: 180 });
+    expect(container.querySelector('[data-testid="signature-nail"]').getAttribute('data-size')).toBe('180');
   });
 });

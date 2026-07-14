@@ -57,14 +57,14 @@ export const displayWindowStyles = {
       'linear-gradient(160deg, rgba(255, 247, 237, 0.14), rgba(61, 9, 36, 0.52)), radial-gradient(circle at 18% 12%, rgba(247, 211, 146, 0.16), transparent 28%)',
     boxShadow: '0 18px 44px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 247, 237, 0.1)',
   },
-  visual: (accent = palette.rose) => ({
+  visualByType: (type = 'design') => ({
     position: 'relative',
     height: 152,
     borderRadius: 22,
     overflow: 'hidden',
     border: '1px solid rgba(247, 211, 146, 0.22)',
     background:
-      `radial-gradient(circle at 28% 20%, rgba(255, 247, 237, 0.55), transparent 15%), radial-gradient(circle at 72% 28%, ${accent}88, transparent 24%), linear-gradient(135deg, rgba(247, 211, 146, 0.72), rgba(200, 138, 150, 0.42) 38%, rgba(61, 9, 36, 0.94))`,
+      `radial-gradient(circle at 28% 20%, rgba(255, 247, 237, 0.55), transparent 15%), radial-gradient(circle at 72% 28%, ${type === 'product' ? '#f7d392' : type === 'service' ? '#fff7ed' : palette.rose}88, transparent 24%), linear-gradient(135deg, rgba(247, 211, 146, 0.72), rgba(200, 138, 150, 0.42) 38%, rgba(61, 9, 36, 0.94))`,
     boxShadow: 'inset 0 1px 0 rgba(255, 247, 237, 0.25), 0 14px 32px rgba(8, 2, 7, 0.24)',
   }),
   badge: {
@@ -95,7 +95,7 @@ export const displayWindowStyles = {
     letterSpacing: '0.12em',
     textTransform: 'uppercase',
   },
-  description: {
+  subtitle: {
     margin: 0,
     minHeight: 42,
     color: palette.mutedCream,

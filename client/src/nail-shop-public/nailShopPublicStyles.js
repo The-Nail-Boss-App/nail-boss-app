@@ -86,6 +86,23 @@ export const nailShopPublicStyles = {
     gap: 12,
     marginTop: 6,
   },
+  tagList: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: 8,
+    margin: 0,
+    padding: 0,
+    listStyle: 'none',
+  },
+  tag: {
+    border: '1px solid rgba(247, 211, 146, 0.28)',
+    borderRadius: 999,
+    padding: '7px 10px',
+    color: palette.softGold,
+    background: 'rgba(25, 7, 22, 0.42)',
+    fontSize: 12,
+    fontWeight: 800,
+  },
   primaryButton: {
     border: '1px solid rgba(247, 211, 146, 0.7)',
     borderRadius: 999,
@@ -94,6 +111,8 @@ export const nailShopPublicStyles = {
     background: 'linear-gradient(135deg, #fff1d0, #f7d392 58%, #c88a96)',
     fontWeight: 800,
     boxShadow: '0 16px 34px rgba(247, 211, 146, 0.18)',
+    cursor: 'not-allowed',
+    opacity: 0.72,
   },
   secondaryButton: {
     border: '1px solid rgba(255, 247, 237, 0.28)',
@@ -102,6 +121,8 @@ export const nailShopPublicStyles = {
     color: palette.cream,
     background: 'rgba(255, 247, 237, 0.08)',
     fontWeight: 800,
+    cursor: 'not-allowed',
+    opacity: 0.72,
   },
   panel: {
     padding: 24,
@@ -166,9 +187,22 @@ export const nailShopPublicStyles = {
   tabContent: {
     minHeight: 140,
     display: 'grid',
-    placeItems: 'center',
+    alignContent: 'center',
+    gap: 10,
     textAlign: 'center',
     color: palette.mutedCream,
+  },
+  panelTitle: {
+    margin: 0,
+    color: palette.cream,
+    fontFamily: 'Georgia, \"Times New Roman\", serif',
+    fontSize: 28,
+  },
+  panelCopy: {
+    margin: '0 auto',
+    maxWidth: 720,
+    color: palette.mutedCream,
+    lineHeight: 1.6,
   },
 };
 
