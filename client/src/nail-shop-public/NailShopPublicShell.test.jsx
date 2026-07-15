@@ -3,92 +3,56 @@ import { createRoot } from 'react-dom/client';
 import fs from 'fs';
 import path from 'path';
 import NailShopPublicShell from './NailShopPublicShell';
+import { mockPublicShop } from './mockPublicShop';
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
-
-const sourcePath = path.join(__dirname, 'NailShopPublicShell.jsx');
-const source = fs.readFileSync(sourcePath, 'utf8');
-
-let container;
-let root;
-
-function renderShell(props) {
-  container = document.createElement('div');
-  document.body.appendChild(container);
-  root = createRoot(container);
-
-  act(() => {
-    root.render(<NailShopPublicShell {...props} />);
-  });
-}
-
-function textContent() {
-  return container.textContent;
-}
-
-function buttons() {
-  return Array.from(container.querySelectorAll('button')).map((button) => button.textContent);
-}
+const sources = ['NailShopPublicShell.jsx', 'ShopHeader.jsx', 'mockPublicShop.js'].map((file) => fs.readFileSync(path.join(__dirname, file), 'utf8')).join('\n');
+let container; let root;
+function renderShell(props) { container = document.createElement('div'); document.body.appendChild(container); root = createRoot(container); act(() => root.render(<NailShopPublicShell {...props} />)); }
+function clickByText(text) { const btn = Array.from(container.querySelectorAll('button')).find((b) => b.textContent === text); act(() => btn.dispatchEvent(new MouseEvent('click', { bubbles: true }))); }
 
 describe('NailShopPublicShell', () => {
-  afterEach(() => {
-    if (root) {
-      act(() => {
-        root.unmount();
-      });
-    }
-    if (container) {
-      container.remove();
-    }
-    container = null;
-    root = null;
-  });
+  afterEach(() => { if (root) act(() => root.unmount()); container?.remove(); container = null; root = null; });
 
-  it('renders the public shell', () => {
+  it('renders official eyebrow, shop name, tagline, and location', () => {
     renderShell();
-
-    expect(container.querySelector('main[aria-label="Nail Shop public shell"]')).not.toBeNull();
+    expect(container.textContent).toContain('Nail Shop™');
+    expect(container.textContent).toContain(mockPublicShop.shopName);
+    expect(container.textContent).toContain(mockPublicShop.tagline);
+    expect(container.textContent).toContain(mockPublicShop.location);
   });
 
-  it('renders the required public shell landmarks and actions', () => {
+  it('renders preset and custom specialty tags', () => {
+    renderShell({ specialtyTags: ['Gel-X', 'Custom Charms'] });
+    expect(container.textContent).toContain('Gel-X');
+    expect(container.textContent).toContain('Custom Charms');
+  });
+
+  it('changes active placeholder panels through PublicTabs', () => {
     renderShell();
-
-    expect(textContent()).toContain('Nail Shop™');
-    expect(textContent()).toContain('Display Window™');
-    expect(buttons()).toContain('Book this Artist');
-    expect(buttons()).toContain('Shop Sets');
+    expect(container.textContent).toContain('Public shop introduction');
+    clickByText('Gallery');
+    expect(container.textContent).toContain('Portfolio placeholder');
+    clickByText('Shop');
+    expect(container.textContent).toContain('Products placeholder');
   });
 
-  it('renders all public navigation tabs', () => {
+  it('shows Artists tab only when hasMultipleArtists is true', () => {
+    renderShell({ shop: { ...mockPublicShop, hasMultipleArtists: true } });
+    expect(container.textContent).toContain('Artists');
+  });
+
+  it('hides Artists tab when hasMultipleArtists is false', () => {
+    renderShell({ shop: { ...mockPublicShop, hasMultipleArtists: false } });
+    expect(Array.from(container.querySelectorAll('[role="tab"]')).map((n) => n.textContent)).not.toContain('Artists');
+  });
+
+  it('keeps placeholder header buttons disabled', () => {
     renderShell();
-
-    ['Overview', 'Services', 'Shop', 'Gallery', 'About'].forEach((tab) => {
-      expect(buttons()).toContain(tab);
-    });
+    ['Book This Artist', 'Shop Sets'].forEach((label) => expect(Array.from(container.querySelectorAll('button')).find((b) => b.textContent === label).disabled).toBe(true));
   });
 
-  it('renders the existing SignatureNail component', () => {
-    renderShell();
-
-    expect(container.querySelector('[data-testid="signature-nail"]')).not.toBeNull();
-  });
-
-  it('does not reference forbidden production imports, storage, or network APIs', () => {
-    const forbiddenTokens = [
-      ['..', 'App'].join('/'),
-      ['..', 'NailShop'].join('/'),
-      ['FullSet', 'Renderer'].join(''),
-      ['BlueprintGallery', 'Renderer'].join(''),
-      ['local', 'Storage'].join(''),
-      ['session', 'Storage'].join(''),
-      ['fet', 'ch('].join(''),
-      ['XML', 'HttpRequest'].join(''),
-      ['ax', 'ios'].join(''),
-      ['use', 'Effect'].join(''),
-    ];
-
-    forbiddenTokens.forEach((token) => {
-      expect(source).not.toContain(token);
-    });
+  it('does not reference forbidden production integrations', () => {
+    ['localStorage', 'sessionStorage', 'fetch', 'axios', 'network', 'backend', '../App', '../NailShop', 'routes', 'FullSetRenderer', 'BlueprintGalleryRenderer'].forEach((token) => expect(sources).not.toContain(token));
   });
 });

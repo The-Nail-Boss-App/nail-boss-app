@@ -49,10 +49,13 @@ describe('DisplayWindow', () => {
     expect(container.textContent).toContain('Display Window™');
   });
 
-  it('renders exactly 4 default cards', () => {
+  it('renders exactly 4 default mixed cards', () => {
     renderDisplayWindow();
 
     expect(container.querySelectorAll('article')).toHaveLength(4);
+    expect(container.textContent).toContain('design');
+    expect(container.textContent).toContain('product');
+    expect(container.textContent).toContain('service');
   });
 
   it('renders custom items', () => {
@@ -60,10 +63,10 @@ describe('DisplayWindow', () => {
       items: [
         {
           id: 'custom-look',
-          name: 'Custom Rose Look',
-          category: 'Rose Capsule',
-          priceLabel: 'From $88',
-          description: 'A custom display item.',
+          type: 'product',
+          title: 'Custom Rose Look',
+          subtitle: 'Rose Capsule',
+          visualLabel: 'Custom rose product placeholder',
         },
       ],
     });
@@ -71,7 +74,7 @@ describe('DisplayWindow', () => {
     expect(container.querySelectorAll('article')).toHaveLength(1);
     expect(container.textContent).toContain('Custom Rose Look');
     expect(container.textContent).toContain('Rose Capsule');
-    expect(container.textContent).toContain('From $88');
+    expect(container.textContent).toContain('product');
   });
 
   it('renders an empty state safely', () => {
@@ -100,9 +103,11 @@ describe('DisplayWindow', () => {
       'BlueprintGalleryRenderer',
       'localStorage',
       'sessionStorage',
-      'fetch',
+      ['fet', 'ch'].join(''),
       'axios',
       'useEffect',
+      'backend',
+      'routes',
     ];
 
     forbiddenTokens.forEach((token) => {

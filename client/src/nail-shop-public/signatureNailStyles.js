@@ -15,11 +15,9 @@ export const signatureNailStyles = {
     display: 'grid',
     placeItems: 'center',
     borderRadius: Math.round(size * 0.28),
-    overflow: 'hidden',
-    background:
-      'radial-gradient(circle at 24% 18%, rgba(247, 211, 146, 0.34), transparent 28%), linear-gradient(145deg, #21091b 0%, #3d0924 44%, #12070f 100%)',
-    boxShadow:
-      '0 26px 60px rgba(18, 7, 15, 0.42), inset 0 1px 0 rgba(255, 246, 226, 0.16)',
+    overflow: 'visible',
+    background: 'transparent',
+    boxShadow: 'none',
   }),
   aura: {
     position: 'absolute',
@@ -29,14 +27,14 @@ export const signatureNailStyles = {
       'radial-gradient(circle at 50% 38%, rgba(248, 214, 153, 0.28), rgba(107, 14, 56, 0.16) 42%, transparent 70%)',
     filter: 'blur(4px)',
   },
-  nail: (size = 220) => ({
+  nail: (size = 220, shape = 'almond', colors = []) => ({
     position: 'relative',
     width: Math.round(size * 0.44),
     height: Math.round(size * 0.95),
-    borderRadius: '50% 50% 47% 47% / 12% 12% 64% 64%',
-    clipPath: 'polygon(50% 0%, 70% 6%, 86% 24%, 94% 60%, 84% 88%, 50% 100%, 16% 88%, 6% 60%, 14% 24%, 30% 6%)',
+    borderRadius: ({ almond: '50% 50% 47% 47% / 12% 12% 64% 64%', coffin: '42% 42% 18% 18% / 8% 8% 10% 10%', square: '26% 26% 14% 14% / 8% 8% 8% 8%', oval: '48% 48% 46% 46% / 18% 18% 44% 44%', round: '48% 48% 50% 50% / 16% 16% 58% 58%', stiletto: '50% 50% 42% 42% / 8% 8% 70% 70%' })[shape],
+    clipPath: ({ almond: 'polygon(50% 0%, 70% 6%, 86% 24%, 94% 60%, 84% 88%, 50% 100%, 16% 88%, 6% 60%, 14% 24%, 30% 6%)', coffin: 'polygon(33% 0%, 67% 0%, 86% 18%, 92% 76%, 72% 100%, 28% 100%, 8% 76%, 14% 18%)', square: 'polygon(24% 0%, 76% 0%, 90% 18%, 90% 100%, 10% 100%, 10% 18%)', oval: 'ellipse(43% 50% at 50% 50%)', round: 'ellipse(44% 48% at 50% 52%)', stiletto: 'polygon(50% 0%, 72% 10%, 90% 42%, 82% 74%, 50% 100%, 18% 74%, 10% 42%, 28% 10%)' })[shape],
     background:
-      'linear-gradient(108deg, #fff1d0 0%, #c88a96 13%, #6e123f 36%, #24071c 62%, #8f1b4b 83%, #f5d38f 100%)',
+      `linear-gradient(108deg, ${colors[0] || '#fff1d0'} 0%, ${colors[1] || '#c88a96'} 13%, ${colors[2] || '#6e123f'} 36%, ${colors[3] || '#24071c'} 62%, ${colors[4] || '#8f1b4b'} 83%, ${colors[5] || '#f5d38f'} 100%)`,
     boxShadow:
       '0 22px 36px rgba(12, 3, 11, 0.54), inset 10px 0 18px rgba(255, 242, 214, 0.18), inset -14px 0 22px rgba(0, 0, 0, 0.32)',
     transform: 'rotate(2deg)',
@@ -79,6 +77,14 @@ export const signatureNailStyles = {
     fontSize: 24,
     lineHeight: 1.05,
     letterSpacing: '0.01em',
+  },
+  shapeLabel: {
+    margin: 0,
+    color: '#f7d392',
+    fontSize: 11,
+    fontWeight: 800,
+    letterSpacing: '0.08em',
+    textTransform: 'uppercase',
   },
   subtitle: {
     margin: 0,
