@@ -5,6 +5,7 @@ import Dashboard from './Dashboard';
 import DesignStudio from './DesignStudio';
 import Proposals from './Proposals';
 import NailShop from './NailShop';
+import ArtistDistrict from './artist-district/ArtistDistrict';
 
 class ProtectedAppErrorBoundary extends Component {
   constructor(props) {
@@ -53,6 +54,7 @@ const PAGES = {
   STUDIO: 'studio',
   PROPOSALS: 'proposals',
   NAIL_SHOP: 'nail-shop',
+  ARTIST_DISTRICT: 'artist-district',
 };
 
 // ── App Shell ────────────────────────────────────────────
@@ -131,6 +133,18 @@ export default function App() {
           <path d="M3 9l9-7 9 7" />
           <path d="M5 10v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V10" />
           <path d="M9 22V12h6v10" />
+        </svg>
+      ),
+    },
+    {
+      id: PAGES.ARTIST_DISTRICT,
+      label: 'Artist District',
+      icon: (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M3 21h18" />
+          <path d="M5 21V8l7-5 7 5v13" />
+          <path d="M9 21v-6h6v6" />
+          <path d="M9 10h.01" /><path d="M15 10h.01" />
         </svg>
       ),
     },
@@ -215,6 +229,7 @@ export default function App() {
     [PAGES.STUDIO]: 'Design Studio',
     [PAGES.PROPOSALS]: 'Proposals',
     [PAGES.NAIL_SHOP]: 'Nail Shop',
+    [PAGES.ARTIST_DISTRICT]: 'Artist District',
   };
 
   const topbar = (
@@ -257,6 +272,12 @@ export default function App() {
         return (
           <ProtectedAppErrorBoundary boundaryKey={PAGES.NAIL_SHOP}>
             <NailShop />
+          </ProtectedAppErrorBoundary>
+        );
+      case PAGES.ARTIST_DISTRICT:
+        return (
+          <ProtectedAppErrorBoundary boundaryKey={PAGES.ARTIST_DISTRICT}>
+            <ArtistDistrict />
           </ProtectedAppErrorBoundary>
         );
       default:
