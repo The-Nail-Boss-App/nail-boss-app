@@ -1,7 +1,7 @@
 import { Component, useRef, useState } from 'react';
 import { COLORS, S, NavItem } from './styles';
 import Login from './Login';
-import Dashboard from './Dashboard';
+import Headquarters from './headquarters/Headquarters';
 import DesignStudio from './DesignStudio';
 import Proposals from './Proposals';
 import NailShop from './NailShop';
@@ -249,10 +249,9 @@ export default function App() {
       case PAGES.DASHBOARD:
         return (
           <ProtectedAppErrorBoundary boundaryKey={PAGES.DASHBOARD}>
-            <Dashboard
+            <Headquarters
               techName={techName}
-              onStartLook={() => { void navigateTo(PAGES.STUDIO); }}
-              onViewProposals={() => { void navigateTo(PAGES.PROPOSALS); }}
+              onNavigate={(destination) => { void navigateTo(destination); }}
             />
           </ProtectedAppErrorBoundary>
         );
@@ -295,7 +294,7 @@ export default function App() {
       <div style={S.appShell}>
         {sidebar}
         <div style={S.mainContent}>
-          {topbar}
+          {page !== PAGES.DASHBOARD && topbar}
           {/* Design Studio gets full height for its split-panel layout;
               other pages scroll normally. */}
           <div style={{
