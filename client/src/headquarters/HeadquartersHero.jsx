@@ -13,7 +13,7 @@ export default function HeadquartersHero({ techName, onNavigate }) {
   return (
     <section className="hq-hero" aria-labelledby="headquarters-title">
       <div className="hq-hero__topline">
-        <img className="hq-hero__logo" src={officialAssets.primaryLogo} alt="AnitaSet primary logo" />
+        <img className="hq-hero__logo" src={officialAssets.darkBackgroundLogo} alt="AnitaSet secondary logo for dark backgrounds" />
         <div className="hq-search" role="search" aria-label="Headquarters search"><span>Search AnitaSet...</span><span aria-hidden="true">⌕</span></div>
       </div>
       <div className="hq-hero__stage">

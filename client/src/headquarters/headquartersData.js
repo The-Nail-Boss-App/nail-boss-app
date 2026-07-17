@@ -1,6 +1,6 @@
 export const officialAssets = {
+  darkBackgroundLogo: '/anitaset-logo-secondary.png',
   primaryLogo: '/anitaset-logo-main.png',
-  secondaryLogo: '/anitaset-logo-secondary.png',
   favicon: '/anitaset-favicon.png',
 };
 

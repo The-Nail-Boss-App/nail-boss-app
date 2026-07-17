@@ -46,9 +46,9 @@ describe('Headquarters', () => {
   it('renders the Headquarters arrival hero with official logo and favicon assets', () => {
     renderHeadquarters();
     expect(container.textContent).toContain('Welcome to Headquarters.');
-    const logo = container.querySelector('img[alt="AnitaSet primary logo"]');
+    const logo = container.querySelector('img[alt="AnitaSet secondary logo for dark backgrounds"]');
     expect(logo).not.toBeNull();
-    expect(logo.getAttribute('src')).toBe(officialAssets.primaryLogo);
+    expect(logo.getAttribute('src')).toBe(officialAssets.darkBackgroundLogo);
     expect(container.querySelector(`img[src="${officialAssets.favicon}"]`)).not.toBeNull();
   });
 
