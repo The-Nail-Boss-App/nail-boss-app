@@ -23,7 +23,7 @@ const assetRendering = fs.readFileSync(
   "client/src/design-studio/assetRendering.js",
   "utf8",
 );
-const dashboard = fs.readFileSync("client/src/Dashboard.jsx", "utf8");
+const headquarters = fs.readFileSync("client/src/Headquarters.jsx", "utf8");
 const appShell = fs.readFileSync("client/src/App.jsx", "utf8");
 const sharedStyles = fs.readFileSync("client/src/styles.js", "utf8");
 const assetLibrary = fs.readFileSync("client/src/design-studio/AssetLibrary.jsx", "utf8");
@@ -216,7 +216,7 @@ assert.match(
   /sidebarCollapsed:[\s\S]*width: 72[\s\S]*overflow: "hidden"[\s\S]*export function NavItem\([\s\S]*collapsed = false[\s\S]*aria-hidden="true"[\s\S]*whiteSpace: "nowrap"/,
   "Collapsed sidebar should keep icons visible while labels are visually collapsed.",
 );
-for (const routeLabel of ["Dashboard", "Design Studio", "Proposals", "Nail Shop"]) assert.ok(appShell.includes(`label: '${routeLabel}'`), `${routeLabel} navigation should remain available.`);
+for (const routeLabel of ["Headquarters", "Design Studio", "Proposals", "Nail Shop"]) assert.ok(appShell.includes(`label: '${routeLabel}'`), `${routeLabel} navigation should remain available.`);
 assert.match(
   assetLibrary,
   /aria-label=\{`Add \${asset\.name}`\}[\s\S]*title=\{asset\.name\}[\s\S]*data-asset-label-visibility="tooltip-only"/,
@@ -474,9 +474,9 @@ assert.doesNotMatch(
   "Decal surface blending must not render a visible white/light box behind transparent artwork.",
 );
 assert.match(
-  dashboard,
+  headquarters,
   /label: "Saved Designs"[\s\S]*onClick: onStartLook[\s\S]*data-testid=\{c\.testId\}/,
-  "Dashboard Saved Designs card should open the existing saved-design workflow instead of dead-ending.",
+  "Headquarters Saved Designs card should open the existing saved-design workflow instead of dead-ending.",
 );
 
 assert.ok(

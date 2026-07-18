@@ -5,46 +5,50 @@ export const officialAssets = {
 };
 
 export const executiveBrief = [
+  'The Headquarters of the Nail Industry.',
   'The ultimate hub for nail professionals to create, run, and grow unstoppable businesses.',
-  'Welcome back, Boss — your next move starts from the executive lobby.',
   'Built different. Built to lead.'
 ];
 
 export const businessMetrics = [
-  { label: 'Revenue Today', value: '$12,450', note: '18% vs yesterday', tone: 'pink' },
-  { label: 'New Nail Shops', value: '128', note: '24% this week', tone: 'violet' },
-  { label: 'Active Clients', value: '1,248', note: '16% this week', tone: 'gold' },
-  { label: 'Designs Created', value: '1,126', note: '32% today', tone: 'violet' },
-  { label: 'Bookings', value: '342', note: '20% this week', tone: 'pink' },
-  { label: 'Profit Today', value: '$5,320', note: '22% vs yesterday', tone: 'gold' },
+  { label: 'Revenue Today', value: '$12,450', note: '18% vs yesterday', tone: 'pink', icon: '💲' },
+  { label: 'New Nail Shops', value: '128', note: '24% this week', tone: 'violet', icon: '▱' },
+  { label: 'Active Clients', value: '1,248', note: '16% this week', tone: 'gold', icon: '♚' },
+  { label: 'Designs Created', value: '1,126', note: '32% today', tone: 'violet', icon: '▣' },
+  { label: 'Bookings', value: '342', note: '20% this week', tone: 'pink', icon: '▦' },
+  { label: 'Profit Today', value: '$5,320', note: '22% vs yesterday', tone: 'gold', icon: '♕' },
 ];
 
 export const primaryRooms = [
-  { key: 'create', title: 'CREATE', room: 'DESIGN STUDIO', purpose: 'Bring your ideas to life.', actionLabel: 'Enter District', destination: 'studio', enabled: true },
-  { key: 'price', title: 'PRICE', room: 'PRICING HUB', purpose: 'Price with confidence. Profit with purpose.', actionLabel: 'Enter District', destination: 'proposals', enabled: true },
-  { key: 'sell', title: 'SELL', room: 'NAIL SHOP', purpose: 'Showcase your work. Book more clients.', actionLabel: 'Enter District', destination: 'nail-shop', enabled: true },
-  { key: 'grow', title: 'GROW', room: 'GROWTH CENTER', purpose: 'Market smarter. Scale faster.', actionLabel: 'Coming Soon', enabled: false },
+  { key: 'create', title: 'CREATE', room: 'DESIGN STUDIO', purpose: 'Bring your ideas to life.', actionLabel: 'Enter District', destination: 'studio', enabled: true, icon: '✎' },
+  { key: 'price', title: 'PRICE', room: 'PRICING HUB', purpose: 'Price with confidence. Profit with purpose.', actionLabel: 'Enter District', destination: 'proposals', enabled: true, icon: '◎' },
+  { key: 'sell', title: 'SELL', room: 'NAIL SHOP', purpose: 'Showcase your work. Book more clients.', actionLabel: 'Enter District', destination: 'nail-shop', enabled: true, icon: '▱' },
+  { key: 'grow', title: 'GROW', room: 'GROWTH CENTER', purpose: 'Market smarter. Scale faster.', actionLabel: 'Deferred', enabled: false, icon: '↗', deferredReason: 'Growth Center requires future marketing infrastructure.' },
 ];
 
 export const directoryItems = [
-  { title: 'Artist District', purpose: 'Connect. Showcase. Get inspired.', actionLabel: 'Enter District', destination: 'artist-district', enabled: true },
-  { title: 'Marketplace', purpose: 'Shop. Sell. Earn.', actionLabel: 'Coming Soon', enabled: false },
-  { title: 'Vendor Hub', purpose: 'Suppliers and wholesale tools.', actionLabel: 'Coming Soon', enabled: false },
-  { title: 'Education', purpose: 'Learn, certify, and level up.', actionLabel: 'Coming Soon', enabled: false },
-  { title: 'Community', purpose: 'Owner circles and peer momentum.', actionLabel: 'Coming Soon', enabled: false },
+  { key: 'artist', title: 'ARTIST DISTRICT', purpose: 'Connect. Showcase. Get inspired.', actionLabel: 'Enter District', destination: 'artist-district', enabled: true, icon: '♛' },
+  { key: 'marketplace', title: 'MARKETPLACE', purpose: 'Shop. Sell. Earn.', actionLabel: 'Deferred', enabled: false, icon: '🛒', deferredReason: 'Marketplace commerce infrastructure is future scope.' },
+  { key: 'vendor', title: 'VENDOR HUB', purpose: 'Supplier tools, wholesale drops, and brand visibility.', actionLabel: 'Deferred', enabled: false, icon: '▤', deferredReason: 'Vendor workflows are future scope.' },
+  { key: 'education', title: 'EDUCATION', purpose: 'Learn, certify, and level up.', actionLabel: 'Deferred', enabled: false, icon: '▧', deferredReason: 'Education content library is future scope.' },
+  { key: 'community', title: 'COMMUNITY', purpose: 'Owner circles and peer momentum.', actionLabel: 'Deferred', enabled: false, icon: '♧', deferredReason: 'Community infrastructure is future scope.' },
+  { key: 'events', title: 'EVENTS', purpose: 'Launch weeks, live moments, and industry calendars.', actionLabel: 'Deferred', enabled: false, icon: '▦', deferredReason: 'Event publishing is future scope.' },
 ];
 
 export const priorities = [
-  { category: 'Quick Actions', description: 'New Design', actionLabel: 'New Design', destination: 'studio', enabled: true },
-  { category: 'Quick Actions', description: 'New Proposal', actionLabel: 'New Proposal', destination: 'proposals', enabled: true },
-  { category: 'Quick Actions', description: 'Add Client', actionLabel: 'Client tools coming soon', enabled: false },
-  { category: 'Quick Actions', description: 'Create Promotion', actionLabel: 'Promotion tools coming soon', enabled: false },
+  { description: 'New Design', destination: 'studio', enabled: true, icon: '✓' },
+  { description: 'New Proposal', destination: 'proposals', enabled: true, icon: '▧' },
+  { description: 'Add Client', enabled: false, icon: '♙', deferredReason: 'Client management needs future infrastructure.' },
+  { description: 'Post to Community', enabled: false, icon: '♧', deferredReason: 'Community posting is future scope.' },
+  { description: 'Add New Product', enabled: false, icon: '▣', deferredReason: 'Product management requires shop infrastructure.' },
+  { description: 'Create Promotion', enabled: false, icon: '📣', deferredReason: 'Promotion tools require future marketing infrastructure.' },
+  { description: 'AI Shop Manager', enabled: false, icon: '☼', deferredReason: 'Anita AI assistant is visual-only in this sprint.' },
 ];
-
-export const utilities = ['Messages', 'Calendar', 'Tasks'];
 
 export const liveUpdates = [
   { title: 'Summer Chrome Week', meta: 'May 12 – May 18', badge: 'Live' },
-  { title: 'New Vendor Drop', meta: 'Gloss Society Collection just landed!', badge: 'New' },
-  { title: 'Artist Spotlight', meta: '@NailsByTee trending this week', badge: 'Hot' },
+  { title: 'New Nail Shop', meta: 'Luxe Claws Studio just opened.', badge: 'New' },
+  { title: 'Featured Artist', meta: '@NailsByTee trending this week', badge: 'Hot' },
+  { title: 'Vendor Spotlight', meta: 'Gloss Society Collection just landed!', badge: 'New' },
+  { title: 'Trending Shape', meta: 'Soft square chrome is leading searches.', badge: 'Trend' },
 ];

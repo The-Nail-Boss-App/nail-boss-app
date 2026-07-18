@@ -1,5 +1,5 @@
 import React from 'react';
-import { priorities, utilities } from './headquartersData';
+import { priorities } from './headquartersData';
 
 export default function HeadquartersPriorities({ onNavigate }) {
   return (
@@ -8,10 +8,9 @@ export default function HeadquartersPriorities({ onNavigate }) {
       <div className="hq-priority-actions" data-testid="headquarters-priorities">
         {priorities.map((priority) => (
           <button data-testid="headquarters-priority-item" type="button" disabled={!priority.enabled} onClick={() => priority.enabled && onNavigate(priority.destination)} key={priority.description}>
-            <span aria-hidden="true">✦</span>{priority.description}
+            <span aria-hidden="true">{priority.icon}</span>{priority.description}
           </button>
         ))}
-        {utilities.map((utility) => <button type="button" disabled key={utility}>{utility}</button>)}
       </div>
     </section>
   );

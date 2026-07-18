@@ -93,8 +93,8 @@ const rendererSource = await fs.readFile(path.join(repoRoot, 'client/src/FullSet
 assert.ok(rendererSource.includes('nails: [...normalized.left, ...normalized.right]'), 'Hero 7 exact regression stays fixed');
 assert.ok(!rendererSource.includes('slice(0, 7)') && !rendererSource.includes('.slice(1)'), 'Hero 7 exact forbidden slices absent');
 
-const dashboardSource = await fs.readFile(path.join(repoRoot, 'client/src/Dashboard.jsx'), 'utf8');
-assert.ok(!dashboardSource.toLowerCase().includes('duck'), 'Duck hidden regression stays fixed');
+const headquartersSource = await fs.readFile(path.join(repoRoot, 'client/src/Headquarters.jsx'), 'utf8');
+assert.ok(!headquartersSource.toLowerCase().includes('duck'), 'Duck hidden regression stays fixed');
 
 await fs.rm(tempPath, { force: true });
 console.log('Design pricing bridge tests passed');

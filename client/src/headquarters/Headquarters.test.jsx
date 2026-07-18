@@ -77,20 +77,20 @@ describe('Headquarters', () => {
 
   it('renders unfinished district actions as disabled', () => {
     renderHeadquarters();
-    ['Vendor Hub', 'Marketplace', 'Education', 'Community'].forEach((label) => expect(container.textContent).toContain(label));
-    expect(buttonsContainingText('Coming Soon')).toHaveLength(5);
-    buttonsContainingText('Coming Soon').forEach((button) => expect(button.disabled).toBe(true));
+    ['VENDOR HUB', 'MARKETPLACE', 'EDUCATION', 'COMMUNITY', 'EVENTS'].forEach((label) => expect(container.textContent).toContain(label));
+    expect(buttonsContainingText('Deferred')).toHaveLength(6);
+    buttonsContainingText('Deferred').forEach((button) => expect(button.disabled).toBe(true));
   });
 
-  it('renders exactly four Today’s Priorities items', () => {
+  it('renders the approved seven Quick Actions items', () => {
     renderHeadquarters();
-    expect(container.querySelectorAll('[data-testid="headquarters-priority-item"]')).toHaveLength(4);
-    ['New Design', 'New Proposal', 'Add Client', 'Create Promotion'].forEach((label) => expect(container.textContent).toContain(label));
+    expect(container.querySelectorAll('[data-testid="headquarters-priority-item"]')).toHaveLength(7);
+    ['New Design', 'New Proposal', 'Add Client', 'Post to Community', 'Add New Product', 'Create Promotion', 'AI Shop Manager'].forEach((label) => expect(container.textContent).toContain(label));
   });
 
   it('renders compact utility access, live updates, and Assistant access', () => {
     renderHeadquarters();
-    ['Messages', 'Calendar', 'Tasks', 'What’s Happening', 'AI Shop Manager'].forEach((label) => expect(container.textContent).toContain(label));
+    ['What’s Happening', 'Summer Chrome Week', 'New Nail Shop', 'Featured Artist', 'Vendor Spotlight', 'Trending Shape', 'AI Shop Manager'].forEach((label) => expect(container.textContent).toContain(label));
   });
 
   it('does not introduce forbidden integrations or production-system changes', () => {

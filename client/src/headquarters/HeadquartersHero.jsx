@@ -14,9 +14,9 @@ export default function HeadquartersHero({ techName, onNavigate }) {
     <section className="hq-hero" aria-labelledby="headquarters-title">
       <div className="hq-hero__topline">
         <img className="hq-hero__logo" src={officialAssets.darkBackgroundLogo} alt="AnitaSet secondary logo for dark backgrounds" />
-        <div className="hq-search" role="search" aria-label="Headquarters search"><span>Search AnitaSet...</span><span aria-hidden="true">⌕</span></div>
+        <div className="hq-hero__right"><div className="hq-search" role="search" aria-label="Headquarters search"><span>Search AnitaSet...</span><span aria-hidden="true">⌕</span></div><div className="hq-alert" aria-hidden="true">♧<b>4</b></div><div className="hq-alert" aria-hidden="true">☏<b>3</b></div><div className="hq-founder-chip"><span></span><strong>{name || 'Keata'}</strong><small>Founder</small></div></div>
       </div>
-      <div className="hq-hero__stage">
+      <div className="hq-hero__stage"><div className="hq-cityline" aria-hidden="true" />
         <div className="hq-hero__copy">
           <p className="hq-script">Welcome to</p>
           <h1 id="headquarters-title"><span className="hq-sr">Welcome to Headquarters.</span>HEADQUARTERS</h1>
