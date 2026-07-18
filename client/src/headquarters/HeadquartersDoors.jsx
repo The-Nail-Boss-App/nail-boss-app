@@ -11,7 +11,7 @@ export default function HeadquartersDoors({ onNavigate }) {
             <div className="hq-room-card__icon" aria-hidden="true">{room.icon}</div>
             <h3>{room.title}<span>{room.room}</span></h3>
             <p>{room.purpose}</p>
-            <button type="button" disabled={!room.enabled} onClick={() => room.enabled && onNavigate(room.destination)}>{room.actionLabel} <span aria-hidden="true">→</span></button>{room.deferredReason ? <small>{room.deferredReason}</small> : null}
+            <button type="button" disabled={!room.enabled} onClick={() => room.enabled && onNavigate(room.destination)}>{room.actionLabel} <span aria-hidden="true">→</span></button>{!room.enabled ? <small>Coming Soon</small> : null}
           </article>
         ))}
       </div>

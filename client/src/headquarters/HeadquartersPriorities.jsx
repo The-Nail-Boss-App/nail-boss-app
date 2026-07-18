@@ -7,7 +7,7 @@ export default function HeadquartersPriorities({ onNavigate }) {
       <h2 id="priorities-title">Quick Actions</h2>
       <div className="hq-priority-actions" data-testid="headquarters-priorities">
         {priorities.map((priority) => (
-          <button data-testid="headquarters-priority-item" type="button" disabled={!priority.enabled} onClick={() => priority.enabled && onNavigate(priority.destination)} key={priority.description}>
+          <button className={priority.primary ? 'hq-command-primary' : undefined} data-testid="headquarters-priority-item" type="button" disabled={!priority.enabled} onClick={() => priority.enabled && onNavigate(priority.destination)} key={priority.description}>
             <span aria-hidden="true">{priority.icon}</span>{priority.description}
           </button>
         ))}
