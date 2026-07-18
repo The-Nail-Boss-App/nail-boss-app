@@ -11,7 +11,7 @@ export default function HeadquartersDirectory({ onNavigate }) {
             <div className="hq-room-card__icon" aria-hidden="true">{item.icon}</div>
             <h3>{item.title}</h3>
             <p>{item.purpose}</p>
-            <button type="button" disabled={!item.enabled} onClick={() => item.enabled && onNavigate(item.destination)}>{item.actionLabel} <span aria-hidden="true">→</span></button>{item.deferredReason ? <small>{item.deferredReason}</small> : null}
+            <button type="button" disabled={!item.enabled} onClick={() => item.enabled && onNavigate(item.destination)}>{item.actionLabel} <span aria-hidden="true">→</span></button>{item.status ? <small>{item.status}</small> : null}
           </article>
         ))}
       </div>

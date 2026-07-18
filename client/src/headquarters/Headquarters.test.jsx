@@ -78,8 +78,11 @@ describe('Headquarters', () => {
   it('renders unfinished district actions as disabled', () => {
     renderHeadquarters();
     ['VENDOR HUB', 'MARKETPLACE', 'EDUCATION', 'COMMUNITY', 'EVENTS'].forEach((label) => expect(container.textContent).toContain(label));
-    expect(buttonsContainingText('Deferred')).toHaveLength(6);
-    buttonsContainingText('Deferred').forEach((button) => expect(button.disabled).toBe(true));
+    expect(buttonsContainingText('Opening Soon')).toHaveLength(6);
+    buttonsContainingText('Opening Soon').forEach((button) => expect(button.disabled).toBe(true));
+    ['commerce infrastructure is future scope', 'future scope', 'requires future'].forEach((copy) => {
+      expect(container.textContent).not.toContain(copy);
+    });
   });
 
   it('renders the approved seven Quick Actions items', () => {
@@ -88,9 +91,16 @@ describe('Headquarters', () => {
     ['New Design', 'New Proposal', 'Add Client', 'Post to Community', 'Add New Product', 'Create Promotion', 'AI Shop Manager'].forEach((label) => expect(container.textContent).toContain(label));
   });
 
-  it('renders compact utility access, live updates, and Assistant access', () => {
+  it('renders Anita presence, environment, compact utility access, live updates, and Assistant access', () => {
     renderHeadquarters();
+    expect(container.querySelector('[data-testid="headquarters-environment-layer"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid="headquarters-anita-presence"]')).not.toBeNull();
     ['What’s Happening', 'Summer Chrome Week', 'New Nail Shop', 'Featured Artist', 'Vendor Spotlight', 'Trending Shape', 'AI Shop Manager'].forEach((label) => expect(container.textContent).toContain(label));
+  });
+
+  it('does not render legacy Dashboard language', () => {
+    renderHeadquarters();
+    expect(container.textContent).not.toContain('Dashboard');
   });
 
   it('does not introduce forbidden integrations or production-system changes', () => {
