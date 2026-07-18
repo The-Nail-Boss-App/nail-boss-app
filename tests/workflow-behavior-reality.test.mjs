@@ -10,7 +10,7 @@ const nailCanvasSource = await read('client/src/design-studio/NailCanvas.jsx');
 const layersPanelSource = await read('client/src/design-studio/LayersPanel.jsx');
 const frenchTipSource = await read('client/src/design-studio/frenchTipRendering.js');
 const stylesSource = await read('client/src/design-studio/studioStyles.js');
-const dashboardSource = await read('client/src/Dashboard.jsx');
+const headquartersSource = await read('client/src/Headquarters.jsx');
 
 const { layerSort } = blueprint;
 const base = { id: 'base-layer', type: 'base', name: 'Base', order: 0, visible: true, locked: true };
@@ -28,7 +28,7 @@ assert.match(studioSource, /const renderOrdered = \[\.\.\.nail\.layers\]\.sort\(
 assert.match(nailCanvasSource, /const artLayers = \[\.\.\.layers\]\.filter[\s\S]*\.sort\(layerSort\)/, 'NailCanvas renders from current layers prop sorted by updated order');
 assert.match(layersPanelSource, /disabled=\{disableUp\}[\s\S]*>Up<|disabled=\{disableDown\}[\s\S]*>Down</, 'layer controls preserve Up/Down behavior');
 
-assert.match(dashboardSource, /sessionStorage\.setItem\("nailBossOpenSavedDesigns", "1"\)[\s\S]*onStartLook\(\)/, 'Dashboard Saved Designs click records saved-design intent before opening Design Studio');
+assert.match(headquartersSource, /sessionStorage\.setItem\("nailBossOpenSavedDesigns", "1"\)[\s\S]*onStartLook\(\)/, 'Headquarters Saved Designs click records saved-design intent before opening Design Studio');
 assert.match(studioSource, /sessionStorage\.getItem\("nailBossOpenSavedDesigns"\)[\s\S]*setSavedDesignsOpen\(true\)/, 'DesignStudio consumes saved-design intent on load');
 assert.match(studioSource, /data-testid="saved-designs-browser"[\s\S]*Saved Designs[\s\S]*designs\.length \? designs\.map[\s\S]*onClick=\{\(\) => loadDesign\(design\.id\)\}/, 'Saved Designs browser is visible, lists records, and opens with loadDesign');
 assert.doesNotMatch(studioSource.slice(studioSource.indexOf('function openSavedDesignsBrowser'), studioSource.indexOf('function openPolishRack')), /newDesign\(/, 'Saved Designs flow does not invoke New Design');

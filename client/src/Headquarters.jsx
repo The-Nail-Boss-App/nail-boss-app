@@ -1,11 +1,11 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// Dashboard.jsx
+// Headquarters.jsx
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useEffect, useState } from "react";
 import { COLORS, S, LogoMark } from "./styles.js";
 
-export default function Dashboard({ techName, onStartLook, onViewProposals }) {
+export default function Headquarters({ techName, onStartLook, onViewProposals }) {
   const openSavedDesigns = () => {
     if (typeof window !== "undefined") {
       window.sessionStorage.setItem("nailBossOpenSavedDesigns", "1");
@@ -47,8 +47,8 @@ export default function Dashboard({ techName, onStartLook, onViewProposals }) {
       {/* Stat cards */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 40, maxWidth: 500 }}>
         {[
-          { label: "Saved Designs",  value: counts.designs,   icon: "✦", onClick: onStartLook, savedDesigns: true, testId: "dashboard-saved-designs" },
-          { label: "Total Proposals", value: counts.proposals, icon: "◻", onClick: onViewProposals, testId: "dashboard-total-proposals" },
+          { label: "Saved Designs",  value: counts.designs,   icon: "✦", onClick: onStartLook, savedDesigns: true, testId: "headquarters-saved-designs" },
+          { label: "Total Proposals", value: counts.proposals, icon: "◻", onClick: onViewProposals, testId: "headquarters-total-proposals" },
         ].map(c => (
           <button key={c.label} type="button" onClick={c.savedDesigns ? openSavedDesigns : c.onClick} data-testid={c.testId} style={{
             background: COLORS.surface,

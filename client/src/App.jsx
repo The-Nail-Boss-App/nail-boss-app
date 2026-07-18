@@ -1,4 +1,4 @@
-import { Component, useRef, useState } from 'react';
+import { Component, useEffect, useRef, useState } from 'react';
 import { COLORS, S, NavItem } from './styles';
 import Login from './Login';
 import Headquarters from './headquarters/Headquarters';
@@ -50,11 +50,20 @@ class ProtectedAppErrorBoundary extends Component {
 // ── Pages enum ───────────────────────────────────────────
 const PAGES = {
   LOGIN: 'login',
-  DASHBOARD: 'dashboard',
+  HEADQUARTERS: 'headquarters',
   STUDIO: 'studio',
   PROPOSALS: 'proposals',
   NAIL_SHOP: 'nail-shop',
   ARTIST_DISTRICT: 'artist-district',
+};
+
+
+const PAGE_TITLES = {
+  [PAGES.HEADQUARTERS]: 'Headquarters',
+  [PAGES.STUDIO]: 'Design Studio',
+  [PAGES.PROPOSALS]: 'Proposals',
+  [PAGES.NAIL_SHOP]: 'Nail Shop',
+  [PAGES.ARTIST_DISTRICT]: 'Artist District',
 };
 
 // ── App Shell ────────────────────────────────────────────
@@ -86,6 +95,11 @@ export default function App() {
     setPage(PAGES.LOGIN);
   };
 
+  useEffect(() => {
+    const title = page === PAGES.LOGIN ? 'AnitaSet' : `${PAGE_TITLES[page] || 'Headquarters'} | AnitaSet`;
+    document.title = title;
+  }, [page]);
+
   // ── Not logged in ─────────────────────────────────────
   if (page === PAGES.LOGIN) {
     return <Login onLogin={handleLogin} />;
@@ -94,8 +108,8 @@ export default function App() {
   // ── Sidebar nav items ─────────────────────────────────
   const navItems = [
     {
-      id: PAGES.DASHBOARD,
-      label: 'Dashboard',
+      id: PAGES.HEADQUARTERS,
+      label: 'Headquarters',
       icon: (
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" />
@@ -224,18 +238,10 @@ export default function App() {
   );
 
   // ── Top bar ───────────────────────────────────────────
-  const pageTitles = {
-    [PAGES.DASHBOARD]: 'Dashboard',
-    [PAGES.STUDIO]: 'Design Studio',
-    [PAGES.PROPOSALS]: 'Proposals',
-    [PAGES.NAIL_SHOP]: 'Nail Shop',
-    [PAGES.ARTIST_DISTRICT]: 'Artist District',
-  };
-
   const topbar = (
     <div style={S.topbar}>
       <span style={{ fontWeight: 600, fontSize: 16, color: COLORS.plum }}>
-        {pageTitles[page]}
+        {PAGE_TITLES[page]}
       </span>
       <span style={{ fontSize: 13, color: COLORS.muted }}>
         Hey, {techName} 👋
@@ -246,9 +252,9 @@ export default function App() {
   // ── Page content ──────────────────────────────────────
   const renderPage = () => {
     switch (page) {
-      case PAGES.DASHBOARD:
+      case PAGES.HEADQUARTERS:
         return (
-          <ProtectedAppErrorBoundary boundaryKey={PAGES.DASHBOARD}>
+          <ProtectedAppErrorBoundary boundaryKey={PAGES.HEADQUARTERS}>
             <Headquarters
               techName={techName}
               onNavigate={(destination) => { void navigateTo(destination); }}
@@ -294,7 +300,7 @@ export default function App() {
       <div style={S.appShell}>
         {sidebar}
         <div style={S.mainContent}>
-          {page !== PAGES.DASHBOARD && topbar}
+          {page !== PAGES.HEADQUARTERS && topbar}
           {/* Design Studio gets full height for its split-panel layout;
               other pages scroll normally. */}
           <div style={{
