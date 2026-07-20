@@ -1,12 +1,11 @@
 # Nail Shop™ Production Asset Pack
 
-Status: Sprint 15.2A asset library structure created.
+Status: Sprint 15.2A Founder-approved asset manifest locked for Sprint 15.2B engineering.
 
 ## Approved asset locations
 
-- `branding/` — Luxe Nail Studio wordmark and shop-specific branding
 - `banner/` — approved wide Nail Shop hero banner
-- `signature/` — approved Signature Nail™ with transparent background
+- `signature/` — approved Signature Nail™
 - `display-window/` — five approved Display Window™ images
 - `artist-collective/` — five approved nail-avatar images
 - `merchandise/` — approved shop merchandise preview
@@ -15,19 +14,26 @@ Status: Sprint 15.2A asset library structure created.
 
 ## Engineering rule
 
-Codex must use the exact approved assets stored here. It may crop responsively where necessary, but it must not regenerate, reinterpret, or replace them without Founder approval.
+Engineering must use the exact Founder-approved assets stored here. Responsive cropping is allowed where necessary. Regenerating, redrawing, recoloring, stretching, or replacing the approved imagery is prohibited without Founder approval.
 
-## Planned filenames
+## Locked filenames
 
-- `branding/luxe-nail-studio-wordmark.png`
-- `banner/luxe-shop-banner.webp`
+- `banner/luxe-shop-banner.png`
 - `signature/luxe-signature-nail.png`
-- `display-window/display-window-01.webp` through `display-window-05.webp`
+- `display-window/display-window-01.png`
+- `display-window/display-window-02.png`
+- `display-window/display-window-03.png`
+- `display-window/display-window-04.png`
+- `display-window/display-window-05.png`
 - `artist-collective/avatar-yellow.png`
 - `artist-collective/avatar-white.png`
 - `artist-collective/avatar-royal-blue.png`
 - `artist-collective/avatar-hot-pink-coffin.png`
-- `artist-collective/avatar-chartreuse-almond.png`
-- `merchandise/luxe-merchandise-preview.webp`
-- `interior/luxe-interior-preview.webp`
+- `artist-collective/avatar-green.png`
+- `merchandise/luxe-merchandise-preview.png`
+- `interior/luxe-interior-preview.png`
 - `blueprint/nail-shop-public-blueprint-v1.png`
+
+## Current repository status
+
+The folder structure exists. Binary production images must be uploaded under the exact locked filenames above before Founder visual review. The implementation intentionally displays an explicit missing-asset state rather than inventing substitute artwork.
