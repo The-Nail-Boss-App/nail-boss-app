@@ -16,13 +16,15 @@ export const nailShopAssets = {
 };
 
 export const mockPublicShop = {
-  shopName: 'AnitaSet Atelier',
-  tagline: 'Editorial nail artistry, glossy rituals, and black cherry moments curated like a luxury boutique.',
-  bio: 'A Founder-approved Nail Shop room for premium sets, soft-glam rituals, and curated design discovery inside AnitaSet Headquarters.',
-  brandStory: 'Every shelf, service, and window moment is arranged to feel like stepping into an upscale nail boutique owned by a creative professional.',
-  location: 'Atlanta, GA',
-  accentColor: '#f7d392',
-  specialtyTags: ['3D charms', 'Chrome accents', 'Marble sets', 'Soft glam'],
+  shopName: 'Luxe Nail Studio',
+  tagline: 'Art. Attitude. Perfection.',
+  bio: 'A black-cherry Atlanta nail boutique for luxury gel, sculptural 3D art, custom designs, and collectible press-ons.',
+  brandStory: 'Luxe Nail Studio layers hot-pink confidence, chrome detail, and appointment-first care into every set.',
+  location: 'Atlanta, Georgia',
+  rating: '4.9',
+  reviewCount: '284 reviews',
+  accentColor: '#ff2f92',
+  specialtyTags: ['Luxury Gel', '3D Art', 'Custom Designs', 'Press-Ons'],
   bannerImage: nailShopAssets.banner,
   profileNailImage: nailShopAssets.signature,
   merchandiseImage: nailShopAssets.merchandise,
@@ -30,21 +32,21 @@ export const mockPublicShop = {
   hasMultipleArtists: true,
   signatureNail: {
     title: 'Signature Nail™',
-    subtitle: 'Founder-approved nail-shaped profile identity.',
+    subtitle: 'Luxe storefront identity in nail-design form.',
     image: nailShopAssets.signature,
   },
   featuredDisplayItems: nailShopAssets.displayWindow.map((image, index) => ({
     id: `display-window-${index + 1}`,
     type: 'design',
     title: ['Black Cherry Aura', 'Pearl Veil French', 'Gilded Marble', 'Velvet Chrome', 'Soft Sculptural Bloom'][index],
-    subtitle: 'Curated storefront inspiration',
+    subtitle: ['Gloss', 'Pearl', 'Chrome', 'Velvet', 'Bloom'][index],
     image,
     visualLabel: `Approved Display Window nail design ${index + 1}`,
     badge: index === 0 ? 'Signature' : 'Window',
   })),
   services: [
-    { title: 'Editorial Full Set', price: 'From $95', duration: '120 min' },
-    { title: 'Soft-Glam Gel Ritual', price: 'From $68', duration: '75 min' },
+    { title: 'Luxury Gel Set', price: 'From $95', duration: '120 min' },
+    { title: '3D Art Add-On', price: 'From $35', duration: '30 min' },
     { title: 'Custom Press-On Fitting', price: 'From $82', duration: '60 min' },
   ],
   gallery: nailShopAssets.displayWindow.map((image, index) => ({
@@ -54,9 +56,15 @@ export const mockPublicShop = {
   })),
   artists: nailShopAssets.artistAvatars.map((image, index) => ({
     id: `artist-nail-avatar-${index + 1}`,
-    name: ['Yellow Aura', 'White Pearl', 'Royal Blue', 'Hot Pink Coffin', 'Green Muse'][index],
+    name: ['Nova Chrome', 'Pearl Voss', 'Royal Rina', 'Coffin Kira', 'Emerald Muse'][index],
+    specialty: ['Luxury Gel', 'Pearl French', '3D Art', 'Press-Ons', 'Custom Designs'][index],
+    status: index === 0 ? 'Featured' : index === 3 ? 'Booking' : 'Available',
     image,
   })),
+  reviews: [
+    { id: 'review-1', name: 'Maya R.', rating: '5.0', copy: 'The black cherry set looked like wearable jewelry. Precise, glossy, and photo-ready.' },
+    { id: 'review-2', name: 'Talia J.', rating: '4.9', copy: 'Fast messages, stunning 3D detail, and the prettiest chrome finish I have had in Atlanta.' },
+  ],
 };
 
 export default mockPublicShop;

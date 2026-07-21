@@ -50,12 +50,13 @@ describe('App Nail Shop route', () => {
     expect(container.querySelector('[aria-label="Nail Shop public shell"]')).toBeTruthy();
     expect(container.querySelector('[data-testid="app-sidebar"]')).toBeTruthy();
     expect(container.textContent).toContain(mockPublicShop.shopName);
-    expect(container.textContent).toContain('Overview');
+    expect(container.textContent).toContain('Home');
     expect(container.textContent).toContain('Gallery');
     expect(container.textContent).toContain('Services');
     expect(container.textContent).toContain('Shop');
     expect(container.textContent).toContain('About');
-    expect(container.textContent).toContain('Artists');
+    expect(container.textContent).toContain('Reviews');
+    expect(container.textContent).toContain('Artist Collective');
 
     const renderedImageUrls = Array.from(container.querySelectorAll('img')).map((image) => image.getAttribute('src'));
     [
@@ -64,7 +65,7 @@ describe('App Nail Shop route', () => {
       ...nailShopAssets.displayWindow,
     ].forEach((assetUrl) => expect(renderedImageUrls).toContain(assetUrl));
 
-    ['Start shaping a public-facing Nail Shop', 'Ki Ki’s Nail Shop', 'Business Workspace'].forEach((oldPlaceholderText) => {
+    ['Start shaping a public-facing Nail Shop', 'Ki Ki’s Nail Shop', 'Business Workspace', 'AnitaSet Atelier'].forEach((oldPlaceholderText) => {
       expect(container.textContent).not.toContain(oldPlaceholderText);
     });
   });
