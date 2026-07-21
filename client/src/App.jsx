@@ -4,7 +4,7 @@ import Login from './Login';
 import Headquarters from './headquarters/Headquarters';
 import DesignStudio from './DesignStudio';
 import Proposals from './Proposals';
-import NailShop from './NailShop';
+import NailShopPublicShell from './nail-shop-public/NailShopPublicShell';
 import ArtistDistrict from './artist-district/ArtistDistrict';
 
 class ProtectedAppErrorBoundary extends Component {
@@ -276,7 +276,7 @@ export default function App() {
       case PAGES.NAIL_SHOP:
         return (
           <ProtectedAppErrorBoundary boundaryKey={PAGES.NAIL_SHOP}>
-            <NailShop />
+            <NailShopPublicShell />
           </ProtectedAppErrorBoundary>
         );
       case PAGES.ARTIST_DISTRICT:
