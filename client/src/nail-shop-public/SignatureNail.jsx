@@ -22,6 +22,7 @@ export default function SignatureNail({
   title,
   subtitle,
   size = DEFAULT_SIZE,
+  showCaption = true,
 }) {
   const resolvedSize = Number.isFinite(Number(size)) ? Number(size) : DEFAULT_SIZE;
   const resolvedDesign = { ...defaultDesign, ...design };
@@ -55,11 +56,13 @@ export default function SignatureNail({
           </div>
         )}
       </div>
-      <figcaption style={styles.text}>
-        <p style={styles.eyebrow}>Signature Nail™</p>
-        <h2 style={styles.title}>{resolvedTitle}</h2>
-        <p style={styles.subtitle}>{resolvedSubtitle}</p>
-      </figcaption>
+      {showCaption ? (
+        <figcaption style={styles.text}>
+          <p style={styles.eyebrow}>Signature Nail™</p>
+          <h2 style={styles.title}>{resolvedTitle}</h2>
+          <p style={styles.subtitle}>{resolvedSubtitle}</p>
+        </figcaption>
+      ) : null}
     </figure>
   );
 }
