@@ -4,7 +4,7 @@ export const signatureNailStyles = {
     maxWidth: '100%',
     display: 'grid',
     justifyItems: 'center',
-    gap: 14,
+    gap: 10,
     color: '#fff7ed',
     fontFamily: 'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
   }),
@@ -24,8 +24,8 @@ export const signatureNailStyles = {
     inset: '11% 7% 8%',
     borderRadius: '999px',
     background:
-      'radial-gradient(circle at 50% 38%, rgba(248, 214, 153, 0.28), rgba(107, 14, 56, 0.16) 42%, transparent 70%)',
-    filter: 'blur(4px)',
+      'radial-gradient(circle at 50% 38%, rgba(255, 47, 146, 0.34), rgba(155, 92, 255, 0.16) 44%, transparent 72%)',
+    filter: 'blur(9px)',
   },
   approvedImage: (size = 220) => ({
     position: 'relative',
@@ -33,7 +33,7 @@ export const signatureNailStyles = {
     maxWidth: '100%',
     height: 'auto',
     objectFit: 'contain',
-    filter: 'drop-shadow(0 24px 34px rgba(12, 3, 11, 0.5))',
+    filter: 'drop-shadow(0 0 18px rgba(255,47,146,.38)) drop-shadow(8px 0 10px rgba(217,221,231,.22)) drop-shadow(0 24px 34px rgba(12, 3, 11, 0.58))',
   }),
   nail: (size = 220, shape = 'almond', colors = []) => ({
     position: 'relative',
@@ -72,7 +72,7 @@ export const signatureNailStyles = {
   },
   eyebrow: {
     margin: 0,
-    color: '#f7d392',
+    color: '#ff5faf',
     fontSize: 11,
     fontWeight: 700,
     letterSpacing: '0.18em',
@@ -88,7 +88,7 @@ export const signatureNailStyles = {
   },
   shapeLabel: {
     margin: 0,
-    color: '#f7d392',
+    color: '#ff5faf',
     fontSize: 11,
     fontWeight: 800,
     letterSpacing: '0.08em',
