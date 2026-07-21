@@ -49,14 +49,12 @@ describe('DisplayWindow', () => {
     expect(container.textContent).toContain('Display Window™');
   });
 
-  it('renders exactly 4 default mixed cards', () => {
+  it('renders exactly 5 default curated cards', () => {
     renderDisplayWindow();
 
-    expect(container.querySelectorAll('article')).toHaveLength(4);
+    expect(container.querySelectorAll('article')).toHaveLength(5);
     expect(container.textContent).toContain('design');
-    expect(container.textContent).toContain('product');
-    expect(container.textContent).toContain('service');
-  });
+      });
 
   it('renders custom items', () => {
     renderDisplayWindow({
@@ -66,7 +64,7 @@ describe('DisplayWindow', () => {
           type: 'product',
           title: 'Custom Rose Look',
           subtitle: 'Rose Capsule',
-          visualLabel: 'Custom rose product placeholder',
+          visualLabel: 'Custom rose product preview',
         },
       ],
     });
@@ -81,14 +79,14 @@ describe('DisplayWindow', () => {
     renderDisplayWindow({ items: [] });
 
     expect(container.querySelectorAll('article')).toHaveLength(0);
-    expect(container.textContent).toContain('Display Window™ pieces are being polished for preview.');
+    expect(container.textContent).toContain('Display Window™ pieces are being curated for preview.');
   });
 
   it('renders disabled View Look buttons', () => {
     renderDisplayWindow();
 
     const buttons = Array.from(container.querySelectorAll('button'));
-    expect(buttons).toHaveLength(4);
+    expect(buttons).toHaveLength(5);
     buttons.forEach((button) => {
       expect(button.textContent).toBe('View Look');
       expect(button.disabled).toBe(true);

@@ -6,8 +6,9 @@ export const SUPPORTED_NAIL_SHAPES = ['almond', 'coffin', 'square', 'oval', 'rou
 
 const defaultDesign = {
   title: 'Signature Nail™',
-  subtitle: 'A premium artist identity placeholder for the Nail Shop public shell.',
+  subtitle: 'A premium artist identity asset for the Nail Shop public shell.',
   shape: 'almond',
+  image: '',
   colors: ['#fff1d0', '#c88a96', '#6e123f', '#24071c', '#8f1b4b', '#f5d38f'],
   accentLabel: 'Soft gold detail',
 };
@@ -38,10 +39,21 @@ export default function SignatureNail({
     >
       <div style={styles.stage(resolvedSize)} aria-label={`${resolvedShape} nail visual on transparent background`}>
         <div style={styles.aura} aria-hidden="true" />
-        <div style={styles.nail(resolvedSize, resolvedShape, resolvedDesign.colors)} data-testid={`signature-nail-shape-${resolvedShape}`}>
-          <div style={styles.goldEdge} aria-hidden="true" />
-          <div style={styles.reflection} aria-hidden="true" />
-        </div>
+        {resolvedDesign.image ? (
+          <img
+            src={resolvedDesign.image}
+            alt={`${resolvedTitle} approved nail design avatar`}
+            loading="eager"
+            decoding="async"
+            style={styles.approvedImage(resolvedSize)}
+            data-testid={`signature-nail-shape-${resolvedShape}`}
+          />
+        ) : (
+          <div style={styles.nail(resolvedSize, resolvedShape, resolvedDesign.colors)} data-testid={`signature-nail-shape-${resolvedShape}`}>
+            <div style={styles.goldEdge} aria-hidden="true" />
+            <div style={styles.reflection} aria-hidden="true" />
+          </div>
+        )}
       </div>
       <figcaption style={styles.text}>
         <p style={styles.eyebrow}>Signature Nail™</p>

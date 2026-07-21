@@ -57,6 +57,16 @@ export const displayWindowStyles = {
       'linear-gradient(160deg, rgba(255, 247, 237, 0.14), rgba(61, 9, 36, 0.52)), radial-gradient(circle at 18% 12%, rgba(247, 211, 146, 0.16), transparent 28%)',
     boxShadow: '0 18px 44px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 247, 237, 0.1)',
   },
+  imageVisual: {
+    width: '100%',
+    height: 178,
+    display: 'block',
+    objectFit: 'cover',
+    borderRadius: 22,
+    border: '1px solid rgba(247, 211, 146, 0.22)',
+    boxShadow: 'inset 0 1px 0 rgba(255, 247, 237, 0.25), 0 14px 32px rgba(8, 2, 7, 0.24)',
+    background: 'rgba(25, 7, 22, 0.34)',
+  },
   visualByType: (type = 'design') => ({
     position: 'relative',
     height: 152,

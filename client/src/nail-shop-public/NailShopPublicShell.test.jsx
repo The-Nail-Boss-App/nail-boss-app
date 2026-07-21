@@ -28,13 +28,13 @@ describe('NailShopPublicShell', () => {
     expect(container.textContent).toContain('Custom Charms');
   });
 
-  it('changes active placeholder panels through PublicTabs', () => {
+  it('changes active boutique panels through PublicTabs', () => {
     renderShell();
-    expect(container.textContent).toContain('Public shop introduction');
+    expect(container.textContent).toContain('A boutique built around');
     clickByText('Gallery');
-    expect(container.textContent).toContain('Portfolio placeholder');
+    expect(container.textContent).toContain('Editorial looks ready');
     clickByText('Shop');
-    expect(container.textContent).toContain('Products placeholder');
+    expect(container.textContent).toContain('Premium merchandise preview');
   });
 
   it('shows Artists tab only when hasMultipleArtists is true', () => {
@@ -47,7 +47,7 @@ describe('NailShopPublicShell', () => {
     expect(Array.from(container.querySelectorAll('[role="tab"]')).map((n) => n.textContent)).not.toContain('Artists');
   });
 
-  it('keeps placeholder header buttons disabled', () => {
+  it('keeps preview header buttons disabled', () => {
     renderShell();
     ['Book This Artist', 'Shop Sets'].forEach((label) => expect(Array.from(container.querySelectorAll('button')).find((b) => b.textContent === label).disabled).toBe(true));
   });

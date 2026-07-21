@@ -26,6 +26,8 @@ export const nailShopPublicStyles = {
     gap: 24,
   },
   hero: {
+    position: 'relative',
+    overflow: 'hidden',
     display: 'grid',
     gridTemplateColumns: 'minmax(220px, 0.72fr) minmax(0, 1.28fr)',
     gap: 28,
@@ -38,12 +40,30 @@ export const nailShopPublicStyles = {
     boxShadow: '0 30px 90px rgba(10, 2, 9, 0.42), inset 0 1px 0 rgba(255, 247, 237, 0.12)',
     backdropFilter: 'blur(12px)',
   },
+  heroBanner: {
+    position: 'absolute',
+    inset: 0,
+    width: '100%',
+    height: '100%',
+    objectFit: 'cover',
+    opacity: 0.42,
+    filter: 'saturate(1.04) contrast(1.02)',
+  },
+  heroOverlay: {
+    position: 'absolute',
+    inset: 0,
+    background: 'linear-gradient(90deg, rgba(25, 7, 22, 0.88), rgba(61, 9, 36, 0.64) 54%, rgba(25, 7, 22, 0.72))',
+  },
   signatureWrap: {
+    position: 'relative',
+    zIndex: 1,
     display: 'grid',
     justifyItems: 'center',
     minWidth: 0,
   },
   heroCopy: {
+    position: 'relative',
+    zIndex: 1,
     minWidth: 0,
     display: 'grid',
     gap: 14,
@@ -204,6 +224,121 @@ export const nailShopPublicStyles = {
     color: palette.mutedCream,
     lineHeight: 1.6,
   },
+
+  featureList: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 10,
+    margin: '8px 0 0',
+    padding: 0,
+    listStyle: 'none',
+  },
+  featurePill: {
+    border: '1px solid rgba(247, 211, 146, 0.24)',
+    borderRadius: 999,
+    padding: '9px 12px',
+    color: palette.softGold,
+    background: 'rgba(25, 7, 22, 0.34)',
+    fontSize: 12,
+    fontWeight: 800,
+  },
+  galleryGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))',
+    gap: 16,
+    textAlign: 'left',
+  },
+  galleryCard: {
+    display: 'grid',
+    gap: 12,
+    padding: 14,
+    borderRadius: 24,
+    border: '1px solid rgba(247, 211, 146, 0.16)',
+    background: 'rgba(25, 7, 22, 0.32)',
+  },
+  galleryImage: {
+    width: '100%',
+    aspectRatio: '4 / 5',
+    objectFit: 'cover',
+    borderRadius: 20,
+  },
+  inlineActions: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  mockAction: {
+    border: '1px solid rgba(247, 211, 146, 0.2)',
+    borderRadius: 999,
+    padding: '8px 10px',
+    color: palette.cream,
+    background: 'rgba(255, 247, 237, 0.08)',
+    fontSize: 12,
+    fontWeight: 800,
+  },
+  serviceGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+    gap: 16,
+    textAlign: 'left',
+  },
+  serviceCard: {
+    display: 'grid',
+    gap: 10,
+    padding: 20,
+    borderRadius: 26,
+    border: '1px solid rgba(247, 211, 146, 0.18)',
+    background: 'linear-gradient(160deg, rgba(255, 247, 237, 0.12), rgba(61, 9, 36, 0.42))',
+  },
+  price: {
+    margin: 0,
+    color: palette.softGold,
+    fontSize: 18,
+    fontWeight: 900,
+  },
+  shopFeature: {
+    display: 'grid',
+    gridTemplateColumns: 'minmax(240px, 0.9fr) minmax(0, 1.1fr)',
+    gap: 22,
+    alignItems: 'center',
+    textAlign: 'left',
+  },
+  aboutFeature: {
+    display: 'grid',
+    gridTemplateColumns: 'minmax(240px, 0.9fr) minmax(0, 1.1fr)',
+    gap: 22,
+    alignItems: 'center',
+    textAlign: 'left',
+  },
+  shopImage: {
+    width: '100%',
+    borderRadius: 26,
+    objectFit: 'cover',
+    boxShadow: '0 18px 44px rgba(0, 0, 0, 0.25)',
+  },
+  artistGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+    gap: 16,
+  },
+  artistCard: {
+    display: 'grid',
+    justifyItems: 'center',
+    gap: 10,
+    padding: 14,
+    borderRadius: 24,
+    border: '1px solid rgba(247, 211, 146, 0.16)',
+    background: 'rgba(25, 7, 22, 0.32)',
+  },
+  artistAvatar: {
+    width: 112,
+    height: 148,
+    objectFit: 'cover',
+    borderRadius: '50% 50% 44% 44% / 10% 10% 62% 62%',
+    boxShadow: '0 16px 34px rgba(0, 0, 0, 0.28)',
+  },
+
 };
 
 export const nailShopPublicMediaStyles = `
@@ -211,5 +346,7 @@ export const nailShopPublicMediaStyles = `
     .nail-shop-public-hero { grid-template-columns: 1fr !important; padding: 20px !important; }
     .nail-shop-public-shell { width: min(100% - 20px, 1180px) !important; padding-top: 16px !important; }
     .nail-shop-public-panel { padding: 18px !important; }
+    .nail-shop-public-panel article { min-width: 0 !important; }
+    .nail-shop-public-panel [style*='grid-template-columns'] { grid-template-columns: 1fr !important; }
   }
 `;

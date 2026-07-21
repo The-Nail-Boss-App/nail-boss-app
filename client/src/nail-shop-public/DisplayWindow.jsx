@@ -19,7 +19,7 @@ export function DisplayWindow({ items = defaultDisplayWindowItems, title = 'Disp
       </div>
 
       {displayItems.length === 0 ? (
-        <p style={styles.emptyState}>Display Window™ pieces are being polished for preview.</p>
+        <p style={styles.emptyState}>Display Window™ pieces are being curated for preview.</p>
       ) : (
         <div style={styles.grid} className="display-window-grid">
           {displayItems.map((item, index) => {
@@ -27,11 +27,15 @@ export function DisplayWindow({ items = defaultDisplayWindowItems, title = 'Disp
             const itemType = ['design', 'product', 'service'].includes(item.type) ? item.type : 'design';
             const titleText = item.title || item.name || 'Untitled Look';
             const subtitle = item.subtitle || item.category || 'Editorial nail look';
-            const visualLabel = item.visualLabel || `${titleText} safe ${itemType} visual placeholder`;
+            const visualLabel = item.visualLabel || `${titleText} approved ${itemType} visual`;
 
             return (
               <article key={key} style={styles.card} aria-label={`${titleText} ${itemType} display card`}>
-                <div style={styles.visualByType(itemType)} role="img" aria-label={visualLabel} />
+                {item.image ? (
+                  <img src={item.image} alt={visualLabel} loading={index === 0 ? 'eager' : 'lazy'} decoding="async" style={styles.imageVisual} />
+                ) : (
+                  <div style={styles.visualByType(itemType)} role="img" aria-label={visualLabel} />
+                )}
                 {item.badge ? <span style={styles.badge}>{item.badge}</span> : null}
                 <div>
                   <p style={styles.category}>{itemType}</p>
@@ -39,7 +43,7 @@ export function DisplayWindow({ items = defaultDisplayWindowItems, title = 'Disp
                   <p style={styles.subtitle}>{subtitle}</p>
                 </div>
                 <div style={styles.footer}>
-                  <button type="button" style={styles.disabledAction} disabled aria-label={`View ${titleText} placeholder disabled`}>View Look</button>
+                  <button type="button" style={styles.disabledAction} disabled aria-label={`View ${titleText} preview action`}>View Look</button>
                 </div>
               </article>
             );
