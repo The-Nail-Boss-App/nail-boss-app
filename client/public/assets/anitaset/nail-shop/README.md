@@ -1,33 +1,40 @@
 # Nail Shop™ Production Asset Pack
 
-Status: Sprint 15.2A asset library structure created.
+Status: Sprint 15.2B Founder-approved PNG manifest installed.
 
 ## Approved asset locations
 
-- `branding/` — Luxe Nail Studio wordmark and shop-specific branding
-- `banner/` — approved wide Nail Shop hero banner
-- `signature/` — approved Signature Nail™ with transparent background
-- `display-window/` — five approved Display Window™ images
-- `artist-collective/` — five approved nail-avatar images
-- `merchandise/` — approved shop merchandise preview
-- `interior/` — approved About / interior preview
-- `blueprint/` — Founder Approved Nail Shop™ Public Blueprint v1.0
+- `banner/` — approved wide Nail Shop hero storefront banner.
+- `signature/` — approved Signature Nail™ profile identity asset.
+- `display-window/` — five approved Display Window™ images for curated featured work.
+- `artist-collective/` — five approved nail-design avatar images for artist identity.
+- `merchandise/` — approved shop merchandise preview.
+- `interior/` — approved About / interior preview.
+- `blueprint/` — Founder Approved Nail Shop™ Public Blueprint documentation.
 
 ## Engineering rule
 
-Codex must use the exact approved assets stored here. It may crop responsively where necessary, but it must not regenerate, reinterpret, or replace them without Founder approval.
+Use the exact approved PNG assets stored here. Responsive cropping is allowed where necessary, but these assets must not be regenerated, substituted, renamed, recolored, redesigned, or replaced without Founder approval.
 
-## Planned filenames
+## Final approved PNG manifest
 
-- `branding/luxe-nail-studio-wordmark.png`
-- `banner/luxe-shop-banner.webp`
+- `banner/luxe-shop-banner.png`
 - `signature/luxe-signature-nail.png`
-- `display-window/display-window-01.webp` through `display-window-05.webp`
+- `display-window/display-window-01.png`
+- `display-window/display-window-02.png`
+- `display-window/display-window-03.png`
+- `display-window/display-window-04.png`
+- `display-window/display-window-05.png`
 - `artist-collective/avatar-yellow.png`
 - `artist-collective/avatar-white.png`
 - `artist-collective/avatar-royal-blue.png`
 - `artist-collective/avatar-hot-pink-coffin.png`
-- `artist-collective/avatar-chartreuse-almond.png`
-- `merchandise/luxe-merchandise-preview.webp`
-- `interior/luxe-interior-preview.webp`
-- `blueprint/nail-shop-public-blueprint-v1.png`
+- `artist-collective/avatar-green.png`
+- `merchandise/luxe-merchandise-preview.png`
+- `interior/luxe-interior-preview.png`
+
+## Founder rules
+
+- Artist identity is their work; artist profile images must use nail-design avatars, not selfies, faces, logos, or initials.
+- Display Window™ is a curated inspiration storefront, not a generic product grid.
+- Nail Shop™ should feel like entering a luxury nail boutique inside AnitaSet Headquarters.

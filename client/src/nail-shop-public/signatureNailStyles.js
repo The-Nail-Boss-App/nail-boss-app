@@ -27,6 +27,14 @@ export const signatureNailStyles = {
       'radial-gradient(circle at 50% 38%, rgba(248, 214, 153, 0.28), rgba(107, 14, 56, 0.16) 42%, transparent 70%)',
     filter: 'blur(4px)',
   },
+  approvedImage: (size = 220) => ({
+    position: 'relative',
+    width: Math.round(size * 0.72),
+    maxWidth: '100%',
+    height: 'auto',
+    objectFit: 'contain',
+    filter: 'drop-shadow(0 24px 34px rgba(12, 3, 11, 0.5))',
+  }),
   nail: (size = 220, shape = 'almond', colors = []) => ({
     position: 'relative',
     width: Math.round(size * 0.44),
