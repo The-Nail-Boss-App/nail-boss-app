@@ -1,67 +1,15 @@
-const palette = {
-  deepPlum: '#190716',
-  blackCherry: '#3d0924',
-  cream: '#fff7ed',
-  softGold: '#f7d392',
-  rose: '#c88a96',
-};
+const palette = { ink: '#050306', cream: '#fff3df', pink: '#ff2f92', violet: '#9b5cff', silver: '#d9dde7' };
 
 export const publicTabsStyles = {
-  wrap: {
-    width: '100%',
-    maxWidth: '100%',
-    overflowX: 'auto',
-    WebkitOverflowScrolling: 'touch',
-    scrollbarWidth: 'thin',
-    scrollbarColor: 'rgba(247, 211, 146, 0.42) rgba(255, 247, 237, 0.08)',
-  },
-  tablist: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    gap: 10,
-    width: '100%',
-    minWidth: 0,
-  },
-  tab: {
-    appearance: 'none',
-    border: '1px solid rgba(247, 211, 146, 0.22)',
-    borderRadius: 999,
-    padding: '11px 16px',
-    color: palette.cream,
-    background: 'linear-gradient(135deg, rgba(61, 9, 36, 0.78), rgba(25, 7, 22, 0.86))',
-    fontWeight: 800,
-    letterSpacing: '0.01em',
-    whiteSpace: 'nowrap',
-    cursor: 'pointer',
-    transition: 'border-color 160ms ease, box-shadow 160ms ease, color 160ms ease, background 160ms ease, transform 160ms ease',
-  },
-  activeTab: {
-    border: '1px solid rgba(247, 211, 146, 0.82)',
-    color: '#230719',
-    background: 'linear-gradient(135deg, #fff1d0, #f7d392 58%, #c88a96)',
-    fontWeight: 900,
-    boxShadow: '0 16px 34px rgba(247, 211, 146, 0.2), inset 0 1px 0 rgba(255, 247, 237, 0.45)',
-  },
+  wrap: { width: '100%', maxWidth: '100%', overflowX: 'auto', WebkitOverflowScrolling: 'touch', scrollbarWidth: 'thin', scrollbarColor: 'rgba(255,47,146,.55) rgba(255,255,255,.08)', padding: '2px 0' },
+  tablist: { display: 'flex', flexWrap: 'nowrap', gap: 8, width: '100%', minWidth: 0, padding: 6, borderRadius: 22, border: '1px solid rgba(217,221,231,.14)', background: 'linear-gradient(90deg, rgba(5,3,6,.9), rgba(39,5,21,.86))', boxShadow: 'inset 0 1px 0 rgba(255,255,255,.08)' },
+  tab: { appearance: 'none', flex: '1 0 auto', border: '1px solid rgba(217,221,231,.16)', borderRadius: 16, padding: '10px 13px', color: palette.cream, background: 'rgba(255,255,255,.055)', fontWeight: 900, letterSpacing: '0.01em', whiteSpace: 'nowrap', cursor: 'pointer', transition: 'border-color 160ms ease, box-shadow 160ms ease, color 160ms ease, background 160ms ease, transform 160ms ease' },
+  activeTab: { border: '1px solid rgba(255,47,146,.86)', color: '#fff', background: 'linear-gradient(135deg, rgba(255,47,146,.92), rgba(155,92,255,.56))', boxShadow: '0 0 22px rgba(255,47,146,.22), inset 0 1px 0 rgba(255,255,255,.24)' },
 };
 
 export const publicTabsMediaStyles = `
-  .public-tabs__tab:hover {
-    border-color: rgba(247, 211, 146, 0.72) !important;
-    box-shadow: 0 0 0 1px rgba(247, 211, 146, 0.12), 0 14px 30px rgba(247, 211, 146, 0.14) !important;
-    transform: translateY(-1px);
-  }
-
-  .public-tabs__tab:focus-visible {
-    outline: 3px solid rgba(247, 211, 146, 0.95);
-    outline-offset: 3px;
-  }
-
-  @media (max-width: 900px) {
-    .public-tabs__tablist { flex-wrap: wrap !important; }
-  }
-
-  @media (max-width: 560px) {
-    .public-tabs { margin-right: -10px; padding: 3px 10px 8px 0; }
-    .public-tabs__tablist { flex-wrap: nowrap !important; width: max-content !important; max-width: none !important; }
-  }
+  .public-tabs__tab:hover { border-color: rgba(255,47,146,.76) !important; transform: translateY(-1px); }
+  .public-tabs__tab:focus-visible { outline: 3px solid rgba(255,47,146,.95); outline-offset: 3px; }
+  .public-tabs__icon { margin-right: 7px; color: ${palette.silver}; }
+  @media (max-width: 720px) { .public-tabs__tablist { width: max-content !important; max-width: none !important; } .public-tabs__tab { flex: 0 0 auto !important; } }
 `;

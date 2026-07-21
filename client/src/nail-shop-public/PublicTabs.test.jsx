@@ -23,7 +23,7 @@ function renderTabs(props) {
 }
 
 function getTab(name) {
-  return Array.from(container.querySelectorAll('[role="tab"]')).find((tab) => tab.textContent === name);
+  return Array.from(container.querySelectorAll('[role="tab"]')).find((tab) => tab.textContent.includes(name));
 }
 
 function keyDown(node, key) {
@@ -39,7 +39,7 @@ function click(node) {
 }
 
 function tabNames() {
-  return ['Overview', 'Services', 'Shop', 'Gallery', 'About'];
+  return ['Home', 'Services', 'Gallery', 'Shop', 'About', 'Reviews'];
 }
 
 describe('PublicTabs', () => {
@@ -56,7 +56,7 @@ describe('PublicTabs', () => {
     root = null;
   });
 
-  it('renders all five default tabs', () => {
+  it('renders all six blueprint default tabs', () => {
     renderTabs();
 
     tabNames().forEach((tab) => {
@@ -70,33 +70,33 @@ describe('PublicTabs', () => {
     click(getTab('Services'));
 
     expect(getTab('Services').getAttribute('aria-selected')).toBe('true');
-    expect(getTab('Overview').getAttribute('aria-selected')).toBe('false');
+    expect(getTab('Home').getAttribute('aria-selected')).toBe('false');
   });
 
   it('supports keyboard navigation and activation', () => {
     const onTabChange = jest.fn();
     renderTabs({ onTabChange });
 
-    getTab('Overview').focus();
-    keyDown(getTab('Overview'), 'ArrowRight');
+    getTab('Home').focus();
+    keyDown(getTab('Home'), 'ArrowRight');
 
     expect(getTab('Services')).toBe(document.activeElement);
     expect(getTab('Services').getAttribute('aria-selected')).toBe('true');
 
     keyDown(getTab('Services'), 'End');
-    expect(getTab('About')).toBe(document.activeElement);
+    expect(getTab('Reviews')).toBe(document.activeElement);
 
-    keyDown(getTab('About'), 'Home');
-    expect(getTab('Overview')).toBe(document.activeElement);
+    keyDown(getTab('Reviews'), 'Home');
+    expect(getTab('Home')).toBe(document.activeElement);
 
-    keyDown(getTab('Overview'), 'ArrowLeft');
-    expect(getTab('About')).toBe(document.activeElement);
+    keyDown(getTab('Home'), 'ArrowLeft');
+    expect(getTab('Reviews')).toBe(document.activeElement);
 
-    keyDown(getTab('About'), 'Enter');
-    expect(onTabChange).toHaveBeenCalledWith('About');
+    keyDown(getTab('Reviews'), 'Enter');
+    expect(onTabChange).toHaveBeenCalledWith('Reviews');
 
-    keyDown(getTab('About'), ' ');
-    expect(onTabChange).toHaveBeenCalledWith('About');
+    keyDown(getTab('Reviews'), ' ');
+    expect(onTabChange).toHaveBeenCalledWith('Reviews');
   });
 
   it('uses the correct ARIA roles and tab state attributes', () => {
@@ -104,7 +104,7 @@ describe('PublicTabs', () => {
 
     expect(container.querySelector('[role="tablist"][aria-label="Public Nail Shop sections"]')).not.toBeNull();
     const tabs = Array.from(container.querySelectorAll('[role="tab"]'));
-    expect(tabs).toHaveLength(5);
+    expect(tabs).toHaveLength(6);
     tabs.forEach((tab) => {
       expect(tab.hasAttribute('aria-selected')).toBe(true);
       expect(tab.hasAttribute('aria-controls')).toBe(true);

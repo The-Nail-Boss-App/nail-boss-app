@@ -59,7 +59,6 @@ export default function SignatureNail({
         <p style={styles.eyebrow}>Signature Nail™</p>
         <h2 style={styles.title}>{resolvedTitle}</h2>
         <p style={styles.subtitle}>{resolvedSubtitle}</p>
-        <p style={styles.shapeLabel}>{resolvedShape} shape · {resolvedDesign.accentLabel}</p>
       </figcaption>
     </figure>
   );

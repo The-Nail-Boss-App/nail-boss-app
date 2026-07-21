@@ -13,8 +13,12 @@ export function DisplayWindow({ items = defaultDisplayWindowItems, title = 'Disp
       <style>{displayWindowMediaStyles}</style>
       <div style={styles.header} className="display-window-header">
         <div>
-          <p style={styles.eyebrow}>Boutique preview</p>
+          <p style={styles.eyebrow}>Storefront showcase</p>
           <h2 id={headingId} style={styles.sectionTitle}>{title}</h2>
+        </div>
+        <div style={styles.controls} aria-label="Display Window controls">
+          <button type="button" style={styles.arrowButton} className="display-window-arrow" aria-label="Previous Display Window item">‹</button>
+          <button type="button" style={styles.arrowButton} className="display-window-arrow" aria-label="Next Display Window item">›</button>
         </div>
       </div>
 
@@ -30,7 +34,7 @@ export function DisplayWindow({ items = defaultDisplayWindowItems, title = 'Disp
             const visualLabel = item.visualLabel || `${titleText} approved ${itemType} visual`;
 
             return (
-              <article key={key} style={styles.card} aria-label={`${titleText} ${itemType} display card`}>
+              <article key={key} style={styles.card} className="display-window-card" aria-label={`${titleText} ${itemType} display card`}>
                 {item.image ? (
                   <img src={item.image} alt={visualLabel} loading={index === 0 ? 'eager' : 'lazy'} decoding="async" style={styles.imageVisual} />
                 ) : (
@@ -41,9 +45,6 @@ export function DisplayWindow({ items = defaultDisplayWindowItems, title = 'Disp
                   <p style={styles.category}>{itemType}</p>
                   <h3 style={styles.cardTitle}>{titleText}</h3>
                   <p style={styles.subtitle}>{subtitle}</p>
-                </div>
-                <div style={styles.footer}>
-                  <button type="button" style={styles.disabledAction} disabled aria-label={`View ${titleText} preview action`}>View Look</button>
                 </div>
               </article>
             );

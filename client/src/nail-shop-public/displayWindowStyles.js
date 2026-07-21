@@ -1,156 +1,62 @@
 const palette = {
-  deepPlum: '#190716',
-  blackCherry: '#3d0924',
-  cream: '#fff7ed',
-  rose: '#c88a96',
-  softGold: '#f7d392',
-  mutedCream: 'rgba(255, 247, 237, 0.76)',
+  ink: '#050306',
+  blackCherry: '#270515',
+  cream: '#fff3df',
+  pink: '#ff2f92',
+  violet: '#9b5cff',
+  silver: '#d9dde7',
+  mutedCream: 'rgba(255, 243, 223, 0.72)',
 };
 
 export const displayWindowStyles = {
   panel: {
     position: 'relative',
     overflow: 'hidden',
-    padding: 24,
-    borderRadius: 30,
-    border: '1px solid rgba(255, 247, 237, 0.14)',
-    background:
-      'radial-gradient(circle at 12% 0%, rgba(247, 211, 146, 0.13), transparent 30%), linear-gradient(145deg, rgba(255, 247, 237, 0.1), rgba(25, 7, 22, 0.58))',
-    boxShadow: '0 24px 70px rgba(8, 2, 7, 0.32)',
+    padding: 18,
+    borderRadius: 26,
+    border: '1px solid rgba(255, 47, 146, 0.28)',
+    background: 'radial-gradient(circle at 8% 0%, rgba(255, 47, 146, 0.18), transparent 28%), linear-gradient(145deg, rgba(39, 5, 21, 0.94), rgba(5, 3, 6, 0.92))',
+    boxShadow: '0 20px 54px rgba(0, 0, 0, 0.42), inset 0 1px 0 rgba(217, 221, 231, 0.12)',
   },
-  header: {
-    display: 'flex',
-    alignItems: 'end',
-    justifyContent: 'space-between',
-    gap: 16,
-    marginBottom: 18,
-  },
-  sectionTitle: {
-    margin: 0,
+  header: { display: 'flex', alignItems: 'end', justifyContent: 'space-between', gap: 12, marginBottom: 12 },
+  controls: { display: 'flex', gap: 8 },
+  arrowButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 999,
+    border: '1px solid rgba(217, 221, 231, 0.32)',
     color: palette.cream,
-    fontFamily: 'Georgia, "Times New Roman", serif',
-    fontSize: 'clamp(30px, 4vw, 48px)',
-    lineHeight: 1,
-    letterSpacing: '-0.035em',
+    background: 'rgba(255, 255, 255, 0.08)',
+    fontWeight: 900,
   },
-  eyebrow: {
-    margin: 0,
-    color: palette.softGold,
-    fontSize: 11,
-    fontWeight: 800,
-    letterSpacing: '0.18em',
-    textTransform: 'uppercase',
-  },
-  grid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
-    gap: 16,
-  },
+  sectionTitle: { margin: 0, color: palette.cream, fontFamily: 'Georgia, "Times New Roman", serif', fontSize: 'clamp(24px, 3vw, 34px)', lineHeight: 1, letterSpacing: '-0.035em' },
+  eyebrow: { margin: 0, color: palette.pink, fontSize: 11, fontWeight: 900, letterSpacing: '0.18em', textTransform: 'uppercase' },
+  grid: { display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: 10 },
   card: {
     minWidth: 0,
-    display: 'grid',
-    gap: 12,
-    padding: 16,
-    borderRadius: 26,
-    border: '1px solid rgba(247, 211, 146, 0.18)',
-    background:
-      'linear-gradient(160deg, rgba(255, 247, 237, 0.14), rgba(61, 9, 36, 0.52)), radial-gradient(circle at 18% 12%, rgba(247, 211, 146, 0.16), transparent 28%)',
-    boxShadow: '0 18px 44px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 247, 237, 0.1)',
-  },
-  imageVisual: {
-    width: '100%',
-    height: 178,
-    display: 'block',
-    objectFit: 'cover',
-    borderRadius: 22,
-    border: '1px solid rgba(247, 211, 146, 0.22)',
-    boxShadow: 'inset 0 1px 0 rgba(255, 247, 237, 0.25), 0 14px 32px rgba(8, 2, 7, 0.24)',
-    background: 'rgba(25, 7, 22, 0.34)',
-  },
-  visualByType: (type = 'design') => ({
     position: 'relative',
-    height: 152,
-    borderRadius: 22,
-    overflow: 'hidden',
-    border: '1px solid rgba(247, 211, 146, 0.22)',
-    background:
-      `radial-gradient(circle at 28% 20%, rgba(255, 247, 237, 0.55), transparent 15%), radial-gradient(circle at 72% 28%, ${type === 'product' ? '#f7d392' : type === 'service' ? '#fff7ed' : palette.rose}88, transparent 24%), linear-gradient(135deg, rgba(247, 211, 146, 0.72), rgba(200, 138, 150, 0.42) 38%, rgba(61, 9, 36, 0.94))`,
-    boxShadow: 'inset 0 1px 0 rgba(255, 247, 237, 0.25), 0 14px 32px rgba(8, 2, 7, 0.24)',
-  }),
-  badge: {
-    justifySelf: 'start',
-    marginTop: -2,
-    border: '1px solid rgba(247, 211, 146, 0.32)',
-    borderRadius: 999,
-    padding: '5px 9px',
-    color: palette.softGold,
-    background: 'rgba(25, 7, 22, 0.52)',
-    fontSize: 11,
-    fontWeight: 800,
-    letterSpacing: '0.08em',
-    textTransform: 'uppercase',
-  },
-  cardTitle: {
-    margin: 0,
-    color: palette.cream,
-    fontFamily: 'Georgia, "Times New Roman", serif',
-    fontSize: 22,
-    lineHeight: 1.08,
-  },
-  category: {
-    margin: 0,
-    color: 'rgba(247, 211, 146, 0.82)',
-    fontSize: 12,
-    fontWeight: 800,
-    letterSpacing: '0.12em',
-    textTransform: 'uppercase',
-  },
-  subtitle: {
-    margin: 0,
-    minHeight: 42,
-    color: palette.mutedCream,
-    fontSize: 14,
-    lineHeight: 1.5,
-  },
-  footer: {
     display: 'grid',
-    gap: 10,
-    alignSelf: 'end',
+    gap: 7,
+    padding: 9,
+    borderRadius: 18,
+    border: '1px solid rgba(217, 221, 231, 0.16)',
+    background: 'linear-gradient(160deg, rgba(255, 47, 146, 0.13), rgba(15, 3, 9, 0.88))',
+    boxShadow: '0 14px 30px rgba(0, 0, 0, 0.28)',
   },
-  price: {
-    margin: 0,
-    color: palette.cream,
-    fontSize: 15,
-    fontWeight: 800,
-  },
-  disabledAction: {
-    width: '100%',
-    border: '1px solid rgba(255, 247, 237, 0.14)',
-    borderRadius: 999,
-    padding: '10px 14px',
-    color: 'rgba(255, 247, 237, 0.48)',
-    background: 'rgba(255, 247, 237, 0.06)',
-    fontWeight: 800,
-    cursor: 'not-allowed',
-  },
-  emptyState: {
-    margin: 0,
-    padding: 18,
-    borderRadius: 20,
-    border: '1px solid rgba(247, 211, 146, 0.16)',
-    color: palette.mutedCream,
-    background: 'rgba(25, 7, 22, 0.34)',
-  },
+  imageVisual: { width: '100%', aspectRatio: '16 / 10', display: 'block', objectFit: 'cover', borderRadius: 14, border: '1px solid rgba(255, 47, 146, 0.24)', boxShadow: '0 0 24px rgba(255, 47, 146, 0.14)', background: palette.ink },
+  visualByType: () => ({ height: 98, borderRadius: 14, background: `linear-gradient(135deg, ${palette.pink}, ${palette.blackCherry})` }),
+  badge: { position: 'absolute', top: 15, left: 15, border: '1px solid rgba(217, 221, 231, 0.36)', borderRadius: 999, padding: '3px 7px', color: palette.silver, background: 'rgba(5, 3, 6, 0.72)', fontSize: 10, fontWeight: 900, letterSpacing: '0.08em', textTransform: 'uppercase' },
+  cardTitle: { margin: 0, color: palette.cream, fontFamily: 'Georgia, "Times New Roman", serif', fontSize: 15, lineHeight: 1.05 },
+  category: { margin: 0, color: 'rgba(255, 47, 146, 0.9)', fontSize: 10, fontWeight: 900, letterSpacing: '0.12em', textTransform: 'uppercase' },
+  subtitle: { margin: 0, color: palette.mutedCream, fontSize: 12, lineHeight: 1.25 },
+  footer: { display: 'none' },
+  emptyState: { margin: 0, padding: 14, borderRadius: 18, border: '1px solid rgba(255, 47, 146, 0.18)', color: palette.mutedCream, background: 'rgba(5, 3, 6, 0.5)' },
 };
 
 export const displayWindowMediaStyles = `
-  @media (max-width: 960px) {
-    .display-window-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
-  }
-
-  @media (max-width: 620px) {
-    .display-window-section { padding: 18px !important; }
-    .display-window-header { display: grid !important; align-items: start !important; }
-    .display-window-grid { grid-template-columns: 1fr !important; }
-  }
+  .display-window-grid { scrollbar-width: thin; scrollbar-color: rgba(255,47,146,.7) rgba(255,255,255,.08); }
+  .display-window-arrow:focus-visible { outline: 3px solid rgba(255,47,146,.95); outline-offset: 3px; }
+  @media (max-width: 960px) { .display-window-grid { display: flex !important; overflow-x: auto !important; scroll-snap-type: x mandatory; padding-bottom: 6px; } .display-window-card { flex: 0 0 min(32%, 230px); scroll-snap-align: start; } }
+  @media (max-width: 700px) { .display-window-card { flex-basis: 58%; } }
+  @media (max-width: 480px) { .display-window-section { padding: 14px !important; } .display-window-header { align-items: start !important; } .display-window-card { flex-basis: 78%; } }
 `;

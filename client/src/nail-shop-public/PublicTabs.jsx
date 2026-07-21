@@ -1,7 +1,9 @@
 import React, { useRef, useState } from 'react';
 import { publicTabsMediaStyles, publicTabsStyles as styles } from './publicTabsStyles';
 
-export const DEFAULT_PUBLIC_TABS = ['Overview', 'Services', 'Shop', 'Gallery', 'About'];
+export const DEFAULT_PUBLIC_TABS = ['Home', 'Services', 'Gallery', 'Shop', 'About', 'Reviews'];
+
+const TAB_ICONS = { Home: '⌂', Services: '✦', Gallery: '▧', Shop: '◈', About: '◇', Reviews: '★' };
 
 function tabId(tab) {
   return `public-tab-${String(tab).toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
@@ -87,7 +89,7 @@ export function PublicTabs({
               onClick={() => selectTab(tab)}
               onKeyDown={(event) => handleKeyDown(event, index)}
             >
-              {tab}
+              <span className="public-tabs__icon" aria-hidden="true">{TAB_ICONS[tab] || '•'}</span>{tab}
             </button>
           );
         })}
