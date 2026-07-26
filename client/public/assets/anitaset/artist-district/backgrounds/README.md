@@ -1,9 +1,10 @@
 # Background Assets
 
-## Required assets
+## Founder-approved production assets
 
-- `artist-district-background-desktop.png` — wide environmental backdrop for large screens.
-- `artist-district-background-mobile.png` — portrait environmental backdrop composed for small screens.
-- `artist-district-atmosphere-overlay.png` — transparent atmosphere or lighting layer that can sit above the base backdrop.
+- `featured-shops-bg.png` — background artwork for Featured Shops.
+- `trending-bg.png` — background artwork for Trending.
+- `new-artists-bg.png` — background artwork for New Artists.
+- `browse-bg.png` — background artwork for Browse.
 
-Backgrounds should tile or crop cleanly where applicable, preserve foreground readability, and contain no baked-in text, controls, shop cards, or branding.
+Backgrounds should crop cleanly where applicable, preserve foreground readability, and contain no baked-in text, controls, shop cards, or branding.
