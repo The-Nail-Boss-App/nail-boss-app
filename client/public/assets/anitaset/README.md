@@ -23,4 +23,4 @@ This directory is the source of truth for Founder-approved visual assets used in
 - `community/`
 - `shared/`
 
-The Nail Shop production pack is the first room organized under this system.
+The Nail Shop production pack and Artist District production-library scaffold are organized under this system. See `artist-district/README.md` for its reserved asset manifest.
