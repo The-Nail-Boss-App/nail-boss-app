@@ -10,7 +10,6 @@ export default function ArtistDistrictHeader() {
         <span aria-hidden="true">/</span>
         <span>Artist District™</span>
       </nav>
-      <img className="artist-logo" src="/anitaset-logo-secondary.png" alt="AnitaSet secondary logo with Design, Price, Sell, Grow tagline" />
       <div className="artist-hero__scene">
         <div className="artist-hero__artwork">
           <img className="artist-hero__environment" src="/assets/anitaset/artist-district/hero/artist-district-hero.png" alt="Sunset view of the Artist District creative neighborhood, nail boutiques, and central fountain" />
@@ -24,8 +23,11 @@ export default function ArtistDistrictHeader() {
             <input id="artist-district-search" type="search" placeholder="Search Nail Shops, artists, styles, or locations" />
           </form>
         </div>
+        <div className="artist-hero__shop-prompt">
+          <p>Ready to be seen?</p>
+          <button className="artist-open-shop" type="button" disabled>Open Your Nail Shop</button>
+        </div>
       </div>
-      <button className="artist-open-shop" type="button" disabled>Open Your Nail Shop</button>
     </header>
   );
 }
