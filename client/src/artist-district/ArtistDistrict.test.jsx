@@ -25,11 +25,10 @@ describe('ArtistDistrict', () => {
     expect(container.querySelector('input[type="search"]').getAttribute('placeholder')).toBe('Search Nail Shops, artists, styles, or locations');
   });
 
-  it('renders the official secondary logo with meaningful alt text', () => {
+  it('leaves the official AnitaSet logo to the shared application shell', () => {
     renderArtistDistrict();
-    const logo = container.querySelector('img[alt="AnitaSet secondary logo with Design, Price, Sell, Grow tagline"]');
-    expect(logo).not.toBeNull();
-    expect(logo.getAttribute('src')).toBe('/anitaset-logo-secondary.png');
+    expect(container.querySelector('.artist-logo')).toBeNull();
+    expect(source).not.toContain('/anitaset-logo-secondary.png');
   });
 
   it('renders only the approved hero environment with an accessible description', () => {
@@ -40,6 +39,7 @@ describe('ArtistDistrict', () => {
     expect(container.querySelector('.artist-hero__artwork').querySelectorAll('img')).toHaveLength(1);
     expect(container.querySelector('.artist-hero__fountain')).toBeNull();
     expect(container.querySelector(`.artist-hero img[src="/assets/anitaset/artist-district/landmarks/artist-district-fountain-v1.png"]`)).toBeNull();
+    expect(container.querySelectorAll('.artist-hero__environment')).toHaveLength(1);
   });
 
   it('renders the Spotlight editorial cover story with disabled action', () => {
@@ -60,6 +60,9 @@ describe('ArtistDistrict', () => {
     expect(action).not.toBeUndefined();
     expect(action.disabled).toBe(true);
     expect(container.textContent).not.toContain('Join Artist District');
+    expect(container.textContent).toContain('Ready to be seen?');
+    expect(container.querySelectorAll('.artist-hero nav')).toHaveLength(1);
+    expect(container.querySelector('.artist-hero__taskbar, .artist-hero__dock, .artist-hero__image-controls')).toBeNull();
   });
 
   it('renders all living community metrics exactly', () => {
