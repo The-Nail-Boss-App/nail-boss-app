@@ -13,8 +13,7 @@ export default function ArtistDistrictHeader() {
       <img className="artist-logo" src="/anitaset-logo-secondary.png" alt="AnitaSet secondary logo with Design, Price, Sell, Grow tagline" />
       <div className="artist-hero__scene">
         <div className="artist-hero__artwork">
-          <img className="artist-hero__environment" src="/assets/anitaset/artist-district/hero/artist-district-hero.png" alt="Artist District creative neighborhood entrance" />
-          <img className="artist-hero__fountain" src="/assets/anitaset/artist-district/landmarks/artist-district-fountain-v1.png" alt="Artist District fountain landmark" />
+          <img className="artist-hero__environment" src="/assets/anitaset/artist-district/hero/artist-district-hero.png" alt="Sunset view of the Artist District creative neighborhood, nail boutiques, and central fountain" />
         </div>
         <div className="artist-hero__copy">
           <p className="artist-hero__eyebrow">AnitaSet Creative Directory</p>

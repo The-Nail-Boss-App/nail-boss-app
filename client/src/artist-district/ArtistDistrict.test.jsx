@@ -32,14 +32,14 @@ describe('ArtistDistrict', () => {
     expect(logo.getAttribute('src')).toBe('/anitaset-logo-secondary.png');
   });
 
-  it('renders the approved hero environment and fountain landmark accessibly', () => {
+  it('renders only the approved hero environment with an accessible description', () => {
     renderArtistDistrict();
     const environment = container.querySelector('.artist-hero__environment');
-    const fountain = container.querySelector('.artist-hero__fountain');
     expect(environment.getAttribute('src')).toBe('/assets/anitaset/artist-district/hero/artist-district-hero.png');
-    expect(environment.getAttribute('alt')).toBe('Artist District creative neighborhood entrance');
-    expect(fountain.getAttribute('src')).toBe('/assets/anitaset/artist-district/landmarks/artist-district-fountain-v1.png');
-    expect(fountain.getAttribute('alt')).toBe('Artist District fountain landmark');
+    expect(environment.getAttribute('alt')).toBe('Sunset view of the Artist District creative neighborhood, nail boutiques, and central fountain');
+    expect(container.querySelector('.artist-hero__artwork').querySelectorAll('img')).toHaveLength(1);
+    expect(container.querySelector('.artist-hero__fountain')).toBeNull();
+    expect(container.querySelector(`.artist-hero img[src="/assets/anitaset/artist-district/landmarks/artist-district-fountain-v1.png"]`)).toBeNull();
   });
 
   it('renders the Spotlight editorial cover story with disabled action', () => {
