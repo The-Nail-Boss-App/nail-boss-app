@@ -1,10 +1,10 @@
 export const artistDistrictTagline = 'Discover incredible Nail Shops from creators around the world.';
 
 export const livingCommunityMetrics = [
-  { id: 'looks', label: '318 Looks Shared Today', icon: 'spark' },
-  { id: 'chrome', label: 'Chrome Trending', icon: 'chrome' },
-  { id: 'shops', label: '24 New Nail Shops This Week', icon: 'shop' },
-  { id: 'designs', label: '1,126 Designs Created Today', icon: 'design' },
+  { id: 'looks', title: 'Looks Shared', value: '318', subtitle: 'Today', icon: 'sparkles', accentColor: '#ff4fa3', liveStatus: true, trendText: '↑ 12% from yesterday' },
+  { id: 'chrome', title: 'Trending', value: 'Chrome', subtitle: '124 new posts', icon: 'trending', accentColor: '#a980ff', liveStatus: true },
+  { id: 'shops', title: 'New Nail Shops', value: '8', subtitle: 'This Week', icon: 'storefront', accentColor: '#35e3e4', liveStatus: false },
+  { id: 'designs', title: 'Designs Created', value: '2.4K', subtitle: 'This Month', icon: 'brush', accentColor: '#f3c27c', liveStatus: true },
 ];
 
 export const artistDistrictSections = [
