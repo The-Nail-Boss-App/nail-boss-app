@@ -27,10 +27,22 @@ export default function ArtistDistrictSpotlight({ campaign }) {
               </div>
             ))}
           </dl>
-          <a className="artist-spotlight__cta" href={campaign.cta.href} aria-label={campaign.cta.ariaLabel}>
-            <span>{campaign.cta.label}</span>
-            <span className="artist-spotlight__cta-arrow" aria-hidden="true">→</span>
-          </a>
+          {campaign.cta.enabled ? (
+            <a className="artist-spotlight__cta" href={campaign.cta.href} aria-label={campaign.cta.ariaLabel}>
+              <span>{campaign.cta.label}</span>
+              <span className="artist-spotlight__cta-arrow" aria-hidden="true">→</span>
+            </a>
+          ) : (
+            <span
+              className="artist-spotlight__cta artist-spotlight__cta--disabled"
+              role="link"
+              aria-disabled="true"
+              aria-label={`${campaign.cta.label}, coming soon`}
+            >
+              <span>{campaign.cta.label}</span>
+              <span className="artist-spotlight__cta-unavailable">Coming Soon</span>
+            </span>
+          )}
         </div>
         <figure className="artist-spotlight__artwork">
           <img

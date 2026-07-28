@@ -162,6 +162,24 @@
   transform: translateY(-2px);
 }
 
+.artist-spotlight__cta--disabled {
+  cursor: not-allowed;
+  background: #48213a;
+  box-shadow: 0 10px 22px rgba(59, 16, 48, 0.16);
+}
+
+.artist-spotlight__cta--disabled:hover {
+  background: #48213a;
+  box-shadow: 0 10px 22px rgba(59, 16, 48, 0.16);
+  transform: none;
+}
+
+.artist-spotlight__cta-unavailable {
+  color: #f4bdd6;
+  font-size: 10px;
+  letter-spacing: 0.13em;
+}
+
 .artist-spotlight__cta:focus-visible {
   outline: 3px solid #087f85;
   outline-offset: 4px;

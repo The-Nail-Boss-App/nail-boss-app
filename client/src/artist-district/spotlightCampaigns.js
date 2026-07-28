@@ -1,4 +1,5 @@
 /** @typedef {'eyebrow' | 'display' | 'script'} SpotlightTitleRole */
+/** @typedef {{ label: string, enabled: false, ariaLabel: string } | { label: string, enabled: true, href: string, ariaLabel: string }} SpotlightCta */
 
 /**
  * @typedef {Object} SpotlightCampaign
@@ -7,7 +8,7 @@
  * @property {{ text: string, role: SpotlightTitleRole }[]} titleParts
  * @property {string} description
  * @property {{ value: string, label: string, icon?: string }[]} metrics
- * @property {{ label: string, href: string, ariaLabel: string }} cta
+ * @property {SpotlightCta} cta
  * @property {{ src: string, alt: string }} artwork
  * @property {string} theme
  * @property {'active' | 'scheduled' | 'archived'} status
@@ -31,7 +32,7 @@ export const summerChromeCampaign = {
   ],
   cta: {
     label: 'Explore Chrome',
-    href: '#',
+    enabled: false,
     ariaLabel: 'Explore Summer Chrome Week',
   },
   artwork: {
