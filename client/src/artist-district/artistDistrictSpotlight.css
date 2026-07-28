@@ -1,153 +1,160 @@
 .artist-spotlight {
   max-width: 1320px;
   margin: clamp(52px, 7vw, 104px) auto clamp(64px, 8vw, 116px);
-  color: #321627;
+  color: #fff4e6;
 }
 
 .artist-spotlight__content {
   position: relative;
   isolation: isolate;
-  display: grid;
-  grid-template-columns: minmax(340px, 0.74fr) minmax(0, 1fr);
-  grid-template-areas:
-    'badge artwork'
-    'title artwork'
-    'description artwork'
-    'metrics artwork'
-    'cta artwork';
+  display: flex;
   align-items: center;
-  gap: clamp(28px, 5vw, 76px);
-  padding: clamp(34px, 5vw, 72px);
-  overflow: hidden;
+  min-height: clamp(680px, 61vw, 820px);
+  padding: clamp(44px, 5.5vw, 76px);
   border-radius: 4px 72px 4px 72px;
-  background:
-    radial-gradient(circle at 10% 10%, rgba(239, 58, 143, 0.14), transparent 32%),
-    linear-gradient(128deg, #f7eadf 0%, #ead6d2 47%, #d8bdbe 100%);
-  box-shadow: 0 36px 90px rgba(4, 1, 4, 0.42), inset 0 0 0 1px rgba(243, 194, 124, 0.36);
+  box-shadow: 0 36px 90px rgba(4, 1, 4, 0.5), inset 0 0 0 1px rgba(243, 194, 124, 0.32);
 }
 
-.artist-spotlight__content::before {
+.artist-spotlight__content::before,
+.artist-spotlight__content::after {
   position: absolute;
-  z-index: -1;
+  z-index: 1;
   inset: 0;
-  background: linear-gradient(110deg, transparent 30%, rgba(255, 255, 255, 0.22) 48%, transparent 65%);
+  border-radius: inherit;
   content: '';
   pointer-events: none;
 }
 
+.artist-spotlight__content::before {
+  background: linear-gradient(
+    90deg,
+    rgba(18, 7, 19, 0.94) 0%,
+    rgba(24, 8, 24, 0.82) 28%,
+    rgba(25, 9, 25, 0.54) 52%,
+    rgba(20, 7, 20, 0.14) 76%,
+    rgba(20, 7, 20, 0.04) 100%
+  );
+}
+
+.artist-spotlight__content::after {
+  background: linear-gradient(0deg, rgba(13, 3, 13, 0.58) 0%, transparent 38%);
+}
+
 .artist-spotlight__copy {
-  display: contents;
+  position: relative;
+  z-index: 2;
+  width: min(48%, 610px);
 }
 
 .artist-spotlight__badge {
-  grid-area: badge;
-  margin: 0 0 25px;
+  width: max-content;
+  margin: 0 0 24px;
   padding: 7px 14px;
-  border: 1px solid rgba(218, 168, 95, 0.75);
+  border: 1px solid rgba(239, 178, 102, 0.78);
   border-radius: 999px;
-  background: #3b1030;
+  background: rgba(42, 8, 34, 0.78);
+  box-shadow: 0 8px 24px rgba(13, 3, 13, 0.28);
   color: #fff4e6;
   font: 700 11px/1 'DM Sans', system-ui, sans-serif;
   letter-spacing: 0.19em;
 }
 
 .artist-spotlight__title {
-  grid-area: title;
   position: relative;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  width: min(100%, 520px);
-  margin: 0 0 clamp(36px, 4vw, 52px);
+  width: 100%;
+  margin: 0 0 clamp(42px, 4.5vw, 62px);
+  overflow: visible;
   line-height: 1;
 }
 
-.artist-spotlight__title-part {
-  display: block;
-}
+.artist-spotlight__title-part { display: block; }
 
 .artist-spotlight__title-part--eyebrow {
-  margin: 0 0 0.12em 0.16em;
-  color: #e62c83;
-  font: 600 clamp(18px, 2vw, 28px)/1 'DM Sans', system-ui, sans-serif;
+  margin: 0 0 0.1em 0.15em;
+  color: #ff62aa;
+  font: 600 clamp(17px, 1.8vw, 26px)/1.2 'DM Sans', system-ui, sans-serif;
   letter-spacing: 0.42em;
+  text-shadow: 0 2px 16px rgba(10, 2, 10, 0.8);
 }
 
 .artist-spotlight__title-part--display {
-  max-width: 100%;
-  background: linear-gradient(105deg, #3a2b37 0%, #fff 12%, #81727e 25%, #fdf9f1 39%, #4c3f49 52%, #fff 67%, #9a8995 82%, #392a35 100%);
+  max-width: none;
+  background: linear-gradient(105deg, #66525f 0%, #fff 12%, #968993 25%, #fffaf1 39%, #675963 52%, #fff 67%, #b3a4ae 82%, #57434f 100%);
   background-size: 180% 100%;
   background-clip: text;
   color: transparent;
-  font: 700 clamp(60px, 7vw, 104px)/0.78 'Cormorant Garamond', Georgia, serif;
+  font: 700 clamp(70px, 7.2vw, 106px)/1.02 'Cormorant Garamond', Georgia, serif;
   letter-spacing: -0.055em;
-  filter: drop-shadow(0 2px 0 rgba(255, 255, 255, 0.8)) drop-shadow(0 8px 8px rgba(49, 24, 42, 0.34));
+  filter: drop-shadow(0 2px 0 rgba(255, 255, 255, 0.72)) drop-shadow(0 8px 10px rgba(8, 1, 7, 0.7));
+  white-space: nowrap;
   -webkit-background-clip: text;
 }
 
 .artist-spotlight__title-part--script {
   align-self: flex-end;
-  margin: -0.05em 0 -0.42em;
-  padding: 0 0.2em 0.18em;
-  color: #ed2b89;
-  font: 400 clamp(62px, 7vw, 106px)/0.78 'Allura', 'Segoe Script', cursive;
-  text-shadow: 0 0 4px #fff, 0 0 10px rgba(255, 49, 151, 0.78), 0 0 25px rgba(239, 58, 143, 0.42);
+  margin: -0.24em 0 -0.34em;
+  padding: 0 0.16em 0.22em;
+  color: #ff3d98;
+  font: 400 clamp(62px, 7vw, 104px)/1 'Allura', 'Segoe Script', cursive;
+  text-shadow: 0 0 4px #fff, 0 0 10px rgba(255, 49, 151, 0.9), 0 0 25px rgba(239, 58, 143, 0.55);
   transform: rotate(-4deg);
 }
 
 .artist-spotlight__description {
-  grid-area: description;
-  max-width: 420px;
-  margin: 0 0 28px;
-  color: #4b2b3d;
-  font: 500 clamp(16px, 1.55vw, 20px)/1.6 'DM Sans', system-ui, sans-serif;
+  max-width: 480px;
+  margin: 0 0 26px;
+  color: #fff0df;
+  font: 500 clamp(15px, 1.45vw, 19px)/1.55 'DM Sans', system-ui, sans-serif;
+  text-shadow: 0 2px 14px rgba(8, 1, 7, 0.9);
 }
 
 .artist-spotlight__metrics {
-  grid-area: metrics;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  width: 100%;
-  margin: 0 0 32px;
+  width: min(100%, 470px);
+  margin: 0 0 28px;
 }
 
 .artist-spotlight__metric {
   display: flex;
   flex-direction: column-reverse;
-  min-height: 76px;
-  padding: 13px 16px 13px 0;
-  border-top: 1px solid rgba(83, 44, 68, 0.24);
+  min-height: 68px;
+  padding: 11px 15px 11px 0;
+  border-top: 1px solid rgba(255, 220, 190, 0.32);
 }
 
 .artist-spotlight__metric:nth-child(even) {
   padding-left: 20px;
-  border-left: 1px solid rgba(83, 44, 68, 0.24);
+  border-left: 1px solid rgba(255, 220, 190, 0.26);
 }
 
 .artist-spotlight__metric dt {
-  color: #664657;
-  font: 600 11px/1.35 'DM Sans', system-ui, sans-serif;
+  color: rgba(255, 239, 223, 0.82);
+  font: 600 10px/1.35 'DM Sans', system-ui, sans-serif;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
 .artist-spotlight__metric dd {
   margin: 0 0 3px;
-  color: #3b1030;
+  color: #ffc1dc;
   font: 700 30px/1 'Cormorant Garamond', Georgia, serif;
+  text-shadow: 0 2px 12px rgba(8, 1, 7, 0.8);
 }
 
 .artist-spotlight__cta {
-  grid-area: cta;
   display: inline-flex;
   align-items: center;
   gap: 26px;
   min-height: 50px;
   padding: 0 20px;
-  border: 1px solid #bd2870;
+  border: 1px solid rgba(255, 105, 173, 0.85);
   border-radius: 3px;
-  background: #3b1030;
-  box-shadow: 0 12px 26px rgba(59, 16, 48, 0.22);
+  background: rgba(38, 8, 31, 0.82);
+  box-shadow: 0 12px 26px rgba(8, 1, 7, 0.34);
   color: #fff3e5;
   font: 700 13px/1 'DM Sans', system-ui, sans-serif;
   letter-spacing: 0.11em;
@@ -156,67 +163,31 @@
   transition: box-shadow 180ms ease, transform 180ms ease, background-color 180ms ease;
 }
 
-.artist-spotlight__cta:hover {
-  background: #54123f;
-  box-shadow: 0 15px 30px rgba(190, 40, 112, 0.3);
-  transform: translateY(-2px);
-}
-
-.artist-spotlight__cta--disabled {
-  cursor: not-allowed;
-  background: #48213a;
-  box-shadow: 0 10px 22px rgba(59, 16, 48, 0.16);
-}
-
-.artist-spotlight__cta--disabled:hover {
-  background: #48213a;
-  box-shadow: 0 10px 22px rgba(59, 16, 48, 0.16);
-  transform: none;
-}
-
-.artist-spotlight__cta-unavailable {
-  color: #f4bdd6;
-  font-size: 10px;
-  letter-spacing: 0.13em;
-}
-
-.artist-spotlight__cta:focus-visible {
-  outline: 3px solid #087f85;
-  outline-offset: 4px;
-}
-
-.artist-spotlight__cta-arrow {
-  color: #ff69ad;
-  font-size: 21px;
-}
+.artist-spotlight__cta:hover { background: rgba(84, 18, 63, 0.94); box-shadow: 0 15px 30px rgba(190, 40, 112, 0.3); transform: translateY(-2px); }
+.artist-spotlight__cta--disabled { cursor: not-allowed; background: rgba(48, 18, 40, 0.78); }
+.artist-spotlight__cta--disabled:hover { background: rgba(48, 18, 40, 0.78); box-shadow: 0 12px 26px rgba(8, 1, 7, 0.34); transform: none; }
+.artist-spotlight__cta-unavailable { color: #f4bdd6; font-size: 10px; letter-spacing: 0.13em; }
+.artist-spotlight__cta:focus-visible { outline: 3px solid #fff0df; outline-offset: 4px; }
+.artist-spotlight__cta-arrow { color: #ff69ad; font-size: 21px; }
 
 .artist-spotlight__artwork {
-  grid-area: artwork;
-  position: relative;
-  margin: 0;
-}
-
-.artist-spotlight__artwork::before {
   position: absolute;
-  z-index: -1;
-  inset: -12px 18px 12px -12px;
-  border: 1px solid rgba(189, 40, 112, 0.42);
-  content: '';
+  z-index: 0;
+  inset: 0;
+  margin: 0;
 }
 
 .artist-spotlight__artwork img {
   display: block;
   width: 100%;
-  height: auto;
-  aspect-ratio: 3 / 2;
-  object-fit: contain;
-  box-shadow: 0 30px 55px rgba(48, 15, 37, 0.34);
+  height: 100%;
+  border-radius: 4px 72px 4px 72px;
+  object-fit: cover;
+  object-position: center center;
 }
 
 @media (min-width: 901px) {
-  .artist-spotlight__title-part--display {
-    animation: artist-spotlight-shimmer 7s ease-in-out 1 both;
-  }
+  .artist-spotlight__title-part--display { animation: artist-spotlight-shimmer 7s ease-in-out 1 both; }
 }
 
 @keyframes artist-spotlight-shimmer {
@@ -225,40 +196,51 @@
 }
 
 @media (max-width: 1060px) {
-  .artist-spotlight__content {
-    grid-template-columns: minmax(300px, 0.82fr) minmax(0, 1fr);
-    gap: 30px;
-    padding: 42px 36px;
+  .artist-spotlight__content { min-height: clamp(680px, 80vw, 780px); padding: 48px 38px; }
+  .artist-spotlight__copy { width: min(57%, 560px); }
+  .artist-spotlight__title-part--display { font-size: clamp(66px, 9vw, 90px); }
+  .artist-spotlight__title-part--script { font-size: clamp(62px, 9vw, 88px); }
+  .artist-spotlight__content::before {
+    background: linear-gradient(90deg, rgba(18, 7, 19, 0.96) 0%, rgba(24, 8, 24, 0.84) 38%, rgba(25, 9, 25, 0.48) 68%, rgba(20, 7, 20, 0.1) 100%);
   }
-
-  .artist-spotlight__title-part--display { font-size: clamp(58px, 8vw, 84px); }
-  .artist-spotlight__title-part--script { font-size: clamp(58px, 8vw, 84px); }
 }
 
 @media (max-width: 760px) {
   .artist-spotlight { margin-block: 48px 72px; }
   .artist-spotlight__content {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-areas: 'badge' 'title' 'artwork' 'description' 'metrics' 'cta';
-    gap: 0;
-    padding: 34px clamp(20px, 6vw, 38px) 42px;
+    align-items: flex-end;
+    min-height: clamp(720px, 190vw, 880px);
+    padding: 38px clamp(20px, 6vw, 38px) 42px;
     border-radius: 3px 42px 3px 42px;
   }
-  .artist-spotlight__badge { width: max-content; margin-bottom: 24px; }
-  .artist-spotlight__title { width: 100%; margin-bottom: 38px; }
+  .artist-spotlight__content::before {
+    background: linear-gradient(90deg, rgba(17, 5, 17, 0.91) 0%, rgba(22, 7, 22, 0.7) 62%, rgba(18, 5, 18, 0.3) 100%);
+  }
+  .artist-spotlight__content::after { background: linear-gradient(0deg, rgba(12, 2, 12, 0.94) 0%, rgba(15, 3, 14, 0.64) 58%, rgba(15, 3, 14, 0.14) 100%); }
+  .artist-spotlight__copy { width: 100%; }
+  .artist-spotlight__badge { margin-bottom: 20px; }
+  .artist-spotlight__title { margin-bottom: 42px; }
   .artist-spotlight__title-part--eyebrow { font-size: clamp(15px, 5vw, 20px); }
-  .artist-spotlight__title-part--display { font-size: clamp(54px, 17vw, 88px); }
-  .artist-spotlight__title-part--script { font-size: clamp(58px, 19vw, 92px); }
-  .artist-spotlight__artwork { margin: 0 0 32px; }
-  .artist-spotlight__description { margin-bottom: 26px; }
-  .artist-spotlight__metrics { margin-bottom: 30px; }
-  .artist-spotlight__cta { width: 100%; justify-content: space-between; min-height: 54px; }
+  .artist-spotlight__title-part--display { font-size: clamp(52px, 15.5vw, 82px); line-height: 1.06; }
+  .artist-spotlight__title-part--script { font-size: clamp(58px, 18vw, 88px); }
+  .artist-spotlight__description { margin-bottom: 22px; }
+  .artist-spotlight__metrics { margin-bottom: 26px; }
+  .artist-spotlight__cta { width: 100%; justify-content: space-between; min-height: 54px; box-sizing: border-box; }
+  .artist-spotlight__artwork img { border-radius: 3px 42px 3px 42px; object-position: 54% center; }
 }
 
 @media (max-width: 390px) {
-  .artist-spotlight__content { padding-inline: 18px; }
-  .artist-spotlight__metric:nth-child(even) { padding-left: 13px; }
-  .artist-spotlight__metric dt { font-size: 10px; letter-spacing: 0.04em; }
+  .artist-spotlight__content { min-height: 820px; padding-inline: 18px; }
+  .artist-spotlight__title-part--eyebrow { font-size: 11px; letter-spacing: 0.28em; }
+  .artist-spotlight__title-part--display { font-size: 28px; }
+  .artist-spotlight__title-part--script { font-size: 44px; }
+  .artist-spotlight__description { font-size: 12px; line-height: 1.45; }
+  .artist-spotlight__metrics { grid-template-columns: minmax(0, 1fr); }
+  .artist-spotlight__metric,
+  .artist-spotlight__metric:nth-child(even) { min-height: 54px; padding: 9px 0; border-left: 0; }
+  .artist-spotlight__metric dt { font-size: 9px; letter-spacing: 0.04em; }
+  .artist-spotlight__metric dd { font-size: 25px; }
+  .artist-spotlight__cta { flex-direction: column; gap: 5px; padding-block: 10px; font-size: 10px; text-align: center; }
 }
 
 @media (prefers-reduced-motion: reduce) {
