@@ -3,15 +3,18 @@ import { createRoot } from 'react-dom/client';
 import fs from 'fs';
 import path from 'path';
 import ArtistDistrict from './ArtistDistrict';
+import ArtistDistrictSpotlight from './ArtistDistrictSpotlight';
 import { artistDistrictTagline } from './artistDistrictData';
+import { summerChromeCampaign } from './spotlightCampaigns';
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
-const source = ['ArtistDistrict.jsx', 'ArtistDistrictHeader.jsx', 'ArtistDistrictSection.jsx', 'ArtistDistrictPlaceholderCard.jsx', 'artistDistrictData.js']
+const source = ['ArtistDistrict.jsx', 'ArtistDistrictHeader.jsx', 'ArtistDistrictSpotlight.jsx', 'ArtistDistrictSection.jsx', 'ArtistDistrictPlaceholderCard.jsx', 'artistDistrictData.js', 'spotlightCampaigns.js']
   .map((file) => fs.readFileSync(path.join(__dirname, file), 'utf8')).join('\n');
 
 let container; let root;
 function renderArtistDistrict() { container = document.createElement('div'); document.body.appendChild(container); root = createRoot(container); act(() => root.render(<ArtistDistrict />)); }
+function renderSpotlight(campaign) { container = document.createElement('div'); document.body.appendChild(container); root = createRoot(container); act(() => root.render(<ArtistDistrictSpotlight campaign={campaign} />)); }
 const buttonsByText = (text) => Array.from(container.querySelectorAll('button')).filter((button) => button.textContent === text);
 
 describe('ArtistDistrict', () => {
@@ -42,15 +45,44 @@ describe('ArtistDistrict', () => {
     expect(container.querySelectorAll('.artist-hero__environment')).toHaveLength(1);
   });
 
-  it('renders the Spotlight editorial cover story with disabled action', () => {
+  it('renders the Summer Chrome Week Spotlight from live campaign content', () => {
     renderArtistDistrict();
-    expect(container.querySelector('section[aria-labelledby="artist-spotlight-title"]')).not.toBeNull();
-    expect(container.textContent).toContain('SPOTLIGHT');
-    expect(container.textContent).toContain('Summer Chrome Week');
-    expect(container.textContent).toContain('Chrome is having its moment. Explore this week’s featured artists, looks, and collections.');
-    const action = buttonsByText('Meet the Artists')[0];
-    expect(action).not.toBeUndefined();
-    expect(action.disabled).toBe(true);
+    const spotlight = container.querySelector('.artist-spotlight[data-campaign-status="active"]');
+    expect(spotlight).not.toBeNull();
+    expect(spotlight.textContent).toContain('LIVE NOW');
+    ['SUMMER', 'CHROME', 'Week'].forEach((part) => expect(spotlight.textContent).toContain(part));
+    expect(spotlight.querySelectorAll('.artist-spotlight__title-part')).toHaveLength(3);
+    expect(spotlight.querySelectorAll('.artist-spotlight__metric')).toHaveLength(4);
+    expect(spotlight.textContent).toContain('Featured Artists18');
+    const action = spotlight.querySelector('.artist-spotlight__cta');
+    expect(action.tagName).toBe('SPAN');
+    expect(action.getAttribute('href')).toBeNull();
+    expect(action.getAttribute('aria-disabled')).toBe('true');
+    expect(action.textContent).toContain('Explore Chrome');
+    expect(action.textContent).toContain('Coming Soon');
+    const artwork = spotlight.querySelector('.artist-spotlight__artwork img');
+    expect(artwork.getAttribute('src')).toBe('/assets/anitaset/artist-district/spotlight/summer-chrome-week.png');
+    expect(artwork.getAttribute('alt')).toContain('chrome nail designs');
+    expect(artwork.getAttribute('loading')).toBe('lazy');
+    expect(artwork.getAttribute('decoding')).toBe('async');
+    expect(source).not.toContain('summer-chrome-week-reference.png');
+  });
+
+  it('renders an enabled campaign CTA as a valid link', () => {
+    renderSpotlight({
+      ...summerChromeCampaign,
+      id: 'future-enabled-campaign',
+      cta: {
+        label: 'Explore Campaign',
+        enabled: true,
+        href: '/artist-district/campaigns/future',
+        ariaLabel: 'Explore future campaign',
+      },
+    });
+    const action = container.querySelector('a.artist-spotlight__cta');
+    expect(action.getAttribute('href')).toBe('/artist-district/campaigns/future');
+    expect(action.getAttribute('aria-disabled')).toBeNull();
+    expect(action.textContent).toContain('Explore Campaign');
   });
 
   it('renders Headquarters language and nonfunctional nail shop action', () => {

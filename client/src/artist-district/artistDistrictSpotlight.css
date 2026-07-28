@@ -1,0 +1,268 @@
+.artist-spotlight {
+  max-width: 1320px;
+  margin: clamp(52px, 7vw, 104px) auto clamp(64px, 8vw, 116px);
+  color: #321627;
+}
+
+.artist-spotlight__content {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  grid-template-columns: minmax(340px, 0.74fr) minmax(0, 1fr);
+  grid-template-areas:
+    'badge artwork'
+    'title artwork'
+    'description artwork'
+    'metrics artwork'
+    'cta artwork';
+  align-items: center;
+  gap: clamp(28px, 5vw, 76px);
+  padding: clamp(34px, 5vw, 72px);
+  overflow: hidden;
+  border-radius: 4px 72px 4px 72px;
+  background:
+    radial-gradient(circle at 10% 10%, rgba(239, 58, 143, 0.14), transparent 32%),
+    linear-gradient(128deg, #f7eadf 0%, #ead6d2 47%, #d8bdbe 100%);
+  box-shadow: 0 36px 90px rgba(4, 1, 4, 0.42), inset 0 0 0 1px rgba(243, 194, 124, 0.36);
+}
+
+.artist-spotlight__content::before {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  background: linear-gradient(110deg, transparent 30%, rgba(255, 255, 255, 0.22) 48%, transparent 65%);
+  content: '';
+  pointer-events: none;
+}
+
+.artist-spotlight__copy {
+  display: contents;
+}
+
+.artist-spotlight__badge {
+  grid-area: badge;
+  margin: 0 0 25px;
+  padding: 7px 14px;
+  border: 1px solid rgba(218, 168, 95, 0.75);
+  border-radius: 999px;
+  background: #3b1030;
+  color: #fff4e6;
+  font: 700 11px/1 'DM Sans', system-ui, sans-serif;
+  letter-spacing: 0.19em;
+}
+
+.artist-spotlight__title {
+  grid-area: title;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: min(100%, 520px);
+  margin: 0 0 clamp(36px, 4vw, 52px);
+  line-height: 1;
+}
+
+.artist-spotlight__title-part {
+  display: block;
+}
+
+.artist-spotlight__title-part--eyebrow {
+  margin: 0 0 0.12em 0.16em;
+  color: #e62c83;
+  font: 600 clamp(18px, 2vw, 28px)/1 'DM Sans', system-ui, sans-serif;
+  letter-spacing: 0.42em;
+}
+
+.artist-spotlight__title-part--display {
+  max-width: 100%;
+  background: linear-gradient(105deg, #3a2b37 0%, #fff 12%, #81727e 25%, #fdf9f1 39%, #4c3f49 52%, #fff 67%, #9a8995 82%, #392a35 100%);
+  background-size: 180% 100%;
+  background-clip: text;
+  color: transparent;
+  font: 700 clamp(60px, 7vw, 104px)/0.78 'Cormorant Garamond', Georgia, serif;
+  letter-spacing: -0.055em;
+  filter: drop-shadow(0 2px 0 rgba(255, 255, 255, 0.8)) drop-shadow(0 8px 8px rgba(49, 24, 42, 0.34));
+  -webkit-background-clip: text;
+}
+
+.artist-spotlight__title-part--script {
+  align-self: flex-end;
+  margin: -0.05em 0 -0.42em;
+  padding: 0 0.2em 0.18em;
+  color: #ed2b89;
+  font: 400 clamp(62px, 7vw, 106px)/0.78 'Allura', 'Segoe Script', cursive;
+  text-shadow: 0 0 4px #fff, 0 0 10px rgba(255, 49, 151, 0.78), 0 0 25px rgba(239, 58, 143, 0.42);
+  transform: rotate(-4deg);
+}
+
+.artist-spotlight__description {
+  grid-area: description;
+  max-width: 420px;
+  margin: 0 0 28px;
+  color: #4b2b3d;
+  font: 500 clamp(16px, 1.55vw, 20px)/1.6 'DM Sans', system-ui, sans-serif;
+}
+
+.artist-spotlight__metrics {
+  grid-area: metrics;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  width: 100%;
+  margin: 0 0 32px;
+}
+
+.artist-spotlight__metric {
+  display: flex;
+  flex-direction: column-reverse;
+  min-height: 76px;
+  padding: 13px 16px 13px 0;
+  border-top: 1px solid rgba(83, 44, 68, 0.24);
+}
+
+.artist-spotlight__metric:nth-child(even) {
+  padding-left: 20px;
+  border-left: 1px solid rgba(83, 44, 68, 0.24);
+}
+
+.artist-spotlight__metric dt {
+  color: #664657;
+  font: 600 11px/1.35 'DM Sans', system-ui, sans-serif;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.artist-spotlight__metric dd {
+  margin: 0 0 3px;
+  color: #3b1030;
+  font: 700 30px/1 'Cormorant Garamond', Georgia, serif;
+}
+
+.artist-spotlight__cta {
+  grid-area: cta;
+  display: inline-flex;
+  align-items: center;
+  gap: 26px;
+  min-height: 50px;
+  padding: 0 20px;
+  border: 1px solid #bd2870;
+  border-radius: 3px;
+  background: #3b1030;
+  box-shadow: 0 12px 26px rgba(59, 16, 48, 0.22);
+  color: #fff3e5;
+  font: 700 13px/1 'DM Sans', system-ui, sans-serif;
+  letter-spacing: 0.11em;
+  text-decoration: none;
+  text-transform: uppercase;
+  transition: box-shadow 180ms ease, transform 180ms ease, background-color 180ms ease;
+}
+
+.artist-spotlight__cta:hover {
+  background: #54123f;
+  box-shadow: 0 15px 30px rgba(190, 40, 112, 0.3);
+  transform: translateY(-2px);
+}
+
+.artist-spotlight__cta--disabled {
+  cursor: not-allowed;
+  background: #48213a;
+  box-shadow: 0 10px 22px rgba(59, 16, 48, 0.16);
+}
+
+.artist-spotlight__cta--disabled:hover {
+  background: #48213a;
+  box-shadow: 0 10px 22px rgba(59, 16, 48, 0.16);
+  transform: none;
+}
+
+.artist-spotlight__cta-unavailable {
+  color: #f4bdd6;
+  font-size: 10px;
+  letter-spacing: 0.13em;
+}
+
+.artist-spotlight__cta:focus-visible {
+  outline: 3px solid #087f85;
+  outline-offset: 4px;
+}
+
+.artist-spotlight__cta-arrow {
+  color: #ff69ad;
+  font-size: 21px;
+}
+
+.artist-spotlight__artwork {
+  grid-area: artwork;
+  position: relative;
+  margin: 0;
+}
+
+.artist-spotlight__artwork::before {
+  position: absolute;
+  z-index: -1;
+  inset: -12px 18px 12px -12px;
+  border: 1px solid rgba(189, 40, 112, 0.42);
+  content: '';
+}
+
+.artist-spotlight__artwork img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 3 / 2;
+  object-fit: contain;
+  box-shadow: 0 30px 55px rgba(48, 15, 37, 0.34);
+}
+
+@media (min-width: 901px) {
+  .artist-spotlight__title-part--display {
+    animation: artist-spotlight-shimmer 7s ease-in-out 1 both;
+  }
+}
+
+@keyframes artist-spotlight-shimmer {
+  from { background-position: 100% center; }
+  to { background-position: 0 center; }
+}
+
+@media (max-width: 1060px) {
+  .artist-spotlight__content {
+    grid-template-columns: minmax(300px, 0.82fr) minmax(0, 1fr);
+    gap: 30px;
+    padding: 42px 36px;
+  }
+
+  .artist-spotlight__title-part--display { font-size: clamp(58px, 8vw, 84px); }
+  .artist-spotlight__title-part--script { font-size: clamp(58px, 8vw, 84px); }
+}
+
+@media (max-width: 760px) {
+  .artist-spotlight { margin-block: 48px 72px; }
+  .artist-spotlight__content {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: 'badge' 'title' 'artwork' 'description' 'metrics' 'cta';
+    gap: 0;
+    padding: 34px clamp(20px, 6vw, 38px) 42px;
+    border-radius: 3px 42px 3px 42px;
+  }
+  .artist-spotlight__badge { width: max-content; margin-bottom: 24px; }
+  .artist-spotlight__title { width: 100%; margin-bottom: 38px; }
+  .artist-spotlight__title-part--eyebrow { font-size: clamp(15px, 5vw, 20px); }
+  .artist-spotlight__title-part--display { font-size: clamp(54px, 17vw, 88px); }
+  .artist-spotlight__title-part--script { font-size: clamp(58px, 19vw, 92px); }
+  .artist-spotlight__artwork { margin: 0 0 32px; }
+  .artist-spotlight__description { margin-bottom: 26px; }
+  .artist-spotlight__metrics { margin-bottom: 30px; }
+  .artist-spotlight__cta { width: 100%; justify-content: space-between; min-height: 54px; }
+}
+
+@media (max-width: 390px) {
+  .artist-spotlight__content { padding-inline: 18px; }
+  .artist-spotlight__metric:nth-child(even) { padding-left: 13px; }
+  .artist-spotlight__metric dt { font-size: 10px; letter-spacing: 0.04em; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .artist-spotlight__title-part--display { animation: none; background-position: center; }
+  .artist-spotlight__cta { transition: none; }
+  .artist-spotlight__cta:hover { transform: none; }
+}
