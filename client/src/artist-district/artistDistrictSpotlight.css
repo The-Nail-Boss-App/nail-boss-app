@@ -232,7 +232,7 @@
 @media (max-width: 390px) {
   .artist-spotlight__content { min-height: 820px; padding-inline: 18px; }
   .artist-spotlight__title-part--eyebrow { font-size: 11px; letter-spacing: 0.28em; }
-  .artist-spotlight__title-part--display { font-size: 28px; }
+  .artist-spotlight__title-part--display { font-size: clamp(27px, 7.4vw, 34px); }
   .artist-spotlight__title-part--script { font-size: 44px; }
   .artist-spotlight__description { font-size: 12px; line-height: 1.45; }
   .artist-spotlight__metrics { grid-template-columns: minmax(0, 1fr); }
