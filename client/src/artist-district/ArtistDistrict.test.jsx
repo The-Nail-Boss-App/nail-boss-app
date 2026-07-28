@@ -57,6 +57,8 @@ describe('ArtistDistrict', () => {
     const artwork = spotlight.querySelector('.artist-spotlight__artwork img');
     expect(artwork.getAttribute('src')).toBe('/assets/anitaset/artist-district/spotlight/summer-chrome-week.png');
     expect(artwork.getAttribute('alt')).toContain('chrome nail designs');
+    expect(artwork.getAttribute('loading')).toBe('lazy');
+    expect(artwork.getAttribute('decoding')).toBe('async');
     expect(source).not.toContain('summer-chrome-week-reference.png');
   });
 

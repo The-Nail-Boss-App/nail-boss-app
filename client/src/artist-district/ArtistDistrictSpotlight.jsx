@@ -33,7 +33,14 @@ export default function ArtistDistrictSpotlight({ campaign }) {
           </a>
         </div>
         <figure className="artist-spotlight__artwork">
-          <img src={campaign.artwork.src} alt={campaign.artwork.alt} width="1536" height="1024" loading="eager" />
+          <img
+            src={campaign.artwork.src}
+            alt={campaign.artwork.alt}
+            width="1536"
+            height="1024"
+            loading="lazy"
+            decoding="async"
+          />
         </figure>
       </div>
     </section>
