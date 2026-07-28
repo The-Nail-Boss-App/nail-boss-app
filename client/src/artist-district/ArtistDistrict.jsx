@@ -1,22 +1,11 @@
 import React from 'react';
 import ArtistDistrictHeader from './ArtistDistrictHeader';
+import ArtistDistrictSpotlight from './ArtistDistrictSpotlight';
 import ArtistDistrictSection from './ArtistDistrictSection';
 import { artistDistrictSections, livingCommunityMetrics } from './artistDistrictData';
+import { summerChromeCampaign } from './spotlightCampaigns';
 import './artistDistrictStyles.css';
-
-function Spotlight() {
-  return (
-    <section className="artist-spotlight" aria-labelledby="artist-spotlight-title">
-      <div className="artist-spotlight__copy">
-        <p className="artist-spotlight__eyebrow">SPOTLIGHT</p>
-        <h2 id="artist-spotlight-title">Summer Chrome Week</h2>
-        <p>Chrome is having its moment. Explore this week’s featured artists, looks, and collections.</p>
-        <button type="button" disabled>Meet the Artists</button>
-      </div>
-      <div className="artist-spotlight__chrome" aria-hidden="true"><span /><span /><span /></div>
-    </section>
-  );
-}
+import './artistDistrictSpotlight.css';
 
 function LivingCommunity() {
   return (
@@ -41,7 +30,7 @@ export default function ArtistDistrict() {
   return (
     <main className="artist-district" aria-labelledby="artist-district-title">
       <ArtistDistrictHeader />
-      <Spotlight />
+      <ArtistDistrictSpotlight campaign={summerChromeCampaign} />
       <LivingCommunity />
       {artistDistrictSections.map((section) => <ArtistDistrictSection key={section.id} section={section} />)}
     </main>
