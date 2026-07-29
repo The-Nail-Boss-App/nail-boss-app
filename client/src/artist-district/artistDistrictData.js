@@ -90,6 +90,39 @@ export const foundingShops = [
   },
 ];
 
+export const foundingArtists = [
+  {
+    artistId: 'lani-petal', artistName: 'Lani Petal', shopName: 'Velvet Petal Studio', location: 'Atlanta, GA', specialty: 'Luxury Floral Art',
+    shortBio: 'Romantic sets, sculpted florals, and polished details designed with softness and precision.',
+    portraitImage: '/assets/founding-artists/velvet-petal/velvet-petal-artist.png', portraitAlt: 'Lani Petal standing in the bright pink-and-gold Velvet Petal Studio.',
+    accent: '#ef7da9', statusLabel: 'Rising Artist', ctaLabel: 'Meet the Artist', ctaDestination: null,
+  },
+  {
+    artistId: 'ki-ki', artistName: 'Ki Ki', shopName: "Kiki's Nail Shop", location: 'Chicago, IL', specialty: 'Hand-Painted Art',
+    shortBio: 'Bold color, expressive brushwork, and joyful designs made for clients who refuse to blend in.',
+    portraitImage: '/assets/founding-artists/kikis-nail-shop/kikis-artist.png', portraitAlt: "Ki Ki standing inside Kiki's colorful nail studio.",
+    accent: '#46d6cf', statusLabel: 'Color Storyteller', ctaLabel: 'Meet the Artist', ctaDestination: null,
+  },
+  {
+    artistId: 'jae-luxe', artistName: 'Jae Luxe', shopName: 'Golden Hour Nails', location: 'Los Angeles, CA', specialty: 'Precision Luxury',
+    shortBio: 'Refined technique, timeless finishes, and meticulous artistry shaped by years of experience.',
+    portraitImage: '/assets/founding-artists/golden-hour/golden-hour-artist.png', portraitAlt: 'Jae Luxe standing in the warmly lit Golden Hour Nails studio.',
+    accent: '#e4b965', statusLabel: 'Master Detailist', ctaLabel: 'Meet the Artist', ctaDestination: null,
+  },
+  {
+    artistId: 'cherry-vale', artistName: 'Cherry Vale', shopName: 'Cherry Lacquer Loft', location: 'Brooklyn, NY', specialty: 'Gothic Acrylic Art',
+    shortBio: 'Dark glamour, sculpted acrylics, and rebellious detail for clients who treat nails like armor.',
+    portraitImage: '/assets/founding-artists/cherry-lacquer/cherry-lacquer-artist.png', portraitAlt: 'Cherry Vale standing in the deep red Cherry Lacquer Loft studio.',
+    accent: '#d55469', statusLabel: 'Rockstar Artist', ctaLabel: 'Meet the Artist', ctaDestination: null,
+  },
+  {
+    artistId: 'marisol-tide', artistName: 'Marisol Tide', shopName: 'Azure Tide', location: 'Miami, FL', specialty: 'Coastal Gel-X',
+    shortBio: 'Airy ocean-inspired sets, modern color stories, and relaxed coastal luxury with a youthful edge.',
+    portraitImage: '/assets/founding-artists/azure-tide/azure-tide-artist.png', portraitAlt: 'Marisol Tide standing in the sea-blue Azure Tide nail studio.',
+    accent: '#58d5d0', statusLabel: 'Fresh Perspective', ctaLabel: 'Meet the Artist', ctaDestination: null,
+  },
+];
+
 export const weeklyTrends = [
   { id: 'chrome-bloom', rank: 1, title: 'Chrome Bloom', shopName: 'Velvet Petal Studio', momentum: '↑ 38% this week', category: 'Floral', collectionImage: '/assets/founding-shops/velvet-pedal/velvet-bloom-collection.png', collectionAlt: 'Velvet Petal Studio floral nail collection in sculpted pink and chrome finishes', ctaDestination: null },
   { id: 'sunset-marble', rank: 2, title: 'Sunset Marble', shopName: 'Golden Hour Nails', momentum: 'Most Saved', category: 'Chrome', collectionImage: '/assets/founding-shops/golden-hour/golden-hour-collection.png', collectionAlt: 'Golden Hour Nails collection with luminous sunset-inspired chrome nail looks', ctaDestination: null },
@@ -116,13 +149,10 @@ export const artistDistrictSections = [
   {
     id: 'new-artists',
     title: 'New Artists',
-    eyebrow: 'Fresh doors opening',
+    eyebrow: 'Fresh Faces',
+    description: 'Meet the artists bringing fresh perspective, personality, and craft to Artist District.',
     accent: 'violet',
-    shops: [
-      { name: 'Moonlit Mani House', location: 'Seattle, WA', initials: 'MM', signature: 'Signature Nail™: Midnight Star', description: 'Starry accents and dimensional shimmer for midnight-inspired sets.', tags: ['Celestial Art', 'Velvet Cat Eye', 'Navy Chrome'] },
-      { name: 'Peony Press Nails', location: 'Portland, OR', initials: 'PP', signature: 'Signature Nail™: Pressed Petal', description: 'Pressed-petal designs layered over creamy wearable shapes.', tags: ['Pressed Florals', 'Cream Base', 'Micro French'] },
-      { name: 'Studio Maraschino', location: 'Miami, FL', initials: 'SM', signature: 'Signature Nail™: Cherry Vinyl', description: 'Juicy cherry palettes with playful charms and glossy overlays.', tags: ['Cherry Tones', 'Gloss Gel', 'Tiny Charms'] },
-    ],
+    shops: foundingArtists,
   },
   {
     id: 'browse-all-nail-shops',

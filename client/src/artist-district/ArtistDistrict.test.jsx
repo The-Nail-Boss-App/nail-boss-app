@@ -4,12 +4,12 @@ import fs from 'fs';
 import path from 'path';
 import ArtistDistrict from './ArtistDistrict';
 import ArtistDistrictSpotlight from './ArtistDistrictSpotlight';
-import { artistDistrictTagline, foundingShops } from './artistDistrictData';
+import { artistDistrictTagline, foundingArtists, foundingShops } from './artistDistrictData';
 import { summerChromeCampaign } from './spotlightCampaigns';
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
-const source = ['ArtistDistrict.jsx', 'ArtistDistrictHeader.jsx', 'ArtistDistrictSpotlight.jsx', 'ArtistDistrictSection.jsx', 'ArtistDistrictPlaceholderCard.jsx', 'StorefrontCard.jsx', 'TrendCard.jsx', 'NewsTile.jsx', 'artistDistrictData.js', 'spotlightCampaigns.js']
+const source = ['ArtistDistrict.jsx', 'ArtistDistrictHeader.jsx', 'ArtistDistrictSpotlight.jsx', 'ArtistDistrictSection.jsx', 'ArtistDistrictPlaceholderCard.jsx', 'ArtistFeatureCard.jsx', 'StorefrontCard.jsx', 'TrendCard.jsx', 'NewsTile.jsx', 'artistDistrictData.js', 'spotlightCampaigns.js']
   .map((file) => fs.readFileSync(path.join(__dirname, file), 'utf8')).join('\n');
 
 let container; let root;
@@ -114,7 +114,7 @@ describe('ArtistDistrict', () => {
     [
       ['Featured Nail Shops', 'featured-nail-shops-cards', 5],
       ['Trending This Week', 'trending-this-week-cards', 5],
-      ['New Artists', 'new-artists-cards', 3],
+      ['New Artists', 'new-artists-cards', 5],
       ['Browse All Nail Shops', 'browse-all-nail-shops-cards', 6],
     ].forEach(([heading, testId, count]) => {
       expect(container.textContent).toContain(heading);
@@ -123,6 +123,47 @@ describe('ArtistDistrict', () => {
     const viewAll = container.querySelector('.artist-section__view-all');
     expect(viewAll.textContent).toContain('View All');
     expect(viewAll.getAttribute('href')).toBe('#browse-all-nail-shops-title');
+  });
+
+  it('introduces all five Founding Artists with portrait-led feature cards', () => {
+    renderArtistDistrict();
+    const artists = container.querySelector('[data-testid="new-artists-cards"]');
+    expect(artists.classList.contains('artist-section__grid--artists')).toBe(true);
+    expect(artists.querySelectorAll('[data-testid="artist-feature-card"]')).toHaveLength(5);
+    expect(container.querySelector('#new-artists-title').previousElementSibling.textContent).toBe('Fresh Faces');
+    expect(artists.closest('section').textContent).toContain('Meet the artists bringing fresh perspective, personality, and craft to Artist District.');
+
+    foundingArtists.forEach((artist) => {
+      expect(artists.textContent).toContain(artist.artistName);
+      expect(artists.textContent).toContain(artist.statusLabel);
+      expect(artists.textContent).toContain(artist.specialty);
+      const portrait = artists.querySelector(`img[src="${artist.portraitImage}"]`);
+      expect(portrait).not.toBeNull();
+      expect(portrait.getAttribute('alt')).toBe(artist.portraitAlt);
+      expect(portrait.getAttribute('loading')).toBe('lazy');
+      expect(portrait.getAttribute('decoding')).toBe('async');
+    });
+
+    expect(artists.querySelectorAll('img')).toHaveLength(5);
+    expect(artists.querySelector('img[src*="founding-shops"], img[src*="storefront"], img[src*="interior"], img[src*="collection"], img[src*="signature-nail"]')).toBeNull();
+    expect(artists.querySelector('[class*="avatar"], [class*="profile"], .artist-shop-card__initials')).toBeNull();
+  });
+
+  it('uses accessible preview-only Meet the Artist actions without fake links', () => {
+    renderArtistDistrict();
+    const artists = container.querySelector('[data-testid="new-artists-cards"]');
+    const actions = artists.querySelectorAll('.artist-feature-card__cta');
+    expect(actions).toHaveLength(5);
+    actions.forEach((action) => {
+      expect(action.textContent).toContain('Meet the Artist');
+      expect(action.textContent).toContain('Coming Soon');
+      expect(action.tagName).toBe('SPAN');
+      expect(action.getAttribute('role')).toBe('link');
+      expect(action.getAttribute('tabindex')).toBe('0');
+      expect(action.getAttribute('aria-disabled')).toBe('true');
+      expect(action.getAttribute('href')).toBeNull();
+    });
+    expect(artists.querySelector('a[href="#"]')).toBeNull();
   });
 
   it('renders five ranked weekly trends from Founding Shop collection artwork', () => {
@@ -179,9 +220,9 @@ describe('ArtistDistrict', () => {
   it('keeps non-featured placeholder shop behavior unchanged', () => {
     renderArtistDistrict();
     buttonsByText('Visit Shop').forEach((button) => expect(button.disabled).toBe(true));
-    expect(buttonsByText('Visit Shop')).toHaveLength(9);
-    expect(container.textContent).toContain('Signature Nail™: Midnight Star');
-    ['Celestial Art', 'Velvet Cat Eye', 'Navy Chrome'].forEach((tag) => expect(container.textContent).toContain(tag));
+    expect(buttonsByText('Visit Shop')).toHaveLength(6);
+    expect(container.textContent).toContain('Signature Nail™: Pearl Circuit');
+    ['Pearl Chrome', 'Linework', 'Short Gel'].forEach((tag) => expect(container.textContent).toContain(tag));
   });
 
   it('does not reference forbidden production or integration surfaces', () => {

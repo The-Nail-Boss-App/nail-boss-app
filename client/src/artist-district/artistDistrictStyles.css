@@ -94,3 +94,29 @@
 @media (max-width:900px){.artist-section__grid--trends{grid-template-columns:repeat(2,minmax(0,1fr));gap:22px}.trend-card,.trend-card:nth-child(n+3){grid-column:auto}}
 @media (max-width:560px){.artist-section--teal .artist-section__heading{display:block}.artist-section__grid--trends{grid-template-columns:minmax(0,1fr);gap:22px}.trend-card__body{padding:18px}.trend-card__rank{top:14px;left:14px}}
 @media (prefers-reduced-motion:reduce){.trend-card,.trend-card *{animation:none!important;scroll-behavior:auto!important;transition:none!important}.trend-card:hover{transform:none}}
+
+/* New Artists — portrait-led editorial introductions */
+.artist-section--violet{margin-bottom:clamp(72px,9vw,112px)}
+.artist-section--violet .artist-section__heading{margin-bottom:30px;padding-bottom:20px;border-bottom:1px solid rgba(169,128,255,.28)}
+.artist-section--violet .artist-section__heading h2{color:#fff4e6;font:700 clamp(40px,5vw,58px)/.95 'Cormorant Garamond',Georgia,serif;letter-spacing:-.025em}
+.artist-section__description{max-width:590px;margin:12px 0 0!important;color:#cdbfc9!important;font:500 14px/1.55 'DM Sans',system-ui,sans-serif!important;letter-spacing:0!important;text-transform:none!important}
+.artist-section__grid--artists{grid-template-columns:repeat(6,minmax(0,1fr));gap:26px}
+.artist-feature-card{--artist-accent:#a980ff;position:relative;isolation:isolate;grid-column:span 2;min-width:0;overflow:hidden;border:1px solid color-mix(in srgb,var(--artist-accent) 34%,rgba(255,255,255,.13));border-radius:28px 28px 10px 10px;background:linear-gradient(155deg,rgba(30,17,29,.98),rgba(9,6,10,.99));box-shadow:0 25px 62px rgba(0,0,0,.4),0 0 30px color-mix(in srgb,var(--artist-accent) 7%,transparent),inset 0 1px rgba(255,255,255,.06);transition:transform 250ms ease,border-color 250ms ease,box-shadow 250ms ease}
+.artist-feature-card:nth-child(4){grid-column:2/span 2}
+.artist-feature-card__portrait{position:relative;aspect-ratio:4/5;margin:0;overflow:hidden;background:#160e16}
+.artist-feature-card__portrait:after{position:absolute;inset:auto 0 0;height:20%;background:linear-gradient(transparent,rgba(9,5,9,.58));content:"";pointer-events:none}
+.artist-feature-card__portrait img{display:block;width:100%;height:100%;object-fit:cover;object-position:center;filter:brightness(.96);transition:filter 250ms ease,transform 250ms ease}
+.artist-feature-card__status{position:absolute;z-index:1;left:18px;bottom:16px;padding:8px 11px;border:1px solid color-mix(in srgb,var(--artist-accent) 72%,white 12%);border-radius:999px;background:rgba(12,7,12,.82);color:color-mix(in srgb,var(--artist-accent) 68%,white 32%);font:800 9px/1 'DM Sans',system-ui,sans-serif;letter-spacing:.14em;text-transform:uppercase;box-shadow:0 7px 20px rgba(0,0,0,.3);backdrop-filter:blur(10px)}
+.artist-feature-card__body{padding:22px}
+.artist-feature-card__identity h3{margin:0;color:#fff5ea;font:700 clamp(30px,3vw,40px)/.95 'Cormorant Garamond',Georgia,serif;letter-spacing:-.02em}
+.artist-feature-card__shop{margin:9px 0 0;color:#f2dce7;font:700 12px/1.35 'DM Sans',system-ui,sans-serif;letter-spacing:.035em}
+.artist-feature-card__location{margin:3px 0 0;color:#a99da6;font:600 10px/1.35 'DM Sans',system-ui,sans-serif;letter-spacing:.09em;text-transform:uppercase}
+.artist-feature-card__specialty{display:inline-block;margin:18px 0 0;padding:7px 10px;border:1px solid color-mix(in srgb,var(--artist-accent) 42%,transparent);border-radius:999px;background:color-mix(in srgb,var(--artist-accent) 9%,transparent);color:color-mix(in srgb,var(--artist-accent) 65%,white 35%);font:800 9px/1 'DM Sans',system-ui,sans-serif;letter-spacing:.11em;text-transform:uppercase}
+.artist-feature-card__bio{min-height:4.35em;margin:15px 0 18px;color:#d2c5ce;font:500 13px/1.45 'DM Sans',system-ui,sans-serif}
+.artist-feature-card__cta{display:flex;align-items:center;gap:9px;box-sizing:border-box;width:100%;padding-top:15px;border-top:1px solid rgba(255,255,255,.1);color:color-mix(in srgb,var(--artist-accent) 66%,white 34%);font:800 10px/1 'DM Sans',system-ui,sans-serif;letter-spacing:.12em;text-decoration:none;text-transform:uppercase}
+.artist-feature-card__cta--preview{cursor:not-allowed}.artist-feature-card__cta>span:nth-child(2){font-size:15px}.artist-feature-card__preview-label{margin-left:auto;color:#8e818a;font-size:8px;letter-spacing:.13em}.artist-feature-card__cta:focus-visible{outline:3px solid var(--artist-accent);outline-offset:6px}
+.artist-feature-card:focus-within{border-color:color-mix(in srgb,var(--artist-accent) 78%,white 22%);box-shadow:0 31px 70px rgba(0,0,0,.5),0 0 38px color-mix(in srgb,var(--artist-accent) 19%,transparent);transform:translateY(-5px)}
+@media (hover:hover) and (pointer:fine){.artist-feature-card:hover{border-color:color-mix(in srgb,var(--artist-accent) 74%,white 26%);box-shadow:0 31px 70px rgba(0,0,0,.5),0 0 38px color-mix(in srgb,var(--artist-accent) 19%,transparent);transform:translateY(-5px)}.artist-feature-card:hover .artist-feature-card__portrait img{filter:brightness(1.02);transform:translateY(-3px)}}
+@media (max-width:900px){.artist-section__grid--artists{grid-template-columns:repeat(2,minmax(0,1fr));gap:22px}.artist-feature-card,.artist-feature-card:nth-child(4){grid-column:auto}.artist-feature-card:last-child{grid-column:1/-1;width:calc(50% - 11px);justify-self:center}}
+@media (max-width:560px){.artist-section--violet .artist-section__heading{display:block}.artist-section__grid--artists{grid-template-columns:minmax(0,1fr);gap:24px}.artist-feature-card:last-child{grid-column:auto;width:100%}.artist-feature-card__body{padding:20px}.artist-feature-card__bio{min-height:0}}
+@media (prefers-reduced-motion:reduce){.artist-feature-card,.artist-feature-card *{animation:none!important;scroll-behavior:auto!important;transition:none!important}.artist-feature-card:hover,.artist-feature-card:focus-within,.artist-feature-card:hover .artist-feature-card__portrait img{transform:none}}
