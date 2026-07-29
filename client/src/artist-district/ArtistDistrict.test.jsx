@@ -4,12 +4,12 @@ import fs from 'fs';
 import path from 'path';
 import ArtistDistrict from './ArtistDistrict';
 import ArtistDistrictSpotlight from './ArtistDistrictSpotlight';
-import { artistDistrictTagline } from './artistDistrictData';
+import { artistDistrictTagline, foundingShops } from './artistDistrictData';
 import { summerChromeCampaign } from './spotlightCampaigns';
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
-const source = ['ArtistDistrict.jsx', 'ArtistDistrictHeader.jsx', 'ArtistDistrictSpotlight.jsx', 'ArtistDistrictSection.jsx', 'ArtistDistrictPlaceholderCard.jsx', 'NewsTile.jsx', 'artistDistrictData.js', 'spotlightCampaigns.js']
+const source = ['ArtistDistrict.jsx', 'ArtistDistrictHeader.jsx', 'ArtistDistrictSpotlight.jsx', 'ArtistDistrictSection.jsx', 'ArtistDistrictPlaceholderCard.jsx', 'StorefrontCard.jsx', 'NewsTile.jsx', 'artistDistrictData.js', 'spotlightCampaigns.js']
   .map((file) => fs.readFileSync(path.join(__dirname, file), 'utf8')).join('\n');
 
 let container; let root;
@@ -112,7 +112,7 @@ describe('ArtistDistrict', () => {
   it('renders all section headings and preserves card counts', () => {
     renderArtistDistrict();
     [
-      ['Featured Nail Shops', 'featured-nail-shops-cards', 3],
+      ['Featured Nail Shops', 'featured-nail-shops-cards', 5],
       ['Trending This Week', 'trending-this-week-cards', 3],
       ['New Artists', 'new-artists-cards', 3],
       ['Browse All Nail Shops', 'browse-all-nail-shops-cards', 6],
@@ -125,12 +125,44 @@ describe('ArtistDistrict', () => {
     expect(viewAll.getAttribute('href')).toBe('#browse-all-nail-shops-title');
   });
 
-  it('keeps Visit Shop buttons disabled and preserves Signature Nail and specialty tags', () => {
+  it('renders all Founding Shops as reusable storefront destinations with production artwork', () => {
+    renderArtistDistrict();
+    const featured = container.querySelector('[data-testid="featured-nail-shops-cards"]');
+    expect(featured.classList.contains('artist-section__grid--storefronts')).toBe(true);
+    expect(featured.querySelectorAll('[data-testid="storefront-card"]')).toHaveLength(foundingShops.length);
+
+    foundingShops.forEach((shop) => {
+      expect(featured.textContent).toContain(shop.name);
+      expect(featured.querySelector(`img[src="${shop.storefrontImage}"]`)).not.toBeNull();
+      expect(featured.querySelector(`img[src="${shop.signatureNailImage}"]`)).not.toBeNull();
+    });
+
+    expect(featured.querySelectorAll('.storefront-card__artwork[loading="lazy"][decoding="async"]')).toHaveLength(5);
+    expect(featured.querySelectorAll('.storefront-card__nail[loading="lazy"][decoding="async"]')).toHaveLength(5);
+    expect(featured.querySelector('.artist-shop-card__initials, .artist-logo, [class*="avatar"], [class*="profile"]')).toBeNull();
+  });
+
+  it('uses accessible preview-only Explore Studio actions without fake destinations', () => {
+    renderArtistDistrict();
+    const actions = container.querySelectorAll('[data-testid="featured-nail-shops-cards"] .storefront-card__cta');
+    expect(actions).toHaveLength(5);
+    actions.forEach((action) => {
+      expect(action.textContent).toContain('Explore Studio');
+      expect(action.tagName).toBe('SPAN');
+      expect(action.getAttribute('role')).toBe('link');
+      expect(action.getAttribute('tabindex')).toBe('0');
+      expect(action.getAttribute('aria-disabled')).toBe('true');
+      expect(action.getAttribute('href')).toBeNull();
+    });
+    expect(container.querySelector('a[href="#"]')).toBeNull();
+  });
+
+  it('keeps non-featured placeholder shop behavior unchanged', () => {
     renderArtistDistrict();
     buttonsByText('Visit Shop').forEach((button) => expect(button.disabled).toBe(true));
-    expect(buttonsByText('Visit Shop')).toHaveLength(15);
-    expect(container.textContent).toContain('Signature Nail™: Rose Quartz Veil');
-    ['Sculpted Gel', 'Chrome Florals', 'Soft Glam'].forEach((tag) => expect(container.textContent).toContain(tag));
+    expect(buttonsByText('Visit Shop')).toHaveLength(12);
+    expect(container.textContent).toContain('Signature Nail™: Velvet Cat Eye');
+    ['Deep Plum', 'Cat Eye', 'Layered Jelly'].forEach((tag) => expect(container.textContent).toContain(tag));
   });
 
   it('does not reference forbidden production or integration surfaces', () => {
