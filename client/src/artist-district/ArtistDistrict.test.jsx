@@ -9,7 +9,7 @@ import { summerChromeCampaign } from './spotlightCampaigns';
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
-const source = ['ArtistDistrict.jsx', 'ArtistDistrictHeader.jsx', 'ArtistDistrictSpotlight.jsx', 'ArtistDistrictSection.jsx', 'ArtistDistrictPlaceholderCard.jsx', 'ArtistFeatureCard.jsx', 'StorefrontCard.jsx', 'TrendCard.jsx', 'NewsTile.jsx', 'artistDistrictData.js', 'spotlightCampaigns.js']
+const source = ['ArtistDistrict.jsx', 'ArtistDistrictHeader.jsx', 'ArtistDistrictSpotlight.jsx', 'ArtistDistrictSection.jsx', 'ArtistDistrictPlaceholderCard.jsx', 'ArtistFeatureCard.jsx', 'StorefrontCard.jsx', 'ShopDirectoryCard.jsx', 'TrendCard.jsx', 'NewsTile.jsx', 'artistDistrictData.js', 'spotlightCampaigns.js']
   .map((file) => fs.readFileSync(path.join(__dirname, file), 'utf8')).join('\n');
 
 let container; let root;
@@ -115,7 +115,7 @@ describe('ArtistDistrict', () => {
       ['Featured Nail Shops', 'featured-nail-shops-cards', 5],
       ['Trending This Week', 'trending-this-week-cards', 5],
       ['New Artists', 'new-artists-cards', 5],
-      ['Browse All Nail Shops', 'browse-all-nail-shops-cards', 6],
+      ['Browse All Nail Shops', 'browse-all-nail-shops-cards', 5],
     ].forEach(([heading, testId, count]) => {
       expect(container.textContent).toContain(heading);
       expect(container.querySelector(`[data-testid="${testId}"]`).querySelectorAll('article')).toHaveLength(count);
@@ -217,12 +217,26 @@ describe('ArtistDistrict', () => {
     expect(container.querySelector('a[href="#"]')).toBeNull();
   });
 
-  it('keeps non-featured placeholder shop behavior unchanged', () => {
+  it('renders the Founding Shops in a searchable, preview-only directory', () => {
     renderArtistDistrict();
-    buttonsByText('Visit Shop').forEach((button) => expect(button.disabled).toBe(true));
-    expect(buttonsByText('Visit Shop')).toHaveLength(6);
-    expect(container.textContent).toContain('Signature Nail™: Pearl Circuit');
-    ['Pearl Chrome', 'Linework', 'Short Gel'].forEach((tag) => expect(container.textContent).toContain(tag));
+    const directory = container.querySelector('[data-testid="browse-all-nail-shops-cards"]');
+    expect(directory.querySelectorAll('[data-testid="shop-directory-card"]')).toHaveLength(5);
+    expect(container.querySelector('.shop-directory__search input').getAttribute('placeholder')).toBe('Search Nail Shops...');
+    ['Luxury', 'Chrome', 'Gel-X', 'Hand Painted', 'Press-Ons', 'Bridal', 'Acrylic'].forEach((filter) => expect(container.textContent).toContain(filter));
+    foundingShops.forEach((shop) => {
+      expect(directory.textContent).toContain(shop.name);
+      expect(directory.querySelector(`img[src="${shop.storefrontImage}"]`)).not.toBeNull();
+    });
+    expect(directory.querySelectorAll('img')).toHaveLength(5);
+    expect(directory.querySelector('img[src*="interior"], img[src*="collection"], img[src*="signature-nail"]')).toBeNull();
+    directory.querySelectorAll('.shop-directory-card__cta').forEach((action) => {
+      expect(action.textContent).toContain('Explore Studio');
+      expect(action.tagName).toBe('SPAN');
+      expect(action.getAttribute('role')).toBe('link');
+      expect(action.getAttribute('tabindex')).toBe('0');
+      expect(action.getAttribute('aria-disabled')).toBe('true');
+      expect(action.getAttribute('href')).toBeNull();
+    });
   });
 
   it('does not reference forbidden production or integration surfaces', () => {
