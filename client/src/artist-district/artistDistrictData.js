@@ -158,14 +158,8 @@ export const artistDistrictSections = [
     id: 'browse-all-nail-shops',
     title: 'Browse All Nail Shops',
     eyebrow: 'The district directory',
+    description: 'Wander the storefronts and find the studio that catches your eye next.',
     accent: 'gold',
-    shops: [
-      { name: 'Pearl Circuit Nails', location: 'Denver, CO', initials: 'PC', signature: 'Signature Nail™: Pearl Circuit', description: 'Pearl chrome lines and future-soft overlays for everyday statement sets.', tags: ['Pearl Chrome', 'Linework', 'Short Gel'] },
-      { name: 'Glass Garden Studio', location: 'Savannah, GA', initials: 'GG', signature: 'Signature Nail™: Glass Bloom', description: 'Transparent botanicals, glassy layers, and light-catching garden color.', tags: ['Jelly Layers', 'Botanical', 'Clear Gel'] },
-      { name: 'Opal Archive', location: 'Phoenix, AZ', initials: 'OA', signature: 'Signature Nail™: Opal File', description: 'Opalescent archives translated into soft sculpted modern sets.', tags: ['Opal Dust', 'Sculpted', 'Iridescent'] },
-      { name: 'Ink & Alloy Nails', location: 'Detroit, MI', initials: 'IA', signature: 'Signature Nail™: Alloy Ink', description: 'Graphic ink details paired with molten silver chrome accents.', tags: ['Graphic Art', 'Silver Chrome', 'Gel Art'] },
-      { name: 'Blush Voltage', location: 'Nashville, TN', initials: 'BV', signature: 'Signature Nail™: Blush Bolt', description: 'Electric blush details and glossy power color for stage-ready hands.', tags: ['Blush Pink', 'Lightning', 'Gloss'] },
-      { name: 'Mink Mirror Room', location: 'New York, NY', initials: 'MR', signature: 'Signature Nail™: Mink Mirror', description: 'Reflective mink, smoky neutrals, and premium mirror-finish edits.', tags: ['Mirror Chrome', 'Neutral', 'Editorial'] },
-    ],
+    shops: foundingShops,
   },
 ];
