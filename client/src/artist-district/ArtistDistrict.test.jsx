@@ -9,7 +9,7 @@ import { summerChromeCampaign } from './spotlightCampaigns';
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
-const source = ['ArtistDistrict.jsx', 'ArtistDistrictHeader.jsx', 'ArtistDistrictSpotlight.jsx', 'ArtistDistrictSection.jsx', 'ArtistDistrictPlaceholderCard.jsx', 'artistDistrictData.js', 'spotlightCampaigns.js']
+const source = ['ArtistDistrict.jsx', 'ArtistDistrictHeader.jsx', 'ArtistDistrictSpotlight.jsx', 'ArtistDistrictSection.jsx', 'ArtistDistrictPlaceholderCard.jsx', 'NewsTile.jsx', 'artistDistrictData.js', 'spotlightCampaigns.js']
   .map((file) => fs.readFileSync(path.join(__dirname, file), 'utf8')).join('\n');
 
 let container; let root;
@@ -97,11 +97,16 @@ describe('ArtistDistrict', () => {
     expect(container.querySelector('.artist-hero__taskbar, .artist-hero__dock, .artist-hero__image-controls')).toBeNull();
   });
 
-  it('renders all living community metrics exactly', () => {
+  it('renders reusable Artist District News tiles with live status only on active metrics', () => {
     renderArtistDistrict();
-    ['318 Looks Shared Today', 'Chrome Trending', '24 New Nail Shops This Week', '1,126 Designs Created Today'].forEach((metric) => {
+    ['Artist District News', 'Looks Shared', '318', 'Trending', 'Chrome', 'New Nail Shops', 'Designs Created', '2.4K'].forEach((metric) => {
       expect(container.textContent).toContain(metric);
     });
+    expect(container.querySelectorAll('.news-tile')).toHaveLength(4);
+    expect(container.querySelectorAll('.news-tile__live')).toHaveLength(3);
+    expect(container.querySelector('.news-tile[aria-label^="New Nail Shops"] .news-tile__live')).toBeNull();
+    expect(container.textContent).toContain('↑ 12% from yesterday');
+    expect(container.textContent).not.toContain('The district is moving right now');
   });
 
   it('renders all section headings and preserves card counts', () => {
@@ -115,6 +120,9 @@ describe('ArtistDistrict', () => {
       expect(container.textContent).toContain(heading);
       expect(container.querySelector(`[data-testid="${testId}"]`).querySelectorAll('article')).toHaveLength(count);
     });
+    const viewAll = container.querySelector('.artist-section__view-all');
+    expect(viewAll.textContent).toContain('View All');
+    expect(viewAll.getAttribute('href')).toBe('#browse-all-nail-shops-title');
   });
 
   it('keeps Visit Shop buttons disabled and preserves Signature Nail and specialty tags', () => {

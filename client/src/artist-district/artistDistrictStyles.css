@@ -13,3 +13,31 @@
 @media (max-width:900px){.artist-hero{min-height:clamp(680px,86vh,860px)}.artist-hero__environment{object-position:58% center}.artist-hero__copy{width:min(72vw,590px)}.artist-hero__shop-prompt{top:68px}.artist-community__metrics,.artist-section__grid{grid-template-columns:repeat(2,1fr)}}
 @media (max-width:560px){.artist-district{padding:0 14px 50px}.artist-hero{margin-inline:-14px;min-height:760px}.artist-crumb{left:18px;right:12px;font-size:9px;gap:5px;flex-wrap:wrap}.artist-hero__environment{object-position:61% center}.artist-hero__scene:before{background:linear-gradient(0deg,rgba(8,3,8,.96) 0,rgba(8,3,8,.66) 48%,transparent 76%)}.artist-hero__copy{left:18px;right:18px;bottom:30px;width:auto}.artist-hero h1{font-size:clamp(34px,10vw,44px)}.artist-hero__tagline{font-size:16px;margin:14px 0}.artist-hero__shop-prompt{top:58px;left:18px;right:18px;display:block;padding:6px}.artist-hero__shop-prompt p{font-size:12px;margin:0 0 7px}.artist-open-shop{width:100%;padding:10px 8px;font-size:11px;white-space:nowrap}.artist-search input{font-size:14px;padding-block:16px}.artist-community__metrics,.artist-section__grid{grid-template-columns:1fr}.artist-section__heading{display:block}.artist-section--teal .artist-section__heading{padding-left:0}}
 @media (prefers-reduced-motion:reduce){.artist-hero *{scroll-behavior:auto;transition:none!important;animation:none!important}}
+
+/* Artist District News */
+.artist-community{max-width:1180px;margin:0 auto clamp(64px,8vw,104px)}
+.artist-community__heading{margin-bottom:26px}
+.artist-community__heading h2{margin:0;color:#fff4e6;font:700 clamp(38px,5vw,58px)/1 'Cormorant Garamond',Georgia,serif;letter-spacing:-.025em}
+.artist-community__metrics{grid-template-columns:repeat(4,minmax(0,1fr));gap:18px}
+.news-tile{position:relative;isolation:isolate;display:flex;flex-direction:column;min-height:270px;padding:22px;border:1px solid color-mix(in srgb,var(--news-accent) 58%,transparent);border-radius:4px 30px 4px 30px;overflow:hidden;background:linear-gradient(145deg,rgba(28,19,29,.84),rgba(8,6,10,.92));box-shadow:0 22px 52px rgba(0,0,0,.34),0 0 30px color-mix(in srgb,var(--news-accent) 10%,transparent),inset 0 1px rgba(255,255,255,.06);backdrop-filter:blur(18px);transition:transform 250ms ease,border-color 250ms ease,box-shadow 250ms ease}
+.news-tile:before{position:absolute;z-index:-1;inset:auto -25% -45% 15%;height:70%;border-radius:50%;background:var(--news-accent);content:"";filter:blur(60px);opacity:.1;pointer-events:none}
+.news-tile:hover{border-color:color-mix(in srgb,var(--news-accent) 82%,white 18%);box-shadow:0 28px 62px rgba(0,0,0,.42),0 0 38px color-mix(in srgb,var(--news-accent) 18%,transparent),inset 0 1px rgba(255,255,255,.09);transform:translateY(-5px)}
+.news-tile__topline{display:flex;align-items:flex-start;justify-content:space-between}
+.news-tile__icon{display:grid;width:42px;height:42px;place-items:center;color:var(--news-accent);filter:drop-shadow(0 0 7px color-mix(in srgb,var(--news-accent) 68%,transparent))}
+.news-tile__icon svg{width:30px;height:30px}
+.news-tile__live{display:inline-flex;align-items:center;gap:7px;padding:6px 9px;border:1px solid rgba(255,92,110,.28);border-radius:999px;background:rgba(115,17,31,.16);color:#ffb5bd;font:700 9px/1 'DM Sans',system-ui,sans-serif;letter-spacing:.16em;text-transform:uppercase}
+.news-tile__live span{width:6px;height:6px;border-radius:50%;background:#ff5267;box-shadow:0 0 8px rgba(255,82,103,.8);animation:news-live 2.5s ease-in-out infinite}
+.news-tile__content{margin-top:auto}
+.news-tile h3{margin:0 0 8px;color:#e8dfe6;font:700 11px/1.2 'DM Sans',system-ui,sans-serif;letter-spacing:.12em;text-transform:uppercase}
+.news-tile__value{margin:0;color:#fff8ef;font:700 clamp(38px,4vw,52px)/.95 'Cormorant Garamond',Georgia,serif;letter-spacing:-.025em;text-shadow:0 0 18px color-mix(in srgb,var(--news-accent) 20%,transparent)}
+.news-tile__subtitle,.news-tile__trend{font-family:'DM Sans',system-ui,sans-serif}
+.news-tile__subtitle{margin:9px 0 0;color:#cbbfc9;font-size:13px}
+.news-tile__trend{min-height:15px;margin:18px 0 0;color:color-mix(in srgb,var(--news-accent) 78%,white 22%);font-size:11px;font-weight:700}
+.artist-section__view-all{padding:8px 0;color:#f2c4d8;font:700 12px/1 'DM Sans',system-ui,sans-serif;letter-spacing:.08em;text-decoration:none;text-transform:uppercase;transition:color 180ms ease}
+.artist-section__view-all span{display:inline-block;margin-left:5px;color:#ff69ad;transition:transform 180ms ease}
+.artist-section__view-all:hover{color:#fff}.artist-section__view-all:hover span{transform:translateX(3px)}
+.artist-section__view-all:focus-visible{outline:3px solid #35e3e4;outline-offset:5px}
+@keyframes news-live{0%,100%{opacity:.65}50%{opacity:1;box-shadow:0 0 12px rgba(255,82,103,.95)}}
+@media (max-width:900px){.artist-community__metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:560px){.artist-community__metrics{grid-template-columns:1fr;gap:16px}.news-tile{min-height:235px}.artist-section__heading{display:flex;align-items:end}.artist-section__view-all{flex:none}}
+@media (prefers-reduced-motion:reduce){.news-tile,.news-tile *,.artist-section__view-all *{transition:none!important;animation:none!important}.news-tile:hover{transform:none}}
