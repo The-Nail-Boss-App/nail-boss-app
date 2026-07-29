@@ -41,3 +41,32 @@
 @media (max-width:900px){.artist-community__metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:560px){.artist-community__metrics{grid-template-columns:1fr;gap:16px}.news-tile{min-height:235px}.artist-section__heading{display:flex;align-items:end}.artist-section__view-all{flex:none}}
 @media (prefers-reduced-motion:reduce){.news-tile,.news-tile *,.artist-section__view-all *{transition:none!important;animation:none!important}.news-tile:hover{transform:none}}
+
+/* Featured Nail Shops — storefront destinations */
+.artist-section__grid--storefronts{grid-template-columns:repeat(6,minmax(0,1fr));gap:24px;overflow:visible}
+.artist-section__grid--storefronts .storefront-card{grid-column:span 2}
+.artist-section__grid--storefronts .storefront-card:nth-child(4){grid-column:2/span 2}
+.storefront-card{--storefront-accent:#ff69ad;position:relative;isolation:isolate;min-width:0;border:1px solid color-mix(in srgb,var(--storefront-accent) 34%,rgba(255,255,255,.12));border-radius:26px 26px 8px 8px;background:linear-gradient(155deg,rgba(31,18,29,.96),rgba(8,6,10,.98));box-shadow:0 24px 56px rgba(0,0,0,.38),0 0 28px color-mix(in srgb,var(--storefront-accent) 8%,transparent),inset 0 1px rgba(255,255,255,.06);transition:transform 250ms ease,border-color 250ms ease,box-shadow 250ms ease}
+.storefront-card:focus-within{border-color:color-mix(in srgb,var(--storefront-accent) 76%,white 24%);box-shadow:0 30px 68px rgba(0,0,0,.5),0 0 38px color-mix(in srgb,var(--storefront-accent) 18%,transparent),inset 0 1px rgba(255,255,255,.1);transform:translateY(-5px)}
+.storefront-card__media{position:relative;aspect-ratio:3/2;margin:0;overflow:visible}
+.storefront-card__artwork{display:block;width:100%;height:100%;border-radius:25px 25px 0 0;object-fit:cover;object-position:center;filter:saturate(.94) brightness(.92);transition:filter 250ms ease}
+.storefront-card__media:after{position:absolute;inset:auto 0 0;height:45%;background:linear-gradient(transparent,rgba(9,5,9,.76));content:"";pointer-events:none}
+.storefront-card__nail-frame{position:absolute;z-index:2;right:18px;bottom:-50px;width:76px;height:138px;display:grid;place-items:center;pointer-events:none;filter:drop-shadow(0 12px 12px rgba(0,0,0,.6)) drop-shadow(0 0 9px color-mix(in srgb,var(--storefront-accent) 38%,transparent));transition:transform 250ms ease}
+.storefront-card__nail{display:block;width:100%;height:100%;object-fit:contain}
+.storefront-card__body{position:relative;padding:22px 20px 20px}
+.storefront-card__identity{display:flex;min-height:80px;align-items:flex-start;justify-content:space-between;gap:12px;padding-right:76px}
+.storefront-card h3{margin:0;color:#fff7ed;font:700 clamp(25px,2.6vw,33px)/.98 'Cormorant Garamond',Georgia,serif;letter-spacing:-.02em}
+.storefront-card__category{margin:7px 0 0;color:#cdbfc9;font:600 11px/1.35 'DM Sans',system-ui,sans-serif;letter-spacing:.08em;text-transform:uppercase}
+.storefront-card__specialty{position:absolute;top:-12px;left:20px;max-width:calc(100% - 120px);padding:7px 10px;border:1px solid color-mix(in srgb,var(--storefront-accent) 50%,transparent);border-radius:999px;background:rgba(14,8,13,.9);color:color-mix(in srgb,var(--storefront-accent) 70%,white 30%);font:700 9px/1 'DM Sans',system-ui,sans-serif;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap;backdrop-filter:blur(10px)}
+.storefront-card__details{display:grid;grid-template-columns:.7fr .8fr 1.5fr;margin:12px 0 18px;padding:14px 0;border-block:1px solid rgba(255,255,255,.08)}
+.storefront-card__details div{min-width:0;padding:0 10px;border-right:1px solid rgba(255,255,255,.08)}
+.storefront-card__details div:first-child{padding-left:0}.storefront-card__details div:last-child{padding-right:0;border:0}
+.storefront-card__details dt{color:#9f929d;font:700 8px/1 'DM Sans',system-ui,sans-serif;letter-spacing:.12em;text-transform:uppercase}
+.storefront-card__details dd{margin:6px 0 0;overflow:hidden;color:#f7eaf1;font:700 11px/1.2 'DM Sans',system-ui,sans-serif;text-overflow:ellipsis;white-space:nowrap}
+.storefront-card__cta{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;box-sizing:border-box;padding:12px 16px;border:1px solid color-mix(in srgb,var(--storefront-accent) 58%,transparent);border-radius:999px;background:color-mix(in srgb,var(--storefront-accent) 10%,transparent);color:color-mix(in srgb,var(--storefront-accent) 64%,white 36%);font:800 11px/1 'DM Sans',system-ui,sans-serif;letter-spacing:.08em;text-decoration:none;text-transform:uppercase;transition:border-color 250ms ease,background 250ms ease,color 250ms ease}
+.storefront-card__cta--preview{cursor:not-allowed}.storefront-card__cta:focus-visible{outline:3px solid #35e3e4;outline-offset:4px}.storefront-card__soon{margin-left:auto;color:#93878f;font-size:8px;letter-spacing:.11em}
+.storefront-card__followers{display:block;margin-top:9px;color:#817780;font:600 9px/1 'DM Sans',system-ui,sans-serif;letter-spacing:.08em;text-align:center;text-transform:uppercase}
+@media (hover:hover) and (pointer:fine){.storefront-card:hover{border-color:color-mix(in srgb,var(--storefront-accent) 72%,white 28%);box-shadow:0 30px 68px rgba(0,0,0,.5),0 0 38px color-mix(in srgb,var(--storefront-accent) 18%,transparent),inset 0 1px rgba(255,255,255,.1);transform:translateY(-5px)}.storefront-card:hover .storefront-card__nail-frame{transform:translateY(-10px)}.storefront-card:hover .storefront-card__artwork{filter:saturate(1) brightness(.98)}}
+@media (max-width:900px){.artist-section__grid--storefronts{grid-template-columns:repeat(2,minmax(0,1fr))}.artist-section__grid--storefronts .storefront-card{grid-column:auto}.artist-section__grid--storefronts .storefront-card:nth-child(4){grid-column:auto}.artist-section__grid--storefronts .storefront-card:last-child{grid-column:1/-1;width:calc(50% - 12px);justify-self:center}}
+@media (max-width:560px){.artist-section__grid--storefronts{grid-template-columns:minmax(0,1fr);gap:22px}.artist-section__grid--storefronts .storefront-card:last-child{grid-column:auto;width:100%}.storefront-card__nail-frame{right:16px;width:70px;height:128px}.storefront-card__identity{padding-right:70px}.storefront-card__body{padding-inline:18px}.storefront-card__specialty{left:18px}}
+@media (prefers-reduced-motion:reduce){.storefront-card,.storefront-card *{animation:none!important;scroll-behavior:auto!important;transition:none!important}.storefront-card:hover,.storefront-card:focus-within{transform:none}.storefront-card:hover .storefront-card__nail-frame{transform:none}}
