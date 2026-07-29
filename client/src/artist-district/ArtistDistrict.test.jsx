@@ -9,7 +9,7 @@ import { summerChromeCampaign } from './spotlightCampaigns';
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
-const source = ['ArtistDistrict.jsx', 'ArtistDistrictHeader.jsx', 'ArtistDistrictSpotlight.jsx', 'ArtistDistrictSection.jsx', 'ArtistDistrictPlaceholderCard.jsx', 'StorefrontCard.jsx', 'NewsTile.jsx', 'artistDistrictData.js', 'spotlightCampaigns.js']
+const source = ['ArtistDistrict.jsx', 'ArtistDistrictHeader.jsx', 'ArtistDistrictSpotlight.jsx', 'ArtistDistrictSection.jsx', 'ArtistDistrictPlaceholderCard.jsx', 'StorefrontCard.jsx', 'TrendCard.jsx', 'NewsTile.jsx', 'artistDistrictData.js', 'spotlightCampaigns.js']
   .map((file) => fs.readFileSync(path.join(__dirname, file), 'utf8')).join('\n');
 
 let container; let root;
@@ -113,7 +113,7 @@ describe('ArtistDistrict', () => {
     renderArtistDistrict();
     [
       ['Featured Nail Shops', 'featured-nail-shops-cards', 5],
-      ['Trending This Week', 'trending-this-week-cards', 3],
+      ['Trending This Week', 'trending-this-week-cards', 5],
       ['New Artists', 'new-artists-cards', 3],
       ['Browse All Nail Shops', 'browse-all-nail-shops-cards', 6],
     ].forEach(([heading, testId, count]) => {
@@ -123,6 +123,25 @@ describe('ArtistDistrict', () => {
     const viewAll = container.querySelector('.artist-section__view-all');
     expect(viewAll.textContent).toContain('View All');
     expect(viewAll.getAttribute('href')).toBe('#browse-all-nail-shops-title');
+  });
+
+  it('renders five ranked weekly trends from Founding Shop collection artwork', () => {
+    renderArtistDistrict();
+    const trends = container.querySelector('[data-testid="trending-this-week-cards"]');
+    expect(trends.querySelectorAll('[data-testid="trend-card"]')).toHaveLength(5);
+    ['#1', '#2', '#3', '#4', '#5', 'Chrome Bloom', 'Sunset Marble', 'Pearl Luxe', 'Tropical Escape', 'Velvet Petals'].forEach((content) => expect(trends.textContent).toContain(content));
+    foundingShops.forEach((shop) => expect(trends.textContent).toContain(shop.name));
+    expect(trends.querySelectorAll('img[src*="collection.png"], img[src*="featured-collection.png"]')).toHaveLength(5);
+    expect(trends.querySelectorAll('img[loading="lazy"][decoding="async"]')).toHaveLength(5);
+    expect(trends.querySelector('img[src*="cover.png"], img[src*="interior.png"], img[src*="signature-nail.png"]')).toBeNull();
+    trends.querySelectorAll('.trend-card__cta').forEach((action) => {
+      expect(action.textContent).toContain('View Trend');
+      expect(action.tagName).toBe('SPAN');
+      expect(action.getAttribute('role')).toBe('link');
+      expect(action.getAttribute('tabindex')).toBe('0');
+      expect(action.getAttribute('aria-disabled')).toBe('true');
+      expect(action.getAttribute('href')).toBeNull();
+    });
   });
 
   it('renders all Founding Shops as reusable storefront destinations with production artwork', () => {
@@ -160,9 +179,9 @@ describe('ArtistDistrict', () => {
   it('keeps non-featured placeholder shop behavior unchanged', () => {
     renderArtistDistrict();
     buttonsByText('Visit Shop').forEach((button) => expect(button.disabled).toBe(true));
-    expect(buttonsByText('Visit Shop')).toHaveLength(12);
-    expect(container.textContent).toContain('Signature Nail™: Velvet Cat Eye');
-    ['Deep Plum', 'Cat Eye', 'Layered Jelly'].forEach((tag) => expect(container.textContent).toContain(tag));
+    expect(buttonsByText('Visit Shop')).toHaveLength(9);
+    expect(container.textContent).toContain('Signature Nail™: Midnight Star');
+    ['Celestial Art', 'Velvet Cat Eye', 'Navy Chrome'].forEach((tag) => expect(container.textContent).toContain(tag));
   });
 
   it('does not reference forbidden production or integration surfaces', () => {

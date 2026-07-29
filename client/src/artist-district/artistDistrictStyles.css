@@ -70,3 +70,27 @@
 @media (max-width:900px){.artist-section__grid--storefronts{grid-template-columns:repeat(2,minmax(0,1fr))}.artist-section__grid--storefronts .storefront-card{grid-column:auto}.artist-section__grid--storefronts .storefront-card:nth-child(4){grid-column:auto}.artist-section__grid--storefronts .storefront-card:last-child{grid-column:1/-1;width:calc(50% - 12px);justify-self:center}}
 @media (max-width:560px){.artist-section__grid--storefronts{grid-template-columns:minmax(0,1fr);gap:22px}.artist-section__grid--storefronts .storefront-card:last-child{grid-column:auto;width:100%}.storefront-card__nail-frame{right:16px;width:70px;height:128px}.storefront-card__identity{padding-right:70px}.storefront-card__body{padding-inline:18px}.storefront-card__specialty{left:18px}}
 @media (prefers-reduced-motion:reduce){.storefront-card,.storefront-card *{animation:none!important;scroll-behavior:auto!important;transition:none!important}.storefront-card:hover,.storefront-card:focus-within{transform:none}.storefront-card:hover .storefront-card__nail-frame{transform:none}}
+
+/* Trending This Week — editorial collection gallery */
+.artist-section--teal{margin-bottom:clamp(72px,9vw,112px)}
+.artist-section--teal .artist-section__heading{align-items:flex-end;margin-bottom:30px;padding-left:0;border-bottom:1px solid rgba(242,196,216,.16);padding-bottom:18px}
+.artist-section--teal .artist-section__heading h2{color:#fff4e6;font:700 clamp(40px,5vw,58px)/.95 'Cormorant Garamond',Georgia,serif;letter-spacing:-.025em}
+.artist-section__grid--trends{grid-template-columns:repeat(6,minmax(0,1fr));gap:24px}
+.trend-card{--trend-accent:#e995bd;position:relative;isolation:isolate;grid-column:span 3;min-width:0;overflow:hidden;border:1px solid rgba(233,149,189,.24);border-radius:28px 28px 8px 8px;background:linear-gradient(150deg,rgba(31,17,28,.98),rgba(10,6,10,.99));box-shadow:0 24px 62px rgba(0,0,0,.36),0 0 32px rgba(139,42,91,.07),inset 0 1px rgba(255,255,255,.06);transition:transform 250ms ease,border-color 250ms ease,box-shadow 250ms ease}
+.trend-card:nth-child(n+3){grid-column:span 2}
+.trend-card__media{position:relative;aspect-ratio:3/2;margin:0;overflow:hidden;background:#140b12}
+.trend-card__media:after{position:absolute;inset:auto 0 0;height:28%;background:linear-gradient(transparent,rgba(10,5,9,.58));content:"";pointer-events:none}
+.trend-card__media img{display:block;width:100%;height:100%;object-fit:contain;filter:brightness(.92) saturate(.94);transition:filter 250ms ease}
+.trend-card__rank{position:absolute;z-index:1;top:18px;left:18px;display:grid;min-width:43px;height:43px;padding:0 8px;box-sizing:border-box;place-items:center;border:1px solid rgba(255,224,237,.42);border-radius:50%;background:rgba(18,8,15,.76);color:#fff2e7;font:700 17px/1 'Cormorant Garamond',Georgia,serif;box-shadow:0 8px 24px rgba(0,0,0,.3);backdrop-filter:blur(10px)}
+.trend-card__body{padding:20px 22px 22px}
+.trend-card__signals{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px}
+.trend-card__category{padding:6px 9px;border:1px solid rgba(233,149,189,.3);border-radius:999px;color:#f4bdd6;font:700 9px/1 'DM Sans',system-ui,sans-serif;letter-spacing:.14em;text-transform:uppercase}
+.trend-card__momentum{color:#8ce0d9;font:700 10px/1 'DM Sans',system-ui,sans-serif;letter-spacing:.06em;text-align:right;text-transform:uppercase}
+.trend-card h3{margin:0;color:#fff5eb;font:700 clamp(30px,3vw,41px)/.96 'Cormorant Garamond',Georgia,serif;letter-spacing:-.02em}
+.trend-card__shop{margin:8px 0 20px;color:#cdbdc8;font:500 12px/1.4 'DM Sans',system-ui,sans-serif;letter-spacing:.035em}
+.trend-card__cta{display:flex;align-items:center;gap:8px;width:100%;box-sizing:border-box;padding-top:14px;border-top:1px solid rgba(255,255,255,.1);color:#f4c5d9;font:800 10px/1 'DM Sans',system-ui,sans-serif;letter-spacing:.12em;text-decoration:none;text-transform:uppercase}
+.trend-card__cta--preview{cursor:not-allowed}.trend-card__cta>span:first-child{color:#8ce0d9;font-size:14px}.trend-card__preview-label{margin-left:auto;color:#81747d;font-size:8px;letter-spacing:.14em}.trend-card__cta:focus-visible{outline:3px solid #35e3e4;outline-offset:5px}
+@media (hover:hover) and (pointer:fine){.trend-card:hover{border-color:rgba(233,149,189,.54);box-shadow:0 30px 70px rgba(0,0,0,.48),0 0 38px rgba(201,78,139,.14),inset 0 1px rgba(255,255,255,.09);transform:translateY(-5px)}.trend-card:hover .trend-card__media img{filter:brightness(1) saturate(1)}}
+@media (max-width:900px){.artist-section__grid--trends{grid-template-columns:repeat(2,minmax(0,1fr));gap:22px}.trend-card,.trend-card:nth-child(n+3){grid-column:auto}}
+@media (max-width:560px){.artist-section--teal .artist-section__heading{display:block}.artist-section__grid--trends{grid-template-columns:minmax(0,1fr);gap:22px}.trend-card__body{padding:18px}.trend-card__rank{top:14px;left:14px}}
+@media (prefers-reduced-motion:reduce){.trend-card,.trend-card *{animation:none!important;scroll-behavior:auto!important;transition:none!important}.trend-card:hover{transform:none}}

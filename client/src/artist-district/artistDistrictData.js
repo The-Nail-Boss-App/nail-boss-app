@@ -90,6 +90,14 @@ export const foundingShops = [
   },
 ];
 
+export const weeklyTrends = [
+  { id: 'chrome-bloom', rank: 1, title: 'Chrome Bloom', shopName: 'Velvet Petal Studio', momentum: '↑ 38% this week', category: 'Floral', collectionImage: '/assets/founding-shops/velvet-pedal/velvet-bloom-collection.png', collectionAlt: 'Velvet Petal Studio floral nail collection in sculpted pink and chrome finishes', ctaDestination: null },
+  { id: 'sunset-marble', rank: 2, title: 'Sunset Marble', shopName: 'Golden Hour Nails', momentum: 'Most Saved', category: 'Chrome', collectionImage: '/assets/founding-shops/golden-hour/golden-hour-collection.png', collectionAlt: 'Golden Hour Nails collection with luminous sunset-inspired chrome nail looks', ctaDestination: null },
+  { id: 'pearl-luxe', rank: 3, title: 'Pearl Luxe', shopName: "Kiki's Nail Shop", momentum: 'Trending Now', category: 'Luxury', collectionImage: '/assets/founding-shops/kikis-nail-shop/kikis-featured-collection.png', collectionAlt: "Kiki's Nail Shop collection of detailed pearl and hand-painted nail looks", ctaDestination: null },
+  { id: 'tropical-escape', rank: 4, title: 'Tropical Escape', shopName: 'Azure Tide', momentum: 'Community Favorite', category: 'Gel-X', collectionImage: '/assets/founding-shops/azure-tide/azure-tide-collection.png', collectionAlt: 'Azure Tide collection of ocean-blue and tropical-inspired nail looks', ctaDestination: null },
+  { id: 'velvet-petals', rank: 5, title: 'Velvet Petals', shopName: 'Cherry Lacquer Loft', momentum: '↑ 24% this week', category: 'Editorial', collectionImage: '/assets/founding-shops/cherry-lacquer/cherry-lacquer-collection.png', collectionAlt: 'Cherry Lacquer Loft collection of deep red editorial nail looks', ctaDestination: null },
+];
+
 export const artistDistrictSections = [
   {
     id: 'featured-nail-shops',
@@ -101,13 +109,9 @@ export const artistDistrictSections = [
   {
     id: 'trending-this-week',
     title: 'Trending This Week',
-    eyebrow: 'Chrome signals rising',
+    eyebrow: 'The weekly edit',
     accent: 'teal',
-    shops: [
-      { name: 'Plum Theory Atelier', location: 'Chicago, IL', initials: 'PT', signature: 'Signature Nail™: Velvet Cat Eye', description: 'Moody magnetic finishes balanced with sheer cream dimension.', tags: ['Deep Plum', 'Cat Eye', 'Layered Jelly'] },
-      { name: 'Rosette Nail Room', location: 'Austin, TX', initials: 'RR', signature: 'Signature Nail™: Gel-X Rosette', description: 'Ribbon-soft accents, blush gradients, and delicate pearl moments.', tags: ['Rose Details', 'Gel-X', 'Coquette'] },
-      { name: 'Cocoa Crown Studio', location: 'Charlotte, NC', initials: 'CC', signature: 'Signature Nail™: Cocoa Foil', description: 'Warm neutral sets with restrained metallic shine and glossy depth.', tags: ['Cocoa Tones', 'Gold Foil', 'Gloss Gel'] },
-    ],
+    shops: weeklyTrends,
   },
   {
     id: 'new-artists',
