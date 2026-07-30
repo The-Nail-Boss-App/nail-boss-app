@@ -763,10 +763,6 @@ function PolishColorControls({
         <div style={UI.sectionTitle}>Design Colors</div>
         <PolishRack colors={recentPolish} activeColor={value} polishType={polishType} onSelect={onRackSelect || onChange} compact />
       </section>
-      <section data-testid="vendor-collections" style={{ marginTop: 10 }}>
-        <div style={UI.sectionTitle}>Vendor Collections</div>
-        <p style={{ ...UI.smallText, margin: 0 }}>Vendor polish collections placeholder.</p>
-      </section>
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 10 }}>
         <button
           type="button"
@@ -2492,7 +2488,13 @@ function DesignStudio(_, ref) {
     if (activeStudio === "stickerStudio")
       return (
         <section data-testid="sticker-studio-panel" style={UI.panelSection}>
-          <div style={UI.panelBody}>{["My Stickers", "Recently Used", "Seasonal Packs", "Vendor Packs", "Future AI Artwork"].map((title) => <div key={title} style={{ marginBottom: 10 }}><div style={UI.sectionTitle}>{title}</div><p style={{ ...UI.smallText, margin: 0 }}>Sticker Studio foundation shelf.</p></div>)}</div>
+          <div style={UI.panelBody}>
+            <AssetLibrary
+              onAddAsset={addAsset}
+              initialCategory="decals"
+              categories={[{ id: "decals", label: "Stickers" }]}
+            />
+          </div>
         </section>
       );
     if (activeStudio === "charmStudio")
@@ -2507,7 +2509,7 @@ function DesignStudio(_, ref) {
       <section data-testid="top-coat-studio-panel" style={UI.panelSection}>
         <div style={UI.panelBody}>
           <div style={UI.sectionTitle}>Top Coat Studio™</div>
-          {["Gloss", "Matte", "Velvet Matte", "Satin", "Jelly Finish", "Sugar Effect placeholder", "Glass Finish placeholder"].map((finish) => <button key={finish} type="button" onClick={() => setDraftPolish((prev) => ({ ...prev, polishType: finish.includes("Matte") ? "Matte" : prev.polishType }))} style={{ ...UI.iconButton(finish === "Matte" && draftPolish.polishType === "Matte"), margin: 4 }}>{finish}</button>)}
+          {["Gloss", "Matte", "Velvet Matte", "Satin", "Jelly Finish"].map((finish) => <button key={finish} type="button" onClick={() => setDraftPolish((prev) => ({ ...prev, polishType: finish.includes("Matte") ? "Matte" : prev.polishType }))} style={{ ...UI.iconButton(finish === "Matte" && draftPolish.polishType === "Matte"), margin: 4 }}>{finish}</button>)}
         </div>
       </section>
     );
@@ -2661,9 +2663,10 @@ function DesignStudio(_, ref) {
           </div>
           <label
             data-testid="artist-command-collection"
+            data-product-template-contract="collection-assignment"
             style={UI.commandCollection}
           >
-            <span style={UI.commandCollectionLabel}>Collection</span><span style={{ display: "none" }}>No Collection Assigned</span>
+            <span style={UI.commandCollectionLabel}>Collection</span><span style={{ display: "none" }}>Product Templates · No Collection Assigned</span>
             <select
               aria-label="Collection assignment"
               value={collectionName}

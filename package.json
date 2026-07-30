@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node server.js",
     "build": "npm install --prefix client && npm run build --prefix client",
-    "test": "node tests/workflow-behavior-reality.test.mjs && node scripts/polish-bottle-test.mjs && node scripts/workspace-decluttering-test.mjs && ANITASET_TEST_DB_FILE=.tmp/smoke-test-db.json node scripts/smoke-test.js && CI=true npm test --prefix client -- --runTestsByPath src/App.test.jsx",
+    "test": "node tests/workflow-behavior-reality.test.mjs && node scripts/polish-bottle-test.mjs && node scripts/workspace-decluttering-test.mjs && node scripts/founder-review-baseline-test.mjs && ANITASET_TEST_DB_FILE=.tmp/smoke-test-db.json node scripts/smoke-test.js && CI=true npm test --prefix client -- --runTestsByPath src/App.test.jsx",
     "test:geometry": "node scripts/geometry-helper-test.mjs",
     "dev:server": "nodemon server.js",
     "dev:client": "cd client && npm start",

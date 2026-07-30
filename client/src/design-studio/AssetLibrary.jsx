@@ -3,14 +3,17 @@ import { COLORS } from "../styles.js";
 import { ASSET_CATEGORIES, STARTER_ASSETS, renderAssetShapes } from "./assets.js";
 import { UI } from "./studioStyles.js";
 
-export default function AssetLibrary({ onAddAsset }) {
-  const [category, setCategory] = useState("charms");
-  const assets = STARTER_ASSETS.filter((asset) => asset.category === category);
+export default function AssetLibrary({ onAddAsset, initialCategory = "charms", categories = ASSET_CATEGORIES }) {
+  const [category, setCategory] = useState(initialCategory);
+  const activeCategory = categories.some((item) => item.id === category)
+    ? category
+    : categories[0]?.id;
+  const assets = STARTER_ASSETS.filter((asset) => asset.category === activeCategory);
   return (
     <section style={{ marginBottom: 18 }}>
       <div style={UI.sectionTitle}>Nail Art</div>
       <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
-        {ASSET_CATEGORIES.map((item) => <button key={item.id} type="button" onClick={() => setCategory(item.id)} style={UI.miniButton(category === item.id)}>{item.label}</button>)}
+        {categories.map((item) => <button key={item.id} type="button" onClick={() => setCategory(item.id)} style={UI.miniButton(activeCategory === item.id)}>{item.label}</button>)}
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10 }}>
         {assets.map((asset) => (
