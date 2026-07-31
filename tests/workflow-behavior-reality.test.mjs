@@ -10,6 +10,8 @@ const nailCanvasSource = await read('client/src/design-studio/NailCanvas.jsx');
 const layersPanelSource = await read('client/src/design-studio/LayersPanel.jsx');
 const frenchTipSource = await read('client/src/design-studio/frenchTipRendering.js');
 const stylesSource = await read('client/src/design-studio/studioStyles.js');
+const fullSetSource = await read('client/src/design-studio/FullSetPreview.jsx');
+const thumbnailSource = await read('client/src/design-studio/NailThumbnail.jsx');
 const headquartersSource = await read('client/src/Headquarters.jsx');
 
 const { layerSort } = blueprint;
@@ -35,6 +37,14 @@ assert.doesNotMatch(studioSource.slice(studioSource.indexOf('function openSavedD
 assert.match(stylesSource, /commandPopover:[\s\S]*position: "fixed"[\s\S]*zIndex: 1200/, 'command popover z-index layer uses fixed high layer above workspace');
 assert.match(studioSource, /function CommandPopoverPortal[\s\S]*createPortal\(children, document\.body\)/, 'command popovers render through a document.body portal outside clipped workspace containers');
 assert.match(studioSource, /data-testid="command-nail-basics-popover"[\s\S]*style=\{UI\.commandPopover\}/, 'Nail Basics popover uses the shared command popover layer');
+assert.match(studioSource, /commandPopover === "nailBasics"[\s\S]*renderNailBasicsTools\(\)/, 'Nail Basics trigger renders its approved controls');
+assert.deepEqual(blueprint.SHAPES, ['Almond', 'Coffin', 'Square', 'Oval', 'Round', 'Stiletto', 'Lipstick', 'Duck'], 'Nail Basics exposes all eight Founder-approved shapes');
+assert.match(studioSource, /savedDesignsOpen &&[\s\S]*renderSavedDesignsBrowser\(\)/, 'Open Saved Designs renders the existing saved-design browser');
+assert.match(studioSource, /async function loadDesign\(designId\)[\s\S]*fetch\(`\/api\/designs\/\$\{designId\}\/blueprint`\)[\s\S]*replaceLoaded\(\s*data\.document/, 'selecting a saved design loads its complete blueprint document');
+assert.match(nailCanvasSource, /width: fit\.panEnabled \? "auto" : "100%"[\s\S]*maxHeight: fit\.panEnabled \? "none" : "100%"[\s\S]*maxWidth: fit\.panEnabled \? "none" : "min\(96%, 560px\)"/, 'single nail default view fits both available canvas dimensions');
+assert.match(fullSetSource, /data-default-view="fit-all-ten"[\s\S]*gridTemplateRows: "repeat\(2, minmax\(0, 1fr\)\)"/, 'Full Set default view reserves bounded space for both rows');
+assert.equal((fullSetSource.match(/slots: (?:LEFT|RIGHT)_HAND_SLOTS/g) || []).length, 2, 'Full Set hero maps both five-nail hands');
+assert.match(thumbnailSource, /data-full-set-hero-nail[\s\S]*minHeight: 0[\s\S]*overflow: "hidden"/, 'each full-set nail scales inside its bounded grid cell');
 assert.match(studioSource, /data-testid="command-french-tip-popover"[\s\S]*style=\{UI\.commandFrenchTipPopover\}/, 'French Tip popover uses visible fixed layer above workspace');
 assert.match(nailCanvasSource, /patternColorSlots[\s\S]*pattern === "camo"[\s\S]*patternColorHex3[\s\S]*patternColorHex4/, 'camo pattern exposes more than two renderer-backed color slots');
 assert.match(nailCanvasSource, /const accent = colors\.patternColorHex3[\s\S]*const deep = colors\.patternColorHex4[\s\S]*fill=\{deep\}/, 'additional camo color slots affect rendered pattern data');
