@@ -444,8 +444,8 @@ assert.match(studio, /<NailCanvas/, "Hero Canvas should be preserved.");
 assert.match(studio, /<FullSetPreview/, "Nail Stack should be preserved.");
 assert.doesNotMatch(
   studio,
-  /Hero 7|Duck|Full Set Composition/,
-  "Hero 7 exact guardrails remain clean: Duck hidden and Full Set Composition absent from studio UI.",
+  /Hero 7|Full Set Composition/,
+  "obsolete Hero 7 and Full Set Composition copy remain absent from studio UI.",
 );
 
 assert.match(

@@ -104,7 +104,7 @@ assertBlueprintSummarySafe(null, 'empty/default design');
 const legacySummary = assertBlueprintSummarySafe({ name: 'Legacy Saved', shape: 'Duck', baseColorHex: '#123456', tags: 'retro, saved', fullSet: false }, 'legacy saved design');
 assert.equal(legacySummary.designSummary.name, 'Legacy Saved', 'flat legacy design names flow into summary');
 assert.deepEqual(legacySummary.marketingTags, ['retro', 'saved'], 'flat legacy design marketing tags normalize safely');
-assert.equal(legacySummary.serviceSummary.shape, 'Square', 'legacy Duck designs summarize through hidden Square fallback');
+assert.equal(legacySummary.serviceSummary.shape, 'Duck', 'saved Duck designs retain their canonical shape in summaries');
 assertBlueprintSummarySafe({ nails: [{ id: 'nail-no-layers', shape: 'Oval', length: 0.4, width: 0.4 }] }, 'missing layers');
 const missingPricing = assertBlueprintSummarySafe({ metadata: { tags: [] }, nails: [{ id: 'nail-no-price', shape: 'Almond', layers: [] }] }, 'missing pricing');
 assert.equal(missingPricing.pricingSummary.estimatedServicePrice, 'Not set', 'missing pricing falls back to Not set');
@@ -123,8 +123,7 @@ assert(modernSummary.materialsSummary.some((item) => item.includes('gradient lay
 assert(modernSummary.materialsSummary.some((item) => item.includes('French tip layer')), 'modern summary includes French tip materials');
 assert(modernSummary.materialsSummary.some((item) => item.includes('pattern layer')), 'modern summary includes pattern materials');
 assert.equal(modernSummary.vendorReferences[0].vendor, 'Gem Vendor', 'modern summary preserves vendor reference data');
-assert.deepEqual(SHAPES, ['Almond', 'Square', 'Coffin', 'Stiletto', 'Oval', 'Round', 'Lipstick'], 'Hero 7 exact during blueprint summary coverage');
-assert(!SHAPES.includes('Duck'), 'Duck remains hidden during blueprint summary coverage');
+assert.deepEqual(SHAPES, ['Almond', 'Coffin', 'Square', 'Oval', 'Round', 'Stiletto', 'Lipstick', 'Duck'], 'all eight canonical shapes are covered by blueprint summaries');
 assert(!source.includes('Full Set Composition'), 'Full Set Composition is not present in blueprint data layer');
 assert(!designStudioSource.includes('manual' + 'BlueprintSummary'), 'Design Studio has no manual summary runtime state');
 assert(!designStudioSource.includes('set' + 'ManualBlueprintSummary'), 'Design Studio has no manual summary state setter');
@@ -135,14 +134,12 @@ assert(!designStudioSource.includes('Blueprint' + 'PreviewPanel') && !designStud
 assert(!designStudioSource.toLowerCase().includes('pdf'), 'Design Studio does not add PDF export');
 assert(!designStudioSource.includes('Full Set Composition'), 'Design Studio does not reintroduce Full Set Composition');
 
-const visibleHeroShapeFamilies = ['Almond', 'Square', 'Coffin', 'Stiletto', 'Oval', 'Round', 'Lipstick'];
-const hiddenLegacyShapeFamilies = ['Duck'];
+const visibleFounderShapeFamilies = ['Almond', 'Coffin', 'Square', 'Oval', 'Round', 'Stiletto', 'Lipstick', 'Duck'];
 const nonHeroShapeFamilies = ['Tapered Square', 'Russian Square', 'Slim Coffin', 'Russian Almond', 'Edge', 'Flare', 'Mountain Peak'];
-assert.deepEqual(SHAPES, visibleHeroShapeFamilies, 'Editor shape list exposes exactly the visible Hero 7 shapes');
-assert(!SHAPES.includes('Duck'), 'Duck is not offered as a visible editor shape selection');
+assert.deepEqual(SHAPES, visibleFounderShapeFamilies, 'Editor shape list exposes all eight Founder-approved canonical shapes');
 assert(designStudioSource.includes('>{SHAPES.map((shape) => <option key={shape}>{shape}</option>)}</select>'), 'Design Studio nail shape dropdown is backed by the visible shape list');
-for (const shape of [...nonHeroShapeFamilies, ...hiddenLegacyShapeFamilies]) assert(!SHAPES.includes(shape), `${shape} is not expected in the editor shape list`);
-for (const shape of visibleHeroShapeFamilies) {
+for (const shape of nonHeroShapeFamilies) assert(!SHAPES.includes(shape), `${shape} is not expected in the editor shape list`);
+for (const shape of visibleFounderShapeFamilies) {
   const nail = { shape, length: 0.56, width: 0.52, taper: 0.5, apexHeight: 0.5, sidewallCurve: 0.5, freeEdgeThickness: 0.5 };
   assert(buildNailPath(shape, nail).startsWith('M '), `${shape} returns a renderable nail silhouette path`);
   assert(isPointInsideNailSilhouette({ x: 0.5, y: 0.5 }, nail), `${shape} keeps the centerline inside the nail bed`);
@@ -169,13 +166,13 @@ const normalizedDuckBlueprint = ensureBlueprint({
   }],
 });
 const normalizedDuckNail = getActiveNail(normalizedDuckBlueprint);
-assert.equal(normalizedDuckNail.shape, 'Square', 'existing saved Duck designs normalize to Square for safe editing and saving');
+assert.equal(normalizedDuckNail.shape, 'Duck', 'existing saved Duck designs retain their canonical shape for editing and saving');
 assert.equal(normalizedDuckNail.length, 0.77, 'Duck compatibility normalization preserves saved length');
 assert.equal(normalizedDuckNail.width, 0.33, 'Duck compatibility normalization preserves saved width');
 assert(normalizedDuckNail.layers.some((layer) => layer.type === 'decal'), 'Duck compatibility normalization preserves saved layers');
 const normalizedDuckFlat = flatDesignFromBlueprint(normalizedDuckBlueprint, 'Legacy Duck');
-assert.equal(normalizedDuckFlat.shape, 'Square', 'saved Duck designs serialize through the supported Square fallback');
-assert(buildNailPath('Duck', { ...defaultShapeNail, shape: 'Duck' }).startsWith('M '), 'hidden Duck mask code remains renderable for old previews or future reactivation');
+assert.equal(normalizedDuckFlat.shape, 'Duck', 'saved Duck designs serialize as Duck');
+assert(buildNailPath('Duck', { ...defaultShapeNail, shape: 'Duck' }).startsWith('M '), 'selectable Duck mask produces a renderable path');
 
 const roundMetrics = getNailShapeMetrics('Round', { ...defaultShapeNail, shape: 'Round' });
 const ovalMetrics = getNailShapeMetrics('Oval', { ...defaultShapeNail, shape: 'Oval' });
@@ -252,7 +249,7 @@ assert(nailCanvasSource.includes('export function PatternDefs') && nailThumbnail
 assert(nailCanvasSource.includes('patternTransform(layer)') && nailCanvasSource.includes('patternTransform(layer, 35)') && nailCanvasSource.includes('scaleX') && nailCanvasSource.includes('rotation'), 'Pattern rendering respects existing pattern transform controls for position, scale, and rotation');
 for (const patternName of ['dots', 'stripes', 'checker', 'french-tip', 'glitter', 'marble']) assert(PATTERNS.includes(patternName), `${patternName} pattern option still exists`);
 assert(nailCanvasSource.includes('clipPath={`url(#${clipId})`}') && nailCanvasSource.includes('patternTransform(layer, -8)') && nailCanvasSource.includes('patternTransform(layer, 8)'), 'Animal prints are clipped and transformable through shared pattern transforms');
-assert.deepEqual(SHAPES, visibleHeroShapeFamilies, 'Hero 7 remains exact while Duck stays hidden');
+assert.deepEqual(SHAPES, visibleFounderShapeFamilies, 'all eight canonical shapes remain selectable');
 
 assert(nailCanvasSource.includes('data-realism-layer="material-aware-clipped-pattern"') && nailThumbnailSource.includes('data-realism-layer="material-aware-clipped-pattern"') && nailCanvasSource.includes('clipPath={`url(#${clipId})`} opacity={(layer.opacity ?? 1) * art.artOpacity}'), 'patterns stay clipped and share material lighting behavior on active canvas and thumbnails');
 assert(nailCanvasSource.includes('data.polishType === "Jelly" ? 0.82') && nailCanvasSource.includes('data.polishType === "Milky" ? 0.88') && nailCanvasSource.includes('data.polishType === "Matte" ? 0.76') && polishRendererSource.includes('data-polish-material={polishType}'), 'Cream/Jelly/Milky/Matte materials continue to drive polish rendering and nail-art blending');
@@ -859,7 +856,7 @@ assert.equal(repairedStops[0].color, '#111111', 'legacy startColor/colorA maps t
 assert.equal(repairedStops.at(-1).color, '#EEEEEE', 'legacy endColor/colorB maps to last stop');
 
 assert(source.includes('export function normalizeGradientStops') && source.includes('slice(0, GRADIENT_COLOR_LIMITS.max)') && source.includes('.sort((a, b) => a.position - b.position)'), 'gradient color stop positions are clamped, sorted, and capped at 7 colors');
-assert(designStudioSource.includes('Duck') === false || source.includes('HIDDEN_SHAPE_FALLBACKS = { Duck: "Square" }'), 'Duck remains hidden from selectable Hero 7 shapes');
+assert(SHAPES.includes('Duck') && source.includes('Duck:'), 'Duck remains selectable and backed by canonical mask geometry');
 
 assert(nailCanvasSource.includes('data-realism-layer="soft-diffusion-blur-clipped-gradient-fill"') && nailCanvasSource.includes('feGaussianBlur stdDeviation') && nailCanvasSource.includes('data-gradient-softness="diffused-salon-ombre"'), 'Gradient rendering has softness and diffusion behavior rather than a flat SVG gradient');
 assert(nailCanvasSource.includes('jelly-translucent-glassy-gradient-blend') && nailCanvasSource.includes('milky-cloudy-ombre-veil') && nailCanvasSource.includes('matte-low-shine-satin-gradient-blend') && nailCanvasSource.includes('data-gradient-material={art.polishType}'), 'Gradient rendering respects Cream, Jelly, Milky, and Matte material profiles');
@@ -909,4 +906,4 @@ assert.equal(managedLooks.length, 1, 'delete Signature Look works');
 const loadedLooks = JSON.parse(JSON.stringify([savedLook])).map(normalizeSignatureLook);
 assert.deepEqual(loadedLooks[0].nail.layers.find((layer) => layer.type === 'charm').transform, transformedAsset.transform, 'save/load preserves Signature Looks');
 assert(designStudioSource.includes('SIGNATURE_LOOKS_STORAGE_KEY') && designStudioSource.includes('window.localStorage.setItem'), 'user-created Signature Looks save/load from localStorage');
-assert.deepEqual(SHAPES, visibleHeroShapeFamilies, 'Hero 7 exact and Duck hidden after Signature Looks changes');
+assert.deepEqual(SHAPES, visibleFounderShapeFamilies, 'all eight canonical shapes remain selectable after Signature Looks changes');

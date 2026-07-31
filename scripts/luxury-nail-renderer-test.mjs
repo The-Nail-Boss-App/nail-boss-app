@@ -7,8 +7,7 @@ const rendererSource = await readFile(new URL('../client/src/design-studio/Polis
 const blueprint = await import(`data:text/javascript;charset=utf-8,${encodeURIComponent(blueprintSource)}`);
 const polish = await import(`data:text/javascript;charset=utf-8,${encodeURIComponent(polishSource)}`);
 
-assert.deepEqual(blueprint.SHAPES, ['Almond', 'Square', 'Coffin', 'Stiletto', 'Oval', 'Round', 'Lipstick']);
-assert.ok(blueprint.FOUNDER_APPROVED_NAIL_MASKS.Duck, 'Duck geometry remains available for legacy rendering');
+assert.deepEqual(blueprint.SHAPES, ['Almond', 'Coffin', 'Square', 'Oval', 'Round', 'Stiletto', 'Lipstick', 'Duck']);
 for (const shape of blueprint.SHAPES) {
   assert.match(blueprint.buildNailPath(shape, { shape, length: 0.64, width: 0.5 }), /^M /, `${shape} has a reusable SVG mask`);
   assert(blueprint.FOUNDER_APPROVED_NAIL_MASKS[shape], `${shape} is registered as Founder-approved`);

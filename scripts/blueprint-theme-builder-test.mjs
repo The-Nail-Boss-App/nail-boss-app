@@ -259,8 +259,7 @@ assert(!shopSource.includes('Publish Blueprint') && !shopSource.includes('publis
 assert(!designStudioSource.includes('blueprint-theme-builder-controls'), 'Design Studio unchanged by theme builder');
 assert(!proposalsSource.includes('blueprint-theme-builder-controls'), 'Proposals unchanged by theme builder');
 
-const hero7 = blueprintSource.match(/export const SHAPES = \[(.*?)\]/s)?.[1]?.replace(/['"\s]/g, '').split(',').filter(Boolean);
-assert.deepEqual(hero7, ['Almond', 'Square', 'Coffin', 'Stiletto', 'Oval', 'Round', 'Lipstick'], 'Hero 7 exact');
-assert(!hero7.includes('Duck'), 'Duck hidden from visible shape list');
+const canonicalShapes = blueprintSource.match(/export const SHAPES = \[(.*?)\]/s)?.[1]?.replace(/['"\s]/g, '').split(',').filter(Boolean);
+assert.deepEqual(canonicalShapes, ['Almond', 'Coffin', 'Square', 'Oval', 'Round', 'Stiletto', 'Lipstick', 'Duck'], 'all eight Founder-approved canonical shapes are selectable');
 
 assert(!shopSource.includes('Full Set Composition'), 'Full Set Composition remains absent');

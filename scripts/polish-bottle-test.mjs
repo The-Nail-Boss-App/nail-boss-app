@@ -269,15 +269,15 @@ assert(
 );
 assert(
   blueprint.includes(
-    'export const SHAPES = ["Almond", "Square", "Coffin", "Stiletto", "Oval", "Round", "Lipstick"]',
+    'export const SHAPES = ["Almond", "Coffin", "Square", "Oval", "Round", "Stiletto", "Lipstick", "Duck"]',
   ),
-  "Hero 7 exact guardrail remains present",
+  "all eight Founder-approved canonical shapes remain selectable",
 );
 assert(
-  blueprint.includes('HIDDEN_SHAPE_FALLBACKS = { Duck: "Square" }') &&
+  blueprint.includes("const HIDDEN_SHAPE_FALLBACKS = {}") &&
     !gallery.includes("Full Set Composition") &&
     !studio.includes("Full Set Composition"),
-  "Duck hidden fallback remains and Full Set Composition chrome is absent",
+  "Duck remains canonical and Full Set Composition chrome is absent",
 );
 assert(
   !read("client/src/Proposals.jsx").includes("command-set-actions-trigger"),
