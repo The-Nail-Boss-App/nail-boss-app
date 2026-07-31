@@ -1,11 +1,11 @@
-export const SHAPES = ["Almond", "Square", "Coffin", "Stiletto", "Oval", "Round", "Lipstick"];
-const HIDDEN_SHAPE_FALLBACKS = { Duck: "Square" };
+export const SHAPES = ["Almond", "Coffin", "Square", "Oval", "Round", "Stiletto", "Lipstick", "Duck"];
+const HIDDEN_SHAPE_FALLBACKS = {};
 function normalizeSelectableShape(shape, fallback = "Almond") {
   if (SHAPES.includes(shape)) return shape;
   return HIDDEN_SHAPE_FALLBACKS[shape] || fallback;
 }
 export const EFFECTS = ["Solid", "Gradient", "Chrome", "CatEye", "Marble"];
-export const POLISH_TYPES = ["Cream", "Jelly", "Milky", "Matte", "Chrome", "Glitter"];
+export const POLISH_TYPES = ["Cream", "Jelly", "Milky", "Matte", "Glass", "Chrome-ready", "Chrome", "Glitter"];
 export const TOP_COATS = ["Gloss", "Matte", "No-Wipe Shine", "Velvet"];
 export const MEANINGFUL_LEGACY_EFFECTS = ["Gradient", "Chrome", "CatEye", "Marble"];
 export function hasMeaningfulLegacyEffect(data = {}) {
@@ -173,7 +173,9 @@ const DUCK_MASK_BOUNDS = maskXBounds([
   [1, 0, 1],
 ]);
 
-const HERO_SHAPE_MASKS = {
+// Canonical, Founder-approved SVG silhouettes. Every Studio surface resolves its
+// clip path from this immutable registry instead of maintaining its own shape.
+export const FOUNDER_APPROVED_NAIL_MASKS = {
   Almond: {
     halfWidths: [[0, 0.34], [0.14, 0.48], [0.32, 0.5], [0.54, 0.42], [0.74, 0.27], [0.92, 0.08], [1, 0.012]],
     path: (m) => `M ${m.cx - m.w * 0.34} ${m.top + m.h * 0.055} C ${m.cx - m.w * 0.29} ${m.top - m.h * 0.015} ${m.cx + m.w * 0.29} ${m.top - m.h * 0.015} ${m.cx + m.w * 0.34} ${m.top + m.h * 0.055} C ${m.cx + m.w * 0.51} ${m.top + m.h * 0.16} ${m.cx + m.w * 0.52} ${m.top + m.h * 0.36} ${m.cx + m.w * 0.43} ${m.top + m.h * 0.56} C ${m.cx + m.w * 0.31} ${m.top + m.h * 0.78} ${m.cx + m.w * 0.12} ${m.top + m.h * 0.95} ${m.cx} ${m.bottom} C ${m.cx - m.w * 0.12} ${m.top + m.h * 0.95} ${m.cx - m.w * 0.31} ${m.top + m.h * 0.78} ${m.cx - m.w * 0.43} ${m.top + m.h * 0.56} C ${m.cx - m.w * 0.52} ${m.top + m.h * 0.36} ${m.cx - m.w * 0.51} ${m.top + m.h * 0.16} ${m.cx - m.w * 0.34} ${m.top + m.h * 0.055} Z`,
@@ -210,7 +212,7 @@ const HERO_SHAPE_MASKS = {
   },
 };
 
-function shapeProfile(shape = "Almond") { return HERO_SHAPE_MASKS[shape] || HERO_SHAPE_MASKS.Almond; }
+function shapeProfile(shape = "Almond") { return FOUNDER_APPROVED_NAIL_MASKS[shape] || FOUNDER_APPROVED_NAIL_MASKS.Almond; }
 function maskMetrics(nail = {}) {
   const g = getNailGeometry(nail);
   return { cx: g.cx, top: g.topY, bottom: g.bottomY, h: g.height, w: g.width };
