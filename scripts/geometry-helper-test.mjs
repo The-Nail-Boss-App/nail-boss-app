@@ -29,9 +29,12 @@ assert(designStudioSource.includes('data-testid="command-french-tip-trigger"') &
 assert(designStudioSource.includes('aria-label={label}') && designStudioSource.includes('title={label}') && bulkActionsPanelSource.includes('aria-label='), 'compact icon buttons provide accessible labels or titles');
 assert(nailCanvasSource.includes('data-zoom-containment-padding="dock-safe-expanded"') && nailCanvasSource.includes('justifyContent: "center"') && nailCanvasSource.includes('padding: HERO_CANVAS_SAFE_PADDING'), 'Hero Canvas vertically centers the full nail inside compact containment padding');
 assert(nailCanvasSource.includes('data-default-nail-bottom-clip="prevented"') && nailCanvasSource.includes('export function heroZoomFit') && nailCanvasSource.includes('height: fit.panEnabled ? fit.heightVh : `min(${fit.heightVh}, calc(100% - ${HERO_CANVAS_VERTICAL_SAFE_GAP}px))`'), 'default and zoomed nails use bounded fit sizing so top and bottom are not clipped');
-assert(nailCanvasSource.includes('data-zoom-containment={fit.panEnabled ? "internal-pan-at-high-zoom" : "bounded-fit-to-container"}') && nailCanvasSource.includes('data-zoom-fit-helper="heroZoomFit"') && nailCanvasSource.includes('maxWidth: "min(78%, calc((100% - 36px)))"'), 'Hero Canvas uses fit-to-container containment with internal pan at high zoom instead of label-only zoom');
+const heroCanvasResponsiveWidth = nailCanvasSource.match(/data-testid="zoomable-nail-canvas"[\s\S]*?maxWidth:\s*"([^"]+)"/);
+assert(nailCanvasSource.includes('data-zoom-containment={fit.panEnabled ? "internal-pan-at-high-zoom" : "bounded-fit-to-container"}') && nailCanvasSource.includes('data-zoom-fit-helper="heroZoomFit"') && heroCanvasResponsiveWidth && /min\(\s*\d+%\s*,\s*calc\(.*100%\s*-\s*\d+px.*\)\s*\)/.test(heroCanvasResponsiveWidth[1]), 'Hero Canvas uses responsive fit-to-container width containment with internal pan at high zoom');
 assert(nailCanvasSource.includes('const HERO_SAFE_CONTAINED_ZOOM = 1.55') && nailCanvasSource.includes('const HERO_MAX_ZOOM = 2.4') && nailCanvasSource.includes('Math.min(requestedZoom, HERO_MAX_ZOOM)') && nailCanvasSource.includes('data-zoom-pan-enabled={fit.panEnabled ? "true" : "false"}') && nailCanvasSource.includes('data-max-contained-zoom={HERO_MAX_ZOOM}'), 'zoom containment allows visible growth, then uses internal pan before the safe cap prevents Studio Dock crop');
-assert(studioStylesSource.includes('minHeight: "clamp(520px, calc(100vh - 300px), 820px)"') && studioStylesSource.includes('placeItems: "stretch"') && studioStylesSource.includes('previewFrame') && studioStylesSource.includes('overflow: "hidden"'), 'Hero Canvas drawing area stretches the centered preview without relying on page scroll');
+const stickyPreviewStyles = studioStylesSource.match(/stickyPreview:\s*\{([\s\S]*?)\n\s*\},\n\s*previewFrame:/)?.[1] || '';
+const previewFrameStyles = studioStylesSource.match(/previewFrame:\s*\{([\s\S]*?)\n\s*\},/)?.[1] || '';
+assert(/minHeight:\s*"clamp\([^"]*100vh[^"]*\)"/.test(stickyPreviewStyles) && stickyPreviewStyles.includes('placeItems: "stretch"') && stickyPreviewStyles.includes('overflow: "hidden"') && previewFrameStyles.includes('width: "100%"') && previewFrameStyles.includes('height: "100%"'), 'Hero Canvas drawing area responsively stretches the centered preview without relying on page scroll');
 assert(studioStylesSource.includes('compactAssetGridDensity') && studioStylesSource.includes('gridGap: 6') && studioStylesSource.includes('tileMinHeight: 58') && studioStylesSource.includes('minTouchTarget: 44'), 'Design Studio asset grid density tokens keep compact spacing with touch-friendly targets');
 assert(designStudioSource.includes('[data-testid="visual-asset-button"] { min-height: 58px !important; padding: 4px !important;') && designStudioSource.includes('[data-testid="visual-asset-button"] svg { width: 50px !important; height: 50px !important;'), 'visual asset tiles render denser cards with larger artwork');
 assert(assetLibrarySource.includes('data-testid="visual-asset-button"') && assetLibrarySource.includes('aria-label={`Add ${asset.name}`}') && assetLibrarySource.includes('onClick={() => onAddAsset(asset)}'), 'compact asset tiles preserve accessible labels and click behavior');
@@ -104,7 +107,7 @@ assertBlueprintSummarySafe(null, 'empty/default design');
 const legacySummary = assertBlueprintSummarySafe({ name: 'Legacy Saved', shape: 'Duck', baseColorHex: '#123456', tags: 'retro, saved', fullSet: false }, 'legacy saved design');
 assert.equal(legacySummary.designSummary.name, 'Legacy Saved', 'flat legacy design names flow into summary');
 assert.deepEqual(legacySummary.marketingTags, ['retro', 'saved'], 'flat legacy design marketing tags normalize safely');
-assert.equal(legacySummary.serviceSummary.shape, 'Square', 'legacy Duck designs summarize through hidden Square fallback');
+assert.equal(legacySummary.serviceSummary.shape, 'Duck', 'saved Duck designs retain their canonical shape in blueprint summaries');
 assertBlueprintSummarySafe({ nails: [{ id: 'nail-no-layers', shape: 'Oval', length: 0.4, width: 0.4 }] }, 'missing layers');
 const missingPricing = assertBlueprintSummarySafe({ metadata: { tags: [] }, nails: [{ id: 'nail-no-price', shape: 'Almond', layers: [] }] }, 'missing pricing');
 assert.equal(missingPricing.pricingSummary.estimatedServicePrice, 'Not set', 'missing pricing falls back to Not set');
@@ -123,8 +126,7 @@ assert(modernSummary.materialsSummary.some((item) => item.includes('gradient lay
 assert(modernSummary.materialsSummary.some((item) => item.includes('French tip layer')), 'modern summary includes French tip materials');
 assert(modernSummary.materialsSummary.some((item) => item.includes('pattern layer')), 'modern summary includes pattern materials');
 assert.equal(modernSummary.vendorReferences[0].vendor, 'Gem Vendor', 'modern summary preserves vendor reference data');
-assert.deepEqual(SHAPES, ['Almond', 'Square', 'Coffin', 'Stiletto', 'Oval', 'Round', 'Lipstick'], 'Hero 7 exact during blueprint summary coverage');
-assert(!SHAPES.includes('Duck'), 'Duck remains hidden during blueprint summary coverage');
+assert.deepEqual(SHAPES, ['Almond', 'Coffin', 'Square', 'Oval', 'Round', 'Stiletto', 'Lipstick', 'Duck'], 'all eight canonical shapes remain supported during blueprint summary coverage');
 assert(!source.includes('Full Set Composition'), 'Full Set Composition is not present in blueprint data layer');
 assert(!designStudioSource.includes('manual' + 'BlueprintSummary'), 'Design Studio has no manual summary runtime state');
 assert(!designStudioSource.includes('set' + 'ManualBlueprintSummary'), 'Design Studio has no manual summary state setter');
@@ -135,14 +137,13 @@ assert(!designStudioSource.includes('Blueprint' + 'PreviewPanel') && !designStud
 assert(!designStudioSource.toLowerCase().includes('pdf'), 'Design Studio does not add PDF export');
 assert(!designStudioSource.includes('Full Set Composition'), 'Design Studio does not reintroduce Full Set Composition');
 
-const visibleHeroShapeFamilies = ['Almond', 'Square', 'Coffin', 'Stiletto', 'Oval', 'Round', 'Lipstick'];
-const hiddenLegacyShapeFamilies = ['Duck'];
+const canonicalShapeFamilies = ['Almond', 'Coffin', 'Square', 'Oval', 'Round', 'Stiletto', 'Lipstick', 'Duck'];
 const nonHeroShapeFamilies = ['Tapered Square', 'Russian Square', 'Slim Coffin', 'Russian Almond', 'Edge', 'Flare', 'Mountain Peak'];
-assert.deepEqual(SHAPES, visibleHeroShapeFamilies, 'Editor shape list exposes exactly the visible Hero 7 shapes');
-assert(!SHAPES.includes('Duck'), 'Duck is not offered as a visible editor shape selection');
+assert.deepEqual(SHAPES, canonicalShapeFamilies, 'Editor shape list exposes exactly the eight Founder-approved canonical shapes');
+assert(SHAPES.includes('Duck') && Object.hasOwn(blueprint.FOUNDER_APPROVED_NAIL_MASKS, 'Duck'), 'Duck is available through the approved shape registry');
 assert(designStudioSource.includes('>{SHAPES.map((shape) => <option key={shape}>{shape}</option>)}</select>'), 'Design Studio nail shape dropdown is backed by the visible shape list');
-for (const shape of [...nonHeroShapeFamilies, ...hiddenLegacyShapeFamilies]) assert(!SHAPES.includes(shape), `${shape} is not expected in the editor shape list`);
-for (const shape of visibleHeroShapeFamilies) {
+for (const shape of nonHeroShapeFamilies) assert(!SHAPES.includes(shape), `${shape} is not expected in the editor shape list`);
+for (const shape of canonicalShapeFamilies) {
   const nail = { shape, length: 0.56, width: 0.52, taper: 0.5, apexHeight: 0.5, sidewallCurve: 0.5, freeEdgeThickness: 0.5 };
   assert(buildNailPath(shape, nail).startsWith('M '), `${shape} returns a renderable nail silhouette path`);
   assert(isPointInsideNailSilhouette({ x: 0.5, y: 0.5 }, nail), `${shape} keeps the centerline inside the nail bed`);
@@ -169,13 +170,13 @@ const normalizedDuckBlueprint = ensureBlueprint({
   }],
 });
 const normalizedDuckNail = getActiveNail(normalizedDuckBlueprint);
-assert.equal(normalizedDuckNail.shape, 'Square', 'existing saved Duck designs normalize to Square for safe editing and saving');
+assert.equal(normalizedDuckNail.shape, 'Duck', 'existing saved Duck designs retain their canonical shape for editing and saving');
 assert.equal(normalizedDuckNail.length, 0.77, 'Duck compatibility normalization preserves saved length');
 assert.equal(normalizedDuckNail.width, 0.33, 'Duck compatibility normalization preserves saved width');
 assert(normalizedDuckNail.layers.some((layer) => layer.type === 'decal'), 'Duck compatibility normalization preserves saved layers');
 const normalizedDuckFlat = flatDesignFromBlueprint(normalizedDuckBlueprint, 'Legacy Duck');
-assert.equal(normalizedDuckFlat.shape, 'Square', 'saved Duck designs serialize through the supported Square fallback');
-assert(buildNailPath('Duck', { ...defaultShapeNail, shape: 'Duck' }).startsWith('M '), 'hidden Duck mask code remains renderable for old previews or future reactivation');
+assert.equal(normalizedDuckFlat.shape, 'Duck', 'saved Duck designs serialize through the canonical Duck pipeline');
+assert(buildNailPath('Duck', { ...defaultShapeNail, shape: 'Duck' }).startsWith('M '), 'Duck returns a renderable silhouette through the existing geometry pipeline');
 
 const roundMetrics = getNailShapeMetrics('Round', { ...defaultShapeNail, shape: 'Round' });
 const ovalMetrics = getNailShapeMetrics('Oval', { ...defaultShapeNail, shape: 'Oval' });
@@ -252,7 +253,7 @@ assert(nailCanvasSource.includes('export function PatternDefs') && nailThumbnail
 assert(nailCanvasSource.includes('patternTransform(layer)') && nailCanvasSource.includes('patternTransform(layer, 35)') && nailCanvasSource.includes('scaleX') && nailCanvasSource.includes('rotation'), 'Pattern rendering respects existing pattern transform controls for position, scale, and rotation');
 for (const patternName of ['dots', 'stripes', 'checker', 'french-tip', 'glitter', 'marble']) assert(PATTERNS.includes(patternName), `${patternName} pattern option still exists`);
 assert(nailCanvasSource.includes('clipPath={`url(#${clipId})`}') && nailCanvasSource.includes('patternTransform(layer, -8)') && nailCanvasSource.includes('patternTransform(layer, 8)'), 'Animal prints are clipped and transformable through shared pattern transforms');
-assert.deepEqual(SHAPES, visibleHeroShapeFamilies, 'Hero 7 remains exact while Duck stays hidden');
+assert.deepEqual(SHAPES, canonicalShapeFamilies, 'all eight canonical shapes remain available through geometry coverage');
 
 assert(nailCanvasSource.includes('data-realism-layer="material-aware-clipped-pattern"') && nailThumbnailSource.includes('data-realism-layer="material-aware-clipped-pattern"') && nailCanvasSource.includes('clipPath={`url(#${clipId})`} opacity={(layer.opacity ?? 1) * art.artOpacity}'), 'patterns stay clipped and share material lighting behavior on active canvas and thumbnails');
 assert(nailCanvasSource.includes('data.polishType === "Jelly" ? 0.82') && nailCanvasSource.includes('data.polishType === "Milky" ? 0.88') && nailCanvasSource.includes('data.polishType === "Matte" ? 0.76') && polishRendererSource.includes('data-polish-material={polishType}'), 'Cream/Jelly/Milky/Matte materials continue to drive polish rendering and nail-art blending');
@@ -760,7 +761,7 @@ assert(!polishRendererSource.includes('data.chromeIntensity') && !polishRenderer
 assert(nailCanvasSource.includes('<PolishSurface') && nailThumbnailSource.includes('<PolishSurface'), 'Polish rendering is shared by NailCanvas, thumbnail, hand, and full-set previews');
 assert(propertiesPanelSource.includes('Polish Settings') && propertiesPanelSource.includes('Top Coat') && propertiesPanelSource.includes('Special polish-effect controls stay hidden'), 'Design Studio exposes physical-realism Polish Settings without special effect controls');
 assert(!propertiesPanelSource.includes('polish.polishType === "Glitter"') && !propertiesPanelSource.includes('polish.polishType === "Cat Eye"') && !propertiesPanelSource.includes('polish.polishType === "Chrome"') && !propertiesPanelSource.includes('Legacy effect'), 'special polish effect controls are not reintroduced in the Properties panel');
-assert.deepEqual(POLISH_TYPES, ['Cream', 'Jelly', 'Milky', 'Matte', 'Chrome', 'Glitter'], 'Polish Type selector exposes QA-visible material presets');
+assert.deepEqual(POLISH_TYPES, ['Cream', 'Jelly', 'Milky', 'Matte', 'Glass', 'Chrome-ready', 'Chrome', 'Glitter'], 'Polish Type selector exposes the approved material foundations and preserves Chrome and Glitter data options');
 assert(!POLISH_TYPES.includes('Cat Eye') && !POLISH_TYPES.includes('Marble'), 'Cat Eye and Marble remain legacy effects instead of visible Polish Type choices');
 assert(designStudioSource.includes('Polish Type') && designStudioSource.includes('POLISH_TYPES.map((type) => <option key={type} value={type}>{type}</option>)'), 'Nail Color System renders the visible Polish Type selector');
 assert(polishRendererSource.includes('data-polish-material={polishType}') && polishRendererSource.includes('jelly-clear-depth') && polishRendererSource.includes('milky-builder-gel-veil') && polishRendererSource.includes('polishType === "Matte"'), 'shared material engine implements Cream, Jelly, Milky, Matte, Chrome, and Glitter material layers');
@@ -859,7 +860,7 @@ assert.equal(repairedStops[0].color, '#111111', 'legacy startColor/colorA maps t
 assert.equal(repairedStops.at(-1).color, '#EEEEEE', 'legacy endColor/colorB maps to last stop');
 
 assert(source.includes('export function normalizeGradientStops') && source.includes('slice(0, GRADIENT_COLOR_LIMITS.max)') && source.includes('.sort((a, b) => a.position - b.position)'), 'gradient color stop positions are clamped, sorted, and capped at 7 colors');
-assert(designStudioSource.includes('Duck') === false || source.includes('HIDDEN_SHAPE_FALLBACKS = { Duck: "Square" }'), 'Duck remains hidden from selectable Hero 7 shapes');
+assert(designStudioSource.includes('>{SHAPES.map((shape) => <option key={shape}>{shape}</option>)}</select>') && SHAPES.includes('Duck'), 'Duck remains selectable through the canonical shape-backed Studio control');
 
 assert(nailCanvasSource.includes('data-realism-layer="soft-diffusion-blur-clipped-gradient-fill"') && nailCanvasSource.includes('feGaussianBlur stdDeviation') && nailCanvasSource.includes('data-gradient-softness="diffused-salon-ombre"'), 'Gradient rendering has softness and diffusion behavior rather than a flat SVG gradient');
 assert(nailCanvasSource.includes('jelly-translucent-glassy-gradient-blend') && nailCanvasSource.includes('milky-cloudy-ombre-veil') && nailCanvasSource.includes('matte-low-shine-satin-gradient-blend') && nailCanvasSource.includes('data-gradient-material={art.polishType}'), 'Gradient rendering respects Cream, Jelly, Milky, and Matte material profiles');
@@ -909,4 +910,4 @@ assert.equal(managedLooks.length, 1, 'delete Signature Look works');
 const loadedLooks = JSON.parse(JSON.stringify([savedLook])).map(normalizeSignatureLook);
 assert.deepEqual(loadedLooks[0].nail.layers.find((layer) => layer.type === 'charm').transform, transformedAsset.transform, 'save/load preserves Signature Looks');
 assert(designStudioSource.includes('SIGNATURE_LOOKS_STORAGE_KEY') && designStudioSource.includes('window.localStorage.setItem'), 'user-created Signature Looks save/load from localStorage');
-assert.deepEqual(SHAPES, visibleHeroShapeFamilies, 'Hero 7 exact and Duck hidden after Signature Looks changes');
+assert.deepEqual(SHAPES, canonicalShapeFamilies, 'all eight canonical shapes remain available after Signature Looks changes');

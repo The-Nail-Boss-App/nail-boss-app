@@ -30,7 +30,7 @@ function gradientStops(layer) {
   return { stops, softness };
 }
 
-const MATERIAL_QA_PRESETS = ["Cream", "Jelly", "Matte", "Chrome", "Glitter"];
+const MATERIAL_QA_PRESETS = ["Cream", "Jelly", "Matte", "Glass", "Chrome-ready"];
 
 function MaterialQAStrip({ nail }) {
   if (!import.meta.env.DEV) return null;
@@ -41,7 +41,7 @@ function MaterialQAStrip({ nail }) {
       {MATERIAL_QA_PRESETS.map((preset) => {
         const uid = `material-qa-${preset.toLowerCase()}`;
         const clipId = `${uid}-clip`;
-        const baseLayer = { id: uid, type: "base", data: { colorHex: preset === "Matte" ? "#252025" : preset === "Chrome" ? "#C68AD5" : preset === "Glitter" ? "#B84E8A" : "#E8A0BF", polishType: preset, materialPreset: preset, shine: preset === "Matte" ? 0.08 : 0.82, transparency: preset === "Jelly" ? 0.5 : 0 } };
+        const baseLayer = { id: uid, type: "base", data: { colorHex: preset === "Matte" ? "#252025" : preset === "Glass" ? "#A41432" : preset === "Chrome-ready" ? "#C68AD5" : "#E8A0BF", polishType: preset, materialPreset: preset, shine: preset === "Matte" ? 0.08 : 0.82, transparency: preset === "Jelly" ? 0.5 : 0 } };
         return (
           <figure key={preset} data-material-preset={preset.toLowerCase()} style={{ margin: 0, width: 44, textAlign: "center", color: COLORS.plum, fontSize: 9, fontWeight: 700, letterSpacing: ".02em" }}>
             <svg viewBox={`0 0 ${VIEWBOX.width} ${VIEWBOX.height}`} width="44" height="66" aria-label={`${preset} renderer QA swatch`}>
