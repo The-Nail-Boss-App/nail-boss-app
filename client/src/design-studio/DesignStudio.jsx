@@ -2535,6 +2535,23 @@ function DesignStudio(_, ref) {
     </div>
   );
 
+  const renderNailBasicsTools = () => (
+    <div data-testid="command-nail-basics-popover" aria-label="Nail Basics" style={UI.commandPopover}>
+      <strong style={{ color: COLORS.plum }}>Nail Basics™</strong>
+      <Field label="Nail Shape">
+        <select aria-label="Nail Shape" style={S.input} value={activeNail.shape} onChange={(event) => updateBase({ shape: event.target.value })}>
+          {SHAPES.map((shape) => <option key={shape} value={shape}>{shape}</option>)}
+        </select>
+      </Field>
+      <Field label="Nail Length">
+        <input aria-label="Nail Length" type="range" min="0" max="1" step="0.01" value={activeNail.length} onChange={(event) => updateBase({ length: Number(event.target.value) })} style={{ width: "100%" }} />
+      </Field>
+      <Field label="Nail Width">
+        <input aria-label="Nail Width" type="range" min="0" max="1" step="0.01" value={activeNail.width} onChange={(event) => updateBase({ width: Number(event.target.value) })} style={{ width: "100%" }} />
+      </Field>
+    </div>
+  );
+
   const renderSignatureLooksTools = () => (
     <SignatureLooksPanel
       looks={signatureLooks}
@@ -2750,11 +2767,13 @@ function DesignStudio(_, ref) {
 
         <nav ref={commandMenuRootRef} data-artist-menu-root aria-label="Workspace actions" style={UI.commandActions}>
           <button type="button" onClick={save} disabled={saving} className="studio-motion-button" style={UI.commandButton(false, saving)}>Save Version</button>
-          <button type="button" onClick={openSavedDesignsBrowser} className="studio-motion-button" style={UI.commandButton(false)}>Open Saved Designs</button>
+          <button type="button" aria-expanded={savedDesignsOpen} onClick={openSavedDesignsBrowser} className="studio-motion-button" style={UI.commandButton(savedDesignsOpen)}>Open Saved Designs</button>
           <button type="button" onClick={() => toggleCommandPopover("signatureLooks")} className="studio-motion-button" style={UI.commandButton(commandPopover === "signatureLooks")}>Signature Looks</button>
           <button type="button" onClick={() => toggleCommandPopover("designDetails")} className="studio-motion-button" style={UI.commandButton(commandPopover === "designDetails")}>Design Details</button>
           {commandPopover === "signatureLooks" && <CommandPopoverPortal><div data-artist-menu-root className="studio-popover-motion" style={UI.commandPopoverWide}>{renderSignatureLooksTools()}</div></CommandPopoverPortal>}
           {commandPopover === "designDetails" && <CommandPopoverPortal><div data-artist-menu-root className="studio-popover-motion" style={UI.commandPopoverWide}>{renderDesignDetailsTools()}</div></CommandPopoverPortal>}
+          {commandPopover === "nailBasics" && <CommandPopoverPortal><div data-artist-menu-root className="studio-popover-motion">{renderNailBasicsTools()}</div></CommandPopoverPortal>}
+          {savedDesignsOpen && <CommandPopoverPortal><div data-artist-menu-root className="studio-popover-motion" style={UI.commandPopoverWide}>{renderSavedDesignsBrowser()}<button type="button" onClick={() => setSavedDesignsOpen(false)} style={UI.iconButton(false)}>Close</button></div></CommandPopoverPortal>}
           {commandPopover === "ribbonActions" && (
             <CommandPopoverPortal><div data-artist-menu-root id="command-set-actions-popover" data-testid="command-set-actions-popover" className="studio-popover-motion" style={UI.commandPopover}>
               <div style={UI.sectionTitle}>Set Actions</div>
