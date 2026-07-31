@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="480" viewBox="0 0 320 480" role="img" aria-label="After: luxurious layered red Cream almond nail rendering">
+  <defs>
+    <clipPath id="n"><path d="M112 108 C122 82 198 82 208 108 C232 170 218 300 160 414 C102 300 88 170 112 108Z"/></clipPath>
+    <linearGradient id="side"><stop stop-color="#26030d" stop-opacity=".72"/><stop offset=".22" stop-color="#a41432" stop-opacity="0"/><stop offset=".72" stop-color="#fff" stop-opacity=".08"/><stop offset="1" stop-color="#26030d" stop-opacity=".65"/></linearGradient>
+    <linearGradient id="cut" x2="0" y2="1"><stop stop-color="#21020a" stop-opacity=".62"/><stop offset=".2" stop-color="#a41432" stop-opacity="0"/></linearGradient>
+    <linearGradient id="edge" x2="0" y2="1"><stop stop-color="#a41432" stop-opacity="0"/><stop offset="1" stop-color="#26030d" stop-opacity=".7"/></linearGradient>
+    <radialGradient id="apex"><stop stop-color="#fff" stop-opacity=".48"/><stop offset=".36" stop-color="#fff" stop-opacity=".14"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
+    <linearGradient id="shine" x2=".25" y2="1"><stop stop-color="#fff" stop-opacity=".75"/><stop offset=".55" stop-color="#fff" stop-opacity=".28"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+    <filter id="blur"><feGaussianBlur stdDeviation="4"/></filter>
+    <filter id="shadow" x="-40%" y="-20%" width="180%" height="160%"><feDropShadow dx="0" dy="16" stdDeviation="12" flood-color="#4d1026" flood-opacity=".34"/></filter>
+  </defs>
+  <rect width="320" height="480" rx="24" fill="#fbf1ed"/>
+  <text x="24" y="38" font-family="Arial" font-size="14" font-weight="700" fill="#54213f">AFTER · LUXURY CREAM</text>
+  <g filter="url(#shadow)"><path d="M112 108 C122 82 198 82 208 108 C232 170 218 300 160 414 C102 300 88 170 112 108Z" fill="#a41432"/></g>
+  <g clip-path="url(#n)">
+    <rect x="88" y="82" width="144" height="340" fill="url(#side)"/>
+    <rect x="90" y="82" width="140" height="100" fill="url(#cut)"/>
+    <rect x="90" y="300" width="140" height="120" fill="url(#edge)"/>
+    <ellipse cx="150" cy="208" rx="66" ry="96" fill="url(#apex)"/>
+    <path d="M132 116 C112 178 125 270 151 330" fill="none" stroke="url(#shine)" stroke-width="16" stroke-linecap="round" filter="url(#blur)"/>
+    <path d="M178 116 C190 168 188 216 181 250" fill="none" stroke="#fff" stroke-opacity=".3" stroke-width="4" stroke-linecap="round"/>
+  </g>
+  <path d="M112 108 C122 82 198 82 208 108 C232 170 218 300 160 414 C102 300 88 170 112 108Z" fill="none" stroke="#fff" stroke-opacity=".4"/>
+</svg>

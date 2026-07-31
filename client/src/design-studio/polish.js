@@ -1,4 +1,4 @@
-export const POLISH_TYPES = ["Cream", "Jelly", "Milky", "Matte", "Chrome", "Glitter"];
+export const POLISH_TYPES = ["Cream", "Jelly", "Milky", "Matte", "Glass", "Chrome-ready", "Chrome", "Glitter"];
 export const TOP_COATS = ["Gloss", "Matte", "No-Wipe Shine", "Velvet"];
 export const POLISH_DEFAULTS = {
   polishType: "Cream",
@@ -29,7 +29,7 @@ export const LEGACY_EFFECT_POLISH_TYPE = {
   Marble: "Cream",
 };
 export const LEGACY_RENDER_POLISH_TYPES = ["Gradient", "Marble"];
-export const SURFACE_MATERIAL_PRESETS = ["Cream", "Jelly", "Matte", "Chrome", "Glitter"];
+export const SURFACE_MATERIAL_PRESETS = ["Cream", "Jelly", "Matte", "Glass", "Chrome-ready", "Chrome", "Glitter"];
 export function hasExplicitPolishType(data = {}) {
   return Object.prototype.hasOwnProperty.call(data, "polishType") && POLISH_TYPES.includes(data.polishType);
 }
@@ -96,6 +96,14 @@ export function polishMaterialProfile(polishType = "Cream", shine = 0.62) {
   }
   if (polishType === "Jelly") {
     return { gloss: Math.max(0.86, shine), reflection: 0.82, apex: 0.62, depth: 1, edge: 0.84, blur: 0.72, diffusion: 0.01, glass: 0.68, colorPreservation: 0.88, microTexture: 0.02, metallic: 0, sparkle: 0 };
+  }
+  if (polishType === "Glass") {
+    return { gloss: Math.max(0.94, shine), reflection: 0.94, apex: 0.76, depth: 1, edge: 0.9, blur: 0.5, diffusion: 0, glass: 1, colorPreservation: 0.9, microTexture: 0, metallic: 0, sparkle: 0 };
+  }
+  // Geometry and optical response only: this preset deliberately contains no
+  // metallic/chrome sweep. A future effect can plug into this foundation.
+  if (polishType === "Chrome-ready") {
+    return { gloss: Math.max(0.9, shine), reflection: 0.98, apex: 0.78, depth: 0.94, edge: 0.94, blur: 0.42, diffusion: 0, glass: 0.42, colorPreservation: 0.82, microTexture: 0.01, metallic: 0, sparkle: 0 };
   }
   if (polishType === "Milky") {
     return { gloss: Math.min(0.56, shine), reflection: 0.32, apex: 0.72, depth: 0.72, edge: 0.52, blur: 1.45, diffusion: 0.44, glass: 0.18, colorPreservation: 0.68, microTexture: 0.08, metallic: 0, sparkle: 0 };

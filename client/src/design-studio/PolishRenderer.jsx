@@ -18,6 +18,7 @@ function surfaceIds(uid) {
     freeEdgeRim: `${uid}-gel-free-edge-rim`,
     apexTight: `${uid}-gel-apex-tight`,
     verticalReflection: `${uid}-gel-vertical-reflection`,
+    cuticleFade: `${uid}-gel-cuticle-fade`,
     chromeSweep: `${uid}-gel-chrome-sweep`,
     glitterFlecks: `${uid}-gel-glitter-flecks`,
   };
@@ -32,6 +33,7 @@ function reflectionProfile(shape) {
     Stiletto: { curve: 1.18, width: 0.062, drift: 0.16, fade: 0.52, secondary: 0.43, asymmetry: 0 },
     Round: { curve: 0.76, width: 0.088, drift: 0.1, fade: 0.64, secondary: 0.58, asymmetry: 0 },
     Lipstick: { curve: 0.72, width: 0.082, drift: 0.12, fade: 0.6, secondary: 0.5, asymmetry: 0.055 },
+    Duck: { curve: 0.3, width: 0.124, drift: 0.035, fade: 0.76, secondary: 0.72, asymmetry: 0 },
   };
   return profiles[shape] || profiles.Almond;
 }
@@ -124,6 +126,11 @@ export function PolishDefs({ uid }) {
       <stop offset="58%" stopColor="#ffffff" stopOpacity=".16"/>
       <stop offset="100%" stopColor="#ffffff" stopOpacity="0"/>
     </linearGradient>
+    <linearGradient id={ids.cuticleFade} x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stopColor="#160812" stopOpacity=".24"/>
+      <stop offset="8%" stopColor="#321028" stopOpacity=".10"/>
+      <stop offset="22%" stopColor="#ffffff" stopOpacity="0"/>
+    </linearGradient>
     <linearGradient id={ids.chromeSweep} x1="0" y1="0" x2="1" y2="1">
       <stop offset="0%" stopColor="#ffffff" stopOpacity=".52"/>
       <stop offset="24%" stopColor="#7dd3fc" stopOpacity=".18"/>
@@ -159,13 +166,21 @@ export function SharedPolishRealismLayers({ nail, path, clipId, uid, shine = 0.6
   const darkColorEdgeBoost = /^#(?:0|1|2|3|4|5)/i.test(colorHex || "") ? 0.08 : 0;
   const material = materialProfile(polishType, shine);
 
-  return <g clipPath={`url(#${clipId})`} data-realism-renderer="shared-polish-material-engine" data-renderer-version="nail-surface-v2" data-material-scope={materialScope} data-polish-material={polishType} data-material-preset={polishType.toLowerCase()} data-surface-presets="Cream Jelly Matte Chrome Glitter">
+  return <g clipPath={`url(#${clipId})`} data-realism-renderer="shared-polish-material-engine" data-renderer-version="nail-surface-v3" data-material-scope={materialScope} data-polish-material={polishType} data-material-preset={polishType.toLowerCase()} data-surface-presets="Cream Jelly Matte Glass Chrome-ready">
+    <g data-render-layer="curvature" data-realism-layer="curvature-shading">
     <path data-realism-layer="curvature-shadow" d={path} fill={`url(#${ids.body})`} opacity={0.84 + material.depth * 0.14}/>
     <ellipse data-realism-layer="shape-aware-curvature" cx={arch.cx + (asymmetricLipstickReflection ? arch.width * 0.025 : 0)} cy={arch.topY + arch.height * 0.42} rx={arch.width * (flatBroadReflection ? 0.58 : 0.48) * (1 + curveBias * 0.05)} ry={arch.height * (flatBroadReflection ? 0.52 : 0.61)} fill={`url(#${ids.curvature})`} opacity={0.55 + material.depth * 0.37}/>
     <rect data-realism-layer="subtle-sidewall-shading" x={arch.left - 4} y={arch.topY - 2} width={arch.width + 8} height={arch.height + 8} fill={`url(#${ids.sidewall})`} opacity={0.5 + material.depth * 0.38}/>
+    <path data-realism-layer="cuticle-fade" d={path} fill={`url(#${ids.cuticleFade})`} opacity={0.48 + material.depth * 0.32}/>
+    </g>
+    <g data-render-layer="top-coat" data-realism-layer="top-coat-finish">
     <ellipse data-realism-layer="top-coat-depth-illusion" cx={arch.cx - arch.width * 0.06} cy={arch.apex.y - arch.height * 0.015} rx={arch.width * 0.48} ry={arch.height * 0.28} fill={`url(#${ids.topCoatDepth})`} opacity={0.28 + material.depth * 0.24 + material.glass * 0.26}/>
+    </g>
+    <g data-render-layer="highlight" data-realism-layer="apex-highlight">
     <ellipse data-realism-layer="apex-highlight-soft-builder-gel-crown" cx={arch.cx - arch.width * 0.08} cy={arch.apex.y} rx={arch.width * 0.43} ry={arch.height * 0.24} fill={`url(#${ids.apex})`} opacity={0.18 + material.apex * 0.42}/>
     <ellipse data-realism-layer="apex-highlight-tight-default-zoom-readability" cx={arch.cx - arch.width * 0.12} cy={arch.apex.y - arch.height * 0.045} rx={arch.width * 0.22} ry={arch.height * 0.095} fill={`url(#${ids.apexTight})`} opacity={0.12 + material.apex * 0.22}/>
+    </g>
+    <g data-render-layer="reflection" data-realism-layer="environment-reflection">
     <g data-realism-layer="shape-aware-reflection-paths" opacity={0.08 + material.reflection * 0.62}>
       <path data-reflection-profile={flatBroadReflection ? "flatter-broader" : asymmetricLipstickReflection ? "lipstick-asymmetric" : "curved-tapered"} d={buildReflectionPath(arch, profile, "left", 0)} stroke={`url(#${ids.reflection})`} strokeWidth={mainStrokeWidth} strokeLinecap="round" fill="none" filter={`url(#${material.blur > 1.4 ? ids.brokenGlossBlur : ids.glossBlur})`}/>
       <path data-realism-layer="soft-reflection-map soft-broken-reflection" d={buildReflectionPath(arch, profile, "left", 1)} stroke={`url(#${ids.reflectionFade})`} strokeWidth={Math.max(3.5, mainStrokeWidth * 0.42)} strokeLinecap="round" strokeDasharray={`${Math.max(15, arch.height * 0.06)} ${Math.max(10, arch.height * 0.045)} ${Math.max(5, arch.height * 0.018)} ${Math.max(14, arch.height * 0.05)}`} fill="none" opacity=".58" filter={`url(#${ids.brokenGlossBlur})`}/>
@@ -174,6 +189,8 @@ export function SharedPolishRealismLayers({ nail, path, clipId, uid, shine = 0.6
     <path data-realism-layer="subtle-reflection-overlay-vertical-window" d={path} fill={`url(#${ids.verticalReflection})`} opacity={0.04 + material.gloss * 0.16}/>
     {material.metallic > 0 && <path data-realism-layer="chrome-material-preset-iridescent-sweep" d={path} fill={`url(#${ids.chromeSweep})`} opacity={0.32 + material.metallic * 0.44} style={{ mixBlendMode: "screen" }}/>}
     {material.sparkle > 0 && <rect data-realism-layer="glitter-material-preset-scaled-sparkle-overlay" x={arch.left - 4} y={arch.topY - 2} width={arch.width + 8} height={arch.height + 8} fill={`url(#${ids.glitterFlecks})`} opacity={0.32 + material.sparkle * 0.56}/>}
+    </g>
+    <g data-render-layer="gloss" data-realism-layer="gloss-finish">
     <path data-realism-layer="subtle-edge-catch-lighting" d={path} fill="none" stroke={`url(#${ids.edgeCatch})`} strokeWidth={Math.max(2.6, arch.width * 0.018)} opacity={0.18 + darkColorEdgeBoost + material.edge * 0.24}/>
     <rect data-realism-layer="nail-thickness-depth" x={arch.left - 6} y={freeEdgeY} width={arch.width + 12} height={arch.bottomY - freeEdgeY + 10} fill={`url(#${ids.freeEdge})`} opacity={0.45 + material.depth * 0.47}/>
     <path data-realism-layer="free-edge-thickness-rim" d={`M ${arch.left + arch.width * 0.12} ${arch.bottomY - rimDepth} Q ${arch.cx} ${arch.bottomY + rimDepth * 0.28} ${arch.right - arch.width * 0.12} ${arch.bottomY - rimDepth}`} stroke={`url(#${ids.freeEdgeRim})`} strokeWidth={rimDepth} strokeLinecap="round" fill="none" opacity={0.34 + material.edge * 0.28}/>
@@ -181,6 +198,7 @@ export function SharedPolishRealismLayers({ nail, path, clipId, uid, shine = 0.6
     <path data-realism-layer="soft-diffusion-veil" d={path} fill="#ffffff" opacity={material.diffusion} />
     <path data-realism-layer="edge-shadow-left-sidewall-depth" d={`M ${arch.left + arch.width * 0.04} ${arch.topY + arch.height * 0.14} C ${arch.left + arch.width * 0.005} ${arch.apex.y + arch.height * 0.1} ${arch.left + arch.width * 0.08} ${arch.bottomY - arch.height * 0.12} ${arch.left + arch.width * 0.16} ${arch.bottomY - arch.height * 0.02}`} stroke="#1a0815" strokeWidth={Math.max(5, arch.width * 0.04)} strokeLinecap="round" fill="none" opacity=".16" filter={`url(#${ids.shadowBlur})`}/>
     <path data-realism-layer="edge-shadow-right-sidewall-depth" d={`M ${arch.right - arch.width * 0.04} ${arch.topY + arch.height * 0.14} C ${arch.right - arch.width * 0.005} ${arch.apex.y + arch.height * 0.1} ${arch.right - arch.width * 0.08} ${arch.bottomY - arch.height * 0.12} ${arch.right - arch.width * 0.16} ${arch.bottomY - arch.height * 0.02}`} stroke="#1a0815" strokeWidth={Math.max(4, arch.width * 0.034)} strokeLinecap="round" fill="none" opacity=".12" filter={`url(#${ids.shadowBlur})`}/>
+    </g>
   </g>;
 }
 
@@ -192,7 +210,7 @@ export function GelNailSurfaceRenderer({ nail, baseLayer, path, clipId, uid }) {
   const opacity = polishOpacity(data);
 
   return <g pointerEvents="none">
-    <path data-material-layer="base-color" d={path} fill={data.colorHex} opacity={opacity} data-material-preset={surfacePreset.toLowerCase()}/>
+    <g data-render-layer="base-polish"><path data-material-layer="base-color" d={path} fill={data.colorHex} opacity={opacity} data-material-preset={surfacePreset.toLowerCase()}/></g>
     {data.polishType === "Jelly" && <path data-material-layer="jelly-clear-depth translucent-colored-glass-gel" d={path} fill={data.colorHex} opacity=".20"/>}
     {data.polishType === "Milky" && <path data-material-layer="milky-builder-gel-veil soft-cloudy-milky-diffusion" d={path} fill="#fff8fb" opacity=".36"/>}
     <SharedPolishRealismLayers nail={nail} path={path} clipId={clipId} uid={uid} shine={shine} colorHex={data.colorHex} polishType={surfacePreset} materialScope="base-polish"/>
