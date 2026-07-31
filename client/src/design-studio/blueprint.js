@@ -1,5 +1,5 @@
-export const SHAPES = ["Almond", "Coffin", "Square", "Oval", "Round", "Stiletto", "Lipstick", "Duck"];
-const HIDDEN_SHAPE_FALLBACKS = {};
+export const SHAPES = ["Almond", "Square", "Coffin", "Stiletto", "Oval", "Round", "Lipstick"];
+const HIDDEN_SHAPE_FALLBACKS = { Duck: "Square" };
 function normalizeSelectableShape(shape, fallback = "Almond") {
   if (SHAPES.includes(shape)) return shape;
   return HIDDEN_SHAPE_FALLBACKS[shape] || fallback;

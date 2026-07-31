@@ -79,6 +79,8 @@ export function polishSurfacePreset(data = {}) {
   if (data.effect === "Glitter" || data.pattern === "glitter" || data.glitter === true) return "Glitter";
   if (data.polishType === "Jelly") return "Jelly";
   if (data.polishType === "Matte") return "Matte";
+  if (data.polishType === "Glass") return "Glass";
+  if (data.polishType === "Chrome-ready") return "Chrome-ready";
   if (data.polishType === "Chrome") return "Chrome";
   if (data.polishType === "Glitter") return "Glitter";
   return "Cream";
