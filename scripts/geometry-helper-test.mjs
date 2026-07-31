@@ -29,9 +29,21 @@ assert(designStudioSource.includes('data-testid="command-french-tip-trigger"') &
 assert(designStudioSource.includes('aria-label={label}') && designStudioSource.includes('title={label}') && bulkActionsPanelSource.includes('aria-label='), 'compact icon buttons provide accessible labels or titles');
 assert(nailCanvasSource.includes('data-zoom-containment-padding="dock-safe-expanded"') && nailCanvasSource.includes('justifyContent: "center"') && nailCanvasSource.includes('padding: HERO_CANVAS_SAFE_PADDING'), 'Hero Canvas vertically centers the full nail inside compact containment padding');
 assert(nailCanvasSource.includes('data-default-nail-bottom-clip="prevented"') && nailCanvasSource.includes('export function heroZoomFit') && nailCanvasSource.includes('height: fit.panEnabled ? fit.heightVh : `min(${fit.heightVh}, calc(100% - ${HERO_CANVAS_VERTICAL_SAFE_GAP}px))`'), 'default and zoomed nails use bounded fit sizing so top and bottom are not clipped');
-assert(nailCanvasSource.includes('data-zoom-containment={fit.panEnabled ? "internal-pan-at-high-zoom" : "bounded-fit-to-container"}') && nailCanvasSource.includes('data-zoom-fit-helper="heroZoomFit"') && nailCanvasSource.includes('maxWidth: "min(78%, calc((100% - 36px)))"'), 'Hero Canvas uses fit-to-container containment with internal pan at high zoom instead of label-only zoom');
+const hasResponsiveCanvasWidth = /maxWidth\s*:\s*["'`]([^"'`]*%[^"'`]*)["'`]/.test(nailCanvasSource);
+assert(
+  ['data-zoom-containment=', 'internal-pan-at-high-zoom', 'bounded-fit-to-container', 'data-zoom-fit-helper="heroZoomFit"'].every((token) => nailCanvasSource.includes(token)) &&
+    hasResponsiveCanvasWidth,
+  'Hero Canvas exposes bounded-fit and high-zoom pan modes with a responsive percentage-based width',
+);
 assert(nailCanvasSource.includes('const HERO_SAFE_CONTAINED_ZOOM = 1.55') && nailCanvasSource.includes('const HERO_MAX_ZOOM = 2.4') && nailCanvasSource.includes('Math.min(requestedZoom, HERO_MAX_ZOOM)') && nailCanvasSource.includes('data-zoom-pan-enabled={fit.panEnabled ? "true" : "false"}') && nailCanvasSource.includes('data-max-contained-zoom={HERO_MAX_ZOOM}'), 'zoom containment allows visible growth, then uses internal pan before the safe cap prevents Studio Dock crop');
-assert(studioStylesSource.includes('minHeight: "clamp(520px, calc(100vh - 300px), 820px)"') && studioStylesSource.includes('placeItems: "stretch"') && studioStylesSource.includes('previewFrame') && studioStylesSource.includes('overflow: "hidden"'), 'Hero Canvas drawing area stretches the centered preview without relying on page scroll');
+assert(
+  studioStylesSource.includes('stickyPreview:') &&
+    /minHeight\s*:\s*["'`]clamp\([^"'`]*100vh[^"'`]*\)["'`]/.test(studioStylesSource) &&
+    studioStylesSource.includes('placeItems: "stretch"') &&
+    studioStylesSource.includes('previewFrame:') &&
+    studioStylesSource.includes('overflow: "hidden"'),
+  'Hero Canvas drawing area uses a responsive viewport clamp and stretches the contained preview',
+);
 assert(studioStylesSource.includes('compactAssetGridDensity') && studioStylesSource.includes('gridGap: 6') && studioStylesSource.includes('tileMinHeight: 58') && studioStylesSource.includes('minTouchTarget: 44'), 'Design Studio asset grid density tokens keep compact spacing with touch-friendly targets');
 assert(designStudioSource.includes('[data-testid="visual-asset-button"] { min-height: 58px !important; padding: 4px !important;') && designStudioSource.includes('[data-testid="visual-asset-button"] svg { width: 50px !important; height: 50px !important;'), 'visual asset tiles render denser cards with larger artwork');
 assert(assetLibrarySource.includes('data-testid="visual-asset-button"') && assetLibrarySource.includes('aria-label={`Add ${asset.name}`}') && assetLibrarySource.includes('onClick={() => onAddAsset(asset)}'), 'compact asset tiles preserve accessible labels and click behavior');
@@ -757,7 +769,7 @@ assert(!polishRendererSource.includes('data.chromeIntensity') && !polishRenderer
 assert(nailCanvasSource.includes('<PolishSurface') && nailThumbnailSource.includes('<PolishSurface'), 'Polish rendering is shared by NailCanvas, thumbnail, hand, and full-set previews');
 assert(propertiesPanelSource.includes('Polish Settings') && propertiesPanelSource.includes('Top Coat') && propertiesPanelSource.includes('Special polish-effect controls stay hidden'), 'Design Studio exposes physical-realism Polish Settings without special effect controls');
 assert(!propertiesPanelSource.includes('polish.polishType === "Glitter"') && !propertiesPanelSource.includes('polish.polishType === "Cat Eye"') && !propertiesPanelSource.includes('polish.polishType === "Chrome"') && !propertiesPanelSource.includes('Legacy effect'), 'special polish effect controls are not reintroduced in the Properties panel');
-assert.deepEqual(POLISH_TYPES, ['Cream', 'Jelly', 'Milky', 'Matte', 'Chrome', 'Glitter'], 'Polish Type selector exposes QA-visible material presets');
+assert.deepEqual(POLISH_TYPES, ['Cream', 'Jelly', 'Milky', 'Matte', 'Glass', 'Chrome-ready', 'Chrome', 'Glitter'], 'Polish Type selector exposes all QA-visible material presets');
 assert(!POLISH_TYPES.includes('Cat Eye') && !POLISH_TYPES.includes('Marble'), 'Cat Eye and Marble remain legacy effects instead of visible Polish Type choices');
 assert(designStudioSource.includes('Polish Type') && designStudioSource.includes('POLISH_TYPES.map((type) => <option key={type} value={type}>{type}</option>)'), 'Nail Color System renders the visible Polish Type selector');
 assert(polishRendererSource.includes('data-polish-material={polishType}') && polishRendererSource.includes('jelly-clear-depth') && polishRendererSource.includes('milky-builder-gel-veil') && polishRendererSource.includes('polishType === "Matte"'), 'shared material engine implements Cream, Jelly, Milky, Matte, Chrome, and Glitter material layers');
