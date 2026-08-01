@@ -194,14 +194,22 @@ function StudioMicrointeractionStyles() {
       .studio-status-loading { color: transparent; min-width: 116px; background: linear-gradient(90deg, rgba(123,47,89,.10), rgba(123,47,89,.24), rgba(123,47,89,.10)); background-size: 220% 100%; animation: anitasetStatusSheen 950ms ease-in-out infinite; }
       .command-bar-group { flex: 0 0 auto; }
       .command-bar-overflow { display: none; }
+      .command-bar-icon { display: inline-grid; width: 16px; place-items: center; flex: 0 0 16px; font-size: 14px; }
+      .command-bar-current { display: grid; min-width: 0; }
+      .command-bar-current-caption { color: rgba(255,250,247,.68); font-size: 8px; font-weight: 900; letter-spacing: .12em; line-height: 1; text-transform: uppercase; }
       @media (max-width: 1280px) {
         .command-bar-button { padding-inline: 6px !important; }
         .command-bar-secondary .command-bar-label { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
         .command-bar-overflow { display: block; }
         .command-bar-publishing { display: none !important; }
       }
+      @media (max-width: 1160px) {
+        .command-bar-open .command-bar-label { font-size: 0; }
+        .command-bar-open .command-bar-label::after { content: "Open"; font-size: 11px; }
+        .command-bar-group { gap: 2px !important; padding-left: 4px !important; }
+      }
       @media (max-width: 1024px) {
-        .command-bar-brand-title { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); }
+        .command-bar-brand-title { font-size: 13px !important; }
       }
       @media (prefers-reduced-motion: reduce) { .studio-motion-button, .studio-card-button, .studio-dock-button, .studio-current-polish, .polish-bottle-button, .polish-bottle-figure, .polish-rack-bottle, .studio-popover-motion, .studio-hero-fade, .studio-status-loading { animation: none !important; transition-duration: 1ms !important; } }
     `}</style>
@@ -2705,18 +2713,21 @@ function DesignStudio(_, ref) {
         aria-label="Nail Design Studio Command Bar"
         style={UI.artistCommandBar}
       >
-        <div style={UI.commandIdentity}>
+        <div className="command-bar-identity" style={UI.commandIdentity}>
           <img src="/anitaset-logo-main.png" alt="AnitaSet" style={UI.commandLogoImage} />
           <strong className="command-bar-brand-title" style={UI.commandTitle}>Nail Design Studio</strong>
         </div>
 
         <nav ref={commandMenuRootRef} data-artist-menu-root aria-label="Design commands" style={UI.commandActions}>
           <div className="command-bar-group" aria-label="Design management" style={{ ...UI.commandGroup, borderLeft: 0, paddingLeft: 0 }}>
-            <button type="button" title="New Design" aria-label="New Design" onClick={newDesign} className="studio-motion-button command-bar-button" style={UI.commandButton()}>＋ <span className="command-bar-label">New Design</span></button>
-            <button type="button" title="Open Saved Design" aria-label="Open Saved Design" aria-expanded={savedDesignsOpen} onClick={openSavedDesignsBrowser} className="studio-motion-button command-bar-button" style={UI.commandButton(savedDesignsOpen)}>▣ <span className="command-bar-label">Open Saved Design</span></button>
-            <input aria-label="Design Name" data-testid="artist-command-design-name" value={designName} maxLength={DESIGN_NAME_MAX_LENGTH} onChange={(e) => updateDesignName(e.target.value)} placeholder="Untitled Design" style={{ ...UI.commandDesignName, width: "clamp(105px, 12vw, 180px)", borderBottom: "1px solid rgba(255,255,255,.35)" }} />
-            <button type="button" title="Duplicate" aria-label="Duplicate" onClick={duplicateDesign} className="studio-motion-button command-bar-button command-bar-secondary" style={UI.commandButton()}>⧉ <span className="command-bar-label">Duplicate</span></button>
-            <button type="button" title={saving ? "Saving" : selectedDesignId ? (dirty ? "Save Changes" : "Saved") : "Save"} aria-label={selectedDesignId ? (dirty ? "Save Changes" : "Saved") : "Save"} onClick={save} disabled={saving} className="studio-motion-button command-bar-button" style={UI.commandButton(!dirty && Boolean(selectedDesignId), saving)}>● <span className="command-bar-label">{saving ? "Saving…" : selectedDesignId ? (dirty ? "Save Changes" : "Saved") : "Save"}</span></button>
+            <button type="button" title="New Design" aria-label="New Design" onClick={newDesign} className="studio-motion-button command-bar-button" style={UI.commandButton()}><span className="command-bar-icon" aria-hidden="true">＋</span><span className="command-bar-label">New Design</span></button>
+            <button type="button" title="Open Saved Design" aria-label="Open Saved Design" aria-expanded={savedDesignsOpen} onClick={openSavedDesignsBrowser} className="studio-motion-button command-bar-button command-bar-open" style={UI.commandButton(savedDesignsOpen)}><span className="command-bar-icon" aria-hidden="true">▣</span><span className="command-bar-label">Open Saved Design</span></button>
+            <label className="command-bar-current" style={UI.commandCurrentDesign}>
+              <span className="command-bar-current-caption">Current Design</span>
+              <input aria-label="Current Design name" data-testid="artist-command-design-name" value={designName} maxLength={DESIGN_NAME_MAX_LENGTH} onChange={(e) => updateDesignName(e.target.value)} placeholder="Untitled Design" style={UI.commandDesignName} />
+            </label>
+            <button type="button" title="Duplicate" aria-label="Duplicate" onClick={duplicateDesign} className="studio-motion-button command-bar-button command-bar-secondary" style={UI.commandButton()}><span className="command-bar-icon" aria-hidden="true">⧉</span><span className="command-bar-label">Duplicate</span></button>
+            <button type="button" title={saving ? "Saving…" : selectedDesignId ? (dirty ? "Save Changes" : "Saved") : "Save"} aria-label={saving ? "Saving…" : selectedDesignId ? (dirty ? "Save Changes" : "Saved") : "Save"} onClick={save} disabled={saving} className="studio-motion-button command-bar-button command-bar-save" style={UI.commandButton(!dirty && Boolean(selectedDesignId), saving)}><span className="command-bar-icon" aria-hidden="true">●</span><span className="command-bar-label">{saving ? "Saving…" : selectedDesignId ? (dirty ? "Save Changes" : "Saved") : "Save"}</span></button>
           </div>
 
           <div className="command-bar-group" aria-label="Editing" style={UI.commandGroup}>

@@ -59,6 +59,6 @@ assert.match(frenchTipSource, /clipPath=\{`url\(\#\$\{frenchPatternClipId\}\)`\}
 assert.doesNotMatch(frenchTipSource, /mixBlendMode|patternOpacity\s*\*\s*0\./, 'French Tip pattern does not add unintended transparency or blend mode');
 
 assert.match(stylesSource, /artistCommandBar:[\s\S]*maxWidth: "100%"[\s\S]*overflowX: "clip"/, 'command bar prevents horizontal overflow');
-assert.match(stylesSource, /commandDesignName:[\s\S]*fontSize: "clamp\([\s\S]*whiteSpace: "normal"[\s\S]*overflow: "visible"[\s\S]*overflowWrap: "anywhere"[\s\S]*textOverflow: "clip"/, 'long design names use responsive wrapping/fit styles without hard clipping');
+assert.match(stylesSource, /commandCurrentDesign:[\s\S]*width: "clamp\([\s\S]*commandDesignName:[\s\S]*minWidth: 0[\s\S]*whiteSpace: "nowrap"[\s\S]*overflow: "hidden"[\s\S]*textOverflow: "ellipsis"/, 'long design names stay inside the compact Current Design control without causing horizontal overflow');
 
 console.log('workflow behavior reality checks passed');

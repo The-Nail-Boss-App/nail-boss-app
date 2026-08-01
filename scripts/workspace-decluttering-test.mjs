@@ -406,8 +406,8 @@ assert.match(
 );
 assert.match(
   studioStyles,
-  /commandDesignName:[\s\S]*maxWidth: "100%"[\s\S]*overflowWrap: "anywhere"[\s\S]*wordBreak: "break-word"/,
-  "Command title should wrap safely without horizontal overflow.",
+  /commandCurrentDesign:[\s\S]*minWidth: 104[\s\S]*commandDesignName:[\s\S]*maxWidth: "100%"[\s\S]*whiteSpace: "nowrap"[\s\S]*textOverflow: "ellipsis"/,
+  "Current Design should stay compact and truncate safely without horizontal overflow.",
 );
 assert.match(
   studio,

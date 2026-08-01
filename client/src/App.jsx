@@ -300,7 +300,9 @@ export default function App() {
       <div style={S.appShell}>
         {sidebar}
         <div style={S.mainContent}>
-          {page !== PAGES.HEADQUARTERS && topbar}
+          {/* Studio Mode owns the entire application header area. The shared
+              Headquarters/page header returns as soon as another room opens. */}
+          {page !== PAGES.HEADQUARTERS && page !== PAGES.STUDIO && topbar}
           {/* Design Studio gets full height for its split-panel layout;
               other pages scroll normally. */}
           <div style={{
