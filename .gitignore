@@ -9,3 +9,7 @@ yarn-error.log*
 
 # Generated React build output
 client/build/
+
+# Local task preview artifacts
+screenshots/command-bar-desktop.png
+screenshots/command-bar-narrow-desktop.png

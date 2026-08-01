@@ -62,7 +62,7 @@ assert(
 assert(
   studio.includes('data-testid="command-polish-color-popover"') &&
     studio.includes("Polish Studio"),
-  "Current Polish Bottle still opens quick Polish Studio controls in the command bar",
+  "Current Polish Bottle still opens quick Polish Studio controls from the Nail Kit",
 );
 assert(
   studio.includes("creative-library-polish-studio") &&
@@ -70,7 +70,7 @@ assert(
   "Current Polish Bottle is not the only polish control path",
 );
 assert(
-  studio.includes('data-testid="command-set-actions-trigger"') &&
+  studio.includes('label === "Set Actions" ? "command-set-actions-trigger"') &&
     studio.includes('data-testid="command-set-actions-popover"'),
   "Set Actions are available from the command bar",
 );
@@ -83,7 +83,7 @@ assert(
 );
 assert(
   studio.includes('data-testid="command-french-tip-trigger"') &&
-    studio.includes('data-testid="command-french-tip-popover"'),
+    studio.includes('onClick={openFrenchTipQuickAccess}'),
   "French Tip controls are available from the command bar",
 );
 assert(studio.includes("Polish Rack™"), "Polish Rack™ wording exists");
@@ -201,20 +201,18 @@ assert(
 );
 assert(
   studio.includes('data-testid="artist-command-collection"') &&
-    studio.includes("No Collection Assigned"),
+    studio.includes("COLLECTION_OPTIONS.map"),
   "Artist Command Bar collection subtitle exists",
 );
 assert(
-  studio.includes('data-testid="artist-command-autosave"') &&
-    studio.includes("● Auto Saved") &&
-    studio.includes("Saving…"),
-  "Artist Command Bar auto saved indicator exists",
+  studio.includes('dirty ? "Save Changes" : "Saved"') && studio.includes("Saving…"),
+  "Command Bar exposes the smart save state",
 );
-assert(studio.includes("Save Version"), "Save Version wording exists");
+assert(studio.includes("Save Changes"), "smart Save Changes wording exists");
 assert(
   studio.includes('data-testid="current-polish-bottle"') &&
     studio.includes("Current Polish Bottle™"),
-  "Current Polish Bottle exists in Artist Command Bar",
+  "Current Polish Bottle exists in the Nail Kit",
 );
 assert(
   studio.includes(

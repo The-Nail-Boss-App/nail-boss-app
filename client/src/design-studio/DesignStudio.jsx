@@ -192,6 +192,17 @@ function StudioMicrointeractionStyles() {
       [data-testid="visual-asset-button"] { min-height: 58px !important; padding: 4px !important; border-radius: 12px !important; }
       [data-testid="visual-asset-button"] svg { width: 50px !important; height: 50px !important; max-width: 100%; display: block; margin: 0 auto; }
       .studio-status-loading { color: transparent; min-width: 116px; background: linear-gradient(90deg, rgba(123,47,89,.10), rgba(123,47,89,.24), rgba(123,47,89,.10)); background-size: 220% 100%; animation: anitasetStatusSheen 950ms ease-in-out infinite; }
+      .command-bar-group { flex: 0 0 auto; }
+      .command-bar-overflow { display: none; }
+      @media (max-width: 1280px) {
+        .command-bar-button { padding-inline: 6px !important; }
+        .command-bar-secondary .command-bar-label { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+        .command-bar-overflow { display: block; }
+        .command-bar-publishing { display: none !important; }
+      }
+      @media (max-width: 1024px) {
+        .command-bar-brand-title { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); }
+      }
       @media (prefers-reduced-motion: reduce) { .studio-motion-button, .studio-card-button, .studio-dock-button, .studio-current-polish, .polish-bottle-button, .polish-bottle-figure, .polish-rack-bottle, .studio-popover-motion, .studio-hero-fade, .studio-status-loading { animation: none !important; transition-duration: 1ms !important; } }
     `}</style>
   );
@@ -2327,6 +2338,35 @@ function DesignStudio(_, ref) {
     void loadDesigns();
   }
 
+  async function duplicateDesign() {
+    if (!(await guardReplacement())) return;
+    const copy = ensureFullSetBlueprint(blueprintRef.current || blueprint);
+    setSelectedDesignId("");
+    selectedDesignIdRef.current = "";
+    replaceLoaded(copy, { name: `${designNameRef.current || "Untitled Design"} Copy` }, "Design duplicated");
+    dirtyRef.current = true;
+    setDirty(true);
+    setSaveStatus("Unsaved changes");
+  }
+
+  async function shareDesign() {
+    const shareData = { title: designName || "Nail Design Studio", text: `AnitaSet nail design: ${designName || "Untitled Design"}`, url: window.location.href };
+    if (navigator.share) await navigator.share(shareData);
+    else {
+      await navigator.clipboard?.writeText(window.location.href);
+      showNotice("Design link copied to the clipboard.");
+    }
+  }
+
+  function exportDesign() {
+    const payload = JSON.stringify(blueprintRef.current || blueprint, null, 2);
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(new Blob([payload], { type: "application/json" }));
+    link.download = `${(designName || "untitled-design").replace(/[^a-z0-9]+/gi, "-").toLowerCase()}.json`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+  }
+
   function openPolishRack() {
     setCommandPopover("polish");
     setActiveStudio("polishStudio");
@@ -2338,7 +2378,7 @@ function DesignStudio(_, ref) {
       }),
     );
     showNotice(
-      "Polish Studio opened in the Creative Library with quick controls available from the Artist Toolkit™.",
+      "Polish Studio opened in the Creative Library with quick controls available from the Command Bar.",
     );
   }
 
@@ -2660,150 +2700,66 @@ function DesignStudio(_, ref) {
     <div style={UI.shell}>
       <StudioMicrointeractionStyles />
       <header
-        data-testid="artist-command-bar" data-workspace-term="Artist Toolkit™"
-        aria-label="Artist Toolkit™"
+        data-testid="artist-command-bar"
+        data-workspace-term="Nail Design Studio"
+        aria-label="Nail Design Studio Command Bar"
         style={UI.artistCommandBar}
       >
         <div style={UI.commandIdentity}>
           <img src="/anitaset-logo-main.png" alt="AnitaSet" style={UI.commandLogoImage} />
-          <input
-            aria-label="Design Name"
-            data-testid="artist-command-design-name"
-            value={designName}
-            maxLength={DESIGN_NAME_MAX_LENGTH}
-            onChange={(e) => updateDesignName(e.target.value)}
-            placeholder="Untitled Design"
-            style={UI.commandDesignName}
-          />
-          <div data-testid="artist-command-design-name-counter" style={UI.commandDesignNameCounter}>
-            {Math.min(designName.length, DESIGN_NAME_MAX_LENGTH)}/{DESIGN_NAME_MAX_LENGTH}
-          </div>
-          <label
-            data-testid="artist-command-collection"
-            data-product-template-contract="collection-assignment"
-            style={UI.commandCollection}
-          >
-            <span style={UI.commandCollectionLabel}>Collection</span><span style={{ display: "none" }}>Product Templates · No Collection Assigned</span>
-            <select
-              aria-label="Collection assignment"
-              value={collectionName}
-              onChange={(e) => updateCollectionName(e.target.value)}
-              style={UI.commandCollectionSelect}
-            >
-              {COLLECTION_OPTIONS.map((option) => (
-                <option key={option} value={option}>{option}</option>
-              ))}
-            </select>
-          </label>
+          <strong className="command-bar-brand-title" style={UI.commandTitle}>Nail Design Studio</strong>
         </div>
 
-        <div style={UI.commandCenter}>
-          <div
-            data-testid="artist-command-autosave"
-            style={{ ...UI.autoSaveBadge, color: statusColor }}
-          >
-            <span className={saving || loading ? "studio-status-loading" : ""}>
-              {saving || loading ? "Saving…" : "● Auto Saved"}
-            </span>
+        <nav ref={commandMenuRootRef} data-artist-menu-root aria-label="Design commands" style={UI.commandActions}>
+          <div className="command-bar-group" aria-label="Design management" style={{ ...UI.commandGroup, borderLeft: 0, paddingLeft: 0 }}>
+            <button type="button" title="New Design" aria-label="New Design" onClick={newDesign} className="studio-motion-button command-bar-button" style={UI.commandButton()}>＋ <span className="command-bar-label">New Design</span></button>
+            <button type="button" title="Open Saved Design" aria-label="Open Saved Design" aria-expanded={savedDesignsOpen} onClick={openSavedDesignsBrowser} className="studio-motion-button command-bar-button" style={UI.commandButton(savedDesignsOpen)}>▣ <span className="command-bar-label">Open Saved Design</span></button>
+            <input aria-label="Design Name" data-testid="artist-command-design-name" value={designName} maxLength={DESIGN_NAME_MAX_LENGTH} onChange={(e) => updateDesignName(e.target.value)} placeholder="Untitled Design" style={{ ...UI.commandDesignName, width: "clamp(105px, 12vw, 180px)", borderBottom: "1px solid rgba(255,255,255,.35)" }} />
+            <button type="button" title="Duplicate" aria-label="Duplicate" onClick={duplicateDesign} className="studio-motion-button command-bar-button command-bar-secondary" style={UI.commandButton()}>⧉ <span className="command-bar-label">Duplicate</span></button>
+            <button type="button" title={saving ? "Saving" : selectedDesignId ? (dirty ? "Save Changes" : "Saved") : "Save"} aria-label={selectedDesignId ? (dirty ? "Save Changes" : "Saved") : "Save"} onClick={save} disabled={saving} className="studio-motion-button command-bar-button" style={UI.commandButton(!dirty && Boolean(selectedDesignId), saving)}>● <span className="command-bar-label">{saving ? "Saving…" : selectedDesignId ? (dirty ? "Save Changes" : "Saved") : "Save"}</span></button>
           </div>
-          <div data-artist-menu-root style={UI.commandGroup}>
-            <button
-              type="button"
-              data-testid="current-polish-bottle"
-              aria-expanded={commandPopover === "polish"}
-              aria-controls="command-polish-color-popover"
-              onClick={openPolishRack}
-              className="studio-current-polish"
-              style={UI.currentPolishButton}
-              aria-label="Open Polish Color controls for Current Polish Bottle"
-            >
-              <PolishBottle
-                colorHex={activePolishColor}
-                label={`Current Polish Bottle ${activePolishColor}`}
-                selected
-                size="medium"
-                polishType={activePolish.polishType}
-                />
-              <span style={UI.currentPolishText}>
-                Current Polish Bottle™
-                <strong style={UI.currentPolishMeta}>
-                  {activePolish.polishType} · {activePolishColor}
-                </strong>
-              </span>
-            </button>
-            {commandPopover === "polish" && (
-              <CommandPopoverPortal>
-              <div
-                id="command-polish-color-popover"
-                data-testid="command-polish-color-popover"
-                data-canvas-safe-placement="left-creative-library-anchor"
-                data-artist-menu-root
-                className="studio-popover-motion"
-                style={UI.commandPolishPopover}
-              >
-                {/* Canvas-safe marker: this quick polish popover is fixed to the Creative Library side rail instead of the centered hero canvas. */}
-                <PolishColorControls
-                  compact
-                  value={draftPolish.colorHex}
-                  recentPolish={recentPolish}
-                  polishType={draftPolish.polishType}
-                  onRackSelect={applyRackPolish}
-                  onPolishTypeChange={(polishType) =>
-                    setDraftPolish((prev) => ({ ...prev, polishType }))
-                  }
-                  onChange={(value) =>
-                    setDraftPolish((prev) => ({
-                      ...prev,
-                      colorHex: normalizeHex(value, prev.colorHex),
-                    }))
-                  }
-                  onApply={applyCurrentPolish}
-                />
-              </div>
-              </CommandPopoverPortal>
-            )}
-          </div>
-        </div>
 
-        <nav ref={commandMenuRootRef} data-artist-menu-root aria-label="Workspace actions" style={UI.commandActions}>
-          <button type="button" onClick={save} disabled={saving} className="studio-motion-button" style={UI.commandButton(false, saving)}>Save Version</button>
-          <button type="button" aria-expanded={savedDesignsOpen} onClick={openSavedDesignsBrowser} className="studio-motion-button" style={UI.commandButton(savedDesignsOpen)}>Open Saved Designs</button>
-          <button type="button" onClick={() => toggleCommandPopover("signatureLooks")} className="studio-motion-button" style={UI.commandButton(commandPopover === "signatureLooks")}>Signature Looks</button>
-          <button type="button" onClick={() => toggleCommandPopover("designDetails")} className="studio-motion-button" style={UI.commandButton(commandPopover === "designDetails")}>Design Details</button>
-          {commandPopover === "signatureLooks" && <CommandPopoverPortal><div data-artist-menu-root className="studio-popover-motion" style={UI.commandPopoverWide}>{renderSignatureLooksTools()}</div></CommandPopoverPortal>}
+          <div className="command-bar-group" aria-label="Editing" style={UI.commandGroup}>
+            <button type="button" title="Undo" aria-label="Undo" onClick={undo} disabled={!canUndo} className="studio-motion-button command-bar-button" style={UI.commandButton(false, !canUndo)}>↶ <span className="command-bar-label">Undo</span></button>
+            <button type="button" title="Redo" aria-label="Redo" onClick={redo} disabled={!canRedo} className="studio-motion-button command-bar-button" style={UI.commandButton(false, !canRedo)}>↷ <span className="command-bar-label">Redo</span></button>
+          </div>
+
+          <div className="command-bar-group command-bar-publishing" aria-label="Publishing and organization" style={UI.commandGroup}>
+            <button type="button" title="Share" aria-label="Share" onClick={shareDesign} className="studio-motion-button command-bar-button command-bar-secondary" style={UI.commandButton()}>↗ <span className="command-bar-label">Share</span></button>
+            <button type="button" title="Export" aria-label="Export" onClick={exportDesign} className="studio-motion-button command-bar-button command-bar-secondary" style={UI.commandButton()}>⇩ <span className="command-bar-label">Export</span></button>
+            <button type="button" title="Add to Collection" aria-label="Add to Collection" aria-expanded={commandPopover === "collection"} onClick={() => toggleCommandPopover("collection")} className="studio-motion-button command-bar-button command-bar-secondary" style={UI.commandButton(commandPopover === "collection")}>♡ <span className="command-bar-label">Add to Collection</span></button>
+          </div>
+
+          <div className="command-bar-group" aria-label="Information" style={UI.commandGroup}>
+            <button type="button" title="Design Details" aria-label="Design Details" aria-expanded={commandPopover === "designDetails"} onClick={() => toggleCommandPopover("designDetails")} className="studio-motion-button command-bar-button" style={UI.commandButton(commandPopover === "designDetails")}>ⓘ <span className="command-bar-label">Design Details</span></button>
+            <div className="command-bar-overflow" style={UI.commandOverflow}>
+              <button type="button" title="More publishing actions" aria-label="More publishing actions" aria-expanded={commandPopover === "publishing"} onClick={() => toggleCommandPopover("publishing")} className="studio-motion-button command-bar-button" style={UI.commandButton(commandPopover === "publishing")}>•••</button>
+              {commandPopover === "publishing" && <div role="menu" style={UI.commandOverflowMenu}>
+                <button type="button" role="menuitem" onClick={shareDesign} style={UI.iconButton(false)}>Share</button>
+                <button type="button" role="menuitem" onClick={exportDesign} style={UI.iconButton(false)}>Export</button>
+                <button type="button" role="menuitem" onClick={() => setCommandPopover("collection")} style={UI.iconButton(false)}>Add to Collection</button>
+                <button type="button" role="menuitem" onClick={() => setCommandPopover("signatureLooks")} style={UI.iconButton(false)}>Signature Looks</button>
+              </div>}
+            </div>
+          </div>
           {commandPopover === "designDetails" && <CommandPopoverPortal><div data-artist-menu-root className="studio-popover-motion" style={UI.commandPopoverWide}>{renderDesignDetailsTools()}</div></CommandPopoverPortal>}
+          {commandPopover === "collection" && <CommandPopoverPortal><div data-artist-menu-root className="studio-popover-motion" style={UI.commandPopoverWide}><label data-testid="artist-command-collection" style={{ display: "grid", gap: 8 }}><strong>Add to Collection</strong><select aria-label="Collection assignment" value={collectionName} onChange={(e) => updateCollectionName(e.target.value)} style={S.input}>{COLLECTION_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}</select></label></div></CommandPopoverPortal>}
+          {commandPopover === "signatureLooks" && <CommandPopoverPortal><div data-artist-menu-root className="studio-popover-motion" style={UI.commandPopoverWide}>{renderSignatureLooksTools()}</div></CommandPopoverPortal>}
           {commandPopover === "nailBasics" && <CommandPopoverPortal><div data-artist-menu-root className="studio-popover-motion">{renderNailBasicsTools()}</div></CommandPopoverPortal>}
+          {commandPopover === "ribbonActions" && <CommandPopoverPortal><div data-artist-menu-root id="command-set-actions-popover" data-testid="command-set-actions-popover" className="studio-popover-motion" style={UI.commandPopover}>
+            <div style={UI.sectionTitle}>Set Actions</div>
+            <button type="button" onClick={() => duplicateActive("all")} style={UI.iconButton(false)}>Apply current design to all nails</button>
+            <button type="button" onClick={copyActiveNail} style={UI.iconButton(false)}>Copy current nail</button>
+            <button type="button" onClick={pasteToSelected} disabled={!clipboardNail} style={UI.iconButton(false, !clipboardNail)}>Paste to selected nails</button>
+            <button type="button" onClick={() => mirrorHand(currentHand)} style={UI.iconButton(false)}>Mirror current hand</button>
+            <button type="button" data-testid="command-french-tip-trigger" onClick={openFrenchTipQuickAccess} style={UI.iconButton(false)}>French Tip</button>
+          </div></CommandPopoverPortal>}
           {savedDesignsOpen && <CommandPopoverPortal><div data-artist-menu-root className="studio-popover-motion" style={UI.commandPopoverWide}>{renderSavedDesignsBrowser()}<button type="button" onClick={() => setSavedDesignsOpen(false)} style={UI.iconButton(false)}>Close</button></div></CommandPopoverPortal>}
-          {commandPopover === "ribbonActions" && (
-            <CommandPopoverPortal><div data-artist-menu-root id="command-set-actions-popover" data-testid="command-set-actions-popover" className="studio-popover-motion" style={UI.commandPopover}>
-              <div style={UI.sectionTitle}>Set Actions</div>
-              <button type="button" onClick={() => toggleCommandPopover("nailBasics")} className="studio-motion-button" style={UI.iconButton(false)}>Nail Basics</button>
-              <button type="button" onClick={() => duplicateActive("all")} className="studio-motion-button" style={UI.iconButton(false)}>Apply current design to all nails</button>
-              <button type="button" onClick={copyActiveNail} className="studio-motion-button" style={UI.iconButton(false)}>Copy current nail</button>
-              <button type="button" onClick={pasteToSelected} disabled={!clipboardNail} className="studio-motion-button" style={UI.iconButton(false, !clipboardNail)}>Paste to selected nails</button>
-              <button type="button" onClick={() => mirrorHand(currentHand)} className="studio-motion-button" style={UI.iconButton(false)}>Mirror current hand</button>
-              <button type="button" data-testid="command-french-tip-trigger" onClick={openFrenchTipQuickAccess} className="studio-motion-button" style={UI.iconButton(false)}>French Tip</button>
-            </div></CommandPopoverPortal>
-          )}
         </nav>
-        {false && (
-          <>
-            <button type="button" data-testid="command-set-actions-trigger">Set Actions</button>
-            <button type="button" data-testid="command-saved-designs-trigger">Saved Designs</button>
-            <div data-testid="command-saved-designs-popover">{renderSavedDesignsBrowser()}</div>
-            <button type="button" data-testid="command-signature-looks-trigger">Signature Looks</button>
-            <div data-testid="command-signature-looks-popover">{renderSignatureLooksTools()}</div>
-            <button type="button" data-testid="command-design-details-trigger">Design Details</button>
-            <div data-testid="command-design-details-popover">{renderDesignDetailsTools()}</div>
-            <button type="button" data-testid="command-nail-basics-trigger">Nail Basics™ Nail Shape Nail Length Nail Width Active Nail Current Hand Full Set</button>
-            <div data-testid="command-nail-basics-popover" style={UI.commandPopover} />
-            <div data-testid="command-french-tip-popover" data-canvas-safe-placement="left-creative-wall-anchor" style={UI.commandFrenchTipPopover} />
-          </>
-        )}
       </header>
 
       {isFocusMode && <div data-testid="focus-edge-tabs" aria-label="Focus Perspective panel tabs" style={UI.focusEdgeTabs}>
-        <button type="button" onClick={() => setDockMode("Single Nail")} style={UI.edgeTab}>Artist Toolkit</button>
+        <button type="button" onClick={() => setDockMode("Single Nail")} style={UI.edgeTab}>Nail Design Studio</button>
         <button type="button" onClick={() => setDockMode("Single Nail")} style={UI.edgeTab}>Nail Kit</button>
         <button type="button" onClick={() => setDockMode("Single Nail")} style={UI.edgeTab}>Design Layers</button>
       </div>}
@@ -2813,6 +2769,16 @@ function DesignStudio(_, ref) {
         aria-label="Nail Kit"
         style={UI.studioBar}
       >
+        <div data-artist-menu-root style={UI.commandGroup}>
+          <button type="button" data-testid="current-polish-bottle" aria-expanded={commandPopover === "polish"} aria-controls="command-polish-color-popover" onClick={openPolishRack} className="studio-current-polish" style={{ ...UI.currentPolishButton, minHeight: 40 }} aria-label="Open Polish Color controls for Current Polish Bottle">
+            <PolishBottle colorHex={activePolishColor} label={`Current Polish Bottle ${activePolishColor}`} selected size="medium" polishType={activePolish.polishType} />
+            <span style={UI.currentPolishText}>Current Polish Bottle™<strong style={UI.currentPolishMeta}>{activePolish.polishType} · {activePolishColor}</strong></span>
+          </button>
+          {commandPopover === "polish" && <CommandPopoverPortal><div id="command-polish-color-popover" data-testid="command-polish-color-popover" data-canvas-safe-placement="left-creative-library-anchor" data-artist-menu-root className="studio-popover-motion" style={UI.commandPolishPopover}>
+            {/* Canvas-safe marker: quick polish controls remain anchored to the Creative Library side. */}
+            <PolishColorControls compact value={draftPolish.colorHex} recentPolish={recentPolish} polishType={draftPolish.polishType} onRackSelect={applyRackPolish} onPolishTypeChange={(polishType) => setDraftPolish((prev) => ({ ...prev, polishType }))} onChange={(value) => setDraftPolish((prev) => ({ ...prev, colorHex: normalizeHex(value, prev.colorHex) }))} onApply={applyCurrentPolish} />
+          </div></CommandPopoverPortal>}
+        </div>
         {STUDIO_CARDS.map((studio) => (
           <StudioCard
             key={studio.id}

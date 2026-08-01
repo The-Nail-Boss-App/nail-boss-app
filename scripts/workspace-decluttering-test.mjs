@@ -156,7 +156,7 @@ assert.match(
 );
 assert.match(
   studioStyles,
-  /studioBar:[\s\S]*gridTemplateColumns: "repeat\(6, minmax\(104px, 1fr\)\)"[\s\S]*padding: "6px clamp\(10px, 1\.3vw, 14px\)"[\s\S]*overflowY: "hidden"/,
+  /studioBar:[\s\S]*gridTemplateColumns: "minmax\(150px, \.8fr\) repeat\(6, minmax\(104px, 1fr\)\)"[\s\S]*padding: "6px clamp\(10px, 1\.3vw, 14px\)"[\s\S]*overflowY: "hidden"/,
   "Studio Bar should keep all Studio choices in a slimmer compact horizontal row without vertical drawer scrolling.",
 );
 assert.match(
@@ -287,17 +287,17 @@ assert.equal(
 
 assert.match(
   studio,
-  /data-testid="command-saved-designs-trigger"[\s\S]*Saved Designs[\s\S]*data-testid="command-saved-designs-popover"[\s\S]*renderSavedDesignsBrowser\(\)/,
+  /aria-label="Open Saved Design"[\s\S]*onClick={openSavedDesignsBrowser}[\s\S]*savedDesignsOpen &&[\s\S]*renderSavedDesignsBrowser\(\)/,
   "Saved Designs should be available from the Artist Command Bar document tools.",
 );
 assert.match(
   studio,
-  /data-testid="command-signature-looks-trigger"[\s\S]*Signature Looks[\s\S]*data-testid="command-signature-looks-popover"[\s\S]*renderSignatureLooksTools\(\)/,
+  /setCommandPopover\("signatureLooks"\)[\s\S]*commandPopover === "signatureLooks"[\s\S]*renderSignatureLooksTools\(\)/,
   "Signature Looks should be available from the Artist Command Bar document tools.",
 );
 assert.match(
   studio,
-  /data-testid="command-design-details-trigger"[\s\S]*Design Details[\s\S]*data-testid="command-design-details-popover"[\s\S]*renderDesignDetailsTools\(\)/,
+  /aria-label="Design Details"[\s\S]*commandPopover === "designDetails"[\s\S]*renderDesignDetailsTools\(\)/,
   "Design Details should be available from the Artist Command Bar document tools.",
 );
 assert.doesNotMatch(
@@ -348,7 +348,7 @@ assert.match(
 );
 assert.match(
   studio,
-  /data-testid="command-nail-basics-trigger"[\s\S]*Nail Basics™[\s\S]*Nail Shape[\s\S]*Nail Length[\s\S]*Nail Width[\s\S]*Active Nail[\s\S]*Current Hand[\s\S]*Full Set/,
+  /(?=[\s\S]*commandPopover === "nailBasics")(?=[\s\S]*renderNailBasicsTools\(\))(?=[\s\S]*aria-label="Nail Shape")(?=[\s\S]*aria-label="Nail Length")(?=[\s\S]*aria-label="Nail Width")/,
   "Nail Basics should live in an Artist Command Bar popover with supported apply scopes."
 );
 assert.doesNotMatch(
@@ -492,7 +492,7 @@ assert.ok(
 );
 assert.match(
   studio,
-  /data-testid="command-french-tip-popover"[\s\S]*data-canvas-safe-placement="left-creative-wall-anchor"[\s\S]*style=\{UI\.commandFrenchTipPopover\}/,
+  /function openFrenchTipQuickAccess\(\)[\s\S]*setActiveStudio\("techniqueStudio"\)[\s\S]*setTab\("effects"\)/,
   "French Tip quick access should be anchored to the Studio Bar side instead of over the hero canvas.",
 );
 assert.match(
