@@ -6,7 +6,7 @@ jest.mock('./DesignStudio', () => {
   const React = require('react');
   return React.forwardRef((props, ref) => {
     React.useImperativeHandle(ref, () => ({ hasDirtyWork: () => false, prepareToLeave: () => true }));
-    return <div>Design Studio mock</div>;
+    return <header data-testid="artist-command-bar">Nail Design Studio mock</header>;
   });
 });
 jest.mock('./headquarters/Headquarters', () => () => <div>Headquarters mock</div>);
@@ -68,5 +68,21 @@ describe('App Nail Shop route', () => {
     ['Start shaping a public-facing Nail Shop', 'Ki Ki’s Nail Shop', 'Business Workspace', 'AnitaSet Atelier'].forEach((oldPlaceholderText) => {
       expect(container.textContent).not.toContain(oldPlaceholderText);
     });
+  });
+
+  it('uses dedicated Studio Mode and restores the shared room header after leaving', async () => {
+    await act(async () => root.render(<App />));
+
+    await clickByText('Enter AnitaSet');
+
+    const studioCommandBar = container.querySelector('[data-testid="artist-command-bar"]');
+    expect(studioCommandBar).toBeTruthy();
+    expect(studioCommandBar.parentElement.firstElementChild).toBe(studioCommandBar);
+    expect(container.textContent).not.toContain('Hey, Anita Artist');
+
+    await clickByText('Proposals');
+    expect(container.querySelector('[data-testid="artist-command-bar"]')).toBeFalsy();
+    expect(container.textContent).toContain('Hey, Anita Artist');
+    expect(container.textContent).toContain('Proposals');
   });
 });
