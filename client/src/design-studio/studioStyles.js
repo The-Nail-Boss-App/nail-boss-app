@@ -5,7 +5,7 @@ const ANITASET_STUDIO_SURFACE = "radial-gradient(circle at 22% 12%, rgba(255,255
 
 const LUXURY_TRANSITION = "transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease, background 180ms ease, color 180ms ease, opacity 180ms ease";
 
-// Artist Toolkit™ popovers share a fixed high z-index layer so quick controls are never clipped by the workspace.
+// Command Bar popovers share a fixed high z-index layer so quick controls are never clipped by the workspace.
 // commandPolishPopover and commandFrenchTipPopover keep quick controls away from the hero canvas.
 export const UI = {
   shell: {
@@ -25,22 +25,20 @@ export const UI = {
     flexWrap: "nowrap",
   },
   artistCommandBar: {
-    display: "grid",
-    gridTemplateColumns:
-      "minmax(0, .8fr) minmax(150px, .46fr) minmax(260px, .95fr)",
+    display: "flex",
     width: "100%",
     maxWidth: "100%",
     boxSizing: "border-box",
     overflowX: "clip",
-    gap: 6,
+    gap: 8,
     alignItems: "center",
     padding: "4px clamp(8px, 1vw, 12px)",
     borderBottom: "1px solid rgba(123,47,89,.14)",
     background: "linear-gradient(135deg, #3B1F35 0%, #7B2F59 52%, #F5C8E8 140%)",
     boxShadow: "0 12px 32px rgba(60,20,50,.07)",
-    flexWrap: "wrap",
+    flexWrap: "nowrap",
   },
-  commandIdentity: { minWidth: 0, maxWidth: "100%" },
+  commandIdentity: { minWidth: 150, display: "flex", alignItems: "center", gap: 7, flex: "0 1 235px" },
   commandLogo: {
     fontFamily: "Georgia, serif",
     fontSize: 18,
@@ -51,12 +49,12 @@ export const UI = {
     marginBottom: 3,
   },
   commandLogoImage: {
-    width: 72,
-    maxWidth: "48vw",
-    height: "auto",
+    width: 78,
+    height: 28,
+    objectFit: "contain",
     display: "block",
-    marginBottom: 3,
   },
+  commandTitle: { color: "#fffaf7", fontFamily: "Georgia, serif", fontSize: 15, fontWeight: 800, lineHeight: 1.05, whiteSpace: "nowrap" },
   commandDesignName: {
     width: "100%",
     maxWidth: "100%",
@@ -164,14 +162,21 @@ export const UI = {
     display: "flex",
     justifyContent: "flex-end",
     alignItems: "center",
-    gap: 6,
+    gap: 4,
+    minWidth: 0,
+    flex: 1,
     flexWrap: "nowrap",
   },
   commandGroup: {
     position: "relative",
     display: "inline-flex",
     alignItems: "center",
+    gap: 4,
+    paddingLeft: 6,
+    borderLeft: "1px solid rgba(255,255,255,.22)",
   },
+  commandOverflow: { position: "relative" },
+  commandOverflowMenu: { position: "absolute", top: "calc(100% + 7px)", right: 0, zIndex: 1200, display: "grid", gap: 5, minWidth: 190, padding: 8, borderRadius: 12, background: "#fffaf7", boxShadow: "0 18px 46px rgba(60,20,50,.24)" },
   commandPopover: {
     position: "fixed",
     top: 132,
@@ -229,8 +234,8 @@ export const UI = {
     background: active ? COLORS.roseDim : "rgba(255,255,255,.88)",
     color: disabled ? COLORS.textFaint : active ? COLORS.plum : COLORS.text,
     borderRadius: 13,
-    minHeight: 40,
-    padding: "7px 10px",
+    minHeight: 34,
+    padding: "5px 8px",
     fontSize: 11,
     fontWeight: 900,
     cursor: disabled ? "not-allowed" : "pointer",
@@ -346,7 +351,7 @@ export const UI = {
   },
   studioBar: {
     display: "grid",
-    gridTemplateColumns: "repeat(6, minmax(104px, 1fr))",
+    gridTemplateColumns: "minmax(150px, .8fr) repeat(6, minmax(104px, 1fr))",
     gap: 6,
     padding: "6px clamp(10px, 1.3vw, 14px)",
     borderBottom: "1px solid rgba(123,47,89,.12)",

@@ -1,7 +1,7 @@
 {
   "name": "nail-boss",
   "version": "1.0.0",
-  "description": "AnitaSet \u2014 design-first operating system for independent nail businesses",
+  "description": "AnitaSet — design-first operating system for independent nail businesses",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -13,7 +13,8 @@
     "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
     "install:all": "npm install && cd client && npm install",
     "db:migrate": "node scripts/migrate.js",
-    "test:blueprint-theme-builder": "node scripts/blueprint-theme-builder-test.mjs"
+    "test:blueprint-theme-builder": "node scripts/blueprint-theme-builder-test.mjs",
+    "test:design-studio": "node scripts/command-bar-v2-test.mjs && node scripts/polish-bottle-test.mjs && node scripts/workspace-decluttering-test.mjs && node scripts/founder-review-baseline-test.mjs && node tests/workflow-behavior-reality.test.mjs"
   },
   "dependencies": {
     "cors": "^2.8.5",

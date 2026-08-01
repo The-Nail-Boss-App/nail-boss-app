@@ -25,9 +25,8 @@ const requiredStudioContracts = [
   "Charm Studio™",
   "Top Coat Studio™",
   "Polish HEX",
-  "Save Version",
-  "Open Saved Designs",
-  "Product Template",
+  "Save Changes",
+  "Open Saved Design",
 ];
 
 for (const contract of requiredStudioContracts) {

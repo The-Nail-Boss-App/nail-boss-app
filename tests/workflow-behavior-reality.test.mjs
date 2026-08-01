@@ -45,7 +45,7 @@ assert.match(nailCanvasSource, /width: fit\.panEnabled \? "auto" : "100%"[\s\S]*
 assert.match(fullSetSource, /data-default-view="fit-all-ten"[\s\S]*gridTemplateRows: "repeat\(2, minmax\(0, 1fr\)\)"/, 'Full Set default view reserves bounded space for both rows');
 assert.equal((fullSetSource.match(/slots: (?:LEFT|RIGHT)_HAND_SLOTS/g) || []).length, 2, 'Full Set hero maps both five-nail hands');
 assert.match(thumbnailSource, /data-full-set-hero-nail[\s\S]*minHeight: 0[\s\S]*overflow: "hidden"/, 'each full-set nail scales inside its bounded grid cell');
-assert.match(studioSource, /data-testid="command-french-tip-popover"[\s\S]*style=\{UI\.commandFrenchTipPopover\}/, 'French Tip popover uses visible fixed layer above workspace');
+assert.match(studioSource, /function openFrenchTipQuickAccess\(\)[\s\S]*setActiveStudio\("techniqueStudio"\)/, 'French Tip quick access opens the visible Technique Studio panel');
 assert.match(nailCanvasSource, /patternColorSlots[\s\S]*pattern === "camo"[\s\S]*patternColorHex3[\s\S]*patternColorHex4/, 'camo pattern exposes more than two renderer-backed color slots');
 assert.match(nailCanvasSource, /const accent = colors\.patternColorHex3[\s\S]*const deep = colors\.patternColorHex4[\s\S]*fill=\{deep\}/, 'additional camo color slots affect rendered pattern data');
 assert.match(frenchTipSource, /patternColorHex3: data\.patternColorHex3[\s\S]*patternColorHex4: data\.patternColorHex4/, 'French Tip pattern fill passes through the same multi-color slots');
