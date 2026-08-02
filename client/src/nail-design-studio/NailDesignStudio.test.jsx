@@ -8,6 +8,11 @@ let container;
 let root;
 
 const click = async (element) => act(async () => element.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+const keyDown = async (element, key) => act(async () => element.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true })));
+const type = async (input, value) => act(async () => {
+  Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set.call(input, value);
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+});
 
 describe('new Nail Design Studio command bar', () => {
   beforeEach(async () => {
@@ -50,5 +55,20 @@ describe('new Nail Design Studio command bar', () => {
     expect(container.querySelector('button[aria-label="Saved"]').disabled).toBe(true);
     expect(container.querySelector('button[aria-label="Undo"]').disabled).toBe(true);
     expect(container.querySelector('button[aria-label="Redo"]').disabled).toBe(true);
+  });
+
+  it('renames the current design inline with Enter to save and Escape to cancel', async () => {
+    await click(container.querySelector('.nail-design-studio__design-name'));
+    let input = container.querySelector('input[aria-label="Rename design"]');
+    await type(input, 'Summer Chrome Collection');
+    await keyDown(input, 'Enter');
+    expect(container.querySelector('.nail-design-studio__design-name').textContent).toBe('Summer Chrome Collection');
+    expect(container.querySelector('button[aria-label="Save Changes"]')).toBeTruthy();
+
+    await click(container.querySelector('.nail-design-studio__design-name'));
+    input = container.querySelector('input[aria-label="Rename design"]');
+    await type(input, 'Cancelled name');
+    await keyDown(input, 'Escape');
+    expect(container.querySelector('.nail-design-studio__design-name').textContent).toBe('Summer Chrome Collection');
   });
 });
