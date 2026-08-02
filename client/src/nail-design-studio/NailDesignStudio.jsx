@@ -30,6 +30,19 @@ const ICON_PATHS = {
   info: 'M12 11v6M12 7h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z',
 };
 
+const COMPOSITIONS = [
+  { id: 'single', label: 'Single Nail', nails: 1 },
+  { id: 'left', label: 'Left Hand', nails: 5 },
+  { id: 'right', label: 'Right Hand', nails: 5 },
+  { id: 'full', label: 'Full Set', nails: 10 },
+];
+
+const WORKSPACE_SURFACES = [
+  { id: 'signature', label: 'Signature', src: '/assets/anitaset/design-studio/workspace-surfaces/signature-workspace.png' },
+  { id: 'cherry', label: 'Cherry Lacquer', src: '/assets/anitaset/design-studio/workspace-surfaces/cherry-lacquer-workspace.png' },
+  { id: 'kikis', label: "Kiki's", src: '/assets/anitaset/design-studio/workspace-surfaces/kikis-workspace.png' },
+];
+
 function CommandIcon({ name }) {
   return <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d={ICON_PATHS[name]} /></svg>;
 }
@@ -47,10 +60,37 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
   const [draftDesignName, setDraftDesignName] = useState(designName);
   const [activeToolId, setActiveToolId] = useState(TOOL_CATEGORIES[0].id);
   const [focusedToolIndex, setFocusedToolIndex] = useState(0);
+  const [composition, setComposition] = useState('single');
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [nailLength, setNailLength] = useState(55);
+  const [surface, setSurface] = useState(WORKSPACE_SURFACES[0].id);
+  const [leftPanelOpen, setLeftPanelOpen] = useState(true);
+  const [rightPanelOpen, setRightPanelOpen] = useState(true);
+  const [focusMode, setFocusMode] = useState(false);
   const cancelingRename = useRef(false);
   const toolRefs = useRef([]);
+  const drag = useRef(null);
 
   const activeTool = TOOL_CATEGORIES.find((tool) => tool.id === activeToolId) || TOOL_CATEGORIES[0];
+  const activeComposition = COMPOSITIONS.find((item) => item.id === composition) || COMPOSITIONS[0];
+  const activeSurface = WORKSPACE_SURFACES.find((item) => item.id === surface) || WORKSPACE_SURFACES[0];
+
+  const fitToView = () => { setZoom(1); setPan({ x: 0, y: 0 }); };
+  const changeComposition = (nextComposition) => { setComposition(nextComposition); fitToView(); };
+  const changeZoom = (amount) => setZoom((current) => Math.min(2.5, Math.max(1, Number((current + amount).toFixed(2)))));
+  const startPan = (event) => {
+    if (zoom <= 1 || event.button !== 0) return;
+    drag.current = { pointerId: event.pointerId, x: event.clientX, y: event.clientY, panX: pan.x, panY: pan.y };
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+  };
+  const movePan = (event) => {
+    if (!drag.current || drag.current.pointerId !== event.pointerId) return;
+    setPan({ x: drag.current.panX + event.clientX - drag.current.x, y: drag.current.panY + event.clientY - drag.current.y });
+  };
+  const stopPan = (event) => {
+    if (drag.current?.pointerId === event.pointerId) drag.current = null;
+  };
 
   useEffect(() => {
     toolRefs.current[focusedToolIndex]?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
@@ -214,13 +254,35 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
           })}
         </div>
       </nav>
-      <div className="nail-design-studio__workspace">
-        <aside id="creative-tools-panel" className="nail-design-studio__panel nail-design-studio__creative-tools" role="tabpanel" aria-labelledby={`nail-tool-${activeTool.id}`} tabIndex="0">
+      <div className={`nail-design-studio__workspace${leftPanelOpen && !focusMode ? '' : ' nail-design-studio__workspace--left-closed'}${rightPanelOpen && !focusMode ? '' : ' nail-design-studio__workspace--right-closed'}`}>
+        {!focusMode && <button type="button" className="nail-design-studio__panel-toggle nail-design-studio__panel-toggle--left" onClick={() => setLeftPanelOpen((open) => !open)} aria-expanded={leftPanelOpen} aria-controls="creative-tools-panel" aria-label={`${leftPanelOpen ? 'Collapse' : 'Expand'} creative tools panel`}>{leftPanelOpen ? '‹' : '›'}</button>}
+        {leftPanelOpen && !focusMode && <aside id="creative-tools-panel" className="nail-design-studio__panel nail-design-studio__creative-tools" role="tabpanel" aria-labelledby={`nail-tool-${activeTool.id}`} tabIndex="0">
           <div className="nail-design-studio__panel-heading" style={{ '--tool-accent': activeTool.accent }}><ToolIcon tool={activeTool} /><h2>{activeTool.label}</h2></div>
           <p className="nail-design-studio__placeholder-copy">The {activeTool.label} creative tools are scoped for construction in a future studio section.</p>
-        </aside>
-        <main className="nail-design-studio__desk" aria-label="Nail Desk"><h2>Nail Desk</h2><div className="nail-design-studio__desk-surface">New canvas construction area</div></main>
-        <aside className="nail-design-studio__panel" aria-label="Design properties panel"><h2>Design Properties</h2><p className="nail-design-studio__placeholder-copy">This is the new right workspace. The legacy panel stack is not mounted here.</p></aside>
+        </aside>}
+        <main className="nail-design-studio__desk" aria-label="Nail Desk">
+          <div className="nail-design-studio__desk-toolbar">
+            <h2>Nail Desk</h2>
+            <div className="nail-design-studio__view-controls" aria-label="Nail Desk view controls">
+              <button type="button" onClick={fitToView}>Fit to View</button>
+              <button type="button" onClick={() => changeZoom(-.25)} disabled={zoom === 1} aria-label="Zoom out">−</button>
+              <output aria-label="Zoom level">{Math.round(zoom * 100)}%</output>
+              <button type="button" onClick={() => changeZoom(.25)} disabled={zoom === 2.5} aria-label="Zoom in">+</button>
+              <button type="button" aria-pressed={focusMode} onClick={() => setFocusMode((focused) => !focused)}>Focus Mode</button>
+            </div>
+          </div>
+          <div className={`nail-design-studio__desk-surface${zoom > 1 ? ' is-pannable' : ''}`} style={{ backgroundImage: `url(${activeSurface.src})` }} onPointerDown={startPan} onPointerMove={movePan} onPointerUp={stopPan} onPointerCancel={stopPan} data-testid="nail-stage-container">
+            <div className={`nail-design-studio__nail-stage nail-design-studio__nail-stage--${composition}`} style={{ '--stage-zoom': zoom, '--stage-x': `${pan.x}px`, '--stage-y': `${pan.y}px`, '--nail-length': nailLength / 100 }} aria-label={`${activeComposition.label} nail stage`}>
+              {Array.from({ length: activeComposition.nails }, (_, index) => <div className="nail-design-studio__nail" data-testid="stage-nail" key={index}><span /></div>)}
+            </div>
+          </div>
+        </main>
+        {rightPanelOpen && !focusMode && <aside id="design-properties-panel" className="nail-design-studio__panel nail-design-studio__properties" aria-label="Design properties panel"><h2>Design Properties</h2>
+          <fieldset><legend>Composition</legend>{COMPOSITIONS.map((item) => <label key={item.id}><input type="radio" name="composition" value={item.id} checked={composition === item.id} onChange={() => changeComposition(item.id)} />{item.label}</label>)}</fieldset>
+          <label className="nail-design-studio__length-control" htmlFor="nail-length">Nail length <output>{nailLength}%</output></label><input id="nail-length" type="range" min="10" max="100" value={nailLength} onChange={(event) => setNailLength(Number(event.target.value))} />
+          <label className="nail-design-studio__surface-control" htmlFor="workspace-surface">Workspace surface</label><select id="workspace-surface" value={surface} onChange={(event) => setSurface(event.target.value)}>{WORKSPACE_SURFACES.map((item) => <option value={item.id} key={item.id}>{item.label}</option>)}</select>
+        </aside>}
+        {!focusMode && <button type="button" className="nail-design-studio__panel-toggle nail-design-studio__panel-toggle--right" onClick={() => setRightPanelOpen((open) => !open)} aria-expanded={rightPanelOpen} aria-controls="design-properties-panel" aria-label={`${rightPanelOpen ? 'Collapse' : 'Expand'} design properties panel`}>{rightPanelOpen ? '›' : '‹'}</button>}
       </div>
       <footer className="nail-design-studio__bottom-workspace"><strong>Workspace</strong><p className="nail-design-studio__placeholder-copy">Layers, history, assets, and view controls will be added to this new module in their approved construction order.</p></footer>
     </section>

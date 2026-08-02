@@ -164,3 +164,71 @@ describe('Founder-approved Nail Tool Kit', () => {
     expect([...studio.children].indexOf(ribbon)).toBe([...studio.children].indexOf(bar) + 1);
   });
 });
+
+describe('adaptive Nail Desk', () => {
+  beforeEach(async () => {
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    root = createRoot(container);
+    await act(async () => root.render(<NailDesignStudio />));
+  });
+
+  afterEach(() => {
+    act(() => root.unmount());
+    container.remove();
+  });
+
+  const button = (label) => [...container.querySelectorAll('button')].find((item) => item.textContent === label);
+
+  it('offers every composition and renders a full set as exactly ten nails', async () => {
+    expect(container.querySelectorAll('[data-testid="stage-nail"]')).toHaveLength(1);
+    const labels = [...container.querySelectorAll('fieldset label')].map((label) => label.textContent);
+    expect(labels).toEqual(['Single Nail', 'Left Hand', 'Right Hand', 'Full Set']);
+    await click(container.querySelector('input[value="full"]'));
+    expect(container.querySelector('[aria-label="Full Set nail stage"]')).toBeTruthy();
+    expect(container.querySelectorAll('[data-testid="stage-nail"]')).toHaveLength(10);
+    expect(container.querySelector('.nail-design-studio__nail-stage--full')).toBeTruthy();
+  });
+
+  it('shares zoom, fit, and pointer pan while composition changes reset the camera', async () => {
+    await click(container.querySelector('button[aria-label="Zoom in"]'));
+    expect(container.querySelector('output[aria-label="Zoom level"]').textContent).toBe('125%');
+    const surface = container.querySelector('[data-testid="nail-stage-container"]');
+    await act(async () => {
+      surface.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0, clientX: 20, clientY: 20 }));
+      surface.dispatchEvent(new MouseEvent('pointermove', { bubbles: true, clientX: 50, clientY: 45 }));
+    });
+    expect(container.querySelector('.nail-design-studio__nail-stage').style.getPropertyValue('--stage-x')).toBe('30px');
+    await click(container.querySelector('input[value="left"]'));
+    expect(container.querySelector('output[aria-label="Zoom level"]').textContent).toBe('100%');
+    expect(container.querySelector('.nail-design-studio__nail-stage').style.getPropertyValue('--stage-x')).toBe('0px');
+    expect(container.querySelectorAll('[data-testid="stage-nail"]')).toHaveLength(5);
+  });
+
+  it('expands into independently released panels and supports Focus Mode', async () => {
+    const workspace = container.querySelector('.nail-design-studio__workspace');
+    await click(container.querySelector('button[aria-label="Collapse creative tools panel"]'));
+    expect(workspace.classList.contains('nail-design-studio__workspace--left-closed')).toBe(true);
+    expect(container.querySelector('#creative-tools-panel')).toBeNull();
+    await click(container.querySelector('button[aria-label="Collapse design properties panel"]'));
+    expect(workspace.classList.contains('nail-design-studio__workspace--right-closed')).toBe(true);
+    await click(button('Focus Mode'));
+    expect(button('Focus Mode').getAttribute('aria-pressed')).toBe('true');
+    expect(container.querySelectorAll('.nail-design-studio__panel')).toHaveLength(0);
+  });
+
+  it('provides the full nail-length range and approved workspace surfaces', async () => {
+    const length = container.querySelector('#nail-length');
+    expect([length.min, length.max]).toEqual(['10', '100']);
+    await type(length, '100');
+    expect(container.querySelector('.nail-design-studio__nail-stage').style.getPropertyValue('--nail-length')).toBe('1');
+    const surface = container.querySelector('#workspace-surface');
+    expect([...surface.options].map((option) => option.textContent)).toEqual(['Signature', 'Cherry Lacquer', "Kiki's"]);
+    expect(container.querySelector('[data-testid="nail-stage-container"]').style.backgroundImage).toContain('/assets/anitaset/design-studio/workspace-surfaces/signature-workspace.png');
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(window.HTMLSelectElement.prototype, 'value').set.call(surface, 'kikis');
+      surface.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    expect(container.querySelector('[data-testid="nail-stage-container"]').style.backgroundImage).toContain('/assets/anitaset/design-studio/workspace-surfaces/kikis-workspace.png');
+  });
+});
