@@ -78,6 +78,9 @@
 .nail-design-studio__workspace--left-closed { grid-template-columns: 48px minmax(0, 1fr) minmax(230px, 290px); }
 .nail-design-studio__workspace--right-closed { grid-template-columns: minmax(210px, 260px) minmax(0, 1fr) 48px; }
 .nail-design-studio__workspace--left-closed.nail-design-studio__workspace--right-closed { grid-template-columns: 48px minmax(0, 1fr) 48px; }
+.nail-design-studio__workspace--focus { grid-template-columns: 0 minmax(0, 1fr) 0; gap: 0; padding-inline: 0; }
+.nail-design-studio__workspace--focus .nail-design-studio__panel { visibility: hidden; padding: 0; border: 0; }
+.nail-design-studio__workspace--focus .nail-design-studio__desk { border-radius: 0; border-inline: 0; }
 
 .nail-design-studio__panel,
 .nail-design-studio__desk,
@@ -101,8 +104,11 @@
 .nail-design-studio__desk-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-width: 0; padding: 0 2px 12px; }
 .nail-design-studio__desk-header p { margin: 5px 0 0; color: rgba(74,32,59,.58); font-size: 12px; font-weight: 700; }
 .nail-design-studio__composition-tabs { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
+.nail-design-studio__view-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
 .nail-design-studio__composition-tabs button { min-height: 34px; border: 1px solid var(--studio-border); border-radius: 999px; background: #fff; color: var(--studio-plum); padding: 0 12px; font-size: 12px; font-weight: 800; cursor: pointer; }
 .nail-design-studio__composition-tabs button.is-active { border-color: rgba(216,166,66,.7); background: linear-gradient(135deg, #4a203b, #7b355e); color: #fff; }
+.nail-design-studio__focus-button { min-height: 34px; border: 1px solid rgba(216,166,66,.65); border-radius: 999px; background: #fff8e8; color: var(--studio-plum); padding: 0 13px; font-size: 12px; font-weight: 900; cursor: pointer; }
+.nail-design-studio__focus-button[aria-pressed="true"] { background: var(--studio-gold); color: #2d1726; }
 
 .nail-stage {
   position: relative;
@@ -121,9 +127,9 @@
   touch-action: none;
   cursor: default;
 }
-.nail-stage--signature { background-image: linear-gradient(rgba(255,255,255,.06), rgba(255,255,255,.06)), url('/assets/anitaset/design-studio/workspace-surfaces/signature-workspace.png'); }
-.nail-stage--cherry-lacquer { background-color: #1d0c14; background-image: linear-gradient(rgba(24,5,13,.14), rgba(24,5,13,.14)), url('/assets/anitaset/design-studio/workspace-surfaces/cherry-lacquer-workspace.png'); }
-.nail-stage--kikis { background-color: #f0c968; background-image: linear-gradient(rgba(255,245,211,.08), rgba(255,245,211,.08)), url('/assets/anitaset/design-studio/workspace-surfaces/kikis-workspace.png'); }
+.nail-stage--signature { background-image: radial-gradient(circle at 20% 15%, rgba(255,255,255,.8), transparent 28%), repeating-linear-gradient(118deg, rgba(87,55,67,.04) 0 1px, transparent 1px 12px), linear-gradient(145deg, #f2ebe5, #d9cbc3); }
+.nail-stage--cherry-lacquer { background-color: #1d0c14; background-image: radial-gradient(circle at 72% 28%, rgba(158,39,82,.34), transparent 30%), linear-gradient(135deg, #160811, #4e122b 54%, #200912); }
+.nail-stage--kikis { background-color: #f0c968; background-image: radial-gradient(circle at 22% 20%, rgba(255,250,209,.74) 0 5%, transparent 6%), radial-gradient(circle at 78% 72%, rgba(157,31,80,.18) 0 9%, transparent 10%), linear-gradient(135deg, #f6de83, #e4a84b); }
 .nail-stage::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(circle at center, transparent 48%, rgba(29,12,23,.12) 100%); }
 .nail-stage__camera { position: absolute; inset: 0; display: grid; place-items: center; transform-origin: center; transition: transform 220ms cubic-bezier(.2,.75,.25,1); will-change: transform; }
 .nail-stage:active .nail-stage__camera { transition: none; }
@@ -174,4 +180,9 @@
   .nail-design-studio__brand { min-width: 200px; }
   .nail-design-studio__desk-header { align-items: flex-start; flex-direction: column; }
   .nail-design-studio__composition-tabs { justify-content: flex-start; }
+}
+
+/* Focus mode wins over every responsive and collapsed-panel column recipe. */
+.nail-design-studio__workspace.nail-design-studio__workspace--focus {
+  grid-template-columns: 0 minmax(0, 1fr) 0;
 }

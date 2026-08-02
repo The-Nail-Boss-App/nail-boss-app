@@ -49,6 +49,7 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [leftPanelOpen, setLeftPanelOpen] = useState(true);
   const [rightPanelOpen, setRightPanelOpen] = useState(true);
+  const [focusMode, setFocusMode] = useState(false);
   const [composition, setComposition] = useState('single');
   const [workspace, setWorkspace] = useState('signature');
   const [selectedNail, setSelectedNail] = useState('single');
@@ -178,7 +179,10 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
         {TOOL_CATEGORIES.map((tool) => <button key={tool} type="button">{tool}</button>)}
       </nav>
 
-      <div className={`nail-design-studio__workspace${leftPanelOpen ? '' : ' nail-design-studio__workspace--left-closed'}${rightPanelOpen ? '' : ' nail-design-studio__workspace--right-closed'}`}>
+      <div
+        className={`nail-design-studio__workspace${leftPanelOpen ? '' : ' nail-design-studio__workspace--left-closed'}${rightPanelOpen ? '' : ' nail-design-studio__workspace--right-closed'}${focusMode ? ' nail-design-studio__workspace--focus' : ''}`}
+        data-focus-mode={focusMode ? 'true' : 'false'}
+      >
         <aside className={`nail-design-studio__panel nail-design-studio__panel--left${leftPanelOpen ? '' : ' nail-design-studio__panel--collapsed'}`} aria-label="Creative tools panel">
           <button className="nail-design-studio__panel-toggle" type="button" onClick={() => setLeftPanelOpen((open) => !open)} aria-expanded={leftPanelOpen}>{leftPanelOpen ? '‹' : '›'}</button>
           {leftPanelOpen && <><h2>Creative Tools</h2><p className="nail-design-studio__placeholder-copy">Tool settings will open here without replacing the Nail Desk.</p></>}
@@ -187,8 +191,11 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
         <main className="nail-design-studio__desk" aria-label="Nail Desk">
           <div className="nail-design-studio__desk-header">
             <div><h2>Nail Desk</h2><p>{composition === 'full' ? 'Full Set' : COMPOSITIONS.find(([id]) => id === composition)?.[1]}</p></div>
-            <div className="nail-design-studio__composition-tabs" aria-label="Composition view">
-              {COMPOSITIONS.map(([id, label]) => <button key={id} type="button" className={composition === id ? 'is-active' : ''} onClick={() => setComposition(id)}>{label}</button>)}
+            <div className="nail-design-studio__view-actions">
+              <div className="nail-design-studio__composition-tabs" aria-label="Composition view">
+                {COMPOSITIONS.map(([id, label]) => <button key={id} type="button" className={composition === id ? 'is-active' : ''} aria-pressed={composition === id} onClick={() => setComposition(id)}>{label}</button>)}
+              </div>
+              <button type="button" className="nail-design-studio__focus-button" aria-label={focusMode ? 'Exit Focus Mode' : 'Focus Mode'} aria-pressed={focusMode} onClick={() => setFocusMode((focused) => !focused)}>{focusMode ? 'Exit Focus' : 'Focus Mode'}</button>
             </div>
           </div>
 
@@ -221,7 +228,8 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
               <button type="button" onClick={() => zoomBy(-0.1)} aria-label="Zoom out">−</button>
               <button type="button" onClick={resetCamera} className="nail-stage__zoom-readout">{Math.round(zoom * 100)}%</button>
               <button type="button" onClick={() => zoomBy(0.1)} aria-label="Zoom in">＋</button>
-              <button type="button" onClick={resetCamera}>Fit</button>
+              <button type="button" onClick={resetCamera} aria-label="Fit to View">Fit</button>
+              {focusMode && <button type="button" onClick={() => setFocusMode(false)} aria-label="Exit Focus Mode">Exit Focus</button>}
             </div>
           </section>
         </main>
