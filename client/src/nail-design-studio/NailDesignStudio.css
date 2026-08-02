@@ -15,6 +15,10 @@
   color: var(--studio-ink);
 }
 
+.nail-design-studio button,
+.nail-design-studio input,
+.nail-design-studio select { font: inherit; }
+
 .nail-design-studio__command-bar {
   display: flex;
   align-items: center;
@@ -27,49 +31,12 @@
   color: #fff;
 }
 
-.nail-design-studio__brand {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex: 0 0 auto;
-  min-width: 250px;
-}
-
-.nail-design-studio__brand img {
-  display: block;
-  width: 110px;
-  height: 38px;
-  object-fit: contain;
-}
-
-.nail-design-studio__brand h1 {
-  margin: 0;
-  font: 700 18px/1.05 Georgia, serif;
-  white-space: nowrap;
-}
-
-.nail-design-studio__command-groups {
-  display: flex;
-  align-items: stretch;
-  justify-content: flex-end;
-  gap: 10px;
-  min-width: 0;
-  flex: 1;
-}
-
-.nail-design-studio__command-group {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-  padding-left: 10px;
-  border-left: 1px solid rgba(255,255,255,.2);
-}
-
-.nail-design-studio__command-group:first-child {
-  padding-left: 0;
-  border-left: 0;
-}
+.nail-design-studio__brand { display: flex; align-items: center; gap: 12px; flex: 0 0 auto; min-width: 250px; }
+.nail-design-studio__brand img { display: block; width: 110px; height: 38px; object-fit: contain; }
+.nail-design-studio__brand h1 { margin: 0; font: 700 18px/1.05 Georgia, serif; white-space: nowrap; }
+.nail-design-studio__command-groups { display: flex; align-items: stretch; justify-content: flex-end; gap: 10px; min-width: 0; flex: 1; }
+.nail-design-studio__command-group { display: flex; align-items: center; gap: 6px; min-width: 0; padding-left: 10px; border-left: 1px solid rgba(255,255,255,.2); }
+.nail-design-studio__command-group:first-child { padding-left: 0; border-left: 0; }
 
 .nail-design-studio__command-button,
 .nail-design-studio__design-control {
@@ -82,91 +49,23 @@
   white-space: nowrap;
 }
 
-.nail-design-studio__command-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  padding: 0 11px;
-  cursor: pointer;
-}
-
+.nail-design-studio__command-button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 0 11px; cursor: pointer; }
 .nail-design-studio__command-button:hover:not(:disabled),
-.nail-design-studio__command-button:focus-visible {
-  background: rgba(255,255,255,.16);
-  border-color: rgba(255,255,255,.38);
-}
-
+.nail-design-studio__command-button:focus-visible { background: rgba(255,255,255,.16); border-color: rgba(255,255,255,.38); }
 .nail-design-studio__command-button:focus-visible,
-.nail-design-studio__design-control:focus-visible {
-  outline: 3px solid rgba(216,166,66,.55);
-  outline-offset: 2px;
-}
+.nail-design-studio__design-control:focus-visible { outline: 3px solid rgba(216,166,66,.55); outline-offset: 2px; }
+.nail-design-studio__command-button:disabled { opacity: .42; cursor: not-allowed; }
+.nail-design-studio__command-button--primary { border-color: rgba(216,166,66,.7); background: linear-gradient(135deg, #d8a642, #f2c971); color: #2d1726; }
 
-.nail-design-studio__command-button:disabled {
-  opacity: .42;
-  cursor: not-allowed;
-}
-
-.nail-design-studio__command-button--primary {
-  border-color: rgba(216,166,66,.7);
-  background: linear-gradient(135deg, #d8a642, #f2c971);
-  color: #2d1726;
-}
-
-.nail-design-studio__design-control {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  column-gap: 10px;
-  min-width: 150px;
-  max-width: 210px;
-  padding: 6px 10px;
-  text-align: left;
-  cursor: pointer;
-}
-
+.nail-design-studio__design-control { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: 10px; min-width: 150px; max-width: 210px; padding: 6px 10px; text-align: left; cursor: pointer; }
 .nail-design-studio__design-control small,
-.nail-design-studio__design-control strong {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
+.nail-design-studio__design-control strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nail-design-studio__design-control small { color: rgba(255,255,255,.62); font-size: 9px; letter-spacing: .1em; text-transform: uppercase; }
+.nail-design-studio__design-control strong { grid-column: 1; font-size: 12px; }
+.nail-design-studio__design-control span { grid-column: 2; grid-row: 1 / span 2; }
 
-.nail-design-studio__design-control small {
-  color: rgba(255,255,255,.62);
-  font-size: 9px;
-  letter-spacing: .1em;
-  text-transform: uppercase;
-}
-
-.nail-design-studio__design-control strong {
-  grid-column: 1;
-  font-size: 12px;
-}
-
-.nail-design-studio__design-control span {
-  grid-column: 2;
-  grid-row: 1 / span 2;
-}
-
-.nail-design-studio__tool-ribbon {
-  display: grid;
-  grid-template-columns: repeat(9, minmax(96px, 1fr));
-  gap: 7px;
-  padding: 8px 14px;
-  border-bottom: 1px solid var(--studio-border);
-  background: rgba(255,255,255,.88);
-}
-
-.nail-design-studio__tool-ribbon button {
-  min-height: 48px;
-  border: 1px solid var(--studio-border);
-  border-radius: 14px;
-  background: #fff;
-  color: var(--studio-plum);
-  font-weight: 800;
-}
+.nail-design-studio__tool-ribbon { display: grid; grid-template-columns: repeat(9, minmax(96px, 1fr)); gap: 7px; padding: 8px 14px; border-bottom: 1px solid var(--studio-border); background: rgba(255,255,255,.88); }
+.nail-design-studio__tool-ribbon button { min-height: 48px; border: 1px solid var(--studio-border); border-radius: 14px; background: #fff; color: var(--studio-plum); font-weight: 800; cursor: pointer; }
 
 .nail-design-studio__workspace {
   display: grid;
@@ -174,67 +73,92 @@
   gap: 12px;
   min-height: 0;
   padding: 12px;
+  transition: grid-template-columns 240ms ease;
 }
+.nail-design-studio__workspace--left-closed { grid-template-columns: 48px minmax(0, 1fr) minmax(230px, 290px); }
+.nail-design-studio__workspace--right-closed { grid-template-columns: minmax(210px, 260px) minmax(0, 1fr) 48px; }
+.nail-design-studio__workspace--left-closed.nail-design-studio__workspace--right-closed { grid-template-columns: 48px minmax(0, 1fr) 48px; }
+.nail-design-studio__workspace--focus { grid-template-columns: 0 minmax(0, 1fr) 0; gap: 0; padding-inline: 0; }
+.nail-design-studio__workspace--focus .nail-design-studio__panel { visibility: hidden; padding: 0; border: 0; }
+.nail-design-studio__workspace--focus .nail-design-studio__desk { border-radius: 0; border-inline: 0; }
 
 .nail-design-studio__panel,
 .nail-design-studio__desk,
-.nail-design-studio__bottom-workspace {
-  min-width: 0;
-  border: 1px solid var(--studio-border);
-  border-radius: 22px;
-  background: rgba(255,255,255,.86);
-  box-shadow: 0 18px 46px rgba(72, 32, 58, .08);
-}
-
-.nail-design-studio__panel {
-  padding: 18px;
-}
-
+.nail-design-studio__bottom-workspace { min-width: 0; border: 1px solid var(--studio-border); border-radius: 22px; background: rgba(255,255,255,.86); box-shadow: 0 18px 46px rgba(72, 32, 58, .08); }
+.nail-design-studio__panel { position: relative; padding: 18px; overflow: hidden; transition: padding 240ms ease; }
+.nail-design-studio__panel--collapsed { padding: 8px; }
 .nail-design-studio__panel h2,
-.nail-design-studio__desk h2 {
-  margin: 0;
-  color: var(--studio-plum);
-  font: 700 17px/1 Georgia, serif;
-}
+.nail-design-studio__desk h2 { margin: 0; color: var(--studio-plum); font: 700 17px/1 Georgia, serif; }
+.nail-design-studio__panel-toggle { position: absolute; top: 10px; z-index: 2; width: 30px; height: 30px; border: 1px solid var(--studio-border); border-radius: 50%; background: #fff; color: var(--studio-plum); font-size: 20px; cursor: pointer; }
+.nail-design-studio__panel--left .nail-design-studio__panel-toggle { right: 8px; }
+.nail-design-studio__panel--right .nail-design-studio__panel-toggle { left: 8px; }
+.nail-design-studio__panel--collapsed .nail-design-studio__panel-toggle { left: 8px; right: auto; }
+.nail-design-studio__placeholder-copy { margin: 12px 0 0; color: rgba(33,17,29,.58); font-size: 13px; line-height: 1.5; }
 
-.nail-design-studio__placeholder-copy {
-  margin: 12px 0 0;
-  color: rgba(33,17,29,.58);
-  font-size: 13px;
-  line-height: 1.5;
-}
+.nail-design-studio__field { display: grid; grid-template-columns: 1fr auto; gap: 10px; margin-top: 22px; color: var(--studio-plum); font-size: 13px; font-weight: 800; }
+.nail-design-studio__field input,
+.nail-design-studio__field select { grid-column: 1 / -1; width: 100%; }
+.nail-design-studio__field select { min-height: 38px; border: 1px solid var(--studio-border); border-radius: 10px; background: #fff; padding: 0 10px; }
 
-.nail-design-studio__desk {
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
-  padding: 18px;
+.nail-design-studio__desk { display: grid; grid-template-rows: auto minmax(0, 1fr); padding: 14px; overflow: hidden; }
+.nail-design-studio__desk-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-width: 0; padding: 0 2px 12px; }
+.nail-design-studio__desk-header p { margin: 5px 0 0; color: rgba(74,32,59,.58); font-size: 12px; font-weight: 700; }
+.nail-design-studio__composition-tabs { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
+.nail-design-studio__view-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.nail-design-studio__composition-tabs button { min-height: 34px; border: 1px solid var(--studio-border); border-radius: 999px; background: #fff; color: var(--studio-plum); padding: 0 12px; font-size: 12px; font-weight: 800; cursor: pointer; }
+.nail-design-studio__composition-tabs button.is-active { border-color: rgba(216,166,66,.7); background: linear-gradient(135deg, #4a203b, #7b355e); color: #fff; }
+.nail-design-studio__focus-button { min-height: 34px; border: 1px solid rgba(216,166,66,.65); border-radius: 999px; background: #fff8e8; color: var(--studio-plum); padding: 0 13px; font-size: 12px; font-weight: 900; cursor: pointer; }
+.nail-design-studio__focus-button[aria-pressed="true"] { background: var(--studio-gold); color: #2d1726; }
+
+.nail-stage {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 360px;
   overflow: hidden;
+  border: 1px solid rgba(216,166,66,.3);
+  border-radius: 22px;
+  background-color: #e8dfd7;
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+  box-shadow: inset 0 0 80px rgba(44,25,35,.08);
+  touch-action: none;
+  cursor: default;
 }
+.nail-stage--signature { background-image: radial-gradient(circle at 20% 15%, rgba(255,255,255,.8), transparent 28%), repeating-linear-gradient(118deg, rgba(87,55,67,.04) 0 1px, transparent 1px 12px), linear-gradient(145deg, #f2ebe5, #d9cbc3); }
+.nail-stage--cherry-lacquer { background-color: #1d0c14; background-image: radial-gradient(circle at 72% 28%, rgba(158,39,82,.34), transparent 30%), linear-gradient(135deg, #160811, #4e122b 54%, #200912); }
+.nail-stage--kikis { background-color: #f0c968; background-image: radial-gradient(circle at 22% 20%, rgba(255,250,209,.74) 0 5%, transparent 6%), radial-gradient(circle at 78% 72%, rgba(157,31,80,.18) 0 9%, transparent 10%), linear-gradient(135deg, #f6de83, #e4a84b); }
+.nail-stage::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(circle at center, transparent 48%, rgba(29,12,23,.12) 100%); }
+.nail-stage__camera { position: absolute; inset: 0; display: grid; place-items: center; transform-origin: center; transition: transform 220ms cubic-bezier(.2,.75,.25,1); will-change: transform; }
+.nail-stage:active .nail-stage__camera { transition: none; }
+.nail-stage__composition { width: min(92%, 980px); height: min(90%, 760px); display: grid; place-items: center; gap: 22px; }
+.nail-stage__composition--full { grid-template-rows: repeat(2, minmax(0, 1fr)); }
+.nail-stage__hand { width: 100%; min-height: 0; display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 8px; place-items: center; }
+.nail-stage__hand > strong { padding: 4px 12px; border-radius: 999px; background: rgba(255,255,255,.72); color: var(--studio-plum); box-shadow: 0 8px 22px rgba(46,25,36,.12); font-size: 11px; }
+.nail-stage__nail-row { width: 100%; min-height: 0; display: grid; grid-template-columns: repeat(5, minmax(52px, 1fr)); align-items: end; justify-items: center; gap: clamp(6px, 1.4vw, 18px); }
+.nail-stage__composition--single .nail-stage__nail-row { grid-template-columns: minmax(90px, 210px); justify-content: center; }
 
-.nail-design-studio__desk-surface {
-  display: grid;
-  place-items: center;
-  margin-top: 14px;
-  border: 1px solid rgba(216,166,66,.28);
-  border-radius: 20px;
-  background:
-    radial-gradient(circle at 50% 35%, rgba(255,255,255,.95), transparent 28%),
-    linear-gradient(135deg, #fffafc, #f5eaf1);
-  color: rgba(74,32,59,.44);
-  font-weight: 800;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-}
+.nail-stage__nail { min-width: 0; border: 0; background: transparent; color: var(--studio-plum); display: grid; place-items: center; gap: 6px; padding: 7px; cursor: pointer; border-radius: 18px; }
+.nail-stage__nail:focus-visible,
+.nail-stage__nail--selected { outline: 3px solid rgba(216,166,66,.76); outline-offset: 2px; background: rgba(255,255,255,.3); }
+.nail-stage__nail small { padding: 3px 7px; border-radius: 999px; background: rgba(255,255,255,.72); font-size: 9px; font-weight: 900; }
+.nail-stage__finger-tip { position: relative; display: block; width: clamp(42px, 5.2vw, 78px); height: clamp(72px, 9.8vw, 150px); border-radius: 48% 48% 34% 34% / 24% 24% 14% 14%; background: linear-gradient(90deg, #8f4e35 0%, #c77d5b 43%, #9e5a3f 100%); box-shadow: 0 16px 22px rgba(49,22,20,.25), inset 8px 0 14px rgba(255,224,205,.16), inset -9px 0 14px rgba(65,23,19,.18); }
+.nail-stage__editable-nail { position: absolute; left: 50%; top: 4%; width: 68%; height: calc(58% * var(--nail-length-scale)); transform: translateX(-50%); transform-origin: top center; border-radius: 48% 48% 18% 18% / 15% 15% 86% 86%; background: linear-gradient(100deg, rgba(255,255,255,.75) 0 8%, transparent 22%), linear-gradient(160deg, #f5b9d5, #8a2d64); border: 1px solid rgba(255,255,255,.65); box-shadow: 0 8px 13px rgba(50,13,37,.3), inset -8px 0 12px rgba(72,14,46,.18); }
+.nail-stage__composition--single .nail-stage__finger-tip { width: clamp(72px, 10vw, 132px); height: clamp(122px, 19vw, 250px); }
 
-.nail-design-studio__bottom-workspace {
-  margin: 0 12px 12px;
-  min-height: 76px;
-  padding: 14px 18px;
-}
+.nail-stage__controls { position: absolute; z-index: 3; left: 50%; bottom: 16px; transform: translateX(-50%); display: flex; align-items: center; gap: 5px; padding: 6px; border: 1px solid rgba(255,255,255,.68); border-radius: 999px; background: rgba(40,18,33,.82); box-shadow: 0 14px 34px rgba(25,8,18,.28); backdrop-filter: blur(12px); }
+.nail-stage__controls button { min-width: 34px; min-height: 34px; border: 0; border-radius: 999px; background: rgba(255,255,255,.1); color: #fff; font-weight: 900; cursor: pointer; }
+.nail-stage__controls button:hover,
+.nail-stage__controls button:focus-visible { background: rgba(255,255,255,.22); }
+.nail-stage__controls .nail-stage__zoom-readout { min-width: 58px; color: #f4ce78; }
 
-.nail-design-studio__bottom-workspace strong {
-  color: var(--studio-plum);
-}
+.nail-design-studio__bottom-workspace { margin: 0 12px 12px; min-height: 70px; padding: 12px 18px; }
+.nail-design-studio__bottom-workspace strong { color: var(--studio-plum); }
+.nail-design-studio__dialog-strip { margin-top: 10px; min-height: auto; }
+.nail-design-studio__dialog-strip label { display: flex; align-items: center; gap: 10px; margin-top: 8px; color: var(--studio-plum); font-weight: 800; }
+.nail-design-studio__dialog-strip input { min-height: 36px; border: 1px solid var(--studio-border); border-radius: 9px; padding: 0 10px; }
 
 @media (max-width: 1280px) {
   .nail-design-studio__command-bar { gap: 10px; padding-inline: 12px; }
@@ -243,6 +167,10 @@
   .nail-design-studio__command-group { gap: 4px; padding-left: 7px; }
   .nail-design-studio__command-button { padding-inline: 8px; }
   .nail-design-studio__tool-ribbon { grid-template-columns: repeat(9, minmax(84px, 1fr)); }
+  .nail-design-studio__workspace { grid-template-columns: 220px minmax(0,1fr) 240px; }
+  .nail-design-studio__workspace--left-closed { grid-template-columns: 48px minmax(0,1fr) 240px; }
+  .nail-design-studio__workspace--right-closed { grid-template-columns: 220px minmax(0,1fr) 48px; }
+  .nail-design-studio__workspace--left-closed.nail-design-studio__workspace--right-closed { grid-template-columns: 48px minmax(0,1fr) 48px; }
 }
 
 @media (max-width: 1120px) {
@@ -250,4 +178,11 @@
   .nail-design-studio__command-button { min-width: 42px; padding-inline: 8px; }
   .nail-design-studio__design-control { min-width: 135px; max-width: 160px; }
   .nail-design-studio__brand { min-width: 200px; }
+  .nail-design-studio__desk-header { align-items: flex-start; flex-direction: column; }
+  .nail-design-studio__composition-tabs { justify-content: flex-start; }
+}
+
+/* Focus mode wins over every responsive and collapsed-panel column recipe. */
+.nail-design-studio__workspace.nail-design-studio__workspace--focus {
+  grid-template-columns: 0 minmax(0, 1fr) 0;
 }
