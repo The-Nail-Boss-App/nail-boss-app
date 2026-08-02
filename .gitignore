@@ -13,3 +13,8 @@ client/build/
 # Local task preview artifacts
 screenshots/command-bar-desktop.png
 screenshots/command-bar-narrow-desktop.png
+
+# Local Founder Tool Kit browser review captures
+/client/toolkit-review-1440x900.png
+/client/toolkit-review-1280x800.png
+/client/toolkit-review-1100x800.png
