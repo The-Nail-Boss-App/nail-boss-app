@@ -1,4 +1,4 @@
-import { forwardRef, useImperativeHandle, useState } from 'react';
+import { forwardRef, useImperativeHandle, useRef, useState } from 'react';
 import './NailDesignStudio.css';
 
 const TOOL_CATEGORIES = [
@@ -13,74 +13,88 @@ const ICON_PATHS = {
   save: 'M5 4h12l2 2v14H5zM8 4v6h8V4M8 20v-7h8v7',
   undo: 'm9 7-5 5 5 5M5 12h8a6 6 0 0 1 6 6',
   redo: 'm15 7 5 5-5 5M19 12h-8a6 6 0 0 0-6 6',
-  share: 'M14 5h5v5M19 5l-8 8M19 13v6H5V7h6',
+  share: 'M18 8a3 3 0 1 0-2.8-4M6 15a3 3 0 1 0 0 6 3 3 0 0 0 0-6Zm12-2a3 3 0 1 0 0 6 3 3 0 0 0 0-6ZM8.7 16.4l6.6-3.8M8.7 7.6l6.6 3.8',
   export: 'M12 4v11m-4-4 4 4 4-4M5 19h14',
   collection: 'M20 9c0 5-8 10-8 10S4 14 4 9a4 4 0 0 1 7-2.6L12 8l1-1.6A4 4 0 0 1 20 9Z',
   info: 'M12 11v6M12 7h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z',
 };
 
 function CommandIcon({ name }) {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-      <path d={ICON_PATHS[name]} />
-    </svg>
-  );
+  return <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d={ICON_PATHS[name]} /></svg>;
 }
 
 const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
   const [designName, setDesignName] = useState('Untitled Design');
   const [dirty, setDirty] = useState(false);
+  const [saveState, setSaveState] = useState('Saved');
+  const [history, setHistory] = useState([]);
+  const [future, setFuture] = useState([]);
   const [savedDesignsOpen, setSavedDesignsOpen] = useState(false);
   const [collectionOpen, setCollectionOpen] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [isRenaming, setIsRenaming] = useState(false);
   const [draftDesignName, setDraftDesignName] = useState(designName);
+  const cancelingRename = useRef(false);
 
   useImperativeHandle(ref, () => ({
     hasDirtyWork: () => dirty,
     prepareToLeave: async () => !dirty || window.confirm('You have unsaved Nail Design Studio work. Leave anyway?'),
   }), [dirty]);
 
+  const applyName = (nextName) => {
+    if (nextName === designName) return;
+    setHistory((items) => [...items, designName]);
+    setFuture([]);
+    setDesignName(nextName);
+    setDirty(true);
+    setSaveState('Save Changes');
+  };
   const newDesign = () => {
     if (dirty && !window.confirm('Start a new design and discard unsaved changes?')) return;
-    setDesignName('Untitled Design');
-    setDirty(false);
+    setDesignName('Untitled Design'); setHistory([]); setFuture([]); setDirty(false); setSaveState('Save');
   };
-  const openSavedDesigns = () => setSavedDesignsOpen((open) => !open);
-  const duplicateDesign = () => {
-    setDesignName((name) => `${name || 'Untitled Design'} Copy`);
-    setDirty(true);
+  const duplicateDesign = () => applyName(`${designName || 'Untitled Design'} Copy`.slice(0, 64));
+  const saveDesign = () => {
+    if (!dirty || saveState === 'Saving…') return;
+    setSaveState('Saving…');
+    window.setTimeout(() => { setDirty(false); setSaveState('Saved'); }, 150);
   };
-  const saveDesign = () => setDirty(false);
-  const beginRename = () => {
-    setDraftDesignName(designName);
-    setIsRenaming(true);
+  const undo = () => {
+    if (!history.length) return;
+    const previous = history[history.length - 1];
+    setHistory((items) => items.slice(0, -1)); setFuture((items) => [designName, ...items]);
+    setDesignName(previous); setDirty(true); setSaveState('Save Changes');
   };
-  const cancelRename = () => {
-    setDraftDesignName(designName);
-    setIsRenaming(false);
+  const redo = () => {
+    if (!future.length) return;
+    const next = future[0];
+    setFuture((items) => items.slice(1)); setHistory((items) => [...items, designName]);
+    setDesignName(next); setDirty(true); setSaveState('Save Changes');
   };
+  const beginRename = () => { setDraftDesignName(designName); setIsRenaming(true); };
+  const cancelRename = () => { cancelingRename.current = true; setDraftDesignName(designName); setIsRenaming(false); };
   const commitRename = () => {
+    if (cancelingRename.current) { cancelingRename.current = false; return; }
     const nextName = draftDesignName.trim();
-    if (nextName && nextName !== designName) {
-      setDesignName(nextName);
-      setDirty(true);
-    }
+    if (nextName) applyName(nextName.slice(0, 64));
     setIsRenaming(false);
+  };
+  const shareDesign = async () => {
+    const data = { title: designName, text: `Nail Design Studio design: ${designName}`, url: window.location.href };
+    if (navigator.share) await navigator.share(data);
+    else if (navigator.clipboard) await navigator.clipboard.writeText(window.location.href);
+  };
+  const exportDesign = () => {
+    const blob = new Blob([JSON.stringify({ name: designName }, null, 2)], { type: 'application/json' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob); link.download = `${designName.replace(/[^a-z0-9]+/gi, '-').toLowerCase() || 'nail-design'}.json`;
+    link.click(); URL.revokeObjectURL(link.href);
   };
 
   const command = (label, icon, onClick, options = {}) => (
-    <button
-      key={label}
-      type="button"
-      className={`nail-design-studio__command-button${options.primary ? ' nail-design-studio__command-button--primary' : ''}`}
-      onClick={onClick}
-      disabled={options.disabled}
-      aria-label={options.ariaLabel || label}
-      title={options.ariaLabel || label}
-    >
-      <CommandIcon name={icon} />
-      <span>{label}</span>
+    <button key={options.ariaLabel || label} type="button" className="nail-design-studio__command-button"
+      onClick={onClick} disabled={options.disabled} aria-label={options.ariaLabel || label} title={options.ariaLabel || label}>
+      <CommandIcon name={icon} /><span>{label}</span>
       {options.status && <i className="nail-design-studio__command-status" aria-hidden="true" />}
     </button>
   );
@@ -88,75 +102,54 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
   return (
     <section className="nail-design-studio" data-testid="new-nail-design-studio" aria-label="Nail Design Studio">
       <header className="nail-design-studio__command-bar" data-testid="nail-design-studio-command-bar">
-        <div className="nail-design-studio__brand">
-          <img src="/anitaset-logo-main.png" alt="AnitaSet" />
-          <span className="nail-design-studio__brand-divider" aria-hidden="true" />
-          <h1>Nail Design Studio<sup>™</sup></h1>
+        <div className="nail-design-studio__brand" aria-label="Nail Design Studio">
+          <h1><span>Nail</span><span>Design Studio<sup>™</sup></span></h1>
         </div>
 
-        <div className="nail-design-studio__command-groups">
-          <section className="nail-design-studio__command-group nail-design-studio__command-group--design" aria-label="Design">
-            <h2>Design</h2>
-            <div className="nail-design-studio__command-row">
-              {command('New', 'new', newDesign, { ariaLabel: 'New Design' })}
-              {command('Open', 'open', openSavedDesigns, { ariaLabel: 'Open Saved Design' })}
-              <div className="nail-design-studio__design-control">
-                <button type="button" className="nail-design-studio__design-selector" onClick={openSavedDesigns}
-                  aria-label={`Current Design: ${designName}`} title={`Current Design: ${designName}`} aria-haspopup="dialog" aria-expanded={savedDesignsOpen}>
-                  <small>Current Design</small><span aria-hidden="true">⌄</span>
-                </button>
-                {isRenaming ? (
-                  <input
-                    className="nail-design-studio__design-name-input"
-                    value={draftDesignName}
-                    onChange={(event) => setDraftDesignName(event.target.value)}
-                    onBlur={commitRename}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter') commitRename();
-                      if (event.key === 'Escape') cancelRename();
-                    }}
-                    aria-label="Rename design"
-                    autoFocus
-                  />
-                ) : (
-                  <button type="button" className="nail-design-studio__design-name" onClick={beginRename} title="Click to rename design">
-                    {designName}
-                  </button>
-                )}
-              </div>
-              {command('Duplicate', 'duplicate', duplicateDesign)}
-              {command(dirty ? 'Save Changes' : 'Saved', 'save', saveDesign, {
-                primary: dirty, disabled: !dirty, ariaLabel: dirty ? 'Save Changes' : 'Saved', status: dirty,
-              })}
-            </div>
-          </section>
+        <section className="nail-design-studio__command-group nail-design-studio__command-group--design" aria-label="Design">
+          <h2>Design</h2><div className="nail-design-studio__command-row">
+            {command('New', 'new', newDesign, { ariaLabel: 'New Design' })}
+            {command('Open', 'open', () => setSavedDesignsOpen(true), { ariaLabel: 'Open Saved Designs' })}
+            {command('Duplicate', 'duplicate', duplicateDesign)}
+            {command(saveState, 'save', saveDesign, { disabled: !dirty || saveState === 'Saving…', status: dirty, ariaLabel: saveState })}
+          </div>
+        </section>
 
-          <section className="nail-design-studio__command-group" aria-label="Edit">
-            <h2>Edit</h2><div className="nail-design-studio__command-row">
-              {command('Undo', 'undo', () => {}, { disabled: true })}
-              {command('Redo', 'redo', () => {}, { disabled: true })}
-            </div>
-          </section>
+        <section className="nail-design-studio__design-control" aria-label="Current Design">
+          <small>Current Design</small>
+          <div className="nail-design-studio__design-name-row">
+            {isRenaming ? <input className="nail-design-studio__design-name-input" value={draftDesignName} maxLength={64}
+              onChange={(event) => setDraftDesignName(event.target.value)} onBlur={commitRename}
+              onKeyDown={(event) => { if (event.key === 'Enter') event.currentTarget.blur(); if (event.key === 'Escape') cancelRename(); }}
+              aria-label="Rename design" autoFocus />
+              : <button type="button" className="nail-design-studio__design-name" onClick={beginRename}
+                aria-label={`Rename current design: ${designName}`} title="Click to rename design">{designName}</button>}
+            <button type="button" className="nail-design-studio__design-menu" onClick={() => setSavedDesignsOpen(true)}
+              aria-label="Open current design menu" title="Open current design menu" aria-haspopup="dialog" aria-expanded={savedDesignsOpen}>⌄</button>
+          </div>
+        </section>
 
-          <section className="nail-design-studio__command-group nail-design-studio__command-group--publish" aria-label="Publish">
-            <h2>Publish</h2><div className="nail-design-studio__command-row">
-              {command('Share', 'share', () => {})}
-              {command('Export', 'export', () => {})}
-              {command('Add to Collection', 'collection', () => setCollectionOpen((open) => !open))}
-            </div>
-          </section>
-
-          <section className="nail-design-studio__command-group" aria-label="Info">
-            <h2>Info</h2><div className="nail-design-studio__command-row">
-              {command('Design Details', 'info', () => setDetailsOpen((open) => !open))}
-            </div>
-          </section>
-        </div>
+        <section className="nail-design-studio__command-group nail-design-studio__command-group--edit" aria-label="Edit">
+          <h2>Edit</h2><div className="nail-design-studio__command-row">
+            {command('Undo', 'undo', undo, { disabled: !history.length })}{command('Redo', 'redo', redo, { disabled: !future.length })}
+          </div>
+        </section>
+        <section className="nail-design-studio__command-group nail-design-studio__command-group--publish" aria-label="Publish">
+          <h2>Publish</h2><div className="nail-design-studio__command-row">
+            {command('Share', 'share', shareDesign)}{command('Export', 'export', exportDesign)}
+            {command('Add to Collection', 'collection', () => setCollectionOpen(true))}
+          </div>
+        </section>
+        <section className="nail-design-studio__command-group nail-design-studio__command-group--info" aria-label="Info">
+          <h2>Info</h2><div className="nail-design-studio__command-row">
+            {command('Design Details', 'info', () => setDetailsOpen(true))}
+          </div>
+        </section>
       </header>
 
-      {savedDesignsOpen && <div role="dialog" aria-label="Saved Designs" className="nail-design-studio__bottom-workspace"><strong>Saved Designs</strong><p className="nail-design-studio__placeholder-copy">The new Saved Designs library will be connected during its dedicated construction section.</p></div>}
-      {collectionOpen && <div role="dialog" aria-label="Add to Collection" className="nail-design-studio__bottom-workspace"><strong>Add to Collection</strong><p className="nail-design-studio__placeholder-copy">Collection organization will connect to the permanent workspace without reusing the legacy studio layout.</p></div>}
-      {detailsOpen && <div role="dialog" aria-label="Design Details" className="nail-design-studio__bottom-workspace"><strong>Design Details</strong><label>Design name<input value={designName} onChange={(event) => { setDesignName(event.target.value); setDirty(true); }} /></label></div>}
+      {savedDesignsOpen && <div role="dialog" aria-label="Saved Designs" className="nail-design-studio__bottom-workspace"><strong>Saved Designs</strong><button type="button" onClick={() => setSavedDesignsOpen(false)} aria-label="Close Saved Designs">Close</button><p className="nail-design-studio__placeholder-copy">The new Saved Designs library will be connected during its dedicated construction section.</p></div>}
+      {collectionOpen && <div role="dialog" aria-label="Add to Collection" className="nail-design-studio__bottom-workspace"><strong>Add to Collection</strong><button type="button" onClick={() => setCollectionOpen(false)} aria-label="Close Add to Collection">Close</button><p className="nail-design-studio__placeholder-copy">Collection organization will connect to the permanent workspace without reusing the legacy studio layout.</p></div>}
+      {detailsOpen && <div role="dialog" aria-label="Design Details" className="nail-design-studio__bottom-workspace"><strong>Design Details</strong><button type="button" onClick={() => setDetailsOpen(false)} aria-label="Close Design Details">Close</button><label>Design name<input value={designName} maxLength={64} onChange={(event) => applyName(event.target.value)} /></label></div>}
 
       <nav className="nail-design-studio__tool-ribbon" aria-label="Nail design tools">
         {TOOL_CATEGORIES.map((tool) => <button key={tool} type="button">{tool}</button>)}
