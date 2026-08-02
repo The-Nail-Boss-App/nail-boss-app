@@ -102,21 +102,117 @@
 @media (prefers-reduced-motion: reduce) { .nail-design-studio__command-button { transition: none; } }
 
 .nail-design-studio__tool-ribbon {
-  display: grid;
-  grid-template-columns: repeat(9, minmax(96px, 1fr));
-  gap: 7px;
-  padding: 8px 14px;
-  border-bottom: 1px solid var(--studio-border);
-  background: rgba(255,255,255,.88);
+  box-sizing: border-box;
+  display: block;
+  width: 100%;
+  height: 48px;
+  min-width: 0;
+  padding: 6px 22px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  border-top: 1px solid rgba(255, 255, 255, .04);
+  border-bottom: 1px solid rgba(104, 183, 255, .14);
+  border-radius: 0;
+  background: #090909;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, .2);
+  scrollbar-width: none;
+  overscroll-behavior-inline: contain;
 }
 
-.nail-design-studio__tool-ribbon button {
-  min-height: 48px;
-  border: 1px solid var(--studio-border);
-  border-radius: 14px;
-  background: #fff;
-  color: var(--studio-plum);
-  font-weight: 800;
+.nail-design-studio__tool-ribbon::-webkit-scrollbar { display: none; }
+
+.nail-design-studio__tool-list {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 7px;
+  width: max-content;
+  min-width: 100%;
+  height: 36px;
+  flex-wrap: nowrap;
+}
+
+.nail-design-studio__tool {
+  box-sizing: border-box;
+  display: inline-flex;
+  position: relative;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  height: 36px;
+  min-width: 0;
+  padding: 0 13px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #dedade;
+  font: 600 12px/1 'DM Sans', system-ui, sans-serif;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color 150ms ease, background-color 150ms ease, filter 150ms ease;
+}
+
+.nail-design-studio__tool svg,
+.nail-design-studio__panel-heading svg {
+  width: 17px;
+  height: 17px;
+  flex: 0 0 17px;
+  fill: none;
+  stroke: var(--tool-accent);
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.nail-design-studio__tool i {
+  position: absolute;
+  right: 10px;
+  bottom: 1px;
+  left: 10px;
+  height: 2px;
+  border-radius: 2px;
+  background: transparent;
+}
+
+.nail-design-studio__tool:hover {
+  background: color-mix(in srgb, var(--tool-accent) 10%, transparent);
+  color: #fff;
+  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--tool-accent) 42%, transparent));
+}
+
+.nail-design-studio__tool[aria-selected="true"] {
+  background: color-mix(in srgb, var(--tool-accent) 14%, #0d0d0d);
+  color: #fff;
+  filter: drop-shadow(0 0 5px color-mix(in srgb, var(--tool-accent) 48%, transparent));
+}
+
+.nail-design-studio__tool[aria-selected="true"] i {
+  background: var(--tool-accent);
+  box-shadow: 0 0 5px var(--tool-accent);
+}
+
+.nail-design-studio__tool:focus-visible {
+  outline: 2px solid var(--tool-accent);
+  outline-offset: -2px;
+}
+
+.nail-design-studio__tool:disabled {
+  color: #706d70;
+  cursor: not-allowed;
+  filter: none;
+}
+
+.nail-design-studio__panel-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+@media (max-width: 1280px) {
+  .nail-design-studio__tool-ribbon { padding-inline: 18px; }
+  .nail-design-studio__tool-list { gap: 5px; }
+  .nail-design-studio__tool { padding-inline: 11px; }
 }
 
 .nail-design-studio__workspace {
@@ -185,4 +281,8 @@
 
 .nail-design-studio__bottom-workspace strong {
   color: var(--studio-plum);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nail-design-studio__tool { transition: none; }
 }

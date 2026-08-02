@@ -1,10 +1,21 @@
-import { forwardRef, useImperativeHandle, useRef, useState } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import './NailDesignStudio.css';
 
 const TOOL_CATEGORIES = [
-  'Polish', 'Technique', 'Brush', 'Sticker Studio™', 'Charm Studio™',
-  'Gems', 'Effects', '3D Objects', 'Top Coat',
+  { id: 'polish', label: 'Polish', accent: '#FF2DA0', icon: 'M8 3h8v4l2 3v11H6V10l2-3V3Zm0 8h10M10 3v4h4V3' },
+  { id: 'technique', label: 'Technique', accent: '#F5C04A', icon: 'm4 20 3.5-1 10-10-2.5-2.5-10 10L4 20Zm12-15 1.5-1.5 3 3L19 8' },
+  { id: 'brush', label: 'Brush', accent: '#FF7A45', icon: 'M14 4 20 2l-2 6-8 8M10 16c0 3-2 5-6 5 1-1 0-4 2-6 1-1 3-1 4 1Z' },
+  { id: 'sticker-studio', label: 'Sticker Studio™', accent: '#B96CFF', icon: 'M5 4h11l3 3v11a2 2 0 0 1-2 2H5V4Zm11 0v4h4M8 12h8M8 16h5' },
+  { id: 'charm-studio', label: 'Charm Studio™', accent: '#34E5F2', icon: 'M12 3v4m-4-2h8m-4 2 6 5-6 9-6-9 6-5Zm0 4v6m-3-3h6' },
+  { id: 'gems', label: 'Gems', accent: '#68B7FF', icon: 'm4 9 4-5h8l4 5-8 11L4 9Zm0 0h16M8 4l4 5 4-5m-4 5v11' },
+  { id: 'effects', label: 'Effects', accent: '#C8FF4A', icon: 'm12 3 1.3 4.2L17 9l-3.7 1.8L12 15l-1.3-4.2L7 9l3.7-1.8L12 3ZM19 15l.7 2.3L22 18l-2.3.7L19 21l-.7-2.3L16 18l2.3-.7L19 15ZM5 3l.7 2.3L8 6l-2.3.7L5 9l-.7-2.3L2 6l2.3-.7L5 3Z' },
+  { id: '3d-objects', label: '3D Objects', accent: '#22F0C7', icon: 'm12 3 8 4.5v9L12 21l-8-4.5v-9L12 3Zm0 9 8-4.5M12 12 4 7.5M12 12v9' },
+  { id: 'top-coat', label: 'Top Coat', accent: '#FF6FCF', icon: 'M12 3s6 7 6 12a6 6 0 0 1-12 0c0-5 6-12 6-12Zm-3 12a3 3 0 0 0 3 3' },
 ];
+
+function ToolIcon({ tool }) {
+  return <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d={tool.icon} /></svg>;
+}
 
 const ICON_PATHS = {
   new: 'M12 5v14M5 12h14',
@@ -34,7 +45,36 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [isRenaming, setIsRenaming] = useState(false);
   const [draftDesignName, setDraftDesignName] = useState(designName);
+  const [activeToolId, setActiveToolId] = useState(TOOL_CATEGORIES[0].id);
+  const [focusedToolIndex, setFocusedToolIndex] = useState(0);
   const cancelingRename = useRef(false);
+  const toolRefs = useRef([]);
+
+  const activeTool = TOOL_CATEGORIES.find((tool) => tool.id === activeToolId) || TOOL_CATEGORIES[0];
+
+  useEffect(() => {
+    toolRefs.current[focusedToolIndex]?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
+  }, [focusedToolIndex, activeToolId]);
+
+  const focusTool = (index) => {
+    setFocusedToolIndex(index);
+    toolRefs.current[index]?.focus();
+  };
+
+  const handleToolKeyDown = (event, index) => {
+    let nextIndex;
+    if (event.key === 'ArrowLeft') nextIndex = (index - 1 + TOOL_CATEGORIES.length) % TOOL_CATEGORIES.length;
+    if (event.key === 'ArrowRight') nextIndex = (index + 1) % TOOL_CATEGORIES.length;
+    if (event.key === 'Home') nextIndex = 0;
+    if (event.key === 'End') nextIndex = TOOL_CATEGORIES.length - 1;
+    if (nextIndex !== undefined) {
+      event.preventDefault();
+      focusTool(nextIndex);
+    } else if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      setActiveToolId(TOOL_CATEGORIES[index].id);
+    }
+  };
 
   useImperativeHandle(ref, () => ({
     hasDirtyWork: () => dirty,
@@ -151,11 +191,34 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
       {collectionOpen && <div role="dialog" aria-label="Add to Collection" className="nail-design-studio__bottom-workspace"><strong>Add to Collection</strong><button type="button" onClick={() => setCollectionOpen(false)} aria-label="Close Add to Collection">Close</button><p className="nail-design-studio__placeholder-copy">Collection organization will connect to the permanent workspace without reusing the legacy studio layout.</p></div>}
       {detailsOpen && <div role="dialog" aria-label="Design Details" className="nail-design-studio__bottom-workspace"><strong>Design Details</strong><button type="button" onClick={() => setDetailsOpen(false)} aria-label="Close Design Details">Close</button><label>Design name<input value={designName} maxLength={64} onChange={(event) => applyName(event.target.value)} /></label></div>}
 
-      <nav className="nail-design-studio__tool-ribbon" aria-label="Nail design tools">
-        {TOOL_CATEGORIES.map((tool) => <button key={tool} type="button">{tool}</button>)}
+      <nav className="nail-design-studio__tool-ribbon" aria-label="Nail Tool Kit">
+        <div className="nail-design-studio__tool-list" role="tablist" aria-label="Creative tool categories">
+          {TOOL_CATEGORIES.map((tool, index) => {
+            const isActive = activeTool.id === tool.id;
+            return <button
+              key={tool.id}
+              ref={(node) => { toolRefs.current[index] = node; }}
+              id={`nail-tool-${tool.id}`}
+              type="button"
+              role="tab"
+              className="nail-design-studio__tool"
+              style={{ '--tool-accent': tool.accent }}
+              data-accent={tool.accent}
+              aria-selected={isActive}
+              aria-controls="creative-tools-panel"
+              tabIndex={focusedToolIndex === index ? 0 : -1}
+              onFocus={() => setFocusedToolIndex(index)}
+              onClick={() => setActiveToolId(tool.id)}
+              onKeyDown={(event) => handleToolKeyDown(event, index)}
+            ><ToolIcon tool={tool} /><span>{tool.label}</span><i aria-hidden="true" /></button>;
+          })}
+        </div>
       </nav>
       <div className="nail-design-studio__workspace">
-        <aside className="nail-design-studio__panel" aria-label="Creative tools panel"><h2>Creative Tools</h2><p className="nail-design-studio__placeholder-copy">This is the new left workspace. It will be built section by section from the Master Blueprint.</p></aside>
+        <aside id="creative-tools-panel" className="nail-design-studio__panel nail-design-studio__creative-tools" role="tabpanel" aria-labelledby={`nail-tool-${activeTool.id}`} tabIndex="0">
+          <div className="nail-design-studio__panel-heading" style={{ '--tool-accent': activeTool.accent }}><ToolIcon tool={activeTool} /><h2>{activeTool.label}</h2></div>
+          <p className="nail-design-studio__placeholder-copy">The {activeTool.label} creative tools are scoped for construction in a future studio section.</p>
+        </aside>
         <main className="nail-design-studio__desk" aria-label="Nail Desk"><h2>Nail Desk</h2><div className="nail-design-studio__desk-surface">New canvas construction area</div></main>
         <aside className="nail-design-studio__panel" aria-label="Design properties panel"><h2>Design Properties</h2><p className="nail-design-studio__placeholder-copy">This is the new right workspace. The legacy panel stack is not mounted here.</p></aside>
       </div>
