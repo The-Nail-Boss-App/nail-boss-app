@@ -15,9 +15,13 @@ for (const command of ['New', 'Open', 'Current Design', 'Duplicate', 'Save Chang
 assert.match(bar, /command\('Open', 'open', openSavedDesigns/, 'Open reuses the saved-design workflow');
 assert.match(bar, /onClick=\{openSavedDesigns\}[\s\S]*aria-label=\{`Current Design: \$\{designName\}`\}/, 'Current Design reuses the saved-design state and workflow');
 assert.match(bar, /dirty \? 'Save Changes' : 'Saved'[\s\S]*saveDesign/, 'Save retains smart state');
+assert.match(bar, /isRenaming \?[\s\S]*event\.key === 'Enter'[\s\S]*event\.key === 'Escape'[\s\S]*aria-label="Rename design"/, 'Current Design supports inline keyboard rename');
 assert.match(bar, /command\('Undo'[\s\S]*disabled: true[\s\S]*command\('Redo'[\s\S]*disabled: true/, 'Undo and Redo preserve disabled logic');
 assert.match(styles, /command-bar[\s\S]*max-width: 100%[\s\S]*overflow: hidden/, 'Command Bar bounds horizontal overflow');
 assert.match(styles, /command-row[\s\S]*flex-wrap: nowrap/, 'Command controls cannot wrap');
+assert.match(styles, /command-button \{[\s\S]*border: 0;[\s\S]*background: transparent;/, 'command icons use a clean unboxed treatment');
+assert.match(styles, /design-control[\s\S]*width: clamp\(190px, 14vw, 240px\)/, 'Current Design nameplate has room for descriptive names');
+assert.match(styles, /prefers-reduced-motion: reduce/, 'neon motion respects reduced-motion preferences');
 assert.match(styles, /@media \(max-width: 1160px\)[\s\S]*command-button span[\s\S]*clip-path: inset\(50%\)/, 'narrow desktops use compact icon-only commands');
 assert(!bar.includes('design-studio/DesignStudio'), 'legacy studio is not mounted');
 console.log('New Nail Design Studio command bar checks passed');
