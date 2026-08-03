@@ -197,6 +197,29 @@ describe('adaptive Nail Desk', () => {
     expect(container.querySelectorAll('[data-testid="master-finger"]')).toHaveLength(5);
   });
 
+  it('keeps complete finger compositions in safe centered stage bounds', () => {
+    const stage = container.querySelector('.nail-design-studio__nail-stage--single');
+    const finger = container.querySelector('[data-testid="stage-finger"]');
+    const composition = container.querySelector('[data-testid="finger-composition"]');
+    expect(stage).toBeTruthy();
+    expect(finger).toBeTruthy();
+    expect(composition).toBeTruthy();
+    expect(stage.style.getPropertyValue('--stage-x')).toBe('0px');
+    expect(stage.style.getPropertyValue('--stage-y')).toBe('0px');
+    expect(composition.querySelector('[data-testid="master-finger"]')).toBeTruthy();
+    expect(composition.querySelector('[data-testid="stage-nail"]')).toBeTruthy();
+  });
+
+  it('sizes the composition from the approved image intrinsic dimensions', async () => {
+    const image = container.querySelector('[data-testid="master-finger"]');
+    Object.defineProperties(image, {
+      naturalWidth: { configurable: true, value: 900 },
+      naturalHeight: { configurable: true, value: 1800 },
+    });
+    await act(async () => image.dispatchEvent(new Event('load', { bubbles: false })));
+    expect(container.querySelector('[data-testid="finger-composition"]').style.aspectRatio).toBe('0.5');
+  });
+
   it('shares zoom, fit, and pointer pan while composition changes reset the camera', async () => {
     await click(container.querySelector('button[aria-label="Zoom in"]'));
     expect(container.querySelector('output[aria-label="Zoom level"]').textContent).toBe('125%');
@@ -210,6 +233,21 @@ describe('adaptive Nail Desk', () => {
     expect(container.querySelector('output[aria-label="Zoom level"]').textContent).toBe('100%');
     expect(container.querySelector('.nail-design-studio__nail-stage').style.getPropertyValue('--stage-x')).toBe('0px');
     expect(container.querySelectorAll('[data-testid="stage-nail"]')).toHaveLength(5);
+  });
+
+  it('Fit to View resets zoom and translation for the complete composition', async () => {
+    await click(container.querySelector('button[aria-label="Zoom in"]'));
+    const surface = container.querySelector('[data-testid="nail-stage-container"]');
+    await act(async () => {
+      surface.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0, clientX: 10, clientY: 10 }));
+      surface.dispatchEvent(new MouseEvent('pointermove', { bubbles: true, clientX: 42, clientY: 31 }));
+    });
+    await click(button('Fit to View'));
+    const stage = container.querySelector('.nail-design-studio__nail-stage');
+    expect(container.querySelector('output[aria-label="Zoom level"]').textContent).toBe('100%');
+    expect(stage.style.getPropertyValue('--stage-x')).toBe('0px');
+    expect(stage.style.getPropertyValue('--stage-y')).toBe('0px');
+    expect(stage.style.getPropertyValue('--stage-zoom')).toBe('1');
   });
 
   it('expands into independently released panels and supports Focus Mode', async () => {
@@ -229,6 +267,7 @@ describe('adaptive Nail Desk', () => {
     expect([length.min, length.max]).toEqual(['10', '100']);
     await type(length, '100');
     expect(container.querySelector('.nail-design-studio__nail-stage').style.getPropertyValue('--nail-length')).toBe('1');
+    expect(container.querySelector('[data-testid="stage-nail"]').closest('[data-testid="finger-composition"]')).toBeTruthy();
     const surface = container.querySelector('#workspace-surface');
     expect([...surface.options].map((option) => option.textContent)).toEqual(['Signature', 'Cherry Lacquer', "Kiki's"]);
     expect(container.querySelector('[data-testid="nail-stage-container"]').style.backgroundImage).toContain('/assets/anitaset/design-studio/workspace-surfaces/signature-workspace.png');
