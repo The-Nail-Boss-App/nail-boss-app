@@ -180,10 +180,27 @@ describe('adaptive Nail Desk', () => {
 
   const button = (label) => [...container.querySelectorAll('button')].find((item) => item.textContent === label);
 
-  it('offers every composition and renders a full set as exactly ten nails', async () => {
+  it('uses the exact accessible approved public asset in Single Nail mode', () => {
     expect(container.querySelectorAll('[data-testid="stage-nail"]')).toHaveLength(1);
     expect(container.querySelectorAll('[data-testid="master-finger"]')).toHaveLength(1);
-    expect(container.querySelector('[data-testid="master-finger"]').getAttribute('src')).toBe('/assets/anitaset/design-studio/finger-assets/approved-master-finger.png');
+    const image = container.querySelector('[data-testid="master-finger"]');
+    expect(image.getAttribute('src')).toBe('/assets/anitaset/design-studio/finger-assets/approved-master-finger.png');
+    expect(image.getAttribute('alt')).toBe('Approved master finger 1');
+    expect(container.querySelector('.nail-design-studio__finger-composition > img')).toBe(image);
+    expect(container.querySelector('.nail-design-studio__finger-composition > .nail-design-studio__nail-overlay')).toBeTruthy();
+  });
+
+  it('renders five approved master fingers in Left Hand mode', async () => {
+    await click(container.querySelector('input[value="left"]'));
+    expect(container.querySelectorAll('[data-testid="master-finger"]')).toHaveLength(5);
+  });
+
+  it('renders five approved master fingers in Right Hand mode', async () => {
+    await click(container.querySelector('input[value="right"]'));
+    expect(container.querySelectorAll('[data-testid="master-finger"]')).toHaveLength(5);
+  });
+
+  it('offers every composition and renders ten approved master fingers in Full Set mode', async () => {
     const labels = [...container.querySelectorAll('fieldset label')].map((label) => label.textContent);
     expect(labels).toEqual(['Single Nail', 'Left Hand', 'Right Hand', 'Full Set']);
     await click(container.querySelector('input[value="full"]'));
@@ -191,10 +208,14 @@ describe('adaptive Nail Desk', () => {
     expect(container.querySelectorAll('[data-testid="stage-nail"]')).toHaveLength(10);
     expect(container.querySelectorAll('[data-testid="master-finger"]')).toHaveLength(10);
     expect(container.querySelector('.nail-design-studio__nail-stage--full')).toBeTruthy();
-    await click(container.querySelector('input[value="right"]'));
-    expect(container.querySelectorAll('[data-testid="master-finger"]')).toHaveLength(5);
-    await click(container.querySelector('input[value="left"]'));
-    expect(container.querySelectorAll('[data-testid="master-finger"]')).toHaveLength(5);
+  });
+
+  it('reports a clear console error when the approved image cannot load', async () => {
+    const error = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const image = container.querySelector('[data-testid="master-finger"]');
+    await act(async () => image.dispatchEvent(new Event('error', { bubbles: false })));
+    expect(error).toHaveBeenCalledWith('Approved master finger image failed to load: /assets/anitaset/design-studio/finger-assets/approved-master-finger.png');
+    error.mockRestore();
   });
 
   it('keeps complete finger compositions in safe centered stage bounds', () => {

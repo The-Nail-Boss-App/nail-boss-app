@@ -84,6 +84,10 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
     if (naturalWidth > 0 && naturalHeight > 0) setFingerAspectRatio(naturalWidth / naturalHeight);
   };
 
+  const reportFingerLoadError = () => {
+    console.error(`Approved master finger image failed to load: ${MASTER_FINGER_SRC}`);
+  };
+
   const fitToView = () => { setZoom(1); setPan({ x: 0, y: 0 }); };
   const changeComposition = (nextComposition) => { setComposition(nextComposition); fitToView(); };
   const changeZoom = (amount) => setZoom((current) => Math.min(2.5, Math.max(1, Number((current + amount).toFixed(2)))));
@@ -285,7 +289,8 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
                 <div className="nail-design-studio__finger" data-testid="stage-finger" key={index}>
                   <div className="nail-design-studio__finger-composition" data-testid="finger-composition"
                     style={fingerAspectRatio ? { aspectRatio: fingerAspectRatio } : undefined}>
-                    <img src={MASTER_FINGER_SRC} alt="" draggable="false" data-testid="master-finger" onLoad={rememberFingerDimensions} />
+                    <img src={MASTER_FINGER_SRC} alt={`Approved master finger ${index + 1}`} draggable="false"
+                      data-testid="master-finger" onLoad={rememberFingerDimensions} onError={reportFingerLoadError} />
                     <span className="nail-design-studio__nail-overlay" data-testid="stage-nail" aria-label={`Editable nail ${index + 1}`} />
                   </div>
                 </div>
