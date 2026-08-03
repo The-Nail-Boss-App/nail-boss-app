@@ -4,6 +4,9 @@ import {
   convertLegacyDesignStudioDocument, createHeroExportRequest, createHeroProductRequest, createHeroBlueprintRequest,
   HERO_SHAPE_IDS, HERO_SHAPE_LIBRARY, HeroShapeEngine, registerHeroShapeEngine, updateHeroShape,
   heroDocumentFromLegacyNail, loadHeroDocumentWithLegacyFallback, nailBasicsFromHero,
+  HERO_NAIL_MASK_LIBRARY, HeroNailMaskEngine, maskReferenceForShape, registerHeroNailMaskEngine,
+  resolveHeroNailMask,
+  publishMaskResolution,
 } from './index';
 
 const layer = (id: string): HeroLayer => ({
@@ -41,6 +44,45 @@ describe('Hero Design integration shell', () => {
     expect(engine.capabilities).toEqual(['shape.selection', 'shape.validation', 'shape.configuration']);
   });
 
+  test('registers the mask engine and resolves every approved shape to its production mask', () => {
+    const registry = new HeroEngineRegistry();
+    const engine = registerHeroNailMaskEngine(registry);
+    expect(registry.resolve('Hero Nail Mask Engine')).toBe(engine);
+    expect(engine.capabilities).toEqual(['mask.resolve', 'mask.validate', 'mask.clip', 'mask.hit-test', 'mask.bounds']);
+    expect(HERO_NAIL_MASK_LIBRARY).toHaveLength(8);
+    HERO_SHAPE_IDS.forEach((shapeId) => {
+      const reference = maskReferenceForShape(shapeId)!;
+      const resolved = engine.process(reference);
+      expect(resolved).toMatchObject({ maskId: `${shapeId.toLowerCase()}-mask`, shapeId, version: '1', bounds: { x: 0, y: 0, width: 1, height: 1 } });
+      expect(resolved.clippingSource.assetId).toBe(`founder-approved-nail-mask:${shapeId}:1`);
+    });
+  });
+
+  test('validates mask compatibility, safe margins, sources, normalized bounds, and hit testing', () => {
+    const engine = new HeroNailMaskEngine();
+    const almond = maskReferenceForShape('Almond')!;
+    expect(engine.validate({ ...almond, shapeId: 'Duck' }).issues.map(({ code }) => code)).toContain('incompatible_shape');
+    expect(engine.validate({ ...almond, safeMargin: 0.1 }).valid).toBe(true);
+    expect(engine.validate({ ...almond, safeMargin: -0.01 }).issues.map(({ code }) => code)).toContain('range');
+    expect(engine.validate({ ...almond, safeMargin: 0.26 }).valid).toBe(false);
+    expect(engine.validate({ ...almond, source: { type: 'path', assetId: 'invented' } }).issues.map(({ code }) => code)).toContain('source_unavailable');
+    const resolved = resolveHeroNailMask({ ...almond, safeMargin: 0.05 });
+    expect(resolved.containsPoint(0.5, 0.5)).toBe(true);
+    expect(resolved.containsPoint(0, 0.5)).toBe(false);
+    expect(resolved.containsPoint(0.46, 0.95, true)).toBe(false);
+    expect(Object.values(resolved.safeBoundary).every((value) => value >= 0 && value <= 1)).toBe(true);
+    expect(validateHeroDesignDocument({ ...document(), nail: { ...document().nail, shape: { id: 'Duck', version: '1' } } }).issues.map(({ code }) => code)).toContain('incompatible_shape');
+  });
+
+  test('publishes mask resolution and controlled validation failure events', () => {
+    const events = new HeroDesignEventBus(); const resolved = jest.fn(); const failed = jest.fn();
+    events.subscribe('nail.mask.resolved', resolved); events.subscribe('nail.mask.validation.failed', failed);
+    publishMaskResolution(maskReferenceForShape('Square')!, events, 'design-1');
+    expect(resolved).toHaveBeenCalledWith(expect.objectContaining({ designId: 'design-1', mask: expect.objectContaining({ maskId: 'square-mask' }) }));
+    expect(() => publishMaskResolution({ id: 'missing-mask' }, events, 'design-1')).toThrow('invalid');
+    expect(failed).toHaveBeenCalledWith(expect.objectContaining({ designId: 'design-1', issues: expect.any(Array) }));
+  });
+
   test('rejects invalid shape IDs, versions, dimensions, and orientations without substitution', () => {
     const engine = new HeroShapeEngine();
     const invalid = engine.validate({ shapeId: 'Ballerina', shapeVersion: '2', length: 2, width: -1, orientation: 'tip-up' as never });
@@ -51,20 +93,21 @@ describe('Hero Design integration shell', () => {
 
   test('updates shape dimensions, revision and events while preserving unrelated state', () => {
     const events = new HeroDesignEventBus();
-    const selected = jest.fn(); const lengthChanged = jest.fn(); const widthChanged = jest.fn(); const updated = jest.fn();
+    const selected = jest.fn(); const lengthChanged = jest.fn(); const widthChanged = jest.fn(); const updated = jest.fn(); const maskChanged = jest.fn();
     events.subscribe('shape.selected', selected); events.subscribe('shape.length.changed', lengthChanged);
-    events.subscribe('shape.width.changed', widthChanged); events.subscribe('shape.updated', updated);
+    events.subscribe('shape.width.changed', widthChanged); events.subscribe('shape.updated', updated); events.subscribe('nail.mask.changed', maskChanged);
     const original = { ...document(), layers: [layer('kept')], lighting: { ...document().lighting }, product: { productId: 'kept' } };
     let state = heroDesignReducer(initialHeroDesignState, { type: 'loadDesign', document: original });
     state = updateHeroShape(state, { shapeId: 'Duck', length: 0.7, width: 0.8 }, events);
     expect(state.document?.nail).toMatchObject({ shape: { id: 'Duck', version: '1' }, length: 0.7, width: 0.8, tipDown: true });
+    expect(state.document?.nail.mask).toMatchObject({ id: 'duck-mask', version: '1', shapeId: 'Duck' });
     expect(state.document?.revision).toBe(1);
     expect(state.dirty).toBe(true);
     expect(state.document?.layers).toEqual(original.layers);
     expect(state.document?.lighting).toEqual(original.lighting);
     expect(state.document?.product).toEqual(original.product);
     expect(selected).toHaveBeenCalledTimes(1); expect(lengthChanged).toHaveBeenCalledTimes(1);
-    expect(widthChanged).toHaveBeenCalledTimes(1); expect(updated).toHaveBeenCalledTimes(1);
+    expect(widthChanged).toHaveBeenCalledTimes(1); expect(updated).toHaveBeenCalledTimes(1); expect(maskChanged).toHaveBeenCalledTimes(1);
   });
 
   test('publishes validation failures and leaves state unchanged', () => {
@@ -123,7 +166,7 @@ describe('Hero Design integration shell', () => {
     );
     expect(nailBasicsFromHero(legacyDocument)).toEqual({ shape: 'Lipstick', length: 0.42, width: 0.61 });
     expect((await loadHeroDocumentWithLegacyFallback(adapter, 'legacy-1', 'Legacy', { shape: 'Duck', length: 0.2, width: 0.3 })).nail.shape.id).toBe('Duck');
-    await adapter.save({ ...legacyDocument, nail: { ...legacyDocument.nail, shape: { id: 'Stiletto', version: '1' }, length: 0.77, width: 0.33 } });
+    await adapter.save({ ...legacyDocument, nail: { ...legacyDocument.nail, shape: { id: 'Stiletto', version: '1' }, mask: maskReferenceForShape('Stiletto')!, length: 0.77, width: 0.33 } });
     expect(nailBasicsFromHero(await loadHeroDocumentWithLegacyFallback(adapter, 'legacy-1', 'Legacy', { shape: 'Duck' }))).toEqual({ shape: 'Stiletto', length: 0.77, width: 0.33 });
   });
 

@@ -1,6 +1,7 @@
 import { HeroDesignDocument, HeroLayer, HeroLayerType } from './contracts';
 import { validateHeroDesignDocument } from './validation';
 import { HERO_SHAPE_IDS, HERO_SHAPE_VERSION, HeroShapeId } from './shape';
+import { maskReferenceForShape } from './mask';
 
 export interface HeroLegacyConversionResult<TLegacy = unknown> {
   document: HeroDesignDocument | null;
@@ -32,7 +33,10 @@ export function convertLegacyDesignStudioDocument<TLegacy extends Record<string,
   const shapeVersion = nail?.shapeVersion ?? legacy.shapeVersion ?? HERO_SHAPE_VERSION;
   if (legacyShapeId != null && !shapeId) unsupportedFields.push(`nail.shape:${String(legacyShapeId)}`);
   if (shapeId && shapeVersion !== HERO_SHAPE_VERSION) unsupportedFields.push(`nail.shape.version:${String(shapeVersion)}`);
-  const maskId = nail?.maskId ?? legacy.maskId;
+  const suppliedMaskId = nail?.maskId ?? legacy.maskId;
+  const compatibleMask = shapeId ? maskReferenceForShape(shapeId, shapeVersion) : undefined;
+  const maskId = suppliedMaskId ?? compatibleMask?.id;
+  if (suppliedMaskId && compatibleMask && suppliedMaskId !== compatibleMask.id) unsupportedFields.push(`nail.mask.id:${String(suppliedMaskId)}`);
   const width = blueprint.canvas?.width ?? legacy.canvas?.width;
   const height = blueprint.canvas?.height ?? legacy.canvas?.height;
   ([['metadata.id', id], ['metadata.name', name], ['nail.shape.id', shapeId], ['nail.mask.id', maskId],
@@ -62,7 +66,7 @@ export function convertLegacyDesignStudioDocument<TLegacy extends Record<string,
   const document: HeroDesignDocument = {
     metadata: { id, name, createdAt: metadata.createdAt, updatedAt: metadata.updatedAt, authorId: metadata.authorId, description: metadata.description, tags: metadata.tags },
     nail: {
-      shape: { id: shapeId, version: shapeVersion }, mask: { id: maskId }, length: nail.length, width: nail.width,
+      shape: { id: shapeId, version: shapeVersion }, mask: suppliedMaskId === compatibleMask?.id ? compatibleMask! : (compatibleMask ?? { id: maskId }), length: nail.length, width: nail.width,
       tipDown: nail.tipDown,
       view: nail.view,
     },
