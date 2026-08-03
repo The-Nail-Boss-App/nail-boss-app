@@ -2,13 +2,14 @@ import {
   createHeroDesignDocument, validateHeroDesignDocument, HeroEngineRegistry, HeroDesignEventBus,
   heroDesignReducer, initialHeroDesignState, HeroLayer, HeroLocalStoragePersistenceAdapter,
   convertLegacyDesignStudioDocument, createHeroExportRequest, createHeroProductRequest, createHeroBlueprintRequest,
+  HERO_SHAPE_IDS, HERO_SHAPE_LIBRARY, HeroShapeEngine, registerHeroShapeEngine, updateHeroShape,
 } from './index';
 
 const layer = (id: string): HeroLayer => ({
   id, name: id, type: 'base', opacity: 1, visible: true, locked: false, blendMode: 'normal',
   transform: { x: 0.5, y: 0.5, scaleX: 1, scaleY: 1, rotation: 0 }, payload: { color: '#fff' },
 });
-const document = () => createHeroDesignDocument({ id: 'design-1', name: 'Hero', now: '2026-08-03T00:00:00.000Z', shapeId: 'almond', maskId: 'almond-mask' });
+const document = () => createHeroDesignDocument({ id: 'design-1', name: 'Hero', now: '2026-08-03T00:00:00.000Z', shapeId: 'Almond', maskId: 'almond-mask' });
 
 describe('Hero Design integration shell', () => {
   test('creates and validates the canonical document', () => {
@@ -28,6 +29,50 @@ describe('Hero Design integration shell', () => {
     expect(registry.resolve(engine.id)).toBe(engine);
     expect(registry.unregister(engine.id)).toBe(engine);
     expect(() => registry.resolve(engine.id)).toThrow('not registered');
+  });
+
+  test('loads all approved production shapes and registers the shape engine capabilities', () => {
+    expect(HERO_SHAPE_LIBRARY.map(({ id }) => id)).toEqual(HERO_SHAPE_IDS);
+    expect(HERO_SHAPE_LIBRARY).toHaveLength(8);
+    const registry = new HeroEngineRegistry();
+    const engine = registerHeroShapeEngine(registry);
+    expect(registry.resolve('Hero Shape Engine')).toBe(engine);
+    expect(engine.capabilities).toEqual(['shape.selection', 'shape.validation', 'shape.configuration']);
+  });
+
+  test('rejects invalid shape IDs, versions, dimensions, and orientations without substitution', () => {
+    const engine = new HeroShapeEngine();
+    const invalid = engine.validate({ shapeId: 'Ballerina', shapeVersion: '2', length: 2, width: -1, orientation: 'tip-up' as never });
+    expect(invalid.valid).toBe(false);
+    expect(invalid.issues.map(({ code }) => code)).toEqual(expect.arrayContaining(['unsupported_shape', 'range', 'unsupported_orientation']));
+    expect(() => engine.process({ shapeId: 'Ballerina', shapeVersion: '1', length: 0.5, width: 0.5, orientation: 'tip-down' })).toThrow('invalid');
+  });
+
+  test('updates shape dimensions, revision and events while preserving unrelated state', () => {
+    const events = new HeroDesignEventBus();
+    const selected = jest.fn(); const lengthChanged = jest.fn(); const widthChanged = jest.fn(); const updated = jest.fn();
+    events.subscribe('shape.selected', selected); events.subscribe('shape.length.changed', lengthChanged);
+    events.subscribe('shape.width.changed', widthChanged); events.subscribe('shape.updated', updated);
+    const original = { ...document(), layers: [layer('kept')], lighting: { ...document().lighting }, product: { productId: 'kept' } };
+    let state = heroDesignReducer(initialHeroDesignState, { type: 'loadDesign', document: original });
+    state = updateHeroShape(state, { shapeId: 'Duck', length: 0.7, width: 0.8 }, events);
+    expect(state.document?.nail).toMatchObject({ shape: { id: 'Duck', version: '1' }, length: 0.7, width: 0.8, tipDown: true });
+    expect(state.document?.revision).toBe(1);
+    expect(state.dirty).toBe(true);
+    expect(state.document?.layers).toEqual(original.layers);
+    expect(state.document?.lighting).toEqual(original.lighting);
+    expect(state.document?.product).toEqual(original.product);
+    expect(selected).toHaveBeenCalledTimes(1); expect(lengthChanged).toHaveBeenCalledTimes(1);
+    expect(widthChanged).toHaveBeenCalledTimes(1); expect(updated).toHaveBeenCalledTimes(1);
+  });
+
+  test('publishes validation failures and leaves state unchanged', () => {
+    const events = new HeroDesignEventBus(); const failed = jest.fn();
+    events.subscribe('shape.validation.failed', failed);
+    const state = heroDesignReducer(initialHeroDesignState, { type: 'loadDesign', document: document() });
+    expect(() => updateHeroShape(state, { width: 8 }, events)).toThrow('invalid');
+    expect(failed).toHaveBeenCalledWith(expect.objectContaining({ designId: 'design-1' }));
+    expect(state.document?.revision).toBe(0);
   });
 
   test('publishes and unsubscribes typed events', () => {
@@ -81,6 +126,7 @@ describe('Hero Design integration shell', () => {
     };
     const result = convertLegacyDesignStudioDocument(legacy);
     expect(result.document?.metadata.id).toBe('old-1');
+    expect(result.document?.nail.shape).toEqual({ id: 'Almond', version: '1' });
     expect(result.document?.layers).toHaveLength(1);
     expect(result.original).toEqual(legacy);
     expect(result.unsupportedFields).toEqual(expect.arrayContaining(['nails.layers[1].type:unknown', 'privateNote']));
