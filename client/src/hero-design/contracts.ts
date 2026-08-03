@@ -40,11 +40,23 @@ export interface HeroViewConfiguration {
 
 export interface HeroNailConfiguration {
   shape: { id: string; version?: string };
-  mask: { id: string; version?: string };
+  mask: HeroNailMaskReference;
   length: number;
   width: number;
   tipDown: boolean;
   view: HeroViewConfiguration;
+}
+
+export type HeroMaskSource = { type: 'svg' | 'path' | 'alpha'; assetId: string };
+
+/** Lightweight reference to a production mask; production geometry stays in its owning asset registry. */
+export interface HeroNailMaskReference {
+  id: string;
+  version?: string;
+  shapeId?: string;
+  coordinateSpace?: 'normalized';
+  safeMargin?: number;
+  source?: HeroMaskSource;
 }
 
 export interface HeroLightingConfiguration {
@@ -118,14 +130,15 @@ export interface HeroRenderResult<TOutput = unknown> {
 }
 
 export const createHeroDesignDocument = (
-  input: { id: string; name: string; now?: string; shapeId: string; shapeVersion?: string; maskId: string },
+  input: { id: string; name: string; now?: string; shapeId: string; shapeVersion?: string; maskId: string; maskVersion?: string; safeMargin?: number },
 ): HeroDesignDocument => {
   const now = input.now ?? new Date().toISOString();
   return {
     metadata: { id: input.id, name: input.name, createdAt: now, updatedAt: now },
     nail: {
-      shape: { id: input.shapeId, version: input.shapeVersion ?? '1' }, mask: { id: input.maskId }, length: 1, width: 1,
-      tipDown: true, view: { view: 'top', rotation: 0, zoom: 1 },
+      shape: { id: input.shapeId, version: input.shapeVersion ?? '1' },
+      mask: { id: input.maskId, version: input.maskVersion ?? '1', shapeId: input.shapeId, coordinateSpace: 'normalized', safeMargin: input.safeMargin ?? 0, source: { type: 'path', assetId: `founder-approved-nail-mask:${input.shapeId}:1` } },
+      length: 1, width: 1, tipDown: true, view: { view: 'top', rotation: 0, zoom: 1 },
     },
     layers: [],
     lighting: { intensity: 1, direction: { x: 0, y: 0, z: 1 }, color: '#ffffff' },

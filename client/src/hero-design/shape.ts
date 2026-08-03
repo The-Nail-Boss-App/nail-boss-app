@@ -103,14 +103,21 @@ export function updateHeroShape(
     throw new HeroShapeValidationError(validation.issues);
   }
   engine.process(next);
+  const nextMask = {
+    id: `${(next.shapeId as HeroShapeId).toLowerCase()}-mask`, version: next.shapeVersion, shapeId: next.shapeId,
+    coordinateSpace: 'normalized' as const, safeMargin: state.document.nail.mask.safeMargin ?? 0,
+    source: { type: 'path' as const, assetId: `founder-approved-nail-mask:${next.shapeId}:${next.shapeVersion}` },
+  };
   const updated = heroDesignReducer(state, { type: 'updateNail', patch: {
-    shape: { id: next.shapeId, version: next.shapeVersion }, length: next.length, width: next.width, tipDown: true,
+    shape: { id: next.shapeId, version: next.shapeVersion }, mask: nextMask, length: next.length, width: next.width, tipDown: true,
   } });
   const payload = { designId: state.document.metadata.id, ...next };
   if (next.shapeId !== previous.shapeId || next.shapeVersion !== previous.shapeVersion)
     events.publish('shape:changed', { designId: payload.designId, shapeId: next.shapeId });
   if (next.shapeId !== previous.shapeId || next.shapeVersion !== previous.shapeVersion)
     events.publish('shape.selected', { designId: payload.designId, shapeId: next.shapeId, shapeVersion: next.shapeVersion });
+  if (nextMask.id !== state.document.nail.mask.id || nextMask.version !== state.document.nail.mask.version)
+    events.publish('nail.mask.changed', { designId: payload.designId, previousMaskId: state.document.nail.mask.id, maskId: nextMask.id, shapeId: next.shapeId });
   if (next.length !== previous.length)
     events.publish('shape.length.changed', { designId: payload.designId, shapeId: next.shapeId, length: next.length });
   if (next.width !== previous.width)

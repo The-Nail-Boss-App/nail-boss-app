@@ -10,6 +10,8 @@ Design Studio UI -> Hero Design State -> Integration Shell -> Engine Registry ->
                                       +-> Export / Product / Blueprint requests
 ```
 
+The mask dependency is deliberately one-way: **Hero Shape → Hero Nail Mask → future Surface Rendering**. The mask engine does not import or interpret materials, lighting, effects, exports, products, or blueprints, and future renderers may consume its renderer-neutral clipping result rather than the reverse.
+
 UI code should dispatch state actions and publish lightweight events. It must not depend on an engine implementation. Engines are registered by their approved ID and consumed only through `HeroEngine`.
 
 ## Modules
@@ -23,6 +25,15 @@ UI code should dispatch state actions and publish lightweight events. It must no
 - `adapters.ts` converts supported legacy Design Studio fields, preserves the original input, and explicitly reports unsupported or missing fields.
 - `downstream.ts` defines Export, Product, and Blueprint request handoffs.
 - `index.ts` is the public module entry point.
+- `mask.ts` registers the approved Hero Nail Mask Engine and resolves shape-version pairs to lightweight production mask references, normalized clipping boundaries, and hit testing.
+
+## Nail masks
+
+Each of the eight approved shapes (Almond, Coffin, Square, Oval, Round, Stiletto, Lipstick, and Duck) maps to exactly one versioned entry backed by the Founder-approved production silhouette registry. A design stores only the mask ID, shape/version relationship, normalized coordinate space, safe margin, and production asset ID; it never embeds a bitmap. Missing, malformed, unavailable, or shape-incompatible entries produce validation issues instead of falling back to Almond or inventing geometry.
+
+Mask bounds use normalized coordinates (`0` through `1`) independent of canvas size. The outer clipping boundary remains the unchanged production silhouette. A configurable safe margin (`0` through `0.25`) defines an interior constraint for later placement and painting consumers; it is neither canvas padding nor a permanent crop of the source asset. Basic normalized hit testing is available for outer and safe boundaries, while the clipping source remains renderer-neutral.
+
+Before Surface Rendering integration, masks provide references, bounds, validation, diagnostics, and mask-level hit testing only. They do not rasterize artwork, render polish or lighting, provide brush/sticker tools, or account for physical surface curvature.
 
 ## Integration rules
 
