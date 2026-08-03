@@ -37,6 +37,8 @@ const COMPOSITIONS = [
   { id: 'full', label: 'Full Set', nails: 10 },
 ];
 
+const NAIL_SHAPES = ['Almond', 'Coffin', 'Oval', 'Round', 'Square', 'Stiletto'];
+
 const WORKSPACE_SURFACES = [
   { id: 'signature', label: 'Signature', src: '/assets/anitaset/design-studio/workspace-surfaces/signature-workspace.png' },
   { id: 'cherry', label: 'Cherry Lacquer', src: '/assets/anitaset/design-studio/workspace-surfaces/cherry-lacquer-workspace.png' },
@@ -64,6 +66,8 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [nailLength, setNailLength] = useState(55);
+  const [nailShape, setNailShape] = useState(NAIL_SHAPES[0]);
+  const [nailShapeOpen, setNailShapeOpen] = useState(false);
   const [surface, setSurface] = useState(WORKSPACE_SURFACES[0].id);
   const [leftPanelOpen, setLeftPanelOpen] = useState(true);
   const [rightPanelOpen, setRightPanelOpen] = useState(true);
@@ -264,18 +268,22 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
           <div className="nail-design-studio__desk-toolbar">
             <h2>Nail Desk</h2>
             <div className="nail-design-studio__view-controls" aria-label="Nail Desk view controls">
+              <button type="button" aria-haspopup="listbox" aria-expanded={nailShapeOpen} onClick={() => setNailShapeOpen((open) => !open)}>Nail Shape</button>
               <button type="button" onClick={fitToView}>Fit to View</button>
               <button type="button" onClick={() => changeZoom(-.25)} disabled={zoom === 1} aria-label="Zoom out">−</button>
               <output aria-label="Zoom level">{Math.round(zoom * 100)}%</output>
               <button type="button" onClick={() => changeZoom(.25)} disabled={zoom === 2.5} aria-label="Zoom in">+</button>
               <button type="button" aria-pressed={focusMode} onClick={() => setFocusMode((focused) => !focused)}>Focus Mode</button>
             </div>
+            {nailShapeOpen && <div className="nail-design-studio__shape-menu" role="listbox" aria-label="Nail Shape options">
+              {NAIL_SHAPES.map((shape) => <button type="button" role="option" aria-selected={nailShape === shape} key={shape} onClick={() => { setNailShape(shape); setNailShapeOpen(false); }}>{shape}</button>)}
+            </div>}
           </div>
           <div className={`nail-design-studio__desk-surface${zoom > 1 ? ' is-pannable' : ''}`} style={{ backgroundImage: `url(${activeSurface.src})` }} onPointerDown={startPan} onPointerMove={movePan} onPointerUp={stopPan} onPointerCancel={stopPan} data-testid="nail-stage-container">
             <div className={`nail-design-studio__nail-stage nail-design-studio__nail-stage--${composition}`} style={{ '--stage-zoom': zoom, '--stage-x': `${pan.x}px`, '--stage-y': `${pan.y}px`, '--nail-length': nailLength / 100 }} aria-label={`${activeComposition.label} nail stage`}>
               {Array.from({ length: activeComposition.nails }, (_, index) => (
                 <div className="nail-design-studio__nail-slot" data-testid="nail-slot" key={index}>
-                  <div className="nail-design-studio__hero-nail" data-testid="stage-nail" data-design-layer-parent="true"
+                  <div className="nail-design-studio__hero-nail" data-testid="stage-nail" data-nail-shape={nailShape.toLowerCase()} data-design-layer-parent="true"
                     aria-label={`Hero Nail ${index + 1}`}>
                     <span className="nail-design-studio__nail-polish" data-design-layer="polish" aria-hidden="true" />
                     <span className="nail-design-studio__nail-reflection" aria-hidden="true" />

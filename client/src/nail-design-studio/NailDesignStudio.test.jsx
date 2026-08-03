@@ -180,6 +180,16 @@ describe('adaptive Nail Desk', () => {
 
   const button = (label) => [...container.querySelectorAll('button')].find((item) => item.textContent === label);
 
+  it('places Nail Shape immediately before the existing Nail Desk view controls', async () => {
+    const controls = container.querySelector('[aria-label="Nail Desk view controls"]');
+    expect([...controls.children].map((control) => control.textContent)).toEqual(['Nail Shape', 'Fit to View', '−', '100%', '+', 'Focus Mode']);
+    expect(container.querySelector('[data-testid="nail-design-studio-command-bar"] button[aria-haspopup="listbox"]')).toBeNull();
+
+    await click(button('Nail Shape'));
+    await click(button('Square'));
+    expect(container.querySelector('[data-testid="stage-nail"]').dataset.nailShape).toBe('square');
+  });
+
   it('renders one premium Hero Nail in Single Nail mode without a finger asset', () => {
     expect(container.querySelectorAll('[data-testid="stage-nail"]')).toHaveLength(1);
     expect(container.querySelector('[data-testid="stage-nail"]').getAttribute('aria-label')).toBe('Hero Nail 1');
