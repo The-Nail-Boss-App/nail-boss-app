@@ -282,7 +282,7 @@
 
 .nail-design-studio__desk-toolbar,
 .nail-design-studio__view-controls { display: flex; align-items: center; gap: 8px; }
-.nail-design-studio__desk-toolbar { justify-content: space-between; min-width: 0; }
+.nail-design-studio__desk-toolbar { position: relative; justify-content: space-between; min-width: 0; }
 .nail-design-studio__view-controls button,
 .nail-design-studio__properties select {
   border: 1px solid rgba(74,32,59,.22);
@@ -295,6 +295,22 @@
 }
 .nail-design-studio__view-controls button[aria-pressed="true"] { background: var(--studio-plum); color: #fff; }
 .nail-design-studio__view-controls output { min-width: 38px; font: 700 11px/1 'DM Sans', system-ui, sans-serif; text-align: center; }
+.nail-design-studio__shape-menu {
+  position: absolute;
+  z-index: 4;
+  top: calc(100% + 6px);
+  right: 270px;
+  display: grid;
+  min-width: 112px;
+  padding: 6px;
+  border: 1px solid rgba(74,32,59,.22);
+  border-radius: 9px;
+  background: #fff;
+  box-shadow: 0 10px 24px rgba(40,14,31,.18);
+}
+.nail-design-studio__shape-menu button { border: 0; border-radius: 5px; padding: 7px 9px; background: transparent; color: var(--studio-plum); font: 600 11px/1 'DM Sans', system-ui, sans-serif; text-align: left; cursor: pointer; }
+.nail-design-studio__shape-menu button:hover,
+.nail-design-studio__shape-menu button[aria-selected="true"] { background: rgba(255,45,160,.1); }
 
 .nail-design-studio__desk-surface {
   position: relative;
