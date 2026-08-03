@@ -319,25 +319,41 @@
   inset: 0;
   display: grid;
   place-content: center;
-  grid-template-columns: repeat(5, minmax(34px, 68px));
+  grid-template-columns: repeat(5, minmax(52px, 92px));
   gap: clamp(12px, 3vmin, 34px);
   padding: 5%;
   transform: translate(var(--stage-x), var(--stage-y)) scale(var(--stage-zoom));
   transform-origin: center;
   transition: transform 180ms ease;
 }
-.nail-design-studio__nail-stage--single { grid-template-columns: minmax(56px, 100px); }
+.nail-design-studio__nail-stage--single { grid-template-columns: minmax(150px, 280px); }
 .nail-design-studio__nail-stage--full { grid-template-rows: repeat(2, auto); }
-.nail-design-studio__nail { display: grid; place-items: end center; height: clamp(90px, 18vmin, 180px); }
-.nail-design-studio__nail span {
+.nail-design-studio__finger {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 2 / 5;
+}
+.nail-design-studio__finger img {
   display: block;
-  width: clamp(32px, 5vmin, 58px);
-  height: calc((48px + 100px * var(--nail-length)));
-  max-height: 100%;
-  border: 2px solid rgba(74,32,59,.72);
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+}
+.nail-design-studio__nail-overlay {
+  position: absolute;
+  z-index: 1;
+  left: 50%;
+  bottom: 65.2%;
+  width: 38%;
+  height: calc(10.8% + 10% * var(--nail-length));
+  box-sizing: border-box;
+  transform: translateX(-50%);
+  transform-origin: 50% 100%;
+  border: 1px solid rgba(74,32,59,.72);
   border-radius: 48% 48% 35% 35% / 24% 24% 12% 12%;
-  background: linear-gradient(105deg, rgba(255,255,255,.94), rgba(255,221,232,.96) 48%, rgba(236,183,203,.94));
-  box-shadow: inset 8px 0 12px rgba(255,255,255,.55), 0 8px 18px rgba(42,12,33,.2);
+  background: linear-gradient(105deg, rgba(255,255,255,.9), rgba(255,221,232,.92) 48%, rgba(236,183,203,.9));
+  box-shadow: inset 4px 0 8px rgba(255,255,255,.5), 0 4px 10px rgba(42,12,33,.16);
 }
 
 .nail-design-studio__properties { overflow: auto; }
