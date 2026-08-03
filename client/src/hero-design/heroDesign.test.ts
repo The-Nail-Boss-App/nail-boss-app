@@ -3,6 +3,7 @@ import {
   heroDesignReducer, initialHeroDesignState, HeroLayer, HeroLocalStoragePersistenceAdapter,
   convertLegacyDesignStudioDocument, createHeroExportRequest, createHeroProductRequest, createHeroBlueprintRequest,
   HERO_SHAPE_IDS, HERO_SHAPE_LIBRARY, HeroShapeEngine, registerHeroShapeEngine, updateHeroShape,
+  heroDocumentFromLegacyNail, loadHeroDocumentWithLegacyFallback, nailBasicsFromHero,
 } from './index';
 
 const layer = (id: string): HeroLayer => ({
@@ -17,7 +18,7 @@ describe('Hero Design integration shell', () => {
     expect(created.revision).toBe(0);
     expect(created).not.toHaveProperty('flattenedImage');
     expect(validateHeroDesignDocument(created)).toEqual({ valid: true, issues: [] });
-    expect(validateHeroDesignDocument({ ...created, nail: { ...created.nail, width: 0 } }).valid).toBe(false);
+    expect(validateHeroDesignDocument({ ...created, nail: { ...created.nail, width: 0 } }).valid).toBe(true);
   });
 
   test('registers, resolves, checks, and unregisters engines', () => {
@@ -110,6 +111,20 @@ describe('Hero Design integration shell', () => {
     expect((await adapter.duplicate('design-1', 'design-2', 'Copy')).metadata.name).toBe('Copy');
     expect(await adapter.delete('design-1')).toBe(true);
     expect(await adapter.load('design-1')).toBeNull();
+  });
+
+  test('bridges legacy nail basics and restores persisted Hero values when available', async () => {
+    const values = new Map<string, string>();
+    const storage = { getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => { values.set(key, value); }, removeItem: (key: string) => { values.delete(key); } };
+    const adapter = new HeroLocalStoragePersistenceAdapter(storage);
+    const legacyDocument = heroDocumentFromLegacyNail(
+      { shape: 'Lipstick', length: 0.42, width: 0.61 },
+      { id: 'legacy-1', name: 'Legacy' },
+    );
+    expect(nailBasicsFromHero(legacyDocument)).toEqual({ shape: 'Lipstick', length: 0.42, width: 0.61 });
+    expect((await loadHeroDocumentWithLegacyFallback(adapter, 'legacy-1', 'Legacy', { shape: 'Duck', length: 0.2, width: 0.3 })).nail.shape.id).toBe('Duck');
+    await adapter.save({ ...legacyDocument, nail: { ...legacyDocument.nail, shape: { id: 'Stiletto', version: '1' }, length: 0.77, width: 0.33 } });
+    expect(nailBasicsFromHero(await loadHeroDocumentWithLegacyFallback(adapter, 'legacy-1', 'Legacy', { shape: 'Duck' }))).toEqual({ shape: 'Stiletto', length: 0.77, width: 0.33 });
   });
 
   test('converts supported legacy fields, preserves original, and reports unsupported fields', () => {

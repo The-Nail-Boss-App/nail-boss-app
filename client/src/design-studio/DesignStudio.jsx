@@ -17,6 +17,17 @@ import FullSetPreview from "./FullSetPreview.jsx";
 import PolishBottle from "./PolishBottle.jsx";
 import { UI } from "./studioStyles.js";
 import {
+  HERO_SHAPE_IDS,
+  HeroDesignEventBus,
+  HeroLocalStoragePersistenceAdapter,
+  heroDesignReducer,
+  heroDocumentFromLegacyNail,
+  initialHeroDesignState,
+  loadHeroDocumentWithLegacyFallback,
+  nailBasicsFromHero,
+  updateHeroShape,
+} from "../hero-design/index.ts";
+import {
   DEFAULT_ACTIVE_SLOT,
   FULL_SET_SLOTS,
   LEFT_HAND_SLOTS,
@@ -1138,6 +1149,13 @@ function DesignStudio(_, ref) {
   const [selectedDesignId, setSelectedDesignId] = useState("");
   const [designName, setDesignName] = useState("");
   const [blueprint, setBlueprint] = useState(() => createFullSetBlueprint());
+  const [heroState, setHeroState] = useState(() => ({
+    ...initialHeroDesignState,
+    document: heroDocumentFromLegacyNail(getActiveNail(blueprint), {
+      id: "design-studio-draft",
+      name: "Untitled design",
+    }),
+  }));
   const [selectedLayerId, setSelectedLayerId] = useState("base-layer");
   const [mode, setMode] = useState("select");
   const [brush, setBrush] = useState({
@@ -1194,6 +1212,12 @@ function DesignStudio(_, ref) {
   const dragStartBlueprintRef = useRef(null);
   const polishStudioRef = useRef(null);
   const commandMenuRootRef = useRef(null);
+  const heroStateRef = useRef(heroState);
+  const heroEventsRef = useRef(new HeroDesignEventBus());
+  const heroPersistenceRef = useRef(
+    new HeroLocalStoragePersistenceAdapter(window.localStorage),
+  );
+  const heroLoadSequenceRef = useRef(0);
 
   const activeNail = getActiveNail(blueprint);
   const selectedLayer = useMemo(
@@ -1264,7 +1288,8 @@ function DesignStudio(_, ref) {
     blueprintRef.current = blueprint;
     selectedDesignIdRef.current = selectedDesignId;
     designNameRef.current = designName;
-  }, [dirty, blueprint, selectedDesignId, designName]);
+    heroStateRef.current = heroState;
+  }, [dirty, blueprint, selectedDesignId, designName, heroState]);
   useEffect(() => {
     if (!dirty) clearAutosaveTimer();
   }, [dirty]);
@@ -1390,6 +1415,34 @@ function DesignStudio(_, ref) {
     generatedDraftNameRef.current = "";
     persistedDesignNameRef.current = design?.name || "";
     const normalized = ensureFullSetBlueprint(nextBlueprint, design);
+    const legacyNail = getActiveNail(normalized);
+    const loadSequence = ++heroLoadSequenceRef.current;
+    const heroId = design?.id || "design-studio-draft";
+    const heroName = design?.name || "Untitled design";
+    const loadHero = design?.id
+      ? loadHeroDocumentWithLegacyFallback(
+          heroPersistenceRef.current,
+          heroId,
+          heroName,
+          legacyNail,
+        )
+      : Promise.resolve(heroDocumentFromLegacyNail(legacyNail, { id: heroId, name: heroName }));
+    void loadHero.then((document) => {
+      if (loadSequence !== heroLoadSequenceRef.current) return;
+      const heroBlueprint = ensureFullSetBlueprint(
+        synchronizeBase(normalized, nailBasicsFromHero(document)),
+        design,
+      );
+      const loadedState = heroDesignReducer(initialHeroDesignState, {
+        type: "loadDesign",
+        document,
+      });
+      heroStateRef.current = loadedState;
+      blueprintRef.current = heroBlueprint;
+      setHeroState(loadedState);
+      setBlueprint(heroBlueprint);
+      heroEventsRef.current.publish("design:loaded", { document });
+    }).catch((error) => setStatus({ type: "error", message: error.message }));
     blueprintRef.current = normalized;
     dirtyRef.current = false;
     setBlueprint(normalized);
@@ -1465,7 +1518,22 @@ function DesignStudio(_, ref) {
   }
 
   function updateBase(patch) {
-    let next = synchronizeBase(blueprint, patch);
+    let canonicalPatch = patch;
+    if (["shape", "length", "width"].some((key) => patch[key] !== undefined)) {
+      const heroPatch = {};
+      if (patch.shape !== undefined) heroPatch.shapeId = patch.shape;
+      if (patch.length !== undefined) heroPatch.length = patch.length;
+      if (patch.width !== undefined) heroPatch.width = patch.width;
+      const updatedHeroState = updateHeroShape(
+        heroStateRef.current,
+        heroPatch,
+        heroEventsRef.current,
+      );
+      heroStateRef.current = updatedHeroState;
+      setHeroState(updatedHeroState);
+      canonicalPatch = { ...patch, ...nailBasicsFromHero(updatedHeroState.document) };
+    }
+    let next = synchronizeBase(blueprint, canonicalPatch);
     if (["shape", "length", "width"].some((key) => patch[key] !== undefined))
       next = revalidateLayersAfterNailResize(next);
     if (patch.tags !== undefined)
@@ -1944,6 +2012,7 @@ function DesignStudio(_, ref) {
     const submittedRevision = editGenerationRef.current;
     const submittedSelectionRevision = selectionRevisionRef.current;
     const submittedEditorSession = editorSessionRef.current;
+    const submittedHeroDocument = heroStateRef.current.document;
     const workingBlueprint = ensureFullSetBlueprint(
       blueprintRef.current || blueprint,
     );
@@ -2048,6 +2117,20 @@ function DesignStudio(_, ref) {
         }
         if (sequence !== saveSequenceRef.current)
           return { ok: false, reason: "superseded" };
+        if (!submittedHeroDocument)
+          throw new Error("Hero shape document was unavailable during save.");
+        const persistedHeroDocument = await heroPersistenceRef.current.save({
+          ...submittedHeroDocument,
+          metadata: {
+            ...submittedHeroDocument.metadata,
+            id: designId,
+            name: savedDesign?.name || flat.name,
+            updatedAt: new Date().toISOString(),
+          },
+        });
+        heroEventsRef.current.publish("design:saved", {
+          document: persistedHeroDocument,
+        });
         mergeSavedDesign(savedDesign);
         responseFromStaleEditorSession =
           editorSessionRef.current !== submittedEditorSession ||
@@ -2088,6 +2171,12 @@ function DesignStudio(_, ref) {
           persistedDesignNameRef.current = savedDesign?.name || flat.name;
           setDesignName(savedDesign?.name || flat.name);
           setBlueprint(normalizedSaved);
+          const savedHeroState = heroDesignReducer(heroStateRef.current, {
+            type: "loadDesign",
+            document: persistedHeroDocument,
+          });
+          heroStateRef.current = savedHeroState;
+          setHeroState(savedHeroState);
           dirtyRef.current = false;
           setDirty(false);
           clearAutosaveTimer();
@@ -2147,6 +2236,29 @@ function DesignStudio(_, ref) {
     const currentActive = getActiveNail(current);
     if (currentActive?.slot === slot) return;
     const next = ensureFullSetBlueprint(setActiveNailBySlot(current, slot));
+    const nextNail = getActiveNail(next);
+    const currentHeroDocument = heroStateRef.current.document;
+    if (currentHeroDocument) {
+      const slotHeroDocument = {
+        ...currentHeroDocument,
+        nail: {
+          ...currentHeroDocument.nail,
+          shape: {
+            id: nextNail.shape,
+            version: currentHeroDocument.nail.shape.version,
+          },
+          mask: { id: `${nextNail.shape.toLowerCase()}-mask` },
+          length: nextNail.length,
+          width: nextNail.width,
+        },
+      };
+      const slotHeroState = heroDesignReducer(initialHeroDesignState, {
+        type: "loadDesign",
+        document: slotHeroDocument,
+      });
+      heroStateRef.current = slotHeroState;
+      setHeroState(slotHeroState);
+    }
     selectionRevisionRef.current += 1;
     blueprintRef.current = next;
     setBlueprint(next);
@@ -2587,15 +2699,15 @@ function DesignStudio(_, ref) {
     <div data-testid="command-nail-basics-popover" aria-label="Nail Basics" style={UI.commandPopover}>
       <strong style={{ color: COLORS.plum }}>Nail Basics™</strong>
       <Field label="Nail Shape">
-        <select aria-label="Nail Shape" style={S.input} value={activeNail.shape} onChange={(event) => updateBase({ shape: event.target.value })}>
-          {SHAPES.map((shape) => <option key={shape} value={shape}>{shape}</option>)}
+        <select aria-label="Nail Shape" style={S.input} value={heroState.document.nail.shape.id} onChange={(event) => updateBase({ shape: event.target.value })}>
+          {HERO_SHAPE_IDS.map((shape) => <option key={shape} value={shape}>{shape}</option>)}
         </select>
       </Field>
       <Field label="Nail Length">
-        <input aria-label="Nail Length" type="range" min="0" max="1" step="0.01" value={activeNail.length} onChange={(event) => updateBase({ length: Number(event.target.value) })} style={{ width: "100%" }} />
+        <input aria-label="Nail Length" type="range" min="0" max="1" step="0.01" value={heroState.document.nail.length} onChange={(event) => updateBase({ length: Number(event.target.value) })} style={{ width: "100%" }} />
       </Field>
       <Field label="Nail Width">
-        <input aria-label="Nail Width" type="range" min="0" max="1" step="0.01" value={activeNail.width} onChange={(event) => updateBase({ width: Number(event.target.value) })} style={{ width: "100%" }} />
+        <input aria-label="Nail Width" type="range" min="0" max="1" step="0.01" value={heroState.document.nail.width} onChange={(event) => updateBase({ width: Number(event.target.value) })} style={{ width: "100%" }} />
       </Field>
     </div>
   );

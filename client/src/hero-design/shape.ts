@@ -108,11 +108,14 @@ export function updateHeroShape(
   } });
   const payload = { designId: state.document.metadata.id, ...next };
   if (next.shapeId !== previous.shapeId || next.shapeVersion !== previous.shapeVersion)
+    events.publish('shape:changed', { designId: payload.designId, shapeId: next.shapeId });
+  if (next.shapeId !== previous.shapeId || next.shapeVersion !== previous.shapeVersion)
     events.publish('shape.selected', { designId: payload.designId, shapeId: next.shapeId, shapeVersion: next.shapeVersion });
   if (next.length !== previous.length)
     events.publish('shape.length.changed', { designId: payload.designId, shapeId: next.shapeId, length: next.length });
   if (next.width !== previous.width)
     events.publish('shape.width.changed', { designId: payload.designId, shapeId: next.shapeId, width: next.width });
   events.publish('shape.updated', payload);
+  events.publish('design:changed', { document: updated.document!, revision: updated.document!.revision });
   return updated;
 }

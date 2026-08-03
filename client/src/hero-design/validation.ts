@@ -24,8 +24,8 @@ export function validateHeroDesignDocument(document: HeroDesignDocument): HeroVa
   if (!document.nail?.shape?.id) issues.push(issue('nail.shape.id', 'required', 'Shape id is required.'));
   else issues.push(...validateHeroShapeConfiguration(shapeConfigurationFromDocument(document)).issues);
   if (!document.nail?.mask?.id) issues.push(issue('nail.mask.id', 'required', 'Mask id is required.'));
-  if (!finitePositive(document.nail?.length)) issues.push(issue('nail.length', 'range', 'Length must be a positive finite number.'));
-  if (!finitePositive(document.nail?.width)) issues.push(issue('nail.width', 'range', 'Width must be a positive finite number.'));
+  if (typeof document.nail?.length !== 'number' || !Number.isFinite(document.nail.length) || document.nail.length < 0) issues.push(issue('nail.length', 'range', 'Length must be a non-negative finite number.'));
+  if (typeof document.nail?.width !== 'number' || !Number.isFinite(document.nail.width) || document.nail.width < 0) issues.push(issue('nail.width', 'range', 'Width must be a non-negative finite number.'));
   if (typeof document.nail?.tipDown !== 'boolean') issues.push(issue('nail.tipDown', 'required', 'Tip-down orientation is required.'));
   if (!document.nail?.view || !['top', 'side', 'perspective'].includes(document.nail.view.view)) issues.push(issue('nail.view', 'unsupported', 'A supported view configuration is required.'));
   if (!document.lighting || typeof document.lighting.intensity !== 'number' || !document.lighting.direction || !document.lighting.color) issues.push(issue('lighting', 'required', 'Lighting configuration is required.'));

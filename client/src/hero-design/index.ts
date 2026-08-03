@@ -7,3 +7,4 @@ export * from './persistence';
 export * from './adapters';
 export * from './downstream';
 export * from './shape';
+export * from './designStudioBridge';
