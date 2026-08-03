@@ -5,6 +5,11 @@ export interface HeroDesignEventMap {
   'design:loaded': { document: HeroDesignDocument };
   'design:changed': { document: HeroDesignDocument; revision: number };
   'shape:changed': { designId: string; shapeId: string };
+  'shape.selected': { designId: string; shapeId: string; shapeVersion: string };
+  'shape.updated': { designId: string; shapeId: string; shapeVersion: string; length: number; width: number; orientation: 'tip-down' };
+  'shape.length.changed': { designId: string; shapeId: string; length: number };
+  'shape.width.changed': { designId: string; shapeId: string; width: number };
+  'shape.validation.failed': { designId?: string; issues: import('./contracts').HeroValidationIssue[] };
   'mask:changed': { designId: string; maskId: string };
   'layer:added': { designId: string; layer: HeroLayer };
   'layer:updated': { designId: string; layer: HeroLayer };

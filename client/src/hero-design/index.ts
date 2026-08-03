@@ -6,3 +6,4 @@ export * from './state';
 export * from './persistence';
 export * from './adapters';
 export * from './downstream';
+export * from './shape';

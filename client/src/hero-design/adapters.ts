@@ -1,5 +1,6 @@
 import { HeroDesignDocument, HeroLayer, HeroLayerType } from './contracts';
 import { validateHeroDesignDocument } from './validation';
+import { HERO_SHAPE_IDS, HERO_SHAPE_VERSION, HeroShapeId } from './shape';
 
 export interface HeroLegacyConversionResult<TLegacy = unknown> {
   document: HeroDesignDocument | null;
@@ -14,6 +15,7 @@ const LEGACY_LAYER_TYPES: Record<string, HeroLayerType> = {
 };
 const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
 const own = (value: object, key: string) => Object.prototype.hasOwnProperty.call(value, key);
+const LEGACY_SHAPES = new Map<string, HeroShapeId>(HERO_SHAPE_IDS.flatMap((id) => [[id, id], [id.toLowerCase(), id]]));
 
 /** Converts only fields present in current Design Studio documents and reports every omission. */
 export function convertLegacyDesignStudioDocument<TLegacy extends Record<string, any>>(legacy: TLegacy): HeroLegacyConversionResult<TLegacy> {
@@ -25,7 +27,11 @@ export function convertLegacyDesignStudioDocument<TLegacy extends Record<string,
   const metadata = legacy.metadata ?? {};
   const id = legacy.id ?? metadata.id;
   const name = legacy.name ?? legacy.designName ?? metadata.name;
-  const shapeId = nail?.shape ?? legacy.shape;
+  const legacyShapeId = nail?.shape ?? legacy.shape;
+  const shapeId = LEGACY_SHAPES.get(legacyShapeId);
+  const shapeVersion = nail?.shapeVersion ?? legacy.shapeVersion ?? HERO_SHAPE_VERSION;
+  if (legacyShapeId != null && !shapeId) unsupportedFields.push(`nail.shape:${String(legacyShapeId)}`);
+  if (shapeId && shapeVersion !== HERO_SHAPE_VERSION) unsupportedFields.push(`nail.shape.version:${String(shapeVersion)}`);
   const maskId = nail?.maskId ?? legacy.maskId;
   const width = blueprint.canvas?.width ?? legacy.canvas?.width;
   const height = blueprint.canvas?.height ?? legacy.canvas?.height;
@@ -49,14 +55,14 @@ export function convertLegacyDesignStudioDocument<TLegacy extends Record<string,
     if (!own(layer, 'blendMode')) unsupportedFields.push(`nails.layers[${index}].blendMode:defaulted-normal`);
   });
 
-  const knownTopLevel = new Set(['id', 'name', 'designName', 'metadata', 'blueprint', 'nails', 'canvas', 'activeNail', 'shape', 'maskId', 'lighting', 'product', 'productMetadata', 'blueprintMetadata', 'revision']);
+  const knownTopLevel = new Set(['id', 'name', 'designName', 'metadata', 'blueprint', 'nails', 'canvas', 'activeNail', 'shape', 'shapeVersion', 'maskId', 'lighting', 'product', 'productMetadata', 'blueprintMetadata', 'revision']);
   Object.keys(legacy).filter((key) => !knownTopLevel.has(key)).forEach((key) => unsupportedFields.push(key));
   if (missingFields.length) return { document: null, original, unsupportedFields, missingFields };
 
   const document: HeroDesignDocument = {
     metadata: { id, name, createdAt: metadata.createdAt, updatedAt: metadata.updatedAt, authorId: metadata.authorId, description: metadata.description, tags: metadata.tags },
     nail: {
-      shape: { id: shapeId }, mask: { id: maskId }, length: nail.length, width: nail.width,
+      shape: { id: shapeId, version: shapeVersion }, mask: { id: maskId }, length: nail.length, width: nail.width,
       tipDown: nail.tipDown,
       view: nail.view,
     },

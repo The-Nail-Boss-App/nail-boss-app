@@ -1,4 +1,5 @@
 import { HERO_ENGINE_IDS, HeroDesignDocument, HeroLayer, HeroValidationIssue, HeroValidationResult } from './contracts';
+import { shapeConfigurationFromDocument, validateHeroShapeConfiguration } from './shape';
 
 const issue = (path: string, code: string, message: string): HeroValidationIssue => ({ path, code, message, severity: 'error' });
 const finitePositive = (value: unknown) => typeof value === 'number' && Number.isFinite(value) && value > 0;
@@ -21,6 +22,7 @@ export function validateHeroDesignDocument(document: HeroDesignDocument): HeroVa
   if (!document.metadata?.createdAt) issues.push(issue('metadata.createdAt', 'required', 'Creation time is required.'));
   if (!document.metadata?.updatedAt) issues.push(issue('metadata.updatedAt', 'required', 'Update time is required.'));
   if (!document.nail?.shape?.id) issues.push(issue('nail.shape.id', 'required', 'Shape id is required.'));
+  else issues.push(...validateHeroShapeConfiguration(shapeConfigurationFromDocument(document)).issues);
   if (!document.nail?.mask?.id) issues.push(issue('nail.mask.id', 'required', 'Mask id is required.'));
   if (!finitePositive(document.nail?.length)) issues.push(issue('nail.length', 'range', 'Length must be a positive finite number.'));
   if (!finitePositive(document.nail?.width)) issues.push(issue('nail.width', 'range', 'Width must be a positive finite number.'));

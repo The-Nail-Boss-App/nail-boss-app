@@ -118,13 +118,13 @@ export interface HeroRenderResult<TOutput = unknown> {
 }
 
 export const createHeroDesignDocument = (
-  input: { id: string; name: string; now?: string; shapeId: string; maskId: string },
+  input: { id: string; name: string; now?: string; shapeId: string; shapeVersion?: string; maskId: string },
 ): HeroDesignDocument => {
   const now = input.now ?? new Date().toISOString();
   return {
     metadata: { id: input.id, name: input.name, createdAt: now, updatedAt: now },
     nail: {
-      shape: { id: input.shapeId }, mask: { id: input.maskId }, length: 1, width: 1,
+      shape: { id: input.shapeId, version: input.shapeVersion ?? '1' }, mask: { id: input.maskId }, length: 1, width: 1,
       tipDown: true, view: { view: 'top', rotation: 0, zoom: 1 },
     },
     layers: [],
