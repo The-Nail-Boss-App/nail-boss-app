@@ -37,8 +37,6 @@ const COMPOSITIONS = [
   { id: 'full', label: 'Full Set', nails: 10 },
 ];
 
-const MASTER_FINGER_SRC = '/assets/anitaset/design-studio/finger-assets/approved-master-finger.png';
-
 const WORKSPACE_SURFACES = [
   { id: 'signature', label: 'Signature', src: '/assets/anitaset/design-studio/workspace-surfaces/signature-workspace.png' },
   { id: 'cherry', label: 'Cherry Lacquer', src: '/assets/anitaset/design-studio/workspace-surfaces/cherry-lacquer-workspace.png' },
@@ -70,7 +68,6 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
   const [leftPanelOpen, setLeftPanelOpen] = useState(true);
   const [rightPanelOpen, setRightPanelOpen] = useState(true);
   const [focusMode, setFocusMode] = useState(false);
-  const [fingerAspectRatio, setFingerAspectRatio] = useState(null);
   const cancelingRename = useRef(false);
   const toolRefs = useRef([]);
   const drag = useRef(null);
@@ -78,15 +75,6 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
   const activeTool = TOOL_CATEGORIES.find((tool) => tool.id === activeToolId) || TOOL_CATEGORIES[0];
   const activeComposition = COMPOSITIONS.find((item) => item.id === composition) || COMPOSITIONS[0];
   const activeSurface = WORKSPACE_SURFACES.find((item) => item.id === surface) || WORKSPACE_SURFACES[0];
-
-  const rememberFingerDimensions = (event) => {
-    const { naturalWidth, naturalHeight } = event.currentTarget;
-    if (naturalWidth > 0 && naturalHeight > 0) setFingerAspectRatio(naturalWidth / naturalHeight);
-  };
-
-  const reportFingerLoadError = () => {
-    console.error(`Approved master finger image failed to load: ${MASTER_FINGER_SRC}`);
-  };
 
   const fitToView = () => { setZoom(1); setPan({ x: 0, y: 0 }); };
   const changeComposition = (nextComposition) => { setComposition(nextComposition); fitToView(); };
@@ -286,12 +274,12 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
           <div className={`nail-design-studio__desk-surface${zoom > 1 ? ' is-pannable' : ''}`} style={{ backgroundImage: `url(${activeSurface.src})` }} onPointerDown={startPan} onPointerMove={movePan} onPointerUp={stopPan} onPointerCancel={stopPan} data-testid="nail-stage-container">
             <div className={`nail-design-studio__nail-stage nail-design-studio__nail-stage--${composition}`} style={{ '--stage-zoom': zoom, '--stage-x': `${pan.x}px`, '--stage-y': `${pan.y}px`, '--nail-length': nailLength / 100 }} aria-label={`${activeComposition.label} nail stage`}>
               {Array.from({ length: activeComposition.nails }, (_, index) => (
-                <div className="nail-design-studio__finger" data-testid="stage-finger" key={index}>
-                  <div className="nail-design-studio__finger-composition" data-testid="finger-composition"
-                    style={fingerAspectRatio ? { aspectRatio: fingerAspectRatio } : undefined}>
-                    <img src={MASTER_FINGER_SRC} alt={`Approved master finger ${index + 1}`} draggable="false"
-                      data-testid="master-finger" onLoad={rememberFingerDimensions} onError={reportFingerLoadError} />
-                    <span className="nail-design-studio__nail-overlay" data-testid="stage-nail" aria-label={`Editable nail ${index + 1}`} />
+                <div className="nail-design-studio__nail-slot" data-testid="nail-slot" key={index}>
+                  <div className="nail-design-studio__hero-nail" data-testid="stage-nail" data-design-layer-parent="true"
+                    aria-label={`Hero Nail ${index + 1}`}>
+                    <span className="nail-design-studio__nail-polish" data-design-layer="polish" aria-hidden="true" />
+                    <span className="nail-design-studio__nail-reflection" aria-hidden="true" />
+                    <span className="nail-design-studio__nail-gloss" aria-hidden="true" />
                   </div>
                 </div>
               ))}

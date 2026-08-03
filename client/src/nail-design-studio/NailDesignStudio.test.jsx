@@ -180,65 +180,44 @@ describe('adaptive Nail Desk', () => {
 
   const button = (label) => [...container.querySelectorAll('button')].find((item) => item.textContent === label);
 
-  it('uses the exact accessible approved public asset in Single Nail mode', () => {
+  it('renders one premium Hero Nail in Single Nail mode without a finger asset', () => {
     expect(container.querySelectorAll('[data-testid="stage-nail"]')).toHaveLength(1);
-    expect(container.querySelectorAll('[data-testid="master-finger"]')).toHaveLength(1);
-    const image = container.querySelector('[data-testid="master-finger"]');
-    expect(image.getAttribute('src')).toBe('/assets/anitaset/design-studio/finger-assets/approved-master-finger.png');
-    expect(image.getAttribute('alt')).toBe('Approved master finger 1');
-    expect(container.querySelector('.nail-design-studio__finger-composition > img')).toBe(image);
-    expect(container.querySelector('.nail-design-studio__finger-composition > .nail-design-studio__nail-overlay')).toBeTruthy();
+    expect(container.querySelector('[data-testid="stage-nail"]').getAttribute('aria-label')).toBe('Hero Nail 1');
+    expect(container.querySelector('[data-design-layer-parent="true"]')).toBeTruthy();
+    expect(container.querySelector('[data-design-layer="polish"]')).toBeTruthy();
+    expect(container.querySelector('img')).toBeNull();
   });
 
-  it('renders five approved master fingers in Left Hand mode', async () => {
+  it('renders five Hero Nails in Left Hand mode', async () => {
     await click(container.querySelector('input[value="left"]'));
-    expect(container.querySelectorAll('[data-testid="master-finger"]')).toHaveLength(5);
+    expect(container.querySelectorAll('[data-testid="stage-nail"]')).toHaveLength(5);
   });
 
-  it('renders five approved master fingers in Right Hand mode', async () => {
+  it('renders five Hero Nails in Right Hand mode', async () => {
     await click(container.querySelector('input[value="right"]'));
-    expect(container.querySelectorAll('[data-testid="master-finger"]')).toHaveLength(5);
+    expect(container.querySelectorAll('[data-testid="stage-nail"]')).toHaveLength(5);
   });
 
-  it('offers every composition and renders ten approved master fingers in Full Set mode', async () => {
+  it('offers every composition and renders exactly ten Hero Nails in Full Set mode', async () => {
     const labels = [...container.querySelectorAll('fieldset label')].map((label) => label.textContent);
     expect(labels).toEqual(['Single Nail', 'Left Hand', 'Right Hand', 'Full Set']);
     await click(container.querySelector('input[value="full"]'));
     expect(container.querySelector('[aria-label="Full Set nail stage"]')).toBeTruthy();
     expect(container.querySelectorAll('[data-testid="stage-nail"]')).toHaveLength(10);
-    expect(container.querySelectorAll('[data-testid="master-finger"]')).toHaveLength(10);
+    expect(container.querySelectorAll('[data-testid="nail-slot"]')).toHaveLength(10);
     expect(container.querySelector('.nail-design-studio__nail-stage--full')).toBeTruthy();
   });
 
-  it('reports a clear console error when the approved image cannot load', async () => {
-    const error = jest.spyOn(console, 'error').mockImplementation(() => {});
-    const image = container.querySelector('[data-testid="master-finger"]');
-    await act(async () => image.dispatchEvent(new Event('error', { bubbles: false })));
-    expect(error).toHaveBeenCalledWith('Approved master finger image failed to load: /assets/anitaset/design-studio/finger-assets/approved-master-finger.png');
-    error.mockRestore();
-  });
-
-  it('keeps complete finger compositions in safe centered stage bounds', () => {
+  it('keeps the Hero Nail composition in safe centered stage bounds', () => {
     const stage = container.querySelector('.nail-design-studio__nail-stage--single');
-    const finger = container.querySelector('[data-testid="stage-finger"]');
-    const composition = container.querySelector('[data-testid="finger-composition"]');
+    const slot = container.querySelector('[data-testid="nail-slot"]');
+    const heroNail = container.querySelector('[data-testid="stage-nail"]');
     expect(stage).toBeTruthy();
-    expect(finger).toBeTruthy();
-    expect(composition).toBeTruthy();
+    expect(slot).toBeTruthy();
+    expect(heroNail).toBeTruthy();
     expect(stage.style.getPropertyValue('--stage-x')).toBe('0px');
     expect(stage.style.getPropertyValue('--stage-y')).toBe('0px');
-    expect(composition.querySelector('[data-testid="master-finger"]')).toBeTruthy();
-    expect(composition.querySelector('[data-testid="stage-nail"]')).toBeTruthy();
-  });
-
-  it('sizes the composition from the approved image intrinsic dimensions', async () => {
-    const image = container.querySelector('[data-testid="master-finger"]');
-    Object.defineProperties(image, {
-      naturalWidth: { configurable: true, value: 900 },
-      naturalHeight: { configurable: true, value: 1800 },
-    });
-    await act(async () => image.dispatchEvent(new Event('load', { bubbles: false })));
-    expect(container.querySelector('[data-testid="finger-composition"]').style.aspectRatio).toBe('0.5');
+    expect(slot.contains(heroNail)).toBe(true);
   });
 
   it('shares zoom, fit, and pointer pan while composition changes reset the camera', async () => {
@@ -288,7 +267,7 @@ describe('adaptive Nail Desk', () => {
     expect([length.min, length.max]).toEqual(['10', '100']);
     await type(length, '100');
     expect(container.querySelector('.nail-design-studio__nail-stage').style.getPropertyValue('--nail-length')).toBe('1');
-    expect(container.querySelector('[data-testid="stage-nail"]').closest('[data-testid="finger-composition"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="stage-nail"]').closest('[data-testid="nail-slot"]')).toBeTruthy();
     const surface = container.querySelector('#workspace-surface');
     expect([...surface.options].map((option) => option.textContent)).toEqual(['Signature', 'Cherry Lacquer', "Kiki's"]);
     expect(container.querySelector('[data-testid="nail-stage-container"]').style.backgroundImage).toContain('/assets/anitaset/design-studio/workspace-surfaces/signature-workspace.png');
