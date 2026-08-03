@@ -70,6 +70,7 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
   const [leftPanelOpen, setLeftPanelOpen] = useState(true);
   const [rightPanelOpen, setRightPanelOpen] = useState(true);
   const [focusMode, setFocusMode] = useState(false);
+  const [fingerAspectRatio, setFingerAspectRatio] = useState(null);
   const cancelingRename = useRef(false);
   const toolRefs = useRef([]);
   const drag = useRef(null);
@@ -77,6 +78,11 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
   const activeTool = TOOL_CATEGORIES.find((tool) => tool.id === activeToolId) || TOOL_CATEGORIES[0];
   const activeComposition = COMPOSITIONS.find((item) => item.id === composition) || COMPOSITIONS[0];
   const activeSurface = WORKSPACE_SURFACES.find((item) => item.id === surface) || WORKSPACE_SURFACES[0];
+
+  const rememberFingerDimensions = (event) => {
+    const { naturalWidth, naturalHeight } = event.currentTarget;
+    if (naturalWidth > 0 && naturalHeight > 0) setFingerAspectRatio(naturalWidth / naturalHeight);
+  };
 
   const fitToView = () => { setZoom(1); setPan({ x: 0, y: 0 }); };
   const changeComposition = (nextComposition) => { setComposition(nextComposition); fitToView(); };
@@ -277,8 +283,11 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
             <div className={`nail-design-studio__nail-stage nail-design-studio__nail-stage--${composition}`} style={{ '--stage-zoom': zoom, '--stage-x': `${pan.x}px`, '--stage-y': `${pan.y}px`, '--nail-length': nailLength / 100 }} aria-label={`${activeComposition.label} nail stage`}>
               {Array.from({ length: activeComposition.nails }, (_, index) => (
                 <div className="nail-design-studio__finger" data-testid="stage-finger" key={index}>
-                  <img src={MASTER_FINGER_SRC} alt="" draggable="false" data-testid="master-finger" />
-                  <span className="nail-design-studio__nail-overlay" data-testid="stage-nail" aria-label={`Editable nail ${index + 1}`} />
+                  <div className="nail-design-studio__finger-composition" data-testid="finger-composition"
+                    style={fingerAspectRatio ? { aspectRatio: fingerAspectRatio } : undefined}>
+                    <img src={MASTER_FINGER_SRC} alt="" draggable="false" data-testid="master-finger" onLoad={rememberFingerDimensions} />
+                    <span className="nail-design-studio__nail-overlay" data-testid="stage-nail" aria-label={`Editable nail ${index + 1}`} />
+                  </div>
                 </div>
               ))}
             </div>
