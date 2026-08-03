@@ -182,12 +182,19 @@ describe('adaptive Nail Desk', () => {
 
   it('offers every composition and renders a full set as exactly ten nails', async () => {
     expect(container.querySelectorAll('[data-testid="stage-nail"]')).toHaveLength(1);
+    expect(container.querySelectorAll('[data-testid="master-finger"]')).toHaveLength(1);
+    expect(container.querySelector('[data-testid="master-finger"]').getAttribute('src')).toBe('/assets/anitaset/design-studio/finger-assets/approved-master-finger.png');
     const labels = [...container.querySelectorAll('fieldset label')].map((label) => label.textContent);
     expect(labels).toEqual(['Single Nail', 'Left Hand', 'Right Hand', 'Full Set']);
     await click(container.querySelector('input[value="full"]'));
     expect(container.querySelector('[aria-label="Full Set nail stage"]')).toBeTruthy();
     expect(container.querySelectorAll('[data-testid="stage-nail"]')).toHaveLength(10);
+    expect(container.querySelectorAll('[data-testid="master-finger"]')).toHaveLength(10);
     expect(container.querySelector('.nail-design-studio__nail-stage--full')).toBeTruthy();
+    await click(container.querySelector('input[value="right"]'));
+    expect(container.querySelectorAll('[data-testid="master-finger"]')).toHaveLength(5);
+    await click(container.querySelector('input[value="left"]'));
+    expect(container.querySelectorAll('[data-testid="master-finger"]')).toHaveLength(5);
   });
 
   it('shares zoom, fit, and pointer pan while composition changes reset the camera', async () => {

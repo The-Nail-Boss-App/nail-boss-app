@@ -37,6 +37,8 @@ const COMPOSITIONS = [
   { id: 'full', label: 'Full Set', nails: 10 },
 ];
 
+const MASTER_FINGER_SRC = '/assets/anitaset/design-studio/finger-assets/approved-master-finger.png';
+
 const WORKSPACE_SURFACES = [
   { id: 'signature', label: 'Signature', src: '/assets/anitaset/design-studio/workspace-surfaces/signature-workspace.png' },
   { id: 'cherry', label: 'Cherry Lacquer', src: '/assets/anitaset/design-studio/workspace-surfaces/cherry-lacquer-workspace.png' },
@@ -273,7 +275,12 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
           </div>
           <div className={`nail-design-studio__desk-surface${zoom > 1 ? ' is-pannable' : ''}`} style={{ backgroundImage: `url(${activeSurface.src})` }} onPointerDown={startPan} onPointerMove={movePan} onPointerUp={stopPan} onPointerCancel={stopPan} data-testid="nail-stage-container">
             <div className={`nail-design-studio__nail-stage nail-design-studio__nail-stage--${composition}`} style={{ '--stage-zoom': zoom, '--stage-x': `${pan.x}px`, '--stage-y': `${pan.y}px`, '--nail-length': nailLength / 100 }} aria-label={`${activeComposition.label} nail stage`}>
-              {Array.from({ length: activeComposition.nails }, (_, index) => <div className="nail-design-studio__nail" data-testid="stage-nail" key={index}><span /></div>)}
+              {Array.from({ length: activeComposition.nails }, (_, index) => (
+                <div className="nail-design-studio__finger" data-testid="stage-finger" key={index}>
+                  <img src={MASTER_FINGER_SRC} alt="" draggable="false" data-testid="master-finger" />
+                  <span className="nail-design-studio__nail-overlay" data-testid="stage-nail" aria-label={`Editable nail ${index + 1}`} />
+                </div>
+              ))}
             </div>
           </div>
         </main>
