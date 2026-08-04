@@ -7,6 +7,8 @@ import {
   HERO_NAIL_MASK_LIBRARY, HeroNailMaskEngine, maskReferenceForShape, registerHeroNailMaskEngine,
   resolveHeroNailMask,
   publishMaskResolution,
+  createHeroSurfaceInput, connectHeroSurfaceInvalidation, HeroSurfaceRenderingEngine,
+  registerHeroSurfaceRenderingEngine,
 } from './index';
 
 const layer = (id: string): HeroLayer => ({
@@ -195,5 +197,38 @@ describe('Hero Design integration shell', () => {
     expect(createHeroExportRequest({ ...base, format: 'png', quality: 'export' }).kind).toBe('export');
     expect(createHeroProductRequest({ ...base, productType: 'press-on-set' }).kind).toBe('product');
     expect(createHeroBlueprintRequest({ ...base, schemaVersion: '1' }).kind).toBe('blueprint');
+  });
+
+  test('registers the surface renderer and renders all eight approved masked shapes', () => {
+    const registry = new HeroEngineRegistry();
+    const engine = registerHeroSurfaceRenderingEngine(registry);
+    expect(registry.resolve('Hero Surface Rendering Engine')).toBe(engine);
+    expect(engine.capabilities).toEqual(['surface.render', 'surface.preview', 'surface.invalidate', 'surface.bounds', 'surface.refresh']);
+    HERO_SHAPE_IDS.forEach((shapeId) => {
+      const hero = { ...document(), nail: { ...document().nail, shape: { id: shapeId, version: '1' }, mask: maskReferenceForShape(shapeId)! } };
+      const result = engine.refresh(createHeroSurfaceInput(hero, { width: 240, height: 360 }));
+      expect(result).toMatchObject({ shapeId, maskId: `${shapeId.toLowerCase()}-mask`, fill: '#F4E8E4' });
+      expect(result.path).toMatch(/^M/);
+      expect(result.bounds.width).toBeGreaterThan(0);
+    });
+    expect(engine.state).toBe('Rendered');
+  });
+
+  test('publishes renderer transitions, invalidates geometry changes, coalesces redraws, and fails safely', async () => {
+    const events = new HeroDesignEventBus(); const redraw = jest.fn();
+    const engine = new HeroSurfaceRenderingEngine(events);
+    const started = jest.fn(); const completed = jest.fn(); const invalidated = jest.fn(); const failed = jest.fn();
+    events.subscribe('surface.render.started', started); events.subscribe('surface.render.completed', completed);
+    events.subscribe('surface.render.invalidated', invalidated); events.subscribe('surface.render.failed', failed);
+    engine.process(createHeroSurfaceInput(document(), { width: 240, height: 360 }));
+    expect(started).toHaveBeenCalledTimes(1); expect(completed).toHaveBeenCalledTimes(1); expect(engine.state).toBe('Rendered');
+    const disconnect = connectHeroSurfaceInvalidation(engine, events, redraw);
+    events.publish('shape.length.changed', { designId: 'design-1', shapeId: 'Almond', length: 0.8 });
+    events.publish('shape.width.changed', { designId: 'design-1', shapeId: 'Almond', width: 0.7 });
+    expect(engine.state).toBe('Invalid'); expect(invalidated).toHaveBeenCalledTimes(2);
+    await Promise.resolve(); expect(redraw).toHaveBeenCalledTimes(1);
+    expect(() => engine.process({ ...createHeroSurfaceInput(document(), { width: 240, height: 360 }), viewport: { width: 0, height: 0 } })).toThrow('positive');
+    expect(engine.state).toBe('Failed'); expect(failed).toHaveBeenCalledTimes(1);
+    disconnect();
   });
 });

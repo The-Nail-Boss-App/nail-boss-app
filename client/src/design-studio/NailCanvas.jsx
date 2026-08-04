@@ -6,6 +6,10 @@ import { AssetContactShadow, AssetSpecularAccent, AssetSurfaceBlend, assetLayerR
 import { FrenchTipShape } from "./frenchTipRendering.js";
 import { PolishDefs, PolishSurface, SharedPolishRealismLayers } from "./PolishRenderer.jsx";
 import { polishMaterialProfile, polishSurfacePreset, resolvePolishDataForRender } from "./polish.js";
+import { HeroEngineRegistry, HERO_SURFACE_VIEWPORT, createHeroSurfaceInput, heroDocumentFromLegacyNail, registerHeroSurfaceRenderingEngine } from "../hero-design";
+
+const heroSurfaceRegistry = new HeroEngineRegistry();
+const heroSurfaceRenderer = registerHeroSurfaceRenderingEngine(heroSurfaceRegistry);
 
 function gradientPoints(direction = "vertical", angle = 90) {
   if (direction === "aura") return null;
@@ -228,7 +232,17 @@ export default function NailCanvas({ nail, layers, selectedLayerId, mode, brush,
   const dragRef = useRef(null);
   const clipId = useMemo(() => `nail-clip-${Math.random().toString(36).slice(2)}`, []);
   const uid = useMemo(() => `defs-${Math.random().toString(36).slice(2)}`, []);
-  const path = buildNailPath(nail.shape, nail);
+  const legacyPath = buildNailPath(nail.shape, nail);
+  const heroSurface = useMemo(() => {
+    try {
+      const document = heroDocumentFromLegacyNail(nail, { id: nail.id || "active-studio-nail", name: "Active Studio Nail", revision: nail.revision || 0 });
+      return { result: heroSurfaceRenderer.process(createHeroSurfaceInput(document, HERO_SURFACE_VIEWPORT)), fallback: false };
+    } catch {
+      // The established renderer remains intact as a last-resort, never-blank canvas path.
+      return { result: { path: legacyPath, fill: "#F4E8E4" }, fallback: true };
+    }
+  }, [nail.id, nail.revision, nail.shape, nail.length, nail.width, legacyPath]);
+  const path = heroSurface.result.path;
   const baseLayer = layers.find((layer) => layer.type === "base");
   const artLayers = [...layers].filter((layer) => layer.type !== "base" && layer.visible !== false).sort(layerSort);
   const geometry = getNailGeometry(nail);
@@ -381,7 +395,7 @@ export default function NailCanvas({ nail, layers, selectedLayerId, mode, brush,
   const fit = heroZoomFit(zoom);
   const activeSurfacePreset = polishSurfacePreset(resolvePolishDataForRender(baseLayer?.data || {}, nail?.baseColorHex));
 
-  return <div data-testid="bounded-hero-canvas-area" data-renderer-version="nail-surface-v2" data-material-preset={activeSurfacePreset.toLowerCase()} data-zoom-containment-padding="dock-safe-expanded" data-default-nail-bottom-clip="prevented" style={{ height: "100%", minHeight: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", position: "relative", overflow: fit.panEnabled ? "auto" : "hidden", overscrollBehavior: "contain", boxSizing: "border-box", padding: HERO_CANVAS_SAFE_PADDING, background: "radial-gradient(ellipse at 50% 52%, rgba(255,255,255,.72) 0 20%, transparent 46%), radial-gradient(circle at 18% 14%, rgba(245,200,232,.22), transparent 30%), linear-gradient(118deg, transparent 0 16%, rgba(216,166,66,.24) 16.12%, transparent 16.5% 38%, rgba(216,166,66,.16) 38.14%, transparent 38.44% 64%, rgba(216,166,66,.18) 64.12%, transparent 64.5%), linear-gradient(135deg, #fffaf7, #fbf1ed 54%, #f7e8f1)" }}>
+  return <div data-testid="bounded-hero-canvas-area" data-renderer-version="hero-surface-v1" data-hero-surface-state={heroSurfaceRenderer.state} data-hero-surface-fallback={heroSurface.fallback ? "legacy" : "none"} data-material-preset={activeSurfacePreset.toLowerCase()} data-zoom-containment-padding="dock-safe-expanded" data-default-nail-bottom-clip="prevented" style={{ height: "100%", minHeight: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", position: "relative", overflow: fit.panEnabled ? "auto" : "hidden", overscrollBehavior: "contain", boxSizing: "border-box", padding: HERO_CANVAS_SAFE_PADDING, background: "radial-gradient(ellipse at 50% 52%, rgba(255,255,255,.72) 0 20%, transparent 46%), radial-gradient(circle at 18% 14%, rgba(245,200,232,.22), transparent 30%), linear-gradient(118deg, transparent 0 16%, rgba(216,166,66,.24) 16.12%, transparent 16.5% 38%, rgba(216,166,66,.16) 38.14%, transparent 38.44% 64%, rgba(216,166,66,.18) 64.12%, transparent 64.5%), linear-gradient(135deg, #fffaf7, #fbf1ed 54%, #f7e8f1)" }}>
     <div aria-hidden="true" data-testid="studio-surface-texture" style={{ position: "absolute", inset: "8% 7% 10%", borderRadius: 32, background: "radial-gradient(circle at 18% 22%, rgba(255,255,255,.52), transparent 24%), radial-gradient(circle at 82% 78%, rgba(245,200,232,.18), transparent 28%), linear-gradient(125deg, rgba(255,255,255,.36), rgba(245,200,232,.16) 46%, rgba(199,154,93,.08))", border: "1px solid rgba(123,47,89,.10)", boxShadow: "inset 0 1px 0 rgba(255,255,255,.72), 0 24px 70px rgba(60,20,50,.10)", pointerEvents: "none" }} />
     <div aria-hidden="true" style={{ position: "absolute", width: "min(360px, 54%)", height: 34, bottom: "13%", left: "50%", transform: "translateX(-50%)", borderRadius: "50%", background: "radial-gradient(ellipse, rgba(60,20,50,.18), rgba(123,47,89,.08) 42%, transparent 70%)", filter: "blur(3px)", pointerEvents: "none" }} />
     <div data-testid="zoomable-nail-canvas" data-zoom-containment={fit.panEnabled ? "internal-pan-at-high-zoom" : "bounded-fit-to-container"} data-zoom-fit-helper="heroZoomFit" data-zoom-requested={fit.requestedZoom} data-zoom-visual={fit.visualZoom} data-zoom-capped={fit.capped ? "true" : "false"} data-zoom-pan-enabled={fit.panEnabled ? "true" : "false"} data-baseline-scale="165-as-100" data-safe-contained-zoom={HERO_SAFE_CONTAINED_ZOOM} data-max-contained-zoom={HERO_MAX_ZOOM} style={{ height: fit.panEnabled ? fit.heightVh : `calc(100% - ${HERO_CANVAS_VERTICAL_SAFE_GAP}px)`, width: fit.panEnabled ? "auto" : "100%", maxHeight: fit.panEnabled ? "none" : "100%", maxWidth: fit.panEnabled ? "none" : "min(96%, 560px)", aspectRatio: "2 / 3", transition: "height 160ms ease", flex: "0 1 auto", marginTop: "0", marginBottom: "0", position: "relative", zIndex: 1, filter: "drop-shadow(0 18px 18px rgba(60,20,50,.14))", boxSizing: "border-box" }}>
@@ -394,6 +408,7 @@ export default function NailCanvas({ nail, layers, selectedLayerId, mode, brush,
           <PolishDefs nail={nail} baseLayer={baseLayer} uid={uid}/>
         </defs>
         <rect width={VIEWBOX.width} height={VIEWBOX.height} fill="transparent"/>
+        <path d={path} fill={heroSurface.result.fill} data-testid="hero-neutral-nail-surface" data-shape={nail.shape} data-mask={heroSurface.result.maskId || "legacy"}/>
         <PolishSurface nail={nail} baseLayer={baseLayer} path={path} clipId={clipId} uid={uid}/>
         {baseLayer?.data?.polishFillMode === "gradient" && <g clipPath={`url(#${clipId})`} pointerEvents="none" data-testid="gradient-polish-color-fill" data-gradient-mode="polish-base-fill">
           <defs><LayerGradient layer={{ id: "base-polish-gradient", data: baseLayer.data.gradient }} id={`${uid}-base-polish-gradient`}/></defs>

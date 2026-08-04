@@ -9,3 +9,4 @@ export * from './downstream';
 export * from './shape';
 export * from './mask';
 export * from './designStudioBridge';
+export * from './surface';
