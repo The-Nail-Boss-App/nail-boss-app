@@ -82,6 +82,7 @@ export function connectHeroSurfaceInvalidation(engine: HeroSurfaceRenderingEngin
     events.subscribe('shape.length.changed', ({ designId }) => invalidate('length', designId)),
     events.subscribe('shape.width.changed', ({ designId }) => invalidate('width', designId)),
     events.subscribe('nail.material.changed', ({ designId }) => invalidate('material', designId)),
+    events.subscribe('effect.changed', ({ designId }) => invalidate('effect', designId)),
   ];
   return () => subscriptions.forEach((unsubscribe) => unsubscribe());
 }

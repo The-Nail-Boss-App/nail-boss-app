@@ -11,3 +11,4 @@ export * from './mask';
 export * from './designStudioBridge';
 export * from './surface';
 export * from './material';
+export * from './effect';

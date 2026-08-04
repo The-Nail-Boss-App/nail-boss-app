@@ -43,11 +43,16 @@ export interface HeroNailConfiguration {
   mask: HeroNailMaskReference;
   /** Stable material selection; resolved renderer data is never persisted. */
   material: HeroNailMaterialReference;
+  /** Stable finish selection. Effects decorate the material and never own geometry. */
+  effect: HeroEffectReference;
   length: number;
   width: number;
   tipDown: boolean;
   view: HeroViewConfiguration;
 }
+
+export type HeroEffectId = 'Solid' | 'Gradient' | 'Chrome' | 'Cat Eye' | 'Marble' | 'Jelly';
+export interface HeroEffectReference { id: HeroEffectId; version: '1'; parameters: Record<string, unknown> }
 
 export type HeroNailMaterialCategory = 'natural-nail' | 'clear-tip' | 'soft-gel' | 'acrylic' | 'builder-gel';
 export interface HeroNailMaterialReference { id: string; version: string }
@@ -157,6 +162,7 @@ export const createHeroDesignDocument = (
       shape: { id: input.shapeId, version: input.shapeVersion ?? '1' },
       mask: { id: input.maskId, version: input.maskVersion ?? '1', shapeId: input.shapeId, coordinateSpace: 'normalized', safeMargin: input.safeMargin ?? 0, source: { type: 'path', assetId: `founder-approved-nail-mask:${input.shapeId}:1` } },
       material: { id: 'soft-gel-neutral', version: '1' },
+      effect: { id: 'Solid', version: '1', parameters: { color: '#D94C70' } },
       length: 1, width: 1, tipDown: true, view: { view: 'top', rotation: 0, zoom: 1 },
     },
     layers: [],

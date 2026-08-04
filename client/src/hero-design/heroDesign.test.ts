@@ -12,6 +12,8 @@ import {
   DEFAULT_HERO_MATERIAL_REFERENCE, HERO_MATERIAL_LIBRARY, HeroMaterialEngine,
   registerHeroMaterialEngine, resolveHeroNailMaterial, updateHeroMaterial,
   validateHeroNailMaterial,
+  HERO_EFFECT_IDS, HeroEffectEngine, registerHeroEffectEngine, applyHeroEffectToSurface,
+  updateHeroEffect,
 } from './index';
 
 const layer = (id: string): HeroLayer => ({
@@ -234,6 +236,55 @@ describe('Hero Design integration shell', () => {
     const invalid = { ...HERO_MATERIAL_LIBRARY[0], opacity: 2 };
     expect(new HeroMaterialEngine().validate({ material: invalid, shapeId: 'Almond' }).valid).toBe(true);
     expect(validateHeroNailMaterial(invalid).issues.map(({ code }) => code)).toContain('range');
+  });
+
+  test('registers exactly the approved effect capabilities and renders every approved finish', () => {
+    const registry = new HeroEngineRegistry(); const events = new HeroDesignEventBus(); const applied = jest.fn();
+    events.subscribe('effect.applied', applied);
+    const engine = registerHeroEffectEngine(registry, events);
+    expect(registry.resolve('Hero Effect Engine')).toBe(engine);
+    expect(engine.capabilities).toEqual(['effect.resolve', 'effect.validate', 'effect.apply', 'effect.preview', 'effect.invalidate']);
+    const parameters = {
+      Solid: { color: '#C94A68' }, Gradient: { startColor: '#E95A82', endColor: '#792050', angle: 90 },
+      Chrome: { color: '#B5A8D2', intensity: 0.8 }, 'Cat Eye': { baseColor: '#351742', stripeColor: '#E9A9DE', position: 0.5 },
+      Marble: { baseColor: '#F2E9E7', veinColor: '#9A727A', intensity: 0.4 }, Jelly: { color: '#EE4775', opacity: 0.45 },
+    } as const;
+    const surface = new HeroSurfaceRenderingEngine().process(createHeroSurfaceInput(document(), { width: 240, height: 360 }));
+    HERO_EFFECT_IDS.forEach((id) => {
+      const hero = { ...document(), nail: { ...document().nail, effect: { id, version: '1' as const, parameters: parameters[id] } } };
+      const result = applyHeroEffectToSurface(hero, surface, engine);
+      expect(result).toMatchObject({ id, shapeId: 'Almond', maskId: 'almond-mask', material: { id: 'soft-gel-neutral' } });
+      expect(result.layers.length).toBeGreaterThan(0);
+      expect(result.geometry).toEqual({ path: surface.path, bounds: surface.bounds, viewBox: surface.viewBox });
+    });
+    expect(applied).toHaveBeenCalledTimes(HERO_EFFECT_IDS.length);
+  });
+
+  test('rejects unsupported, malformed, and incompatible effects and publishes failures', () => {
+    const events = new HeroDesignEventBus(); const failed = jest.fn(); events.subscribe('effect.validation.failed', failed);
+    const engine = new HeroEffectEngine(events); const input = createHeroSurfaceInput(document(), { width: 240, height: 360 });
+    expect(() => engine.process({ ...input, effect: { id: 'Neon' as never, version: '1', parameters: {} }, designId: 'design-1' })).toThrow('not approved');
+    expect(() => engine.process({ ...input, effect: { id: 'Jelly', version: '1', parameters: { color: 'red', opacity: 2, noise: true } }, designId: 'design-1' })).toThrow('invalid');
+    expect(() => engine.process({ ...input, mask: resolveHeroNailMask(maskReferenceForShape('Duck')!), effect: document().nail.effect, designId: 'design-1' })).toThrow('must match');
+    expect(failed).toHaveBeenCalledTimes(3);
+  });
+
+  test('updates and persists effect parameters while preserving the Hero document', async () => {
+    const values = new Map<string, string>();
+    const storage = { getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => { values.set(key, value); }, removeItem: (key: string) => { values.delete(key); } };
+    const adapter = new HeroLocalStoragePersistenceAdapter(storage); const events = new HeroDesignEventBus(); const changedEvent = jest.fn(); const redraw = jest.fn();
+    events.subscribe('effect.changed', changedEvent);
+    const disconnect = connectHeroSurfaceInvalidation(new HeroSurfaceRenderingEngine(events), events, redraw);
+    const original = { ...document(), layers: [layer('kept')], product: { productId: 'kept' } };
+    const loaded = heroDesignReducer(initialHeroDesignState, { type: 'loadDesign', document: original });
+    const changed = updateHeroEffect(loaded, { id: 'Jelly', version: '1', parameters: { color: '#EE4775', opacity: 0.45 } }, events);
+    expect(changed.document?.revision).toBe(1); expect(changed.dirty).toBe(true);
+    expect(changed.document?.nail.shape).toEqual(original.nail.shape); expect(changed.document?.nail.material).toEqual(original.nail.material);
+    expect(changed.document?.layers).toEqual(original.layers); expect(changed.document?.product).toEqual(original.product);
+    await adapter.save(changed.document!);
+    expect((await adapter.load('design-1'))?.nail.effect).toEqual({ id: 'Jelly', version: '1', parameters: { color: '#EE4775', opacity: 0.45 } });
+    expect(changedEvent).toHaveBeenCalledTimes(1);
+    await Promise.resolve(); expect(redraw).toHaveBeenCalledTimes(1); disconnect();
   });
 
   test('applies material to every shape without changing geometry and emits material application', () => {
