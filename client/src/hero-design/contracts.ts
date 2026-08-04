@@ -41,10 +41,28 @@ export interface HeroViewConfiguration {
 export interface HeroNailConfiguration {
   shape: { id: string; version?: string };
   mask: HeroNailMaskReference;
+  /** Stable material selection; resolved renderer data is never persisted. */
+  material: HeroNailMaterialReference;
   length: number;
   width: number;
   tipDown: boolean;
   view: HeroViewConfiguration;
+}
+
+export type HeroNailMaterialCategory = 'natural-nail' | 'clear-tip' | 'soft-gel' | 'acrylic' | 'builder-gel';
+export interface HeroNailMaterialReference { id: string; version: string }
+/** Renderer-independent physical surface values. All numeric properties are normalized to 0–1. */
+export interface HeroNailMaterial {
+  id: string;
+  version: string;
+  category: HeroNailMaterialCategory;
+  opacity: number;
+  translucency: number;
+  density: number;
+  edgeSoftness: number;
+  surfaceRoughness: number;
+  curvatureDepth: number;
+  baseTint?: string;
 }
 
 export type HeroMaskSource = { type: 'svg' | 'path' | 'alpha'; assetId: string };
@@ -138,6 +156,7 @@ export const createHeroDesignDocument = (
     nail: {
       shape: { id: input.shapeId, version: input.shapeVersion ?? '1' },
       mask: { id: input.maskId, version: input.maskVersion ?? '1', shapeId: input.shapeId, coordinateSpace: 'normalized', safeMargin: input.safeMargin ?? 0, source: { type: 'path', assetId: `founder-approved-nail-mask:${input.shapeId}:1` } },
+      material: { id: 'soft-gel-neutral', version: '1' },
       length: 1, width: 1, tipDown: true, view: { view: 'top', rotation: 0, zoom: 1 },
     },
     layers: [],

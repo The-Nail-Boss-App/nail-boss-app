@@ -2,12 +2,14 @@ import { HeroDesignDocument, HeroLayer, HeroLayerType } from './contracts';
 import { validateHeroDesignDocument } from './validation';
 import { HERO_SHAPE_IDS, HERO_SHAPE_VERSION, HeroShapeId } from './shape';
 import { maskReferenceForShape } from './mask';
+import { DEFAULT_HERO_MATERIAL_REFERENCE } from './material';
 
 export interface HeroLegacyConversionResult<TLegacy = unknown> {
   document: HeroDesignDocument | null;
   original: TLegacy;
   unsupportedFields: string[];
   missingFields: string[];
+  compatibilityDiagnostics: string[];
 }
 
 const LEGACY_LAYER_TYPES: Record<string, HeroLayerType> = {
@@ -23,6 +25,7 @@ export function convertLegacyDesignStudioDocument<TLegacy extends Record<string,
   const original = clone(legacy);
   const unsupportedFields: string[] = [];
   const missingFields: string[] = [];
+  const compatibilityDiagnostics: string[] = [];
   const blueprint = legacy.blueprint ?? legacy;
   const nail = blueprint.nails?.find((item: any) => item.id === blueprint.canvas?.activeNailId) ?? blueprint.nails?.[0] ?? legacy.activeNail;
   const metadata = legacy.metadata ?? {};
@@ -59,14 +62,18 @@ export function convertLegacyDesignStudioDocument<TLegacy extends Record<string,
     if (!own(layer, 'blendMode')) unsupportedFields.push(`nails.layers[${index}].blendMode:defaulted-normal`);
   });
 
-  const knownTopLevel = new Set(['id', 'name', 'designName', 'metadata', 'blueprint', 'nails', 'canvas', 'activeNail', 'shape', 'shapeVersion', 'maskId', 'lighting', 'product', 'productMetadata', 'blueprintMetadata', 'revision']);
+  const knownTopLevel = new Set(['id', 'name', 'designName', 'metadata', 'blueprint', 'nails', 'canvas', 'activeNail', 'shape', 'shapeVersion', 'maskId', 'material', 'lighting', 'product', 'productMetadata', 'blueprintMetadata', 'revision']);
   Object.keys(legacy).filter((key) => !knownTopLevel.has(key)).forEach((key) => unsupportedFields.push(key));
-  if (missingFields.length) return { document: null, original, unsupportedFields, missingFields };
+  if (missingFields.length) return { document: null, original, unsupportedFields, missingFields, compatibilityDiagnostics };
+
+  const material = legacy.material ?? nail.material;
+  if (!material) compatibilityDiagnostics.push('Legacy design had no material reference; soft-gel-neutral@1 was applied.');
 
   const document: HeroDesignDocument = {
     metadata: { id, name, createdAt: metadata.createdAt, updatedAt: metadata.updatedAt, authorId: metadata.authorId, description: metadata.description, tags: metadata.tags },
     nail: {
       shape: { id: shapeId, version: shapeVersion }, mask: suppliedMaskId === compatibleMask?.id ? compatibleMask! : (compatibleMask ?? { id: maskId }), length: nail.length, width: nail.width,
+      material: clone(material ?? DEFAULT_HERO_MATERIAL_REFERENCE),
       tipDown: nail.tipDown,
       view: nail.view,
     },
@@ -79,5 +86,5 @@ export function convertLegacyDesignStudioDocument<TLegacy extends Record<string,
   };
   const validation = validateHeroDesignDocument(document);
   validation.issues.forEach(({ path }) => { if (!missingFields.includes(path)) missingFields.push(path); });
-  return { document: validation.valid ? document : null, original, unsupportedFields, missingFields };
+  return { document: validation.valid ? document : null, original, unsupportedFields, missingFields, compatibilityDiagnostics };
 }

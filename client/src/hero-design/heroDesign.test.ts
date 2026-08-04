@@ -9,6 +9,9 @@ import {
   publishMaskResolution,
   createHeroSurfaceInput, connectHeroSurfaceInvalidation, HeroSurfaceRenderingEngine,
   registerHeroSurfaceRenderingEngine,
+  DEFAULT_HERO_MATERIAL_REFERENCE, HERO_MATERIAL_LIBRARY, HeroMaterialEngine,
+  registerHeroMaterialEngine, resolveHeroNailMaterial, updateHeroMaterial,
+  validateHeroNailMaterial,
 } from './index';
 
 const layer = (id: string): HeroLayer => ({
@@ -216,6 +219,49 @@ describe('Hero Design integration shell', () => {
     });
     expect(paths.size).toBe(HERO_SHAPE_IDS.length);
     expect(engine.state).toBe('Rendered');
+  });
+
+  test('registers, validates, resolves, and caches the production Hero material', () => {
+    const registry = new HeroEngineRegistry();
+    const engine = registerHeroMaterialEngine(registry);
+    expect(registry.resolve('Hero Material Engine')).toBe(engine);
+    expect(engine.capabilities).toEqual(['material.resolve', 'material.validate', 'material.apply', 'material.invalidate', 'material.preview']);
+    const input = { material: DEFAULT_HERO_MATERIAL_REFERENCE, shapeId: 'Almond' };
+    const resolved = engine.process(input);
+    expect(resolved).toMatchObject({ id: 'soft-gel-neutral', version: '1', category: 'soft-gel', compatible: true, diagnostics: [] });
+    expect(resolveHeroNailMaterial(input)).toBe(resolved);
+    expect(() => engine.process({ material: { id: 'missing', version: '1' }, shapeId: 'Almond' })).toThrow('not registered');
+    const invalid = { ...HERO_MATERIAL_LIBRARY[0], opacity: 2 };
+    expect(new HeroMaterialEngine().validate({ material: invalid, shapeId: 'Almond' }).valid).toBe(true);
+    expect(validateHeroNailMaterial(invalid).issues.map(({ code }) => code)).toContain('range');
+  });
+
+  test('applies material to every shape without changing geometry and emits material application', () => {
+    const events = new HeroDesignEventBus(); const applied = jest.fn(); events.subscribe('surface.material.applied', applied);
+    const engine = new HeroSurfaceRenderingEngine(events);
+    HERO_SHAPE_IDS.forEach((shapeId) => {
+      const hero = { ...document(), nail: { ...document().nail, shape: { id: shapeId, version: '1' }, mask: maskReferenceForShape(shapeId)! } };
+      const before = createHeroSurfaceInput(hero, { width: 240, height: 360 }).shape;
+      const result = engine.refresh(createHeroSurfaceInput(hero, { width: 240, height: 360 }));
+      expect(result.material.id).toBe('soft-gel-neutral'); expect(result.shapeId).toBe(before.id);
+    });
+    expect(applied).toHaveBeenCalledTimes(HERO_SHAPE_IDS.length);
+  });
+
+  test('material changes preserve document content, increment revision, mark dirty, invalidate and redraw', async () => {
+    const events = new HeroDesignEventBus(); const redraw = jest.fn(); const renderer = new HeroSurfaceRenderingEngine(events);
+    const disconnect = connectHeroSurfaceInvalidation(renderer, events, redraw);
+    const original = { ...document(), layers: [layer('kept')], product: { productId: 'kept' } };
+    const loaded = heroDesignReducer(initialHeroDesignState, { type: 'loadDesign', document: original });
+    const unchanged = updateHeroMaterial(loaded, DEFAULT_HERO_MATERIAL_REFERENCE, events);
+    expect(unchanged).toBe(loaded);
+    // The only production material is versioned; use a validated library alias to exercise state lifecycle.
+    const alternate = { id: 'soft-gel-neutral', version: '1' };
+    const source = { ...loaded, document: { ...original, nail: { ...original.nail, material: { id: 'soft-gel-neutral', version: '0' } } } };
+    const changed = updateHeroMaterial(source, alternate, events);
+    expect(changed.document?.revision).toBe(1); expect(changed.dirty).toBe(true);
+    expect(changed.document?.layers).toEqual(original.layers); expect(changed.document?.product).toEqual(original.product);
+    await Promise.resolve(); expect(redraw).toHaveBeenCalledTimes(1); disconnect();
   });
 
   test('renders a complete 250% nail without clipping while retaining Duck internally', () => {

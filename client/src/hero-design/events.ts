@@ -1,6 +1,8 @@
 import { HeroDesignDocument, HeroLayer, HeroRenderRequest, HeroRenderResult } from './contracts';
 import type { HeroResolvedNailMask } from './mask';
 import type { HeroSurfaceRendererState, HeroSurfaceRenderResult } from './surface';
+import type { HeroNailMaterialReference } from './contracts';
+import type { HeroResolvedNailMaterial } from './material';
 
 export interface HeroDesignEventMap {
   'design:created': { document: HeroDesignDocument };
@@ -16,6 +18,10 @@ export interface HeroDesignEventMap {
   'nail.mask.resolved': { designId?: string; mask: HeroResolvedNailMask };
   'nail.mask.changed': { designId: string; previousMaskId: string; maskId: string; shapeId: string };
   'nail.mask.validation.failed': { designId?: string; issues: import('./contracts').HeroValidationIssue[] };
+  'nail.material.resolved': { designId?: string; material: HeroResolvedNailMaterial };
+  'nail.material.changed': { designId: string; previous: HeroNailMaterialReference; material: HeroNailMaterialReference };
+  'nail.material.validation.failed': { designId?: string; issues: import('./contracts').HeroValidationIssue[] };
+  'surface.material.applied': { designId: string; materialId: string; materialVersion: string; cacheKey: string };
   'surface.render.started': { designId: string; state: HeroSurfaceRendererState };
   'surface.render.completed': { designId: string; state: HeroSurfaceRendererState; result: HeroSurfaceRenderResult };
   'surface.render.failed': { designId: string; state: HeroSurfaceRendererState; error: Error };

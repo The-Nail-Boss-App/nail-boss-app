@@ -4,14 +4,16 @@ import { HeroDesignEventBus } from './events';
 import { HeroResolvedNailMask, resolveHeroNailMask } from './mask';
 import { HeroEngineRegistry } from './registry';
 import { HeroShapeDefinition, resolveHeroShape } from './shape';
+import { HeroResolvedNailMaterial, resolveHeroNailMaterial } from './material';
 
 export type HeroSurfaceRendererState = 'Idle' | 'Rendering' | 'Rendered' | 'Invalid' | 'Failed';
 export interface HeroSurfaceViewport { width: number; height: number; pixelRatio?: number }
-export interface HeroSurfaceRenderInput { document: HeroDesignDocument; shape: HeroShapeDefinition; mask: HeroResolvedNailMask; viewport: HeroSurfaceViewport }
-export interface HeroSurfaceRenderResult { path: string; fill: '#F4E8E4'; bounds: { x: number; y: number; width: number; height: number }; viewBox: string; shapeId: string; maskId: string }
+export interface HeroSurfaceRenderInput { document: HeroDesignDocument; shape: HeroShapeDefinition; mask: HeroResolvedNailMask; material: HeroResolvedNailMaterial; viewport: HeroSurfaceViewport }
+export interface HeroSurfaceMaterialStyle { baseTint: string; opacity: number; edgeOpacity: number; edgeWidth: number; centerOpacity: number; centerTint: string; softness: number }
+export interface HeroSurfaceRenderResult { path: string; fill: string; material: HeroResolvedNailMaterial; materialStyle: HeroSurfaceMaterialStyle; bounds: { x: number; y: number; width: number; height: number }; viewBox: string; shapeId: string; maskId: string }
 const issue = (path: string, code: string, message: string): HeroValidationIssue => ({ path, code, message, severity: 'error' });
 
-/** Geometry-only renderer. Materials, effects and lighting deliberately remain outside this engine. */
+/** Geometry renderer with a resolved physical base material; effects and lighting remain downstream. */
 export class HeroSurfaceRenderingEngine implements HeroEngine<HeroSurfaceRenderInput, HeroSurfaceRenderResult> {
   readonly id = 'Hero Surface Rendering Engine' as const;
   readonly version = '1';
@@ -25,6 +27,7 @@ export class HeroSurfaceRenderingEngine implements HeroEngine<HeroSurfaceRenderI
     const issues: HeroValidationIssue[] = [];
     if (!input?.document || input.shape?.id !== input.document?.nail.shape.id) issues.push(issue('shape', 'shape_mismatch', 'Resolved shape does not match the design document.'));
     if (!input?.mask || input.mask?.shapeId !== input.shape?.id) issues.push(issue('mask', 'mask_mismatch', 'Resolved mask does not match the Hero shape.'));
+    if (!input?.material || !input.material.compatibleShapeIds.includes(input.shape?.id as never)) issues.push(issue('material', 'material_mismatch', 'Resolved material is incompatible with the Hero shape.'));
     if (!(input?.viewport?.width > 0) || !(input?.viewport?.height > 0)) issues.push(issue('viewport', 'invalid_viewport', 'Canvas viewport dimensions must be positive.'));
     return { valid: issues.length === 0, issues };
   }
@@ -40,24 +43,32 @@ export class HeroSurfaceRenderingEngine implements HeroEngine<HeroSurfaceRenderI
       const geometry = getNailGeometry(nail);
       const padding = Math.max(6, geometry.width * 0.04);
       const viewBox = `${geometry.left - padding} ${geometry.topY - padding} ${geometry.width + padding * 2} ${geometry.height + padding * 2}`;
-      const result: HeroSurfaceRenderResult = { path: buildNailPath(input.shape.id, nail), fill: '#F4E8E4', shapeId: input.shape.id, maskId: input.mask.maskId, bounds: { x: geometry.left, y: geometry.topY, width: geometry.width, height: geometry.height }, viewBox };
+      const materialStyle: HeroSurfaceMaterialStyle = {
+        baseTint: input.material.baseTint ?? '#F4E8E4', opacity: input.material.opacity,
+        edgeOpacity: Math.min(0.34, input.material.density * (1 - input.material.edgeSoftness) * 0.34),
+        edgeWidth: Math.max(1, geometry.width * (0.012 + input.material.density * 0.014)),
+        centerOpacity: input.material.curvatureDepth * 0.17,
+        centerTint: '#FFFFFF', softness: input.material.edgeSoftness,
+      };
+      const result: HeroSurfaceRenderResult = { path: buildNailPath(input.shape.id, nail), fill: '#F4E8E4', material: input.material, materialStyle, shapeId: input.shape.id, maskId: input.mask.maskId, bounds: { x: geometry.left, y: geometry.topY, width: geometry.width, height: geometry.height }, viewBox };
       if (!result.path) throw new Error('Hero surface geometry was empty.');
       this.lastKey = key; this.lastResult = result; this.state = 'Rendered';
       this.events.publish('surface.render.completed', { designId: input.document.metadata.id, state: this.state, result });
+      this.events.publish('surface.material.applied', { designId: input.document.metadata.id, materialId: input.material.id, materialVersion: input.material.version, cacheKey: input.material.cacheKey });
       return result;
     } catch (error) { return this.fail(input.document.metadata.id, error instanceof Error ? error : new Error(String(error))); }
   }
   invalidate(reason = 'design', designId?: string): void { this.lastKey = undefined; this.lastResult = undefined; this.state = 'Invalid'; this.events.publish('surface.render.invalidated', { designId, state: this.state, reason }); }
   refresh(input: HeroSurfaceRenderInput): HeroSurfaceRenderResult { this.invalidate('refresh', input.document.metadata.id); return this.process(input); }
   dispose(): void { this.lastKey = undefined; this.lastResult = undefined; this.state = 'Idle'; }
-  private key(input: HeroSurfaceRenderInput): string { return [input.document.revision, input.shape.id, input.mask.maskId, input.document.nail.length, input.document.nail.width, input.viewport.width, input.viewport.height, input.viewport.pixelRatio ?? 1].join(':'); }
+  private key(input: HeroSurfaceRenderInput): string { return [input.document.revision, input.shape.id, input.mask.maskId, input.material.cacheKey, input.document.nail.length, input.document.nail.width, input.viewport.width, input.viewport.height, input.viewport.pixelRatio ?? 1].join(':'); }
   private fail(designId: string | undefined, error: Error): never { this.state = 'Failed'; this.events.publish('surface.render.failed', { designId: designId ?? 'unknown', state: this.state, error }); throw error; }
 }
 
 export function createHeroSurfaceInput(document: HeroDesignDocument, viewport: HeroSurfaceViewport): HeroSurfaceRenderInput {
   const shape = resolveHeroShape(document.nail.shape.id, document.nail.shape.version);
   if (!shape) throw new Error(`Hero shape is unavailable: ${document.nail.shape.id}`);
-  return { document, shape, mask: resolveHeroNailMask(document.nail.mask), viewport };
+  return { document, shape, mask: resolveHeroNailMask(document.nail.mask), material: resolveHeroNailMaterial({ material: document.nail.material, shapeId: shape.id }), viewport };
 }
 export function registerHeroSurfaceRenderingEngine(registry: HeroEngineRegistry, events?: HeroDesignEventBus): HeroSurfaceRenderingEngine { const engine = new HeroSurfaceRenderingEngine(events); registry.register(engine); return engine; }
 
@@ -70,6 +81,7 @@ export function connectHeroSurfaceInvalidation(engine: HeroSurfaceRenderingEngin
     events.subscribe('nail.mask.changed', ({ designId }) => invalidate('mask', designId)),
     events.subscribe('shape.length.changed', ({ designId }) => invalidate('length', designId)),
     events.subscribe('shape.width.changed', ({ designId }) => invalidate('width', designId)),
+    events.subscribe('nail.material.changed', ({ designId }) => invalidate('material', designId)),
   ];
   return () => subscriptions.forEach((unsubscribe) => unsubscribe());
 }

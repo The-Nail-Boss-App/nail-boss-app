@@ -303,7 +303,8 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
                   <svg className="nail-design-studio__hero-nail" data-testid="stage-nail" data-nail-shape={nailShape.toLowerCase()}
                     data-hero-renderer="Hero Surface Rendering Engine" data-hero-mask={renderedSurface.maskId} data-design-layer-parent="true"
                     aria-label={`Hero Nail ${index + 1}`} viewBox={renderedSurface.viewBox} preserveAspectRatio="xMidYMid meet" role="img">
-                    <path className="nail-design-studio__nail-polish" data-design-layer="polish" d={renderedSurface.path} />
+                    <defs><linearGradient id={`hero-material-${index}`} x1="0" y1="0" x2="1" y2="0"><stop offset="0" stopColor={renderedSurface.materialStyle.baseTint}/><stop offset=".5" stopColor={renderedSurface.materialStyle.centerTint}/><stop offset="1" stopColor={renderedSurface.materialStyle.baseTint}/></linearGradient></defs>
+                    <path className="nail-design-studio__nail-polish" data-design-layer="polish" data-hero-material-layer="true" data-material-id={renderedSurface.material.id} d={renderedSurface.path} style={{ fill: `url(#hero-material-${index})`, fillOpacity: renderedSurface.materialStyle.opacity, stroke: renderedSurface.materialStyle.baseTint, strokeOpacity: renderedSurface.materialStyle.edgeOpacity, strokeWidth: renderedSurface.materialStyle.edgeWidth }} />
                   </svg>
                 </div>
               ))}
