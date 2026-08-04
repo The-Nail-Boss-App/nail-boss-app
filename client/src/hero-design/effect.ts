@@ -20,7 +20,12 @@ type ParameterRule = { required: boolean; validate: (value: unknown) => boolean;
 const color = (value: unknown) => typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value);
 const unit = (value: unknown) => typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 1;
 const angle = (value: unknown) => typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 360;
-const rules: Record<HeroEffectId, Record<string, ParameterRule>> = {
+const commonRules: Record<string, ParameterRule> = {
+  opacity: { required: false, validate: unit, message: 'opacity must be between 0 and 1.' },
+  viscosity: { required: false, validate: unit, message: 'viscosity must be between 0 and 1.' },
+  shine: { required: false, validate: unit, message: 'shine must be between 0 and 1.' },
+};
+const finishRules: Record<HeroEffectId, Record<string, ParameterRule>> = {
   Solid: { color: { required: true, validate: color, message: 'color must be a six-digit hex color.' } },
   Gradient: {
     startColor: { required: true, validate: color, message: 'startColor must be a six-digit hex color.' },
@@ -45,9 +50,9 @@ const rules: Record<HeroEffectId, Record<string, ParameterRule>> = {
   },
   Jelly: {
     color: { required: true, validate: color, message: 'color must be a six-digit hex color.' },
-    opacity: { required: false, validate: unit, message: 'opacity must be between 0 and 1.' },
   },
 };
+const rules = Object.fromEntries(Object.entries(finishRules).map(([id, schema]) => [id, { ...commonRules, ...schema }])) as Record<HeroEffectId, Record<string, ParameterRule>>;
 
 const issue = (path: string, code: string, message: string): HeroValidationIssue => ({ path, code, message, severity: 'error' });
 export function validateHeroEffectReference(effect: HeroEffectReference | undefined): HeroValidationResult {
@@ -81,6 +86,10 @@ export interface HeroAppliedEffect {
   /** Original material remains available; this renderer-only style decorates it. */
   material: HeroResolvedNailMaterial;
   layers: readonly HeroFinishLayer[];
+  /** Canonical Polish Studio controls, resolved without changing the underlying material. */
+  opacity: number;
+  viscosity: number;
+  shine: number;
   shapeId: string;
   maskId: string;
   geometry?: Pick<HeroSurfaceRenderResult, 'path' | 'bounds' | 'viewBox'>;
@@ -90,22 +99,23 @@ export interface HeroAppliedEffect {
 const numberParameter = (parameters: Record<string, unknown>, key: string, fallback: number) => parameters[key] === undefined ? fallback : parameters[key] as number;
 function finishLayers(effect: HeroEffectReference): readonly HeroFinishLayer[] {
   const p = effect.parameters;
+  const opacity = numberParameter(p, 'opacity', effect.id === 'Jelly' ? 0.48 : 1);
   switch (effect.id) {
-    case 'Solid': return [{ kind: 'color', color: p.color as string, opacity: 1 }];
-    case 'Gradient': return [{ kind: 'linear-gradient', colors: [p.startColor as string, p.endColor as string], angle: numberParameter(p, 'angle', 90), opacity: 1 }];
+    case 'Solid': return [{ kind: 'color', color: p.color as string, opacity }];
+    case 'Gradient': return [{ kind: 'linear-gradient', colors: [p.startColor as string, p.endColor as string], angle: numberParameter(p, 'angle', 90), opacity }];
     case 'Chrome': {
       const intensity = numberParameter(p, 'intensity', 0.82);
-      return [{ kind: 'linear-gradient', colors: [p.color as string, '#FFFFFF', p.color as string, '#64646B', p.color as string], angle: 90, opacity: 0.72 + intensity * 0.28 }];
+      return [{ kind: 'linear-gradient', colors: [p.color as string, '#FFFFFF', p.color as string, '#64646B', p.color as string], angle: 90, opacity: opacity * (0.72 + intensity * 0.28) }];
     }
     case 'Cat Eye': return [
-      { kind: 'color', color: p.baseColor as string, opacity: 1 },
+      { kind: 'color', color: p.baseColor as string, opacity },
       { kind: 'linear-gradient', colors: ['transparent', p.stripeColor as string, 'transparent'], angle: numberParameter(p, 'angle', 22), position: numberParameter(p, 'position', 0.5), width: numberParameter(p, 'width', 0.18), opacity: 0.88 },
     ];
     case 'Marble': return [
-      { kind: 'color', color: p.baseColor as string, opacity: 0.94 },
+      { kind: 'color', color: p.baseColor as string, opacity: opacity * 0.94 },
       { kind: 'veins', color: p.veinColor as string, opacity: numberParameter(p, 'intensity', 0.42), paths: ['M-.08 .18 C.22 .08 .16 .43 .52 .38 S.78 .68 1.08 .53', 'M.07 .83 C.31 .64 .41 .91 .66 .73 S.87 .44 1.03 .33', 'M.18 -.05 C.38 .21 .62 .06 .74 .31'] },
     ];
-    case 'Jelly': return [{ kind: 'color', color: p.color as string, opacity: numberParameter(p, 'opacity', 0.48) }];
+    case 'Jelly': return [{ kind: 'color', color: p.color as string, opacity }];
   }
 }
 
@@ -130,7 +140,7 @@ export class HeroEffectEngine implements HeroEngine<HeroEffectInput, HeroApplied
     const key = [input.effect.id, input.effect.version, JSON.stringify(input.effect.parameters), input.material.cacheKey, input.shape.id, input.mask.maskId, input.surface?.path ?? ''].join(':');
     let applied = this.cache.get(key);
     if (!applied) {
-      applied = Object.freeze({ id: input.effect.id, version: input.effect.version, parameters: Object.freeze({ ...input.effect.parameters }), material: input.material, layers: Object.freeze(finishLayers(input.effect)), shapeId: input.shape.id, maskId: input.mask.maskId, geometry: input.surface ? { path: input.surface.path, bounds: input.surface.bounds, viewBox: input.surface.viewBox } : undefined, cacheKey: key });
+      applied = Object.freeze({ id: input.effect.id, version: input.effect.version, parameters: Object.freeze({ ...input.effect.parameters }), material: input.material, layers: Object.freeze(finishLayers(input.effect)), opacity: numberParameter(input.effect.parameters, 'opacity', input.effect.id === 'Jelly' ? 0.48 : 1), viscosity: numberParameter(input.effect.parameters, 'viscosity', 0.62), shine: numberParameter(input.effect.parameters, 'shine', 0.68), shapeId: input.shape.id, maskId: input.mask.maskId, geometry: input.surface ? { path: input.surface.path, bounds: input.surface.bounds, viewBox: input.surface.viewBox } : undefined, cacheKey: key });
       this.cache.set(key, applied);
     }
     this.events.publish('effect.applied', { designId: input.designId, effect: applied });

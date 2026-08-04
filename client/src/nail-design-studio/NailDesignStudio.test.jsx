@@ -205,6 +205,11 @@ describe('adaptive Nail Desk', () => {
     await act(async () => { color.value = '#123456'; color.dispatchEvent(new Event('change', { bubbles: true })); });
     expect(container.querySelector('[data-design-layer="polish"]').dataset.heroEffect).toBe('Chrome');
     expect(button('Save Changes')).toBeTruthy();
+
+    const viscosity = container.querySelector('input[aria-label="Viscosity"]');
+    expect(viscosity.disabled).toBe(false);
+    await type(viscosity, '0.35');
+    expect(container.querySelector('input[aria-label="Viscosity"]').value).toBe('0.35');
   });
 
   it('uses the Hero document as the shared source for both Nail Size controls', async () => {
