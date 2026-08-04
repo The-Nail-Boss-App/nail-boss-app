@@ -269,6 +269,14 @@ describe('Hero Design integration shell', () => {
     expect(failed).toHaveBeenCalledTimes(3);
   });
 
+  test('validates and resolves canonical Polish Studio finish controls', () => {
+    const engine = new HeroEffectEngine();
+    const input = createHeroSurfaceInput(document(), { width: 240, height: 360 });
+    const effect = { id: 'Solid' as const, version: '1' as const, parameters: { color: '#D94C70', opacity: 0.7, viscosity: 0.4, shine: 0.8 } };
+    expect(engine.process({ ...input, effect })).toMatchObject({ opacity: 0.7, viscosity: 0.4, shine: 0.8, layers: [{ opacity: 0.7 }] });
+    expect(engine.validate({ ...input, effect: { ...effect, parameters: { ...effect.parameters, shine: 1.1 } } }).issues.map(({ path }) => path)).toContain('effect.parameters.shine');
+  });
+
   test('updates and persists effect parameters while preserving the Hero document', async () => {
     const values = new Map<string, string>();
     const storage = { getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => { values.set(key, value); }, removeItem: (key: string) => { values.delete(key); } };

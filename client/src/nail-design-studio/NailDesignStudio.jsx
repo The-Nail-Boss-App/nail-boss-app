@@ -1,8 +1,8 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import {
   applyHeroEffectToSurface, createHeroDesignDocument, createHeroSurfaceInput, HeroDesignEventBus,
-  HeroLocalStoragePersistenceAdapter, HeroSurfaceRenderingEngine, initialHeroDesignState,
-  heroDesignReducer, updateHeroEffect, updateHeroShape,
+  HeroEngineRegistry, HeroLocalStoragePersistenceAdapter, HeroSurfaceRenderingEngine, initialHeroDesignState,
+  heroDesignReducer, registerHeroEffectEngine, updateHeroEffect, updateHeroShape,
 } from '../hero-design/index.ts';
 import { USER_FACING_NAIL_SHAPES } from '../config/features';
 import './NailDesignStudio.css';
@@ -50,12 +50,12 @@ const WORKSPACE_SURFACES = [
 ];
 
 const FINISH_DEFAULTS = {
-  Solid: { color: '#D94C70' },
-  Gradient: { startColor: '#D94C70', endColor: '#7D2E68', angle: 90 },
-  Chrome: { color: '#D94C70', intensity: .82 },
-  'Cat Eye': { baseColor: '#521A46', stripeColor: '#F3A6D2', angle: 22, position: .5, width: .18 },
-  Marble: { baseColor: '#F1CAD8', veinColor: '#8A405D', intensity: .42 },
-  Jelly: { color: '#D94C70', opacity: .48 },
+  Solid: { color: '#D94C70', opacity: 1, viscosity: .62, shine: .68 },
+  Gradient: { startColor: '#D94C70', endColor: '#7D2E68', angle: 90, opacity: 1, viscosity: .62, shine: .68 },
+  Chrome: { color: '#D94C70', intensity: .82, opacity: 1, viscosity: .62, shine: .9 },
+  'Cat Eye': { baseColor: '#521A46', stripeColor: '#F3A6D2', angle: 22, position: .5, width: .18, opacity: 1, viscosity: .68, shine: .76 },
+  Marble: { baseColor: '#F1CAD8', veinColor: '#8A405D', intensity: .42, opacity: 1, viscosity: .72, shine: .58 },
+  Jelly: { color: '#D94C70', opacity: .48, viscosity: .46, shine: .74 },
 };
 
 const baseColorKey = (finish) => finish === 'Gradient' ? 'startColor' : ['Cat Eye', 'Marble'].includes(finish) ? 'baseColor' : 'color';
@@ -102,6 +102,12 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
   const drag = useRef(null);
   const heroEvents = useRef(new HeroDesignEventBus());
   const heroRenderer = useRef(new HeroSurfaceRenderingEngine(heroEvents.current));
+  const heroEffectRegistry = useRef(null);
+  if (!heroEffectRegistry.current) {
+    const registry = new HeroEngineRegistry();
+    registerHeroEffectEngine(registry, heroEvents.current);
+    heroEffectRegistry.current = registry;
+  }
   const heroPersistence = useRef(typeof window !== 'undefined' ? new HeroLocalStoragePersistenceAdapter(window.localStorage) : null);
 
   const activeTool = TOOL_CATEGORIES.find((tool) => tool.id === activeToolId) || TOOL_CATEGORIES[0];
@@ -111,7 +117,8 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
   const nailShape = heroDocument.nail.shape.id;
   const nailLength = Math.round(heroDocument.nail.length * 100);
   const renderedSurface = heroRenderer.current.process(createHeroSurfaceInput(heroDocument, { width: 240, height: 360 }));
-  const appliedEffect = applyHeroEffectToSurface(heroDocument, renderedSurface);
+  const heroEffectEngine = heroEffectRegistry.current.resolve('Hero Effect Engine');
+  const appliedEffect = applyHeroEffectToSurface(heroDocument, renderedSurface, heroEffectEngine);
   const activePolishColor = heroDocument.nail.effect.parameters[baseColorKey(heroDocument.nail.effect.id)];
 
   const selectNailShape = (shapeId) => {
@@ -121,11 +128,22 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
   };
 
   const changeHero = (updater) => {
+    heroEffectEngine.invalidate();
     setHeroState((current) => updater(current));
     setDirty(true);
     setSaveState('Save Changes');
   };
-  const changeFinish = (id) => changeHero((current) => updateHeroEffect(current, { id, version: '1', parameters: { ...FINISH_DEFAULTS[id] } }, heroEvents.current));
+  const changeFinish = (id) => changeHero((current) => {
+    const previous = current.document.nail.effect.parameters;
+    const color = previous[baseColorKey(current.document.nail.effect.id)];
+    return updateHeroEffect(current, { id, version: '1', parameters: {
+      ...FINISH_DEFAULTS[id],
+      [baseColorKey(id)]: color,
+      opacity: previous.opacity ?? FINISH_DEFAULTS[id].opacity,
+      viscosity: previous.viscosity ?? FINISH_DEFAULTS[id].viscosity,
+      shine: previous.shine ?? FINISH_DEFAULTS[id].shine,
+    } }, heroEvents.current);
+  });
   const changeFinishParameter = (key, value) => changeHero((current) => updateHeroEffect(current, {
     ...current.document.nail.effect,
     parameters: { ...current.document.nail.effect.parameters, [key]: value },
@@ -319,9 +337,9 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
             <div className="nail-design-studio__polish-bottle" style={{ '--polish-color': activePolishColor }} aria-label={`Active polish bottle ${activePolishColor}`}><i /><span /></div>
             <label>Color palette<span className="nail-design-studio__color-row"><input aria-label="Base Color picker" type="color" value={activePolishColor} onChange={(event) => changeFinishParameter(baseColorKey(heroDocument.nail.effect.id), event.target.value.toUpperCase())} /><input aria-label="Base Color HEX" value={activePolishColor} maxLength="7" onChange={(event) => { const value = event.target.value.toUpperCase(); if (/^#[0-9A-F]{6}$/.test(value)) changeFinishParameter(baseColorKey(heroDocument.nail.effect.id), value); }} /></span></label>
             <label>Finish selection<select aria-label="Finish" value={heroDocument.nail.effect.id} onChange={(event) => changeFinish(event.target.value)}>{Object.keys(FINISH_DEFAULTS).map((finish) => <option key={finish}>{finish}</option>)}</select></label>
-            <label>Opacity <output>{Math.round((heroDocument.nail.effect.id === 'Jelly' ? heroDocument.nail.effect.parameters.opacity ?? .48 : appliedEffect.layers[0].opacity) * 100)}%</output><input aria-label="Opacity" type="range" min="0" max="1" step=".01" disabled={heroDocument.nail.effect.id !== 'Jelly'} value={heroDocument.nail.effect.id === 'Jelly' ? heroDocument.nail.effect.parameters.opacity ?? .48 : appliedEffect.layers[0].opacity} onChange={(event) => changeFinishParameter('opacity', Number(event.target.value))} /></label>
-            <label>Viscosity <output>{Math.round(renderedSurface.material.density * 100)}%</output><input aria-label="Viscosity" type="range" min="0" max="1" step=".01" value={renderedSurface.material.density} disabled /></label>
-            <label>Shine <output>{Math.round((1 - renderedSurface.material.surfaceRoughness) * 100)}%</output><input aria-label="Shine" type="range" min="0" max="1" step=".01" value={1 - renderedSurface.material.surfaceRoughness} disabled /></label>
+            <label>Opacity <output>{Math.round(appliedEffect.opacity * 100)}%</output><input aria-label="Opacity" type="range" min="0" max="1" step=".01" value={appliedEffect.opacity} onChange={(event) => changeFinishParameter('opacity', Number(event.target.value))} /></label>
+            <label>Viscosity <output>{Math.round(appliedEffect.viscosity * 100)}%</output><input aria-label="Viscosity" type="range" min="0" max="1" step=".01" value={appliedEffect.viscosity} onChange={(event) => changeFinishParameter('viscosity', Number(event.target.value))} /></label>
+            <label>Shine <output>{Math.round(appliedEffect.shine * 100)}%</output><input aria-label="Shine" type="range" min="0" max="1" step=".01" value={appliedEffect.shine} onChange={(event) => changeFinishParameter('shine', Number(event.target.value))} /></label>
             {heroDocument.nail.effect.id === 'Gradient' && <><label>Color B<input aria-label="Color B" type="color" value={heroDocument.nail.effect.parameters.endColor} onChange={(event) => changeFinishParameter('endColor', event.target.value.toUpperCase())} /></label><label>Direction <input aria-label="Direction" type="range" min="0" max="360" value={heroDocument.nail.effect.parameters.angle ?? 90} onChange={(event) => changeFinishParameter('angle', Number(event.target.value))} /></label></>}
             {heroDocument.nail.effect.id === 'Chrome' && <label>Chrome intensity <input aria-label="Chrome intensity" type="range" min="0" max="1" step=".01" value={heroDocument.nail.effect.parameters.intensity ?? .82} onChange={(event) => changeFinishParameter('intensity', Number(event.target.value))} /></label>}
             {heroDocument.nail.effect.id === 'Cat Eye' && <label>Stripe orientation <input aria-label="Stripe orientation" type="range" min="0" max="360" value={heroDocument.nail.effect.parameters.angle ?? 22} onChange={(event) => changeFinishParameter('angle', Number(event.target.value))} /></label>}
