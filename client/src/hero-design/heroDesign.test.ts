@@ -13,7 +13,7 @@ import {
   registerHeroMaterialEngine, resolveHeroNailMaterial, updateHeroMaterial,
   validateHeroNailMaterial,
   HERO_EFFECT_IDS, HeroEffectEngine, registerHeroEffectEngine, applyHeroEffectToSurface,
-  updateHeroEffect,
+  updateHeroEffect, HeroLightingEngine, registerHeroLightingEngine, applyHeroLightingToEffect, connectHeroLightingInvalidation,
 } from './index';
 
 const layer = (id: string): HeroLayer => ({
@@ -260,6 +260,67 @@ describe('Hero Design integration shell', () => {
     expect(applied).toHaveBeenCalledTimes(HERO_EFFECT_IDS.length);
   });
 
+
+  test('registers and applies the Hero Lighting Engine to every approved finish without changing geometry', () => {
+    const registry = new HeroEngineRegistry(); const events = new HeroDesignEventBus(); const applied = jest.fn();
+    events.subscribe('lighting.applied', applied);
+    const engine = registerHeroLightingEngine(registry, events);
+    expect(registry.resolve('Hero Lighting Engine')).toBe(engine);
+    expect(engine.capabilities).toEqual(['lighting.resolve', 'lighting.validate', 'lighting.apply', 'lighting.invalidate', 'lighting.preview']);
+    const parameters = {
+      Solid: { baseColor: '#C94A68' }, Gradient: { colorA: '#E95A82', colorB: '#792050', direction: 90 },
+      Chrome: { baseColor: '#B5A8D2', shine: 0.9 }, 'Cat Eye': { baseColor: '#351742', stripeDirection: 22, stripeWidth: 0.18, stripeStrength: 0.88 },
+      Marble: { baseColor: '#F2E9E7', veinColor: '#9A727A', veinDensity: 0.4 }, Jelly: { baseColor: '#EE4775', translucency: 0.55, opacity: 1 },
+    } as const;
+    const surface = new HeroSurfaceRenderingEngine().process(createHeroSurfaceInput(document(), { width: 240, height: 360 }));
+    HERO_EFFECT_IDS.forEach((id) => {
+      const hero = { ...document(), nail: { ...document().nail, effect: { id, version: '1' as const, parameters: parameters[id] } } };
+      const effect = applyHeroEffectToSurface(hero, surface);
+      const result = applyHeroLightingToEffect(hero, effect, engine);
+      expect(result).toMatchObject({ shapeId: 'Almond', maskId: 'almond-mask', effectId: id, materialId: 'soft-gel-neutral' });
+      expect(result.geometry).toEqual(effect.geometry);
+      expect(result.reflections.map(({ id }) => id)).toEqual(['primary', 'secondary', 'edge', 'apex', 'depth']);
+    });
+    expect(applied).toHaveBeenCalledTimes(HERO_EFFECT_IDS.length);
+  });
+
+  test('resolves finish-specific lighting for chrome, cat eye, marble, jelly, and long nails', () => {
+    const surface = new HeroSurfaceRenderingEngine().process(createHeroSurfaceInput(document(), { width: 240, height: 360 }));
+    const lit = (effect) => {
+      const hero = { ...document(), nail: { ...document().nail, effect } };
+      return applyHeroLightingToEffect(hero, applyHeroEffectToSurface(hero, surface), new HeroLightingEngine());
+    };
+    const solid = lit({ id: 'Solid', version: '1', parameters: { baseColor: '#C94A68', shine: 0.68 } });
+    const chrome = lit({ id: 'Chrome', version: '1', parameters: { baseColor: '#B5A8D2', shine: 0.9 } });
+    const catEye = lit({ id: 'Cat Eye', version: '1', parameters: { baseColor: '#351742', stripeDirection: 22, stripeWidth: 0.18, stripeStrength: 0.88 } });
+    const marble = lit({ id: 'Marble', version: '1', parameters: { baseColor: '#F2E9E7', veinColor: '#9A727A', veinDensity: 0.4 } });
+    const jelly = lit({ id: 'Jelly', version: '1', parameters: { baseColor: '#EE4775', translucency: 0.55, opacity: 1 } });
+    expect(chrome.profile.reflection).toBeGreaterThan(solid.profile.reflection);
+    expect(chrome.profile.specular).toBeGreaterThan(solid.profile.specular);
+    expect(catEye.profile.magneticStripeAlignment).toBe(22);
+    expect(marble.profile.veinPreservation).toBeLessThan(1);
+    expect(jelly.profile.translucencyBoost).toBeGreaterThan(0.5);
+    const longDocument = document(); longDocument.nail.length = 2.5;
+    const longSurface = new HeroSurfaceRenderingEngine().process(createHeroSurfaceInput(longDocument, { width: 240, height: 360 }));
+    const longEffect = applyHeroEffectToSurface(longDocument, longSurface);
+    const longLighting = applyHeroLightingToEffect(longDocument, longEffect);
+    expect(longLighting.geometry).toEqual(longEffect.geometry);
+    expect(longLighting.profile.curvatureFalloff).toBeGreaterThan(solid.profile.curvatureFalloff);
+  });
+
+  test('validates malformed lighting and invalidates renderer-only lighting state on render input changes', async () => {
+    const events = new HeroDesignEventBus(); const redraw = jest.fn(); const failed = jest.fn(); events.subscribe('lighting.validation.failed', failed);
+    const engine = new HeroLightingEngine(events);
+    const surface = new HeroSurfaceRenderingEngine().process(createHeroSurfaceInput(document(), { width: 240, height: 360 }));
+    const effect = applyHeroEffectToSurface(document(), surface);
+    const malformed = { ...document(), lighting: { intensity: 2, direction: { x: 0, y: 0, z: 3 }, color: 'white' } };
+    expect(() => applyHeroLightingToEffect(malformed, effect, engine)).toThrow('invalid');
+    expect(failed).toHaveBeenCalledTimes(1);
+    const disconnect = connectHeroLightingInvalidation(engine, events, redraw);
+    events.publish('nail.material.changed', { designId: 'design-1', previous: DEFAULT_HERO_MATERIAL_REFERENCE, material: DEFAULT_HERO_MATERIAL_REFERENCE });
+    events.publish('effect.changed', { designId: 'design-1', previous: document().nail.effect, effect: document().nail.effect });
+    await Promise.resolve(); expect(redraw).toHaveBeenCalledTimes(1); disconnect();
+  });
   test('rejects unsupported, malformed, and incompatible effects and publishes failures', () => {
     const events = new HeroDesignEventBus(); const failed = jest.fn(); events.subscribe('effect.validation.failed', failed);
     const engine = new HeroEffectEngine(events); const input = createHeroSurfaceInput(document(), { width: 240, height: 360 });

@@ -5,6 +5,7 @@ import type { HeroNailMaterialReference } from './contracts';
 import type { HeroResolvedNailMaterial } from './material';
 import type { HeroEffectReference } from './contracts';
 import type { HeroAppliedEffect } from './effect';
+import type { HeroAppliedLighting } from './lighting';
 
 export interface HeroDesignEventMap {
   'design:created': { document: HeroDesignDocument };
@@ -31,6 +32,8 @@ export interface HeroDesignEventMap {
   'effect.changed': { designId: string; previous: HeroEffectReference; effect: HeroEffectReference };
   'effect.applied': { designId?: string; effect: HeroAppliedEffect };
   'effect.validation.failed': { designId?: string; issues: import('./contracts').HeroValidationIssue[] };
+  'lighting.applied': { designId?: string; lighting: HeroAppliedLighting };
+  'lighting.validation.failed': { designId?: string; issues: import('./contracts').HeroValidationIssue[] };
   'layer:added': { designId: string; layer: HeroLayer };
   'layer:updated': { designId: string; layer: HeroLayer };
   'layer:removed': { designId: string; layerId: string };
