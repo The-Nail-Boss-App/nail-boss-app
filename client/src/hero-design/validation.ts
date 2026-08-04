@@ -2,6 +2,7 @@ import { HERO_ENGINE_IDS, HeroDesignDocument, HeroLayer, HeroValidationIssue, He
 import { shapeConfigurationFromDocument, validateHeroShapeConfiguration } from './shape';
 import { validateHeroNailMask } from './mask';
 import { HERO_MATERIAL_LIBRARY, validateHeroNailMaterial } from './material';
+import { validateHeroEffectReference } from './effect';
 
 const issue = (path: string, code: string, message: string): HeroValidationIssue => ({ path, code, message, severity: 'error' });
 const finitePositive = (value: unknown) => typeof value === 'number' && Number.isFinite(value) && value > 0;
@@ -33,6 +34,7 @@ export function validateHeroDesignDocument(document: HeroDesignDocument): HeroVa
   }
   if (!document.nail?.material?.id || !document.nail?.material?.version) issues.push(issue('nail.material', 'required', 'A stable material ID and version are required.'));
   else issues.push(...validateHeroNailMaterial(HERO_MATERIAL_LIBRARY.find(({ id, version }) => id === document.nail.material.id && version === document.nail.material.version) as any).issues.map((entry) => ({ ...entry, path: entry.path.replace(/^material/, 'nail.material') })));
+  issues.push(...validateHeroEffectReference(document.nail?.effect).issues.map((entry) => ({ ...entry, path: entry.path.replace(/^effect/, 'nail.effect') })));
   if (typeof document.nail?.length !== 'number' || !Number.isFinite(document.nail.length) || document.nail.length < 0) issues.push(issue('nail.length', 'range', 'Length must be a non-negative finite number.'));
   if (typeof document.nail?.width !== 'number' || !Number.isFinite(document.nail.width) || document.nail.width < 0) issues.push(issue('nail.width', 'range', 'Width must be a non-negative finite number.'));
   if (typeof document.nail?.tipDown !== 'boolean') issues.push(issue('nail.tipDown', 'required', 'Tip-down orientation is required.'));

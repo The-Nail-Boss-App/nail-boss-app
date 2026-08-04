@@ -1,6 +1,7 @@
 import { HeroDesignDocument } from './contracts';
 import { validateHeroDesignDocument } from './validation';
 import { DEFAULT_HERO_MATERIAL_REFERENCE } from './material';
+import { DEFAULT_HERO_EFFECT_REFERENCE } from './effect';
 
 export interface HeroPersistenceAdapter {
   create(document: HeroDesignDocument): Promise<HeroDesignDocument>;
@@ -34,7 +35,11 @@ export class HeroLocalStoragePersistenceAdapter implements HeroPersistenceAdapte
     const serialized = this.storage.getItem(this.key(id));
     if (serialized === null) return null;
     const source = JSON.parse(serialized) as HeroDesignDocument;
-    const document = source.nail?.material ? source : { ...source, nail: { ...source.nail, material: { ...DEFAULT_HERO_MATERIAL_REFERENCE } } };
+    let document = source.nail?.material ? source : { ...source, nail: { ...source.nail, material: { ...DEFAULT_HERO_MATERIAL_REFERENCE } } };
+    if (!document.nail?.effect) {
+      document = { ...document, nail: { ...document.nail, effect: { ...DEFAULT_HERO_EFFECT_REFERENCE, parameters: { ...DEFAULT_HERO_EFFECT_REFERENCE.parameters } } } };
+      this.compatibilityDiagnostics.push(`Legacy Hero design ${id} had no effect reference; Solid@1 was applied without mutating its source record.`);
+    }
     if (!source.nail?.material) this.compatibilityDiagnostics.push(`Legacy Hero design ${id} had no material reference; soft-gel-neutral@1 was applied without mutating its source record.`);
     const result = validateHeroDesignDocument(document);
     if (!result.valid) throw new Error(`Stored Hero design is invalid: ${result.issues.map(({ path }) => path).join(', ')}`);

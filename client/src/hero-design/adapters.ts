@@ -3,6 +3,7 @@ import { validateHeroDesignDocument } from './validation';
 import { HERO_SHAPE_IDS, HERO_SHAPE_VERSION, HeroShapeId } from './shape';
 import { maskReferenceForShape } from './mask';
 import { DEFAULT_HERO_MATERIAL_REFERENCE } from './material';
+import { DEFAULT_HERO_EFFECT_REFERENCE, validateHeroEffectReference } from './effect';
 
 export interface HeroLegacyConversionResult<TLegacy = unknown> {
   document: HeroDesignDocument | null;
@@ -62,18 +63,23 @@ export function convertLegacyDesignStudioDocument<TLegacy extends Record<string,
     if (!own(layer, 'blendMode')) unsupportedFields.push(`nails.layers[${index}].blendMode:defaulted-normal`);
   });
 
-  const knownTopLevel = new Set(['id', 'name', 'designName', 'metadata', 'blueprint', 'nails', 'canvas', 'activeNail', 'shape', 'shapeVersion', 'maskId', 'material', 'lighting', 'product', 'productMetadata', 'blueprintMetadata', 'revision']);
+  const knownTopLevel = new Set(['id', 'name', 'designName', 'metadata', 'blueprint', 'nails', 'canvas', 'activeNail', 'shape', 'shapeVersion', 'maskId', 'material', 'effect', 'lighting', 'product', 'productMetadata', 'blueprintMetadata', 'revision']);
   Object.keys(legacy).filter((key) => !knownTopLevel.has(key)).forEach((key) => unsupportedFields.push(key));
   if (missingFields.length) return { document: null, original, unsupportedFields, missingFields, compatibilityDiagnostics };
 
   const material = legacy.material ?? nail.material;
   if (!material) compatibilityDiagnostics.push('Legacy design had no material reference; soft-gel-neutral@1 was applied.');
+  const candidateEffect = legacy.effect ?? nail.effect;
+  const effect = validateHeroEffectReference(candidateEffect).valid ? candidateEffect : DEFAULT_HERO_EFFECT_REFERENCE;
+  if (!candidateEffect) compatibilityDiagnostics.push('Legacy design had no effect reference; Solid@1 was applied.');
+  else if (effect !== candidateEffect) compatibilityDiagnostics.push('Legacy effect was unsupported; Solid@1 was applied.');
 
   const document: HeroDesignDocument = {
     metadata: { id, name, createdAt: metadata.createdAt, updatedAt: metadata.updatedAt, authorId: metadata.authorId, description: metadata.description, tags: metadata.tags },
     nail: {
       shape: { id: shapeId, version: shapeVersion }, mask: suppliedMaskId === compatibleMask?.id ? compatibleMask! : (compatibleMask ?? { id: maskId }), length: nail.length, width: nail.width,
       material: clone(material ?? DEFAULT_HERO_MATERIAL_REFERENCE),
+      effect: clone(effect),
       tipDown: nail.tipDown,
       view: nail.view,
     },

@@ -3,6 +3,8 @@ import type { HeroResolvedNailMask } from './mask';
 import type { HeroSurfaceRendererState, HeroSurfaceRenderResult } from './surface';
 import type { HeroNailMaterialReference } from './contracts';
 import type { HeroResolvedNailMaterial } from './material';
+import type { HeroEffectReference } from './contracts';
+import type { HeroAppliedEffect } from './effect';
 
 export interface HeroDesignEventMap {
   'design:created': { document: HeroDesignDocument };
@@ -26,6 +28,9 @@ export interface HeroDesignEventMap {
   'surface.render.completed': { designId: string; state: HeroSurfaceRendererState; result: HeroSurfaceRenderResult };
   'surface.render.failed': { designId: string; state: HeroSurfaceRendererState; error: Error };
   'surface.render.invalidated': { designId?: string; state: HeroSurfaceRendererState; reason: string };
+  'effect.changed': { designId: string; previous: HeroEffectReference; effect: HeroEffectReference };
+  'effect.applied': { designId?: string; effect: HeroAppliedEffect };
+  'effect.validation.failed': { designId?: string; issues: import('./contracts').HeroValidationIssue[] };
   'layer:added': { designId: string; layer: HeroLayer };
   'layer:updated': { designId: string; layer: HeroLayer };
   'layer:removed': { designId: string; layerId: string };
