@@ -190,9 +190,13 @@ describe('adaptive Nail Desk', () => {
     expect(container.querySelector('[data-testid="stage-nail"]').dataset.nailShape).toBe('square');
   });
 
-  it('renders every approved selection through its distinct resolved Hero mask', async () => {
-    const approved = ['Almond', 'Coffin', 'Square', 'Oval', 'Round', 'Stiletto', 'Lipstick', 'Duck'];
+  it('renders every enabled selection through its distinct resolved Hero mask and hides Duck', async () => {
+    const approved = ['Almond', 'Coffin', 'Square', 'Oval', 'Round', 'Stiletto', 'Lipstick'];
     const paths = new Set();
+
+    await click(button('Nail Shape'));
+    expect(button('Duck')).toBeUndefined();
+    await click(button('Nail Shape'));
 
     for (const shape of approved) {
       await click(button('Nail Shape'));
@@ -201,7 +205,7 @@ describe('adaptive Nail Desk', () => {
       expect(nail.dataset.nailShape).toBe(shape.toLowerCase());
       expect(nail.dataset.heroMask).toBe(`${shape.toLowerCase()}-mask`);
       expect(nail.dataset.heroRenderer).toBe('Hero Surface Rendering Engine');
-      expect(nail.getAttribute('viewBox')).toBe('0 0 240 360');
+      expect(nail.getAttribute('viewBox').split(' ').map(Number)).toHaveLength(4);
       expect(nail.getAttribute('preserveAspectRatio')).toBe('xMidYMid meet');
       paths.add(nail.querySelector('[data-design-layer="polish"]').getAttribute('d'));
     }
@@ -293,9 +297,12 @@ describe('adaptive Nail Desk', () => {
 
   it('provides the full nail-length range and approved workspace surfaces', async () => {
     const length = container.querySelector('#nail-length');
-    expect([length.min, length.max]).toEqual(['10', '100']);
-    await type(length, '100');
-    expect(container.querySelector('.nail-design-studio__nail-stage').style.getPropertyValue('--nail-length')).toBe('1');
+    expect([length.min, length.max, length.value]).toEqual(['50', '250', '100']);
+    await type(length, '250');
+    expect(container.querySelector('.nail-design-studio__nail-stage').style.getPropertyValue('--nail-length')).toBe('2.5');
+    const longNailViewBox = container.querySelector('[data-testid="stage-nail"]').getAttribute('viewBox').split(' ').map(Number);
+    expect(longNailViewBox[1]).toBeLessThan(0);
+    expect(longNailViewBox[3]).toBeGreaterThan(455);
     expect(container.querySelector('[data-testid="stage-nail"]').closest('[data-testid="nail-slot"]')).toBeTruthy();
     const surface = container.querySelector('#workspace-surface');
     expect([...surface.options].map((option) => option.textContent)).toEqual(['Signature', 'Cherry Lacquer', "Kiki's"]);

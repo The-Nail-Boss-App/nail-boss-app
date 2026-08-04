@@ -8,7 +8,7 @@ import { HeroShapeDefinition, resolveHeroShape } from './shape';
 export type HeroSurfaceRendererState = 'Idle' | 'Rendering' | 'Rendered' | 'Invalid' | 'Failed';
 export interface HeroSurfaceViewport { width: number; height: number; pixelRatio?: number }
 export interface HeroSurfaceRenderInput { document: HeroDesignDocument; shape: HeroShapeDefinition; mask: HeroResolvedNailMask; viewport: HeroSurfaceViewport }
-export interface HeroSurfaceRenderResult { path: string; fill: '#F4E8E4'; bounds: { x: number; y: number; width: number; height: number }; shapeId: string; maskId: string }
+export interface HeroSurfaceRenderResult { path: string; fill: '#F4E8E4'; bounds: { x: number; y: number; width: number; height: number }; viewBox: string; shapeId: string; maskId: string }
 const issue = (path: string, code: string, message: string): HeroValidationIssue => ({ path, code, message, severity: 'error' });
 
 /** Geometry-only renderer. Materials, effects and lighting deliberately remain outside this engine. */
@@ -38,7 +38,9 @@ export class HeroSurfaceRenderingEngine implements HeroEngine<HeroSurfaceRenderI
     try {
       const nail = { shape: input.shape.id, length: input.document.nail.length, width: input.document.nail.width };
       const geometry = getNailGeometry(nail);
-      const result: HeroSurfaceRenderResult = { path: buildNailPath(input.shape.id, nail), fill: '#F4E8E4', shapeId: input.shape.id, maskId: input.mask.maskId, bounds: { x: geometry.left, y: geometry.topY, width: geometry.width, height: geometry.height } };
+      const padding = Math.max(6, geometry.width * 0.04);
+      const viewBox = `${geometry.left - padding} ${geometry.topY - padding} ${geometry.width + padding * 2} ${geometry.height + padding * 2}`;
+      const result: HeroSurfaceRenderResult = { path: buildNailPath(input.shape.id, nail), fill: '#F4E8E4', shapeId: input.shape.id, maskId: input.mask.maskId, bounds: { x: geometry.left, y: geometry.topY, width: geometry.width, height: geometry.height }, viewBox };
       if (!result.path) throw new Error('Hero surface geometry was empty.');
       this.lastKey = key; this.lastResult = result; this.state = 'Rendered';
       this.events.publish('surface.render.completed', { designId: input.document.metadata.id, state: this.state, result });

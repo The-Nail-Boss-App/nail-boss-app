@@ -77,8 +77,8 @@ function validateDesignPayload(payload) {
     return { error: `shape must be one of: ${VALID_SHAPES.join(", ")}` };
   }
 
-  if (typeof length !== "number" || length < 0 || length > 1) {
-    return { error: "length must be a number between 0 and 1" };
+  if (typeof length !== "number" || length < 0 || length > 2.5) {
+    return { error: "length must be a number between 0 and 2.5" };
   }
 
   if (typeof width !== "number" || width < 0 || width > 1) {

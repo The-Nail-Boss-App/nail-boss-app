@@ -7,7 +7,8 @@ import { HeroEngineRegistry } from './registry';
 import { HeroDesignState, heroDesignReducer } from './state';
 
 export const HERO_SHAPE_VERSION = '1' as const;
-export const HERO_SHAPE_LENGTH_RANGE = { min: 0, max: 1 } as const;
+// Keep legacy sub-50% saves loadable while exposing 50–250% in the current UI.
+export const HERO_SHAPE_LENGTH_RANGE = { min: 0, max: 2.5 } as const;
 export const HERO_SHAPE_WIDTH_RANGE = { min: 0, max: 1 } as const;
 export const HERO_SHAPE_IDS = SHAPES as unknown as readonly ['Almond', 'Coffin', 'Square', 'Oval', 'Round', 'Stiletto', 'Lipstick', 'Duck'];
 export type HeroShapeId = typeof HERO_SHAPE_IDS[number];
@@ -42,7 +43,7 @@ export function validateHeroShapeConfiguration(configuration: HeroShapeConfigura
   else if (!resolveHeroShape(configuration.shapeId, configuration.shapeVersion))
     issues.push(error('nail.shape.version', 'unsupported_version', `Unsupported version for ${configuration.shapeId}: ${String(configuration.shapeVersion)}`));
   if (!inRange(configuration?.length, HERO_SHAPE_LENGTH_RANGE))
-    issues.push(error('nail.length', 'range', 'Length must be between 0 and 1.'));
+    issues.push(error('nail.length', 'range', 'Length must be between 0 and 2.5.'));
   if (!inRange(configuration?.width, HERO_SHAPE_WIDTH_RANGE))
     issues.push(error('nail.width', 'range', 'Width must be between 0 and 1.'));
   if (configuration?.orientation !== 'tip-down')
