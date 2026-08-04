@@ -9,7 +9,7 @@ import { HeroDesignState, heroDesignReducer } from './state';
 export const HERO_SHAPE_VERSION = '1' as const;
 export const HERO_SHAPE_LENGTH_RANGE = { min: 0, max: 1 } as const;
 export const HERO_SHAPE_WIDTH_RANGE = { min: 0, max: 1 } as const;
-export const HERO_SHAPE_IDS = SHAPES as readonly ['Almond', 'Coffin', 'Square', 'Oval', 'Round', 'Stiletto', 'Lipstick', 'Duck'];
+export const HERO_SHAPE_IDS = SHAPES as unknown as readonly ['Almond', 'Coffin', 'Square', 'Oval', 'Round', 'Stiletto', 'Lipstick', 'Duck'];
 export type HeroShapeId = typeof HERO_SHAPE_IDS[number];
 
 export interface HeroShapeDefinition { id: HeroShapeId; version: typeof HERO_SHAPE_VERSION }
@@ -31,7 +31,7 @@ export const HERO_SHAPE_LIBRARY: readonly HeroShapeDefinition[] = Object.freeze(
   return Object.freeze({ id, version: HERO_SHAPE_VERSION });
 }));
 
-export function resolveHeroShape(shapeId: string, shapeVersion = HERO_SHAPE_VERSION): HeroShapeDefinition | undefined {
+export function resolveHeroShape(shapeId: string, shapeVersion: string = HERO_SHAPE_VERSION): HeroShapeDefinition | undefined {
   return HERO_SHAPE_LIBRARY.find(({ id, version }) => id === shapeId && version === shapeVersion);
 }
 

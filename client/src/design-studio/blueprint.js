@@ -143,14 +143,18 @@ function sharedBoundsMaskPath(m, points, { rightEdgeIndex = points.length - 1, l
   const leftStart = svgPointFromBounds(m, top[0], top[1]);
   const topControlLeft = svgPointFromBounds(m, 0 - 0.012, 0.36);
   const topControlRight = svgPointFromBounds(m, 0 - 0.012, 0.64);
-  const rightPoints = points.slice(0, rightEdgeIndex + 1).map(([y, , right]) => svgPointFromBounds(m, y, right));
-  const rightCommands = sideCurveCommands(rightPoints);
+  const rightCommands = points.slice(1, rightEdgeIndex + 1).map(([y, , right]) => {
+    const point = svgPointFromBounds(m, y, right);
+    return `L ${point.x} ${point.y}`;
+  });
   const bottomCommands = points.slice(rightEdgeIndex + 1, leftEdgeIndex + 1).map(([y, left]) => {
     const point = svgPointFromBounds(m, y, left);
     return `L ${point.x} ${point.y}`;
   });
-  const leftPoints = points.slice(0, leftEdgeIndex).map(([y, left]) => svgPointFromBounds(m, y, left)).reverse();
-  const leftCommands = sideCurveCommands(leftPoints);
+  const leftCommands = points.slice(0, leftEdgeIndex).reverse().map(([y, left]) => {
+    const point = svgPointFromBounds(m, y, left);
+    return `L ${point.x} ${point.y}`;
+  });
   return `M ${leftStart.x} ${leftStart.y} C ${topControlLeft.x} ${topControlLeft.y} ${topControlRight.x} ${topControlRight.y} ${rightStart.x} ${rightStart.y} ${rightCommands.join(" ")} ${bottomCommands.join(" ")} ${leftCommands.join(" ")} Z`;
 }
 

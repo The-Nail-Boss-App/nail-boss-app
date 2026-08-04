@@ -29,7 +29,7 @@ export const HERO_NAIL_MASK_LIBRARY: readonly HeroMaskDefinition[] = Object.free
   source: { type: 'path' as const, assetId: `founder-approved-nail-mask:${shapeId}:${HERO_MASK_VERSION}` },
 })));
 
-export function maskReferenceForShape(shapeId: string, shapeVersion = HERO_SHAPE_VERSION, safeMargin = 0): HeroNailMaskReference | undefined {
+export function maskReferenceForShape(shapeId: string, shapeVersion: string = HERO_SHAPE_VERSION, safeMargin = 0): HeroNailMaskReference | undefined {
   const definition = HERO_NAIL_MASK_LIBRARY.find((entry) => entry.shapeId === shapeId && entry.version === shapeVersion);
   return definition && { ...definition, source: { ...definition.source }, safeMargin };
 }

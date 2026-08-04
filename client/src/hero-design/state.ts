@@ -53,7 +53,7 @@ export function heroDesignReducer(state: HeroDesignState, action: HeroDesignActi
       layers.splice(Math.max(0, Math.min(action.toIndex, layers.length)), 0, layer);
       return changed(state, { ...state.document, layers });
     }
-    case 'selectLayers': return { ...state, selectedLayerIds: [...new Set(action.layerIds)].filter((id) => state.document?.layers.some((layer) => layer.id === id)) };
+    case 'selectLayers': return { ...state, selectedLayerIds: Array.from(new Set(action.layerIds)).filter((id) => state.document?.layers.some((layer) => layer.id === id)) };
     case 'updateLighting': return state.document ? changed(state, { ...state.document, lighting: { ...state.document.lighting, ...action.patch } }) : state;
     case 'updateRenderState': return { ...state, render: action.render };
     case 'markDirty': return { ...state, dirty: true, saved: false };

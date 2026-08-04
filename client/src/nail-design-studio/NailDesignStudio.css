@@ -357,38 +357,20 @@
   overflow: visible;
 }
 .nail-design-studio__hero-nail {
-  position: relative;
   width: min(72%, 142px);
   height: calc(48% + 42% * var(--nail-length));
   min-height: 52px;
   max-height: 100%;
-  aspect-ratio: .58;
+  aspect-ratio: 2 / 3;
   transform-origin: 50% 100%;
   overflow: visible;
-  box-sizing: border-box;
-  border: 1px solid rgba(85,35,64,.42);
-  border-radius: 50% 50% 34% 34% / 18% 18% 9% 9%;
-  background: linear-gradient(100deg, #b95a80 0%, #e990b1 17%, #ffd0df 48%, #e981aa 76%, #9c3e67 100%);
-  box-shadow: -7px 0 12px rgba(255,224,239,.28), 8px 2px 14px rgba(57,15,40,.24), 0 12px 18px rgba(41,12,31,.25), inset 8px 0 13px rgba(255,255,255,.22), inset -9px 0 14px rgba(67,13,43,.25), inset 0 -10px 15px rgba(91,25,55,.18);
-  isolation: isolate;
 }
 .nail-design-studio__nail-stage--single .nail-design-studio__hero-nail { width: min(44%, 240px); }
-.nail-design-studio__nail-polish,
-.nail-design-studio__nail-reflection,
-.nail-design-studio__nail-gloss { position: absolute; inset: 0; border-radius: inherit; pointer-events: none; }
 .nail-design-studio__nail-polish {
-  z-index: -1;
-  background: radial-gradient(ellipse at 50% 27%, rgba(255,237,245,.52), transparent 38%), linear-gradient(90deg, rgba(74,12,43,.22), transparent 22% 75%, rgba(59,8,35,.3));
-}
-.nail-design-studio__nail-reflection {
-  background: linear-gradient(101deg, transparent 10%, rgba(255,255,255,.14) 20%, transparent 30% 68%, rgba(255,222,237,.2) 82%, transparent 91%);
-  box-shadow: inset 1px 0 rgba(255,247,251,.62), inset -1px 0 rgba(255,207,228,.34);
-}
-.nail-design-studio__nail-gloss {
-  inset: 6% 19% 28% 18%;
-  border-radius: 50%;
-  background: linear-gradient(112deg, rgba(255,255,255,.72), rgba(255,255,255,.18) 20%, transparent 44%);
-  filter: blur(.2px);
+  fill: #e990b1;
+  stroke: rgba(85,35,64,.55);
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
 }
 
 .nail-design-studio__properties { overflow: auto; }
