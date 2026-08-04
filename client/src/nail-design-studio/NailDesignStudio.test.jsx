@@ -190,6 +190,25 @@ describe('adaptive Nail Desk', () => {
     expect(container.querySelector('[data-testid="stage-nail"]').dataset.nailShape).toBe('square');
   });
 
+  it('renders every approved selection through its distinct resolved Hero mask', async () => {
+    const approved = ['Almond', 'Coffin', 'Square', 'Oval', 'Round', 'Stiletto', 'Lipstick', 'Duck'];
+    const paths = new Set();
+
+    for (const shape of approved) {
+      await click(button('Nail Shape'));
+      await click(button(shape));
+      const nail = container.querySelector('[data-testid="stage-nail"]');
+      expect(nail.dataset.nailShape).toBe(shape.toLowerCase());
+      expect(nail.dataset.heroMask).toBe(`${shape.toLowerCase()}-mask`);
+      expect(nail.dataset.heroRenderer).toBe('Hero Surface Rendering Engine');
+      expect(nail.getAttribute('viewBox')).toBe('0 0 240 360');
+      expect(nail.getAttribute('preserveAspectRatio')).toBe('xMidYMid meet');
+      paths.add(nail.querySelector('[data-design-layer="polish"]').getAttribute('d'));
+    }
+
+    expect(paths.size).toBe(approved.length);
+  });
+
   it('renders one premium Hero Nail in Single Nail mode without a finger asset', () => {
     expect(container.querySelectorAll('[data-testid="stage-nail"]')).toHaveLength(1);
     expect(container.querySelector('[data-testid="stage-nail"]').getAttribute('aria-label')).toBe('Hero Nail 1');

@@ -204,14 +204,26 @@ describe('Hero Design integration shell', () => {
     const engine = registerHeroSurfaceRenderingEngine(registry);
     expect(registry.resolve('Hero Surface Rendering Engine')).toBe(engine);
     expect(engine.capabilities).toEqual(['surface.render', 'surface.preview', 'surface.invalidate', 'surface.bounds', 'surface.refresh']);
+    const paths = new Set<string>();
     HERO_SHAPE_IDS.forEach((shapeId) => {
       const hero = { ...document(), nail: { ...document().nail, shape: { id: shapeId, version: '1' }, mask: maskReferenceForShape(shapeId)! } };
       const result = engine.refresh(createHeroSurfaceInput(hero, { width: 240, height: 360 }));
       expect(result).toMatchObject({ shapeId, maskId: `${shapeId.toLowerCase()}-mask`, fill: '#F4E8E4' });
       expect(result.path).toMatch(/^M/);
       expect(result.bounds.width).toBeGreaterThan(0);
+      expect(result.bounds.height).toBeGreaterThan(result.bounds.width);
+      paths.add(result.path);
     });
+    expect(paths.size).toBe(HERO_SHAPE_IDS.length);
     expect(engine.state).toBe('Rendered');
+  });
+
+  test('rejects missing or mismatched shape and mask inputs instead of silently rendering a fallback', () => {
+    const missingShape = { ...document(), nail: { ...document().nail, shape: { id: 'Missing', version: '1' } } };
+    expect(() => createHeroSurfaceInput(missingShape, { width: 240, height: 360 })).toThrow('Hero shape is unavailable: Missing');
+
+    const mismatchedMask = { ...document(), nail: { ...document().nail, mask: maskReferenceForShape('Duck')! } };
+    expect(() => new HeroSurfaceRenderingEngine().process(createHeroSurfaceInput(mismatchedMask, { width: 240, height: 360 }))).toThrow('does not match');
   });
 
   test('publishes renderer transitions, invalidates geometry changes, coalesces redraws, and fails safely', async () => {
