@@ -243,11 +243,11 @@ describe('Hero Design integration shell', () => {
     events.subscribe('effect.applied', applied);
     const engine = registerHeroEffectEngine(registry, events);
     expect(registry.resolve('Hero Effect Engine')).toBe(engine);
-    expect(engine.capabilities).toEqual(['effect.resolve', 'effect.validate', 'effect.apply', 'effect.preview', 'effect.invalidate']);
+    expect(engine.capabilities).toEqual(['effect.resolve', 'effect.validate', 'effect.apply', 'effect.invalidate', 'effect.preview']);
     const parameters = {
-      Solid: { color: '#C94A68' }, Gradient: { startColor: '#E95A82', endColor: '#792050', angle: 90 },
-      Chrome: { color: '#B5A8D2', intensity: 0.8 }, 'Cat Eye': { baseColor: '#351742', stripeColor: '#E9A9DE', position: 0.5 },
-      Marble: { baseColor: '#F2E9E7', veinColor: '#9A727A', intensity: 0.4 }, Jelly: { color: '#EE4775', opacity: 0.45 },
+      Solid: { baseColor: '#C94A68' }, Gradient: { colorA: '#E95A82', colorB: '#792050', direction: 90 },
+      Chrome: { baseColor: '#B5A8D2' }, 'Cat Eye': { baseColor: '#351742', stripeDirection: 22, stripeWidth: 0.18, stripeStrength: 0.88 },
+      Marble: { baseColor: '#F2E9E7', veinColor: '#9A727A', veinDensity: 0.4 }, Jelly: { baseColor: '#EE4775', translucency: 0.55, opacity: 1 },
     } as const;
     const surface = new HeroSurfaceRenderingEngine().process(createHeroSurfaceInput(document(), { width: 240, height: 360 }));
     HERO_EFFECT_IDS.forEach((id) => {
@@ -264,7 +264,7 @@ describe('Hero Design integration shell', () => {
     const events = new HeroDesignEventBus(); const failed = jest.fn(); events.subscribe('effect.validation.failed', failed);
     const engine = new HeroEffectEngine(events); const input = createHeroSurfaceInput(document(), { width: 240, height: 360 });
     expect(() => engine.process({ ...input, effect: { id: 'Neon' as never, version: '1', parameters: {} }, designId: 'design-1' })).toThrow('not approved');
-    expect(() => engine.process({ ...input, effect: { id: 'Jelly', version: '1', parameters: { color: 'red', opacity: 2, noise: true } }, designId: 'design-1' })).toThrow('invalid');
+    expect(() => engine.process({ ...input, effect: { id: 'Jelly', version: '1', parameters: { baseColor: 'red', translucency: 2, noise: true } }, designId: 'design-1' })).toThrow('invalid');
     expect(() => engine.process({ ...input, mask: resolveHeroNailMask(maskReferenceForShape('Duck')!), effect: document().nail.effect, designId: 'design-1' })).toThrow('must match');
     expect(failed).toHaveBeenCalledTimes(3);
   });
@@ -272,7 +272,7 @@ describe('Hero Design integration shell', () => {
   test('validates and resolves canonical Polish Studio finish controls', () => {
     const engine = new HeroEffectEngine();
     const input = createHeroSurfaceInput(document(), { width: 240, height: 360 });
-    const effect = { id: 'Solid' as const, version: '1' as const, parameters: { color: '#D94C70', opacity: 0.7, viscosity: 0.4, shine: 0.8 } };
+    const effect = { id: 'Solid' as const, version: '1' as const, parameters: { baseColor: '#D94C70', opacity: 0.7, viscosity: 0.4, shine: 0.8 } };
     expect(engine.process({ ...input, effect })).toMatchObject({ opacity: 0.7, viscosity: 0.4, shine: 0.8, layers: [{ opacity: 0.7 }] });
     expect(engine.validate({ ...input, effect: { ...effect, parameters: { ...effect.parameters, shine: 1.1 } } }).issues.map(({ path }) => path)).toContain('effect.parameters.shine');
   });
@@ -285,12 +285,12 @@ describe('Hero Design integration shell', () => {
     const disconnect = connectHeroSurfaceInvalidation(new HeroSurfaceRenderingEngine(events), events, redraw);
     const original = { ...document(), layers: [layer('kept')], product: { productId: 'kept' } };
     const loaded = heroDesignReducer(initialHeroDesignState, { type: 'loadDesign', document: original });
-    const changed = updateHeroEffect(loaded, { id: 'Jelly', version: '1', parameters: { color: '#EE4775', opacity: 0.45 } }, events);
+    const changed = updateHeroEffect(loaded, { id: 'Jelly', version: '1', parameters: { baseColor: '#EE4775', translucency: 0.55, opacity: 1 } }, events);
     expect(changed.document?.revision).toBe(1); expect(changed.dirty).toBe(true);
     expect(changed.document?.nail.shape).toEqual(original.nail.shape); expect(changed.document?.nail.material).toEqual(original.nail.material);
     expect(changed.document?.layers).toEqual(original.layers); expect(changed.document?.product).toEqual(original.product);
     await adapter.save(changed.document!);
-    expect((await adapter.load('design-1'))?.nail.effect).toEqual({ id: 'Jelly', version: '1', parameters: { color: '#EE4775', opacity: 0.45 } });
+    expect((await adapter.load('design-1'))?.nail.effect).toEqual({ id: 'Jelly', version: '1', parameters: { baseColor: '#EE4775', translucency: 0.55, opacity: 1 } });
     expect(changedEvent).toHaveBeenCalledTimes(1);
     await Promise.resolve(); expect(redraw).toHaveBeenCalledTimes(1); disconnect();
   });

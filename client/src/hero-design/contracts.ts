@@ -162,7 +162,7 @@ export const createHeroDesignDocument = (
       shape: { id: input.shapeId, version: input.shapeVersion ?? '1' },
       mask: { id: input.maskId, version: input.maskVersion ?? '1', shapeId: input.shapeId, coordinateSpace: 'normalized', safeMargin: input.safeMargin ?? 0, source: { type: 'path', assetId: `founder-approved-nail-mask:${input.shapeId}:1` } },
       material: { id: 'soft-gel-neutral', version: '1' },
-      effect: { id: 'Solid', version: '1', parameters: { color: '#D94C70' } },
+      effect: { id: 'Solid', version: '1', parameters: { baseColor: '#D94C70', opacity: 1, viscosity: 0.62, shine: 0.68 } },
       length: 1, width: 1, tipDown: true, view: { view: 'top', rotation: 0, zoom: 1 },
     },
     layers: [],
