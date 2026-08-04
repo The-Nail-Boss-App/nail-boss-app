@@ -182,12 +182,34 @@ describe('adaptive Nail Desk', () => {
 
   it('places Nail Shape immediately before the existing Nail Desk view controls', async () => {
     const controls = container.querySelector('[aria-label="Nail Desk view controls"]');
-    expect([...controls.children].map((control) => control.textContent)).toEqual(['Nail Shape', 'Fit to View', '−', '100%', '+', 'Focus Mode']);
+    expect([...controls.children].map((control) => control.textContent)).toEqual(['Nail Shape', 'Nail Size', 'Polish', 'Fit to View', '−', '100%', '+', 'Focus Mode']);
     expect(container.querySelector('[data-testid="nail-design-studio-command-bar"] button[aria-haspopup="listbox"]')).toBeNull();
 
     await click(button('Nail Shape'));
     await click(button('Square'));
     expect(container.querySelector('[data-testid="stage-nail"]').dataset.nailShape).toBe('square');
+  });
+
+  it('bridges context-sensitive Polish controls directly to the Hero Effect renderer', async () => {
+    await click(container.querySelector('[aria-label="Nail Desk view controls"] button[aria-haspopup="dialog"]:nth-of-type(3)'));
+    expect(container.querySelector('[role="dialog"][aria-label="Polish panel"]')).toBeTruthy();
+    const finish = container.querySelector('select[aria-label="Finish"]');
+    await act(async () => { finish.value = 'Chrome'; finish.dispatchEvent(new Event('change', { bubbles: true })); });
+    expect(container.querySelector('input[aria-label="Chrome intensity"]')).toBeTruthy();
+    expect(container.querySelector('[data-design-layer="polish"]').dataset.heroEffect).toBe('Chrome');
+
+    const color = container.querySelector('input[aria-label="Base Color picker"]');
+    await act(async () => { color.value = '#123456'; color.dispatchEvent(new Event('change', { bubbles: true })); });
+    expect(container.querySelector('[data-design-layer="polish"]').dataset.heroEffect).toBe('Chrome');
+    expect(button('Save Changes')).toBeTruthy();
+  });
+
+  it('uses the Hero document as the shared source for both Nail Size controls', async () => {
+    await click(container.querySelector('[aria-label="Nail Desk view controls"] button:nth-of-type(2)'));
+    const deskSize = container.querySelector('#desk-nail-size');
+    await type(deskSize, '175');
+    expect(container.querySelector('#nail-length').value).toBe('175');
+    expect(container.querySelector('.nail-design-studio__nail-stage').style.getPropertyValue('--nail-length')).toBe('1.75');
   });
 
   it('renders every enabled selection through its distinct resolved Hero mask and hides Duck', async () => {
