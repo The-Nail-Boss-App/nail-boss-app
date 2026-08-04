@@ -182,7 +182,7 @@ describe('adaptive Nail Desk', () => {
 
   it('places Nail Shape immediately before the existing Nail Desk view controls', async () => {
     const controls = container.querySelector('[aria-label="Nail Desk view controls"]');
-    expect([...controls.children].map((control) => control.textContent)).toEqual(['Nail Shape', 'Nail Size', 'Polish', 'Fit to View', '−', '100%', '+', 'Focus Mode']);
+    expect([...controls.children].map((control) => control.textContent)).toEqual(['Nail Shape', 'Nail Size', 'Fit to View', '−', '100%', '+', 'Focus Mode']);
     expect(container.querySelector('[data-testid="nail-design-studio-command-bar"] button[aria-haspopup="listbox"]')).toBeNull();
 
     await click(button('Nail Shape'));
@@ -190,9 +190,12 @@ describe('adaptive Nail Desk', () => {
     expect(container.querySelector('[data-testid="stage-nail"]').dataset.nailShape).toBe('square');
   });
 
-  it('bridges context-sensitive Polish controls directly to the Hero Effect renderer', async () => {
-    await click(container.querySelector('[aria-label="Nail Desk view controls"] button[aria-haspopup="dialog"]:nth-of-type(3)'));
-    expect(container.querySelector('[role="dialog"][aria-label="Polish panel"]')).toBeTruthy();
+  it('bridges Polish Studio controls directly to the Hero engines', async () => {
+    const studio = container.querySelector('[aria-label="Polish Studio"]');
+    expect(studio.dataset.heroMaterialEngine).toBe('Hero Material Engine');
+    expect(studio.dataset.heroEffectEngine).toBe('Hero Effect Engine');
+    expect(container.querySelector('[aria-label="Polish panel"]')).toBeNull();
+    expect(['Active Polish', 'Polish Rack'].every((label) => studio.textContent.includes(label))).toBe(true);
     const finish = container.querySelector('select[aria-label="Finish"]');
     await act(async () => { finish.value = 'Chrome'; finish.dispatchEvent(new Event('change', { bubbles: true })); });
     expect(container.querySelector('input[aria-label="Chrome intensity"]')).toBeTruthy();
