@@ -93,7 +93,6 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
   const [heroState, setHeroState] = useState(initialNailDeskHeroState);
   const [nailShapeOpen, setNailShapeOpen] = useState(false);
   const [nailSizeOpen, setNailSizeOpen] = useState(false);
-  const [polishOpen, setPolishOpen] = useState(false);
   const [surface, setSurface] = useState(WORKSPACE_SURFACES[0].id);
   const [leftPanelOpen, setLeftPanelOpen] = useState(true);
   const [rightPanelOpen, setRightPanelOpen] = useState(true);
@@ -113,6 +112,7 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
   const nailLength = Math.round(heroDocument.nail.length * 100);
   const renderedSurface = heroRenderer.current.process(createHeroSurfaceInput(heroDocument, { width: 240, height: 360 }));
   const appliedEffect = applyHeroEffectToSurface(heroDocument, renderedSurface);
+  const activePolishColor = heroDocument.nail.effect.parameters[baseColorKey(heroDocument.nail.effect.id)];
 
   const selectNailShape = (shapeId) => {
     heroRenderer.current.invalidate('shape', heroDocument.metadata.id);
@@ -314,7 +314,20 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
         {!focusMode && <button type="button" className="nail-design-studio__panel-toggle nail-design-studio__panel-toggle--left" onClick={() => setLeftPanelOpen((open) => !open)} aria-expanded={leftPanelOpen} aria-controls="creative-tools-panel" aria-label={`${leftPanelOpen ? 'Collapse' : 'Expand'} creative tools panel`}>{leftPanelOpen ? '‹' : '›'}</button>}
         {leftPanelOpen && !focusMode && <aside id="creative-tools-panel" className="nail-design-studio__panel nail-design-studio__creative-tools" role="tabpanel" aria-labelledby={`nail-tool-${activeTool.id}`} tabIndex="0">
           <div className="nail-design-studio__panel-heading" style={{ '--tool-accent': activeTool.accent }}><ToolIcon tool={activeTool} /><h2>{activeTool.label}</h2></div>
-          <p className="nail-design-studio__placeholder-copy">The {activeTool.label} creative tools are scoped for construction in a future studio section.</p>
+          {activeTool.id === 'polish' ? <section className="nail-design-studio__polish-studio" aria-label="Polish Studio" data-hero-material-engine="Hero Material Engine" data-hero-effect-engine="Hero Effect Engine">
+            <h3>Active Polish</h3>
+            <div className="nail-design-studio__polish-bottle" style={{ '--polish-color': activePolishColor }} aria-label={`Active polish bottle ${activePolishColor}`}><i /><span /></div>
+            <label>Color palette<span className="nail-design-studio__color-row"><input aria-label="Base Color picker" type="color" value={activePolishColor} onChange={(event) => changeFinishParameter(baseColorKey(heroDocument.nail.effect.id), event.target.value.toUpperCase())} /><input aria-label="Base Color HEX" value={activePolishColor} maxLength="7" onChange={(event) => { const value = event.target.value.toUpperCase(); if (/^#[0-9A-F]{6}$/.test(value)) changeFinishParameter(baseColorKey(heroDocument.nail.effect.id), value); }} /></span></label>
+            <label>Finish selection<select aria-label="Finish" value={heroDocument.nail.effect.id} onChange={(event) => changeFinish(event.target.value)}>{Object.keys(FINISH_DEFAULTS).map((finish) => <option key={finish}>{finish}</option>)}</select></label>
+            <label>Opacity <output>{Math.round((heroDocument.nail.effect.id === 'Jelly' ? heroDocument.nail.effect.parameters.opacity ?? .48 : appliedEffect.layers[0].opacity) * 100)}%</output><input aria-label="Opacity" type="range" min="0" max="1" step=".01" disabled={heroDocument.nail.effect.id !== 'Jelly'} value={heroDocument.nail.effect.id === 'Jelly' ? heroDocument.nail.effect.parameters.opacity ?? .48 : appliedEffect.layers[0].opacity} onChange={(event) => changeFinishParameter('opacity', Number(event.target.value))} /></label>
+            <label>Viscosity <output>{Math.round(renderedSurface.material.density * 100)}%</output><input aria-label="Viscosity" type="range" min="0" max="1" step=".01" value={renderedSurface.material.density} disabled /></label>
+            <label>Shine <output>{Math.round((1 - renderedSurface.material.surfaceRoughness) * 100)}%</output><input aria-label="Shine" type="range" min="0" max="1" step=".01" value={1 - renderedSurface.material.surfaceRoughness} disabled /></label>
+            {heroDocument.nail.effect.id === 'Gradient' && <><label>Color B<input aria-label="Color B" type="color" value={heroDocument.nail.effect.parameters.endColor} onChange={(event) => changeFinishParameter('endColor', event.target.value.toUpperCase())} /></label><label>Direction <input aria-label="Direction" type="range" min="0" max="360" value={heroDocument.nail.effect.parameters.angle ?? 90} onChange={(event) => changeFinishParameter('angle', Number(event.target.value))} /></label></>}
+            {heroDocument.nail.effect.id === 'Chrome' && <label>Chrome intensity <input aria-label="Chrome intensity" type="range" min="0" max="1" step=".01" value={heroDocument.nail.effect.parameters.intensity ?? .82} onChange={(event) => changeFinishParameter('intensity', Number(event.target.value))} /></label>}
+            {heroDocument.nail.effect.id === 'Cat Eye' && <label>Stripe orientation <input aria-label="Stripe orientation" type="range" min="0" max="360" value={heroDocument.nail.effect.parameters.angle ?? 22} onChange={(event) => changeFinishParameter('angle', Number(event.target.value))} /></label>}
+            {heroDocument.nail.effect.id === 'Marble' && <label>Vein Color<input aria-label="Vein Color" type="color" value={heroDocument.nail.effect.parameters.veinColor} onChange={(event) => changeFinishParameter('veinColor', event.target.value.toUpperCase())} /></label>}
+            <section className="nail-design-studio__polish-rack" aria-label="Polish Rack"><h3>Polish Rack</h3>{['#D94C70', '#7D2E68', '#F1CAD8', '#521A46'].map((color) => <button key={color} type="button" aria-label={`Apply polish ${color}`} style={{ '--rack-color': color }} onClick={() => changeFinishParameter(baseColorKey(heroDocument.nail.effect.id), color)} />)}</section>
+          </section> : <p className="nail-design-studio__placeholder-copy">The {activeTool.label} creative tools are scoped for construction in a future studio section.</p>}
         </aside>}
         <main className="nail-design-studio__desk" aria-label="Nail Desk">
           <div className="nail-design-studio__desk-toolbar">
@@ -322,7 +335,6 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
             <div className="nail-design-studio__view-controls" aria-label="Nail Desk view controls">
               <button type="button" aria-haspopup="listbox" aria-expanded={nailShapeOpen} onClick={() => setNailShapeOpen((open) => !open)}>Nail Shape</button>
               <button type="button" aria-haspopup="dialog" aria-expanded={nailSizeOpen} onClick={() => setNailSizeOpen((open) => !open)}>Nail Size</button>
-              <button type="button" aria-haspopup="dialog" aria-expanded={polishOpen} onClick={() => setPolishOpen((open) => !open)}>Polish</button>
               <button type="button" onClick={fitToView}>Fit to View</button>
               <button type="button" onClick={() => changeZoom(-.25)} disabled={zoom === 1} aria-label="Zoom out">−</button>
               <output aria-label="Zoom level">{Math.round(zoom * 100)}%</output>
@@ -335,15 +347,6 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
             {nailSizeOpen && <div className="nail-design-studio__compact-panel nail-design-studio__size-panel" role="dialog" aria-label="Nail Size">
               <label htmlFor="desk-nail-size">Nail size <output>{nailLength}%</output></label>
               <input id="desk-nail-size" type="range" min="50" max="250" value={nailLength} onChange={(event) => { const value = Number(event.target.value); heroRenderer.current.invalidate('length', heroDocument.metadata.id); changeHero((current) => updateHeroShape(current, { length: value / 100 }, heroEvents.current)); }} />
-            </div>}
-            {polishOpen && <div className="nail-design-studio__compact-panel nail-design-studio__polish-panel" role="dialog" aria-label="Polish panel">
-              <label>Finish<select aria-label="Finish" value={heroDocument.nail.effect.id} onChange={(event) => changeFinish(event.target.value)}>{Object.keys(FINISH_DEFAULTS).map((finish) => <option key={finish}>{finish}</option>)}</select></label>
-              <label>Base Color<span className="nail-design-studio__color-row"><input aria-label="Base Color picker" type="color" value={heroDocument.nail.effect.parameters[baseColorKey(heroDocument.nail.effect.id)]} onChange={(event) => changeFinishParameter(baseColorKey(heroDocument.nail.effect.id), event.target.value.toUpperCase())} /><input aria-label="Base Color HEX" value={heroDocument.nail.effect.parameters[baseColorKey(heroDocument.nail.effect.id)]} maxLength="7" onChange={(event) => { const value = event.target.value.toUpperCase(); if (/^#[0-9A-F]{6}$/.test(value)) changeFinishParameter(baseColorKey(heroDocument.nail.effect.id), value); }} /></span></label>
-              {heroDocument.nail.effect.id === 'Gradient' && <><label>Color B<input aria-label="Color B" type="color" value={heroDocument.nail.effect.parameters.endColor} onChange={(event) => changeFinishParameter('endColor', event.target.value.toUpperCase())} /></label><label>Direction <input aria-label="Direction" type="range" min="0" max="360" value={heroDocument.nail.effect.parameters.angle ?? 90} onChange={(event) => changeFinishParameter('angle', Number(event.target.value))} /></label></>}
-              {heroDocument.nail.effect.id === 'Chrome' && <label>Chrome intensity <input aria-label="Chrome intensity" type="range" min="0" max="1" step=".01" value={heroDocument.nail.effect.parameters.intensity ?? .82} onChange={(event) => changeFinishParameter('intensity', Number(event.target.value))} /></label>}
-              {heroDocument.nail.effect.id === 'Cat Eye' && <label>Stripe orientation <input aria-label="Stripe orientation" type="range" min="0" max="360" value={heroDocument.nail.effect.parameters.angle ?? 22} onChange={(event) => changeFinishParameter('angle', Number(event.target.value))} /></label>}
-              {heroDocument.nail.effect.id === 'Marble' && <label>Vein Color<input aria-label="Vein Color" type="color" value={heroDocument.nail.effect.parameters.veinColor} onChange={(event) => changeFinishParameter('veinColor', event.target.value.toUpperCase())} /></label>}
-              {heroDocument.nail.effect.id === 'Jelly' && <label>Transparency <input aria-label="Transparency" type="range" min="0" max="1" step=".01" value={1 - (heroDocument.nail.effect.parameters.opacity ?? .48)} onChange={(event) => changeFinishParameter('opacity', 1 - Number(event.target.value))} /></label>}
             </div>}
           </div>
           <div className={`nail-design-studio__desk-surface${zoom > 1 ? ' is-pannable' : ''}`} style={{ backgroundImage: `url(${activeSurface.src})` }} onPointerDown={startPan} onPointerMove={movePan} onPointerUp={stopPan} onPointerCancel={stopPan} data-testid="nail-stage-container">

@@ -336,6 +336,21 @@
 .nail-design-studio__color-row input[type="color"] { width: 38px; height: 32px; padding: 2px; border: 1px solid rgba(92,35,72,.24); border-radius: 7px; background: #fff; }
 .nail-design-studio__size-panel { right: 180px; }
 
+.nail-design-studio__polish-studio { display: grid; gap: 12px; color: var(--studio-plum); }
+.nail-design-studio__polish-studio h3 { margin: 0; font: 800 12px/1.2 'DM Sans', system-ui, sans-serif; letter-spacing: .04em; }
+.nail-design-studio__polish-studio label { display: grid; grid-template-columns: 1fr auto; gap: 6px; font: 800 11px/1.2 'DM Sans', system-ui, sans-serif; }
+.nail-design-studio__polish-studio label > select,
+.nail-design-studio__polish-studio label > input,
+.nail-design-studio__polish-studio label > .nail-design-studio__color-row { grid-column: 1 / -1; width: 100%; box-sizing: border-box; }
+.nail-design-studio__polish-studio select,
+.nail-design-studio__polish-studio input:not([type="color"]):not([type="range"]) { border: 1px solid rgba(92,35,72,.24); border-radius: 7px; padding: 7px; background: #fff; color: var(--studio-plum); }
+.nail-design-studio__polish-bottle { position: relative; justify-self: center; width: 60px; height: 82px; margin: 2px 0 6px; }
+.nail-design-studio__polish-bottle i { position: absolute; left: 17px; width: 26px; height: 27px; border-radius: 4px 4px 2px 2px; background: linear-gradient(90deg, #31222d, #725466 50%, #31222d); }
+.nail-design-studio__polish-bottle span { position: absolute; inset: 24px 3px 0; border: 2px solid rgba(92,35,72,.34); border-radius: 12px 12px 17px 17px; background: linear-gradient(120deg, rgba(255,255,255,.55), transparent 35%), var(--polish-color); box-shadow: 0 8px 16px rgba(60,16,45,.18); }
+.nail-design-studio__polish-rack { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; padding-top: 12px; border-top: 1px solid rgba(92,35,72,.14); }
+.nail-design-studio__polish-rack h3 { grid-column: 1 / -1; }
+.nail-design-studio__polish-rack button { width: 28px; height: 36px; justify-self: center; border: 2px solid #fff; border-radius: 6px 6px 10px 10px; background: var(--rack-color); box-shadow: 0 0 0 1px rgba(92,35,72,.24); cursor: pointer; }
+
 .nail-design-studio__desk-surface {
   position: relative;
   width: 100%;
