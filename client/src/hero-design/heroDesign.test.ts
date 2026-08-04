@@ -218,6 +218,18 @@ describe('Hero Design integration shell', () => {
     expect(engine.state).toBe('Rendered');
   });
 
+  test('renders a complete 250% nail without clipping while retaining Duck internally', () => {
+    const longDocument = document();
+    longDocument.nail.length = 2.5;
+    const result = new HeroSurfaceRenderingEngine().process(createHeroSurfaceInput(longDocument, { width: 240, height: 360 }));
+    const [, viewTop, , viewHeight] = result.viewBox.split(' ').map(Number);
+    expect(HERO_SHAPE_IDS).toContain('Duck');
+    expect(result.bounds.height).toBe(455);
+    expect(viewTop).toBeLessThan(result.bounds.y);
+    expect(viewHeight).toBeGreaterThan(result.bounds.height);
+    expect(validateHeroDesignDocument(longDocument).valid).toBe(true);
+  });
+
   test('rejects missing or mismatched shape and mask inputs instead of silently rendering a fallback', () => {
     const missingShape = { ...document(), nail: { ...document().nail, shape: { id: 'Missing', version: '1' } } };
     expect(() => createHeroSurfaceInput(missingShape, { width: 240, height: 360 })).toThrow('Hero shape is unavailable: Missing');

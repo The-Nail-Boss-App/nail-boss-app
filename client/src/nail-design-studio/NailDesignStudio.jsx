@@ -3,6 +3,7 @@ import {
   createHeroDesignDocument, createHeroSurfaceInput, HeroDesignEventBus,
   HeroSurfaceRenderingEngine, initialHeroDesignState, heroDesignReducer, updateHeroShape,
 } from '../hero-design/index.ts';
+import { USER_FACING_NAIL_SHAPES } from '../config/features';
 import './NailDesignStudio.css';
 
 const TOOL_CATEGORIES = [
@@ -41,8 +42,6 @@ const COMPOSITIONS = [
   { id: 'full', label: 'Full Set', nails: 10 },
 ];
 
-const NAIL_SHAPES = ['Almond', 'Coffin', 'Square', 'Oval', 'Round', 'Stiletto', 'Lipstick', 'Duck'];
-
 const WORKSPACE_SURFACES = [
   { id: 'signature', label: 'Signature', src: '/assets/anitaset/design-studio/workspace-surfaces/signature-workspace.png' },
   { id: 'cherry', label: 'Cherry Lacquer', src: '/assets/anitaset/design-studio/workspace-surfaces/cherry-lacquer-workspace.png' },
@@ -69,7 +68,7 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
   const [composition, setComposition] = useState('single');
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
-  const [nailLength, setNailLength] = useState(55);
+  const [nailLength, setNailLength] = useState(100);
   const [heroState, setHeroState] = useState(() => heroDesignReducer(initialHeroDesignState, {
     type: 'createDesign',
     document: createHeroDesignDocument({ id: 'nail-desk-hero', name: 'Untitled Design', shapeId: 'Almond', maskId: 'almond-mask' }),
@@ -294,7 +293,7 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
               <button type="button" aria-pressed={focusMode} onClick={() => setFocusMode((focused) => !focused)}>Focus Mode</button>
             </div>
             {nailShapeOpen && <div className="nail-design-studio__shape-menu" role="listbox" aria-label="Nail Shape options">
-              {NAIL_SHAPES.map((shape) => <button type="button" role="option" aria-selected={nailShape === shape} key={shape} onClick={() => selectNailShape(shape)}>{shape}</button>)}
+              {USER_FACING_NAIL_SHAPES.map((shape) => <button type="button" role="option" aria-selected={nailShape === shape} key={shape} onClick={() => selectNailShape(shape)}>{shape}</button>)}
             </div>}
           </div>
           <div className={`nail-design-studio__desk-surface${zoom > 1 ? ' is-pannable' : ''}`} style={{ backgroundImage: `url(${activeSurface.src})` }} onPointerDown={startPan} onPointerMove={movePan} onPointerUp={stopPan} onPointerCancel={stopPan} data-testid="nail-stage-container">
@@ -303,7 +302,7 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
                 <div className="nail-design-studio__nail-slot" data-testid="nail-slot" key={index}>
                   <svg className="nail-design-studio__hero-nail" data-testid="stage-nail" data-nail-shape={nailShape.toLowerCase()}
                     data-hero-renderer="Hero Surface Rendering Engine" data-hero-mask={renderedSurface.maskId} data-design-layer-parent="true"
-                    aria-label={`Hero Nail ${index + 1}`} viewBox="0 0 240 360" preserveAspectRatio="xMidYMid meet" role="img">
+                    aria-label={`Hero Nail ${index + 1}`} viewBox={renderedSurface.viewBox} preserveAspectRatio="xMidYMid meet" role="img">
                     <path className="nail-design-studio__nail-polish" data-design-layer="polish" d={renderedSurface.path} />
                   </svg>
                 </div>
@@ -313,7 +312,7 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
         </main>
         {rightPanelOpen && !focusMode && <aside id="design-properties-panel" className="nail-design-studio__panel nail-design-studio__properties" aria-label="Design properties panel"><h2>Design Properties</h2>
           <fieldset><legend>Composition</legend>{COMPOSITIONS.map((item) => <label key={item.id}><input type="radio" name="composition" value={item.id} checked={composition === item.id} onChange={() => changeComposition(item.id)} />{item.label}</label>)}</fieldset>
-          <label className="nail-design-studio__length-control" htmlFor="nail-length">Nail length <output>{nailLength}%</output></label><input id="nail-length" type="range" min="10" max="100" value={nailLength} onChange={(event) => { const value = Number(event.target.value); heroRenderer.current.invalidate('length', heroDocument.metadata.id); setNailLength(value); setHeroState((current) => updateHeroShape(current, { length: value / 100 }, heroEvents.current)); }} />
+          <label className="nail-design-studio__length-control" htmlFor="nail-length">Nail length <output>{nailLength}%</output></label><input id="nail-length" type="range" min="50" max="250" value={nailLength} onChange={(event) => { const value = Number(event.target.value); heroRenderer.current.invalidate('length', heroDocument.metadata.id); setNailLength(value); setHeroState((current) => updateHeroShape(current, { length: value / 100 }, heroEvents.current)); }} />
           <label className="nail-design-studio__surface-control" htmlFor="workspace-surface">Workspace surface</label><select id="workspace-surface" value={surface} onChange={(event) => setSurface(event.target.value)}>{WORKSPACE_SURFACES.map((item) => <option value={item.id} key={item.id}>{item.label}</option>)}</select>
         </aside>}
         {!focusMode && <button type="button" className="nail-design-studio__panel-toggle nail-design-studio__panel-toggle--right" onClick={() => setRightPanelOpen((open) => !open)} aria-expanded={rightPanelOpen} aria-controls="design-properties-panel" aria-label={`${rightPanelOpen ? 'Collapse' : 'Expand'} design properties panel`}>{rightPanelOpen ? '›' : '‹'}</button>}

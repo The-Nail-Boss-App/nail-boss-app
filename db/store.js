@@ -358,8 +358,8 @@ function validateAndNormalizeBlueprint(input) {
     if (seenNailIds.has(normalizedNailId)) throw new BlueprintValidationError("nail ids must be unique strings");
     seenNailIds.add(normalizedNailId);
     if (!VALID_SHAPES.includes(nail.shape)) throw new BlueprintValidationError(`${pathPrefix}.shape must be one of: ${VALID_SHAPES.join(", ")}`);
-    if (!isFiniteNumber(nail.length) || nail.length < 0 || nail.length > 1) {
-      throw new BlueprintValidationError(`${pathPrefix}.length must be a number between 0 and 1`);
+    if (!isFiniteNumber(nail.length) || nail.length < 0 || nail.length > 2.5) {
+      throw new BlueprintValidationError(`${pathPrefix}.length must be a number between 0 and 2.5`);
     }
     if (!isFiniteNumber(nail.width) || nail.width < 0 || nail.width > 1) {
       throw new BlueprintValidationError(`${pathPrefix}.width must be a number between 0 and 1`);

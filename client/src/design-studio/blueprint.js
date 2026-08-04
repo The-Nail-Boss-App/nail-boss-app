@@ -221,7 +221,7 @@ function maskMetrics(nail = {}) {
   const g = getNailGeometry(nail);
   return { cx: g.cx, top: g.topY, bottom: g.bottomY, h: g.height, w: g.width };
 }
-function nailControl(nail, key, fallback = 0.5) { return clamp(nail?.[key] ?? fallback, 0, 1); }
+function nailControl(nail, key, fallback = 0.5) { return clamp(nail?.[key] ?? fallback, 0, key === "length" ? 2.5 : 1); }
 
 function defaultShapeControls(source = {}) {
   return {
@@ -576,7 +576,7 @@ function isBackendValidInactiveNail(nail) {
   if (!isPlainObject(nail)) return false;
   if (typeof nail.id !== "string" || !nail.id.trim()) return false;
   if (!SHAPES.includes(nail.shape)) return false;
-  if (!isFiniteNumber(nail.length) || nail.length < 0 || nail.length > 1) return false;
+  if (!isFiniteNumber(nail.length) || nail.length < 0 || nail.length > 2.5) return false;
   if (!isFiniteNumber(nail.width) || nail.width < 0 || nail.width > 1) return false;
   for (const key of ["taper", "apexHeight", "sidewallCurve", "freeEdgeThickness"]) {
     if (Object.prototype.hasOwnProperty.call(nail, key) && (!isFiniteNumber(nail[key]) || nail[key] < 0 || nail[key] > 1)) return false;
