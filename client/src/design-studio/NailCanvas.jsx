@@ -406,9 +406,10 @@ export default function NailCanvas({ nail, layers, selectedLayerId, mode, brush,
           <ArtRealismDefs uid={uid}/>
           <filter id={`${uid}-asset-shadow-blur`} x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="2.4"/></filter>
           <PolishDefs nail={nail} baseLayer={baseLayer} uid={uid}/>
+          <linearGradient id={`${uid}-hero-material`} x1="0" y1="0" x2="1" y2="0"><stop offset="0" stopColor={heroSurface.result.materialStyle?.baseTint || heroSurface.result.fill}/><stop offset=".5" stopColor={heroSurface.result.materialStyle?.centerTint || "#fff"}/><stop offset="1" stopColor={heroSurface.result.materialStyle?.baseTint || heroSurface.result.fill}/></linearGradient>
         </defs>
         <rect width={VIEWBOX.width} height={VIEWBOX.height} fill="transparent"/>
-        <path d={path} fill={heroSurface.result.fill} data-testid="hero-neutral-nail-surface" data-shape={nail.shape} data-mask={heroSurface.result.maskId || "legacy"}/>
+        <path d={path} fill={heroSurface.result.materialStyle ? `url(#${uid}-hero-material)` : heroSurface.result.fill} fillOpacity={heroSurface.result.materialStyle?.opacity} stroke={heroSurface.result.materialStyle?.baseTint} strokeOpacity={heroSurface.result.materialStyle?.edgeOpacity} strokeWidth={heroSurface.result.materialStyle?.edgeWidth} data-testid="hero-neutral-nail-surface" data-material-id={heroSurface.result.material?.id || "legacy"} data-shape={nail.shape} data-mask={heroSurface.result.maskId || "legacy"}/>
         <PolishSurface nail={nail} baseLayer={baseLayer} path={path} clipId={clipId} uid={uid}/>
         {baseLayer?.data?.polishFillMode === "gradient" && <g clipPath={`url(#${clipId})`} pointerEvents="none" data-testid="gradient-polish-color-fill" data-gradient-mode="polish-base-fill">
           <defs><LayerGradient layer={{ id: "base-polish-gradient", data: baseLayer.data.gradient }} id={`${uid}-base-polish-gradient`}/></defs>

@@ -1,5 +1,6 @@
 import { HeroDesignDocument } from './contracts';
 import { validateHeroDesignDocument } from './validation';
+import { DEFAULT_HERO_MATERIAL_REFERENCE } from './material';
 
 export interface HeroPersistenceAdapter {
   create(document: HeroDesignDocument): Promise<HeroDesignDocument>;
@@ -19,6 +20,7 @@ const copy = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
 
 /** Browser-storage implementation behind the stable persistence boundary. */
 export class HeroLocalStoragePersistenceAdapter implements HeroPersistenceAdapter {
+  readonly compatibilityDiagnostics: string[] = [];
   constructor(private readonly storage: KeyValueStorage, private readonly prefix = 'anitaset.hero-design.v1:') {}
 
   private key(id: string): string { return `${this.prefix}${id}`; }
@@ -31,7 +33,9 @@ export class HeroLocalStoragePersistenceAdapter implements HeroPersistenceAdapte
   async load(id: string): Promise<HeroDesignDocument | null> {
     const serialized = this.storage.getItem(this.key(id));
     if (serialized === null) return null;
-    const document = JSON.parse(serialized) as HeroDesignDocument;
+    const source = JSON.parse(serialized) as HeroDesignDocument;
+    const document = source.nail?.material ? source : { ...source, nail: { ...source.nail, material: { ...DEFAULT_HERO_MATERIAL_REFERENCE } } };
+    if (!source.nail?.material) this.compatibilityDiagnostics.push(`Legacy Hero design ${id} had no material reference; soft-gel-neutral@1 was applied without mutating its source record.`);
     const result = validateHeroDesignDocument(document);
     if (!result.valid) throw new Error(`Stored Hero design is invalid: ${result.issues.map(({ path }) => path).join(', ')}`);
     return copy(document);
