@@ -12,3 +12,4 @@ export * from './designStudioBridge';
 export * from './surface';
 export * from './material';
 export * from './effect';
+export * from './lighting';

@@ -1,8 +1,8 @@
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import {
-  applyHeroEffectToSurface, createHeroDesignDocument, createHeroSurfaceInput, HeroDesignEventBus,
+  applyHeroEffectToSurface, applyHeroLightingToEffect, createHeroDesignDocument, createHeroSurfaceInput, HeroDesignEventBus,
   HeroEngineRegistry, HeroLocalStoragePersistenceAdapter, HeroSurfaceRenderingEngine, initialHeroDesignState,
-  heroDesignReducer, registerHeroEffectEngine, updateHeroEffect, updateHeroShape,
+  heroDesignReducer, registerHeroEffectEngine, registerHeroLightingEngine, updateHeroEffect, updateHeroShape,
 } from '../hero-design/index.ts';
 import { USER_FACING_NAIL_SHAPES } from '../config/features';
 import './NailDesignStudio.css';
@@ -106,6 +106,7 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
   if (!heroEffectRegistry.current) {
     const registry = new HeroEngineRegistry();
     registerHeroEffectEngine(registry, heroEvents.current);
+    registerHeroLightingEngine(registry, heroEvents.current);
     heroEffectRegistry.current = registry;
   }
   const heroPersistence = useRef(typeof window !== 'undefined' ? new HeroLocalStoragePersistenceAdapter(window.localStorage) : null);
@@ -119,6 +120,8 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
   const renderedSurface = useMemo(() => heroRenderer.current.process(createHeroSurfaceInput(heroDocument, { width: 240, height: 360 })), [heroDocument.nail.shape, heroDocument.nail.mask, heroDocument.nail.material, heroDocument.nail.length, heroDocument.nail.width]);
   const heroEffectEngine = heroEffectRegistry.current.resolve('Hero Effect Engine');
   const appliedEffect = useMemo(() => applyHeroEffectToSurface(heroDocument, renderedSurface, heroEffectEngine), [heroDocument.nail.effect, renderedSurface, heroEffectEngine]);
+  const heroLightingEngine = heroEffectRegistry.current.resolve('Hero Lighting Engine');
+  const appliedLighting = useMemo(() => applyHeroLightingToEffect(heroDocument, appliedEffect, heroLightingEngine), [heroDocument, appliedEffect, heroLightingEngine]);
   const activePolishColor = heroDocument.nail.effect.parameters[baseColorKey(heroDocument.nail.effect.id)];
 
   const selectNailShape = (shapeId) => {
@@ -332,7 +335,7 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
         {!focusMode && <button type="button" className="nail-design-studio__panel-toggle nail-design-studio__panel-toggle--left" onClick={() => setLeftPanelOpen((open) => !open)} aria-expanded={leftPanelOpen} aria-controls="creative-tools-panel" aria-label={`${leftPanelOpen ? 'Collapse' : 'Expand'} creative tools panel`}>{leftPanelOpen ? '‹' : '›'}</button>}
         {leftPanelOpen && !focusMode && <aside id="creative-tools-panel" className="nail-design-studio__panel nail-design-studio__creative-tools" role="tabpanel" aria-labelledby={`nail-tool-${activeTool.id}`} tabIndex="0">
           <div className="nail-design-studio__panel-heading" style={{ '--tool-accent': activeTool.accent }}><ToolIcon tool={activeTool} /><h2>{activeTool.label}</h2></div>
-          {['polish', 'effects'].includes(activeTool.id) ? <section className="nail-design-studio__polish-studio" aria-label={activeTool.id === 'polish' ? 'Polish Studio' : 'Effects Studio'} data-hero-material-engine="Hero Material Engine" data-hero-effect-engine="Hero Effect Engine" data-hero-document-id={heroDocument.metadata.id}>
+          {['polish', 'effects'].includes(activeTool.id) ? <section className="nail-design-studio__polish-studio" aria-label={activeTool.id === 'polish' ? 'Polish Studio' : 'Effects Studio'} data-hero-material-engine="Hero Material Engine" data-hero-effect-engine="Hero Effect Engine" data-hero-lighting-engine="Hero Lighting Engine" data-hero-document-id={heroDocument.metadata.id}>
             <h3>Active Polish</h3>
             <div className="nail-design-studio__polish-bottle" style={{ '--polish-color': activePolishColor }} aria-label={`Active polish bottle ${activePolishColor}`}><i /><span /></div>
             <label>Color palette<span className="nail-design-studio__color-row"><input aria-label="Base Color picker" type="color" value={activePolishColor} onChange={(event) => changeFinishParameter(baseColorKey(heroDocument.nail.effect.id), event.target.value.toUpperCase())} /><input aria-label="Base Color HEX" value={activePolishColor} maxLength="7" onChange={(event) => { const value = event.target.value.toUpperCase(); if (/^#[0-9A-F]{6}$/.test(value)) changeFinishParameter(baseColorKey(heroDocument.nail.effect.id), value); }} /></span></label>
@@ -374,9 +377,13 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
                   <svg className="nail-design-studio__hero-nail" data-testid="stage-nail" data-nail-shape={nailShape.toLowerCase()}
                     data-hero-renderer="Hero Surface Rendering Engine" data-hero-mask={renderedSurface.maskId} data-design-layer-parent="true"
                     aria-label={`Hero Nail ${index + 1}`} viewBox={renderedSurface.viewBox} preserveAspectRatio="xMidYMid meet" role="img">
-                    <defs>{appliedEffect.layers.map((layer, layerIndex) => layer.kind === 'linear-gradient' && <linearGradient key={layerIndex} id={`hero-finish-${index}-${layerIndex}`} x1="0" y1="0" x2="1" y2="0" gradientTransform={`rotate(${layer.angle ?? 90} .5 .5)`}>{layer.colors.map((color, stop) => <stop key={stop} offset={`${stop / Math.max(1, layer.colors.length - 1) * 100}%`} stopColor={color} />)}</linearGradient>)}</defs>
-                    <path className="nail-design-studio__nail-polish" data-design-layer="polish" data-hero-material-layer="true" data-hero-effect={appliedEffect.id} data-material-id={renderedSurface.material.id} d={renderedSurface.path} style={{ fill: appliedEffect.layers[0].kind === 'linear-gradient' ? `url(#hero-finish-${index}-0)` : appliedEffect.layers[0].color, fillOpacity: appliedEffect.layers[0].opacity, stroke: renderedSurface.materialStyle.baseTint, strokeOpacity: renderedSurface.materialStyle.edgeOpacity, strokeWidth: renderedSurface.materialStyle.edgeWidth }} />
+                    <defs>{appliedEffect.layers.map((layer, layerIndex) => layer.kind === 'linear-gradient' && <linearGradient key={layerIndex} id={`hero-finish-${index}-${layerIndex}`} x1="0" y1="0" x2="1" y2="0" gradientTransform={`rotate(${layer.angle ?? 90} .5 .5)`}>{layer.colors.map((color, stop) => <stop key={stop} offset={`${stop / Math.max(1, layer.colors.length - 1) * 100}%`} stopColor={color} />)}</linearGradient>)}<radialGradient id={`hero-light-apex-${index}`} cx="50%" cy="28%" r="58%"><stop offset="0%" stopColor={appliedLighting.reflections[3].color} stopOpacity={appliedLighting.reflections[3].opacity} /><stop offset="56%" stopColor={appliedLighting.reflections[3].color} stopOpacity={appliedLighting.reflections[3].opacity * .22} /><stop offset="100%" stopColor={appliedLighting.reflections[3].color} stopOpacity="0" /></radialGradient><linearGradient id={`hero-light-primary-${index}`} x1="0" y1="0" x2="1" y2="0" gradientTransform={`rotate(${appliedLighting.reflections[0].angle} .5 .5)`}><stop offset="0%" stopColor={appliedLighting.reflections[0].color} stopOpacity="0" /><stop offset="42%" stopColor={appliedLighting.reflections[0].color} stopOpacity={appliedLighting.reflections[0].opacity} /><stop offset="62%" stopColor={appliedLighting.reflections[0].color} stopOpacity={appliedLighting.reflections[0].opacity * .36} /><stop offset="100%" stopColor={appliedLighting.reflections[0].color} stopOpacity="0" /></linearGradient><linearGradient id={`hero-light-edge-${index}`} x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stopColor={appliedLighting.reflections[2].color} stopOpacity={appliedLighting.reflections[2].opacity} /><stop offset="22%" stopColor={appliedLighting.reflections[2].color} stopOpacity="0" /><stop offset="78%" stopColor={appliedLighting.reflections[2].color} stopOpacity="0" /><stop offset="100%" stopColor={appliedLighting.reflections[2].color} stopOpacity={appliedLighting.reflections[2].opacity * .72} /></linearGradient><linearGradient id={`hero-light-depth-${index}`} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#000000" stopOpacity="0" /><stop offset="100%" stopColor="#000000" stopOpacity={appliedLighting.reflections[4].opacity} /></linearGradient></defs>
+                    <path className="nail-design-studio__nail-polish" data-design-layer="polish" data-hero-material-layer="true" data-hero-effect={appliedEffect.id} data-hero-lighting="Hero Lighting Engine" data-hero-reflection={appliedLighting.profile.reflection} data-material-id={renderedSurface.material.id} d={renderedSurface.path} style={{ fill: appliedEffect.layers[0].kind === 'linear-gradient' ? `url(#hero-finish-${index}-0)` : appliedEffect.layers[0].color, fillOpacity: appliedEffect.layers[0].opacity, stroke: renderedSurface.materialStyle.baseTint, strokeOpacity: renderedSurface.materialStyle.edgeOpacity, strokeWidth: renderedSurface.materialStyle.edgeWidth }} />
                     {appliedEffect.layers.slice(1).map((layer, layerIndex) => layer.kind === 'linear-gradient' ? <path key={layerIndex} d={renderedSurface.path} fill={`url(#hero-finish-${index}-${layerIndex + 1})`} opacity={layer.opacity} /> : layer.paths?.map((path, pathIndex) => <path key={`${layerIndex}-${pathIndex}`} d={path} stroke={layer.color} opacity={layer.opacity} fill="none" vectorEffect="non-scaling-stroke" />))}
+                    <path d={renderedSurface.path} fill={`url(#hero-light-depth-${index})`} opacity={appliedLighting.profile.veinPreservation} />
+                    <path d={renderedSurface.path} fill={`url(#hero-light-apex-${index})`} style={{ mixBlendMode: 'screen' }} />
+                    <path d={renderedSurface.path} fill={`url(#hero-light-primary-${index})`} style={{ mixBlendMode: 'screen' }} />
+                    <path d={renderedSurface.path} fill={`url(#hero-light-edge-${index})`} style={{ mixBlendMode: 'screen' }} />
                   </svg>
                 </div>
               ))}
