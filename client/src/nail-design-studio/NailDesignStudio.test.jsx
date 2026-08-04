@@ -198,7 +198,6 @@ describe('adaptive Nail Desk', () => {
     expect(['Active Polish', 'Polish Rack'].every((label) => studio.textContent.includes(label))).toBe(true);
     const finish = container.querySelector('select[aria-label="Finish"]');
     await act(async () => { finish.value = 'Chrome'; finish.dispatchEvent(new Event('change', { bubbles: true })); });
-    expect(container.querySelector('input[aria-label="Chrome intensity"]')).toBeTruthy();
     expect(container.querySelector('[data-design-layer="polish"]').dataset.heroEffect).toBe('Chrome');
 
     const color = container.querySelector('input[aria-label="Base Color picker"]');
@@ -210,6 +209,19 @@ describe('adaptive Nail Desk', () => {
     expect(viscosity.disabled).toBe(false);
     await type(viscosity, '0.35');
     expect(container.querySelector('input[aria-label="Viscosity"]').value).toBe('0.35');
+  });
+
+  it('uses one Hero effect document from both Polish and Effects Studio', async () => {
+    const polish = container.querySelector('[aria-label="Polish Studio"]');
+    const documentId = polish.dataset.heroDocumentId;
+    const finish = polish.querySelector('select[aria-label="Finish"]');
+    await act(async () => { finish.value = 'Gradient'; finish.dispatchEvent(new Event('change', { bubbles: true })); });
+    await click(button('Effects'));
+    const effects = container.querySelector('[aria-label="Effects Studio"]');
+    expect(effects.dataset.heroDocumentId).toBe(documentId);
+    expect(effects.querySelector('select[aria-label="Finish"]').value).toBe('Gradient');
+    expect(effects.querySelector('input[aria-label="Direction"]')).toBeTruthy();
+    expect(container.querySelector('[data-design-layer="polish"]').dataset.heroEffect).toBe('Gradient');
   });
 
   it('uses the Hero document as the shared source for both Nail Size controls', async () => {

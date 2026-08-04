@@ -13,7 +13,7 @@ import { HeroSurfaceRenderResult } from './surface';
 
 export const HERO_EFFECT_IDS = Object.freeze(['Solid', 'Gradient', 'Chrome', 'Cat Eye', 'Marble', 'Jelly'] as const);
 export const DEFAULT_HERO_EFFECT_REFERENCE: Readonly<HeroEffectReference> = Object.freeze({
-  id: 'Solid', version: '1', parameters: Object.freeze({ color: '#D94C70' }),
+  id: 'Solid', version: '1', parameters: Object.freeze({ baseColor: '#D94C70', opacity: 1, viscosity: 0.62, shine: 0.68 }),
 });
 
 type ParameterRule = { required: boolean; validate: (value: unknown) => boolean; message: string };
@@ -26,30 +26,29 @@ const commonRules: Record<string, ParameterRule> = {
   shine: { required: false, validate: unit, message: 'shine must be between 0 and 1.' },
 };
 const finishRules: Record<HeroEffectId, Record<string, ParameterRule>> = {
-  Solid: { color: { required: true, validate: color, message: 'color must be a six-digit hex color.' } },
+  Solid: { baseColor: { required: true, validate: color, message: 'baseColor must be a six-digit hex color.' } },
   Gradient: {
-    startColor: { required: true, validate: color, message: 'startColor must be a six-digit hex color.' },
-    endColor: { required: true, validate: color, message: 'endColor must be a six-digit hex color.' },
-    angle: { required: false, validate: angle, message: 'angle must be between 0 and 360.' },
+    colorA: { required: true, validate: color, message: 'colorA must be a six-digit hex color.' },
+    colorB: { required: true, validate: color, message: 'colorB must be a six-digit hex color.' },
+    direction: { required: true, validate: angle, message: 'direction must be between 0 and 360.' },
   },
   Chrome: {
-    color: { required: true, validate: color, message: 'color must be a six-digit hex color.' },
-    intensity: { required: false, validate: unit, message: 'intensity must be between 0 and 1.' },
+    baseColor: { required: true, validate: color, message: 'baseColor must be a six-digit hex color.' },
   },
   'Cat Eye': {
     baseColor: { required: true, validate: color, message: 'baseColor must be a six-digit hex color.' },
-    stripeColor: { required: true, validate: color, message: 'stripeColor must be a six-digit hex color.' },
-    angle: { required: false, validate: angle, message: 'angle must be between 0 and 360.' },
-    position: { required: false, validate: unit, message: 'position must be between 0 and 1.' },
-    width: { required: false, validate: unit, message: 'width must be between 0 and 1.' },
+    stripeDirection: { required: true, validate: angle, message: 'stripeDirection must be between 0 and 360.' },
+    stripeWidth: { required: true, validate: unit, message: 'stripeWidth must be between 0 and 1.' },
+    stripeStrength: { required: true, validate: unit, message: 'stripeStrength must be between 0 and 1.' },
   },
   Marble: {
     baseColor: { required: true, validate: color, message: 'baseColor must be a six-digit hex color.' },
     veinColor: { required: true, validate: color, message: 'veinColor must be a six-digit hex color.' },
-    intensity: { required: false, validate: unit, message: 'intensity must be between 0 and 1.' },
+    veinDensity: { required: true, validate: unit, message: 'veinDensity must be between 0 and 1.' },
   },
   Jelly: {
-    color: { required: true, validate: color, message: 'color must be a six-digit hex color.' },
+    baseColor: { required: true, validate: color, message: 'baseColor must be a six-digit hex color.' },
+    translucency: { required: true, validate: unit, message: 'translucency must be between 0 and 1.' },
   },
 };
 const rules = Object.fromEntries(Object.entries(finishRules).map(([id, schema]) => [id, { ...commonRules, ...schema }])) as Record<HeroEffectId, Record<string, ParameterRule>>;
@@ -101,28 +100,27 @@ function finishLayers(effect: HeroEffectReference): readonly HeroFinishLayer[] {
   const p = effect.parameters;
   const opacity = numberParameter(p, 'opacity', effect.id === 'Jelly' ? 0.48 : 1);
   switch (effect.id) {
-    case 'Solid': return [{ kind: 'color', color: p.color as string, opacity }];
-    case 'Gradient': return [{ kind: 'linear-gradient', colors: [p.startColor as string, p.endColor as string], angle: numberParameter(p, 'angle', 90), opacity }];
+    case 'Solid': return [{ kind: 'color', color: p.baseColor as string, opacity }];
+    case 'Gradient': return [{ kind: 'linear-gradient', colors: [p.colorA as string, p.colorB as string], angle: p.direction as number, opacity }];
     case 'Chrome': {
-      const intensity = numberParameter(p, 'intensity', 0.82);
-      return [{ kind: 'linear-gradient', colors: [p.color as string, '#FFFFFF', p.color as string, '#64646B', p.color as string], angle: 90, opacity: opacity * (0.72 + intensity * 0.28) }];
+      return [{ kind: 'linear-gradient', colors: [p.baseColor as string, '#FFFFFF', p.baseColor as string, '#64646B', p.baseColor as string], angle: 90, opacity }];
     }
     case 'Cat Eye': return [
       { kind: 'color', color: p.baseColor as string, opacity },
-      { kind: 'linear-gradient', colors: ['transparent', p.stripeColor as string, 'transparent'], angle: numberParameter(p, 'angle', 22), position: numberParameter(p, 'position', 0.5), width: numberParameter(p, 'width', 0.18), opacity: 0.88 },
+      { kind: 'linear-gradient', colors: ['transparent', '#FFFFFF', 'transparent'], angle: p.stripeDirection as number, position: 0.5, width: p.stripeWidth as number, opacity: p.stripeStrength as number },
     ];
     case 'Marble': return [
       { kind: 'color', color: p.baseColor as string, opacity: opacity * 0.94 },
-      { kind: 'veins', color: p.veinColor as string, opacity: numberParameter(p, 'intensity', 0.42), paths: ['M-.08 .18 C.22 .08 .16 .43 .52 .38 S.78 .68 1.08 .53', 'M.07 .83 C.31 .64 .41 .91 .66 .73 S.87 .44 1.03 .33', 'M.18 -.05 C.38 .21 .62 .06 .74 .31'] },
+      { kind: 'veins', color: p.veinColor as string, opacity: p.veinDensity as number, paths: ['M 35 95 C 80 45 115 155 165 95 S 215 180 245 120', 'M 28 255 C 75 185 125 285 185 205 S 225 130 255 105', 'M 70 20 C 95 90 165 30 205 115'] },
     ];
-    case 'Jelly': return [{ kind: 'color', color: p.color as string, opacity }];
+    case 'Jelly': return [{ kind: 'color', color: p.baseColor as string, opacity: opacity * (1 - (p.translucency as number)) }];
   }
 }
 
 export class HeroEffectEngine implements HeroEngine<HeroEffectInput, HeroAppliedEffect> {
   readonly id = 'Hero Effect Engine' as const;
   readonly version = '1';
-  readonly capabilities = ['effect.resolve', 'effect.validate', 'effect.apply', 'effect.preview', 'effect.invalidate'] as const;
+  readonly capabilities = ['effect.resolve', 'effect.validate', 'effect.apply', 'effect.invalidate', 'effect.preview'] as const;
   private cache = new Map<string, HeroAppliedEffect>();
   constructor(private readonly events = new HeroDesignEventBus()) {}
   initialize(): void {}
