@@ -1,5 +1,6 @@
 import { HeroDesignDocument, HeroLayer, HeroRenderRequest, HeroRenderResult } from './contracts';
 import type { HeroResolvedNailMask } from './mask';
+import type { HeroSurfaceRendererState, HeroSurfaceRenderResult } from './surface';
 
 export interface HeroDesignEventMap {
   'design:created': { document: HeroDesignDocument };
@@ -15,6 +16,10 @@ export interface HeroDesignEventMap {
   'nail.mask.resolved': { designId?: string; mask: HeroResolvedNailMask };
   'nail.mask.changed': { designId: string; previousMaskId: string; maskId: string; shapeId: string };
   'nail.mask.validation.failed': { designId?: string; issues: import('./contracts').HeroValidationIssue[] };
+  'surface.render.started': { designId: string; state: HeroSurfaceRendererState };
+  'surface.render.completed': { designId: string; state: HeroSurfaceRendererState; result: HeroSurfaceRenderResult };
+  'surface.render.failed': { designId: string; state: HeroSurfaceRendererState; error: Error };
+  'surface.render.invalidated': { designId?: string; state: HeroSurfaceRendererState; reason: string };
   'layer:added': { designId: string; layer: HeroLayer };
   'layer:updated': { designId: string; layer: HeroLayer };
   'layer:removed': { designId: string; layerId: string };
