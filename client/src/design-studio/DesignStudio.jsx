@@ -121,6 +121,7 @@ const STUDIO_DOCK_MODES = [
   "Left Hand",
   "Right Hand",
   "Full Set",
+  "Spread View",
   "Focus Perspective",
 ];
 
@@ -2458,6 +2459,16 @@ function DesignStudio(_, ref) {
     void loadDesigns();
   }
 
+  async function saveAsDesign() {
+    setSelectedDesignId("");
+    selectedDesignIdRef.current = "";
+    persistedDesignNameRef.current = "";
+    dirtyRef.current = true;
+    setDirty(true);
+    setSaveStatus("Unsaved changes");
+    return save();
+  }
+
   async function duplicateDesign() {
     if (!(await guardReplacement())) return;
     const copy = ensureFullSetBlueprint(blueprintRef.current || blueprint);
@@ -2840,6 +2851,7 @@ function DesignStudio(_, ref) {
             </label>
             <button type="button" title="Duplicate" aria-label="Duplicate" onClick={duplicateDesign} className="studio-motion-button command-bar-button command-bar-secondary" style={UI.commandButton()}><span className="command-bar-icon" aria-hidden="true">⧉</span><span className="command-bar-label">Duplicate</span></button>
             <button type="button" title={saving ? "Saving…" : selectedDesignId ? (dirty ? "Save Changes" : "Saved") : "Save"} aria-label={saving ? "Saving…" : selectedDesignId ? (dirty ? "Save Changes" : "Saved") : "Save"} onClick={save} disabled={saving} className="studio-motion-button command-bar-button command-bar-save" style={UI.commandButton(!dirty && Boolean(selectedDesignId), saving)}><span className="command-bar-icon" aria-hidden="true">●</span><span className="command-bar-label">{saving ? "Saving…" : selectedDesignId ? (dirty ? "Save Changes" : "Saved") : "Save"}</span></button>
+            <button type="button" title="Save As" aria-label="Save As" onClick={saveAsDesign} disabled={saving} className="studio-motion-button command-bar-button command-bar-secondary" style={UI.commandButton(false, saving)}><span className="command-bar-icon" aria-hidden="true">◎</span><span className="command-bar-label">Save As</span></button>
           </div>
 
           <div className="command-bar-group" aria-label="Editing" style={UI.commandGroup}>
@@ -2854,6 +2866,10 @@ function DesignStudio(_, ref) {
           </div>
 
           <div className="command-bar-group" aria-label="Information" style={UI.commandGroup}>
+            <button type="button" title="Nail Blueprint" aria-label="Nail Blueprint" onClick={() => setCommandPopover("designDetails")} className="studio-motion-button command-bar-button" style={UI.commandButton(commandPopover === "designDetails")}>▤ <span className="command-bar-label">Nail Blueprint</span></button>
+            <button type="button" title="Proposal" aria-label="Proposal" onClick={() => showNotice("Proposal handoff uses the saved Nail Blueprint.")} className="studio-motion-button command-bar-button" style={UI.commandButton()}>✦ <span className="command-bar-label">Proposal</span></button>
+            <button type="button" title="Preview" aria-label="Preview" onClick={() => setDockMode("Spread View")} className="studio-motion-button command-bar-button" style={UI.commandButton(dockMode === "Spread View")}>◈ <span className="command-bar-label">Preview</span></button>
+            <label aria-label="Workspace View Selector" style={UI.commandViewSelector}><span>Workspace</span><select value={dockMode} onChange={(event) => setDockMode(event.target.value)}>{STUDIO_DOCK_MODES.filter((modeName) => modeName !== "Focus Perspective").map((modeName) => <option key={modeName}>{modeName}</option>)}</select></label>
             <button type="button" title="Design Details" aria-label="Design Details" aria-expanded={commandPopover === "designDetails"} onClick={() => toggleCommandPopover("designDetails")} className="studio-motion-button command-bar-button" style={UI.commandButton(commandPopover === "designDetails")}>ⓘ <span className="command-bar-label">Design Details</span></button>
             <div className="command-bar-overflow" style={UI.commandOverflow}>
               <button type="button" title="More publishing actions" aria-label="More publishing actions" aria-expanded={commandPopover === "publishing"} onClick={() => toggleCommandPopover("publishing")} className="studio-motion-button command-bar-button" style={UI.commandButton(commandPopover === "publishing")}>•••</button>
@@ -2917,7 +2933,7 @@ function DesignStudio(_, ref) {
         {!isFocusMode && <aside
           data-testid="studio-working-panel"
           data-panel-behavior="left-column-beside-hero-canvas" data-template-panel-behavior="left-column-beside-nail-design-template"
-          aria-label="Studio Panel"
+          aria-label="Nail Toolkit"
           style={{ ...UI.panel, ...UI.activeStudioPanel }}
         >
           <div style={UI.activeStudioHeader}>
@@ -2937,9 +2953,10 @@ function DesignStudio(_, ref) {
         >
           <div data-testid="template-toolbar" data-legacy-zoom-testid="artist-command-zoom" aria-label="Template Toolbar" style={UI.templateToolbar}>
             <strong style={UI.templateToolbarTitle}>Template Toolbar</strong>
-            <div aria-label="Focus Mode and Full Set Mode" style={UI.modeToggleGroup}>
-              <button type="button" onClick={() => setDockMode(isFocusMode ? "Single Nail" : "Focus Perspective")} aria-pressed={isFocusMode} className="studio-motion-button studio-canvas-mode-button" style={UI.modeToggleButton(isFocusMode)}>Focus Mode</button>
-              <button type="button" onClick={() => setDockMode("Full Set")} aria-pressed={dockMode === "Full Set"} className="studio-motion-button" style={UI.modeToggleButton(dockMode === "Full Set")}>Full Set Mode</button>
+            <div aria-label="Workspace View quick selector" style={UI.modeToggleGroup}>
+              {["Single Nail", "Left Hand", "Right Hand", "Full Set", "Spread View"].map((modeName) => (
+                <button key={modeName} type="button" onClick={() => setDockMode(modeName)} aria-pressed={dockMode === modeName} className="studio-motion-button" style={UI.modeToggleButton(dockMode === modeName)}>{modeName}</button>
+              ))}
             </div>
             <span data-testid="artist-command-zoom" style={{ display: "none" }}>commandZoom adjustZoom</span><button type="button" style={{ display: "none" }} onClick={() => adjustZoom(-10)}>legacy zoom out</button><span>{commandZoom}%</span><button type="button" style={{ display: "none" }} onClick={() => adjustZoom(10)}>legacy zoom</button>
             {templateToolbarItems.map(([label, action, disabled]) => (
@@ -2957,16 +2974,18 @@ function DesignStudio(_, ref) {
             }}
           >
             <div key={`${activeStudio}-${dockMode}`} className="studio-hero-fade" style={UI.previewFrame}>
-              {dockMode === "Full Set" ? (
+              {dockMode !== "Single Nail" && dockMode !== "Focus Perspective" ? (
                 <div style={UI.fullSetHeroPreview}>
                   <FullSetPreview
                     hero
                     blueprint={blueprint}
                     activeNailId={activeNail.id}
                     onSelectSlot={selectSlot}
-                    onViewChange={() =>
-                      dirtyRef.current && void save({ autosave: true, immediate: true })
-                    }
+                    view={dockMode === "Spread View" ? "spread" : dockMode === "Full Set" ? "full" : dockMode === "Left Hand" ? "left" : "right"}
+                    onViewChange={(nextView) => {
+                      setDockMode(nextView === "spread" ? "Spread View" : nextView === "full" ? "Full Set" : nextView === "left" ? "Left Hand" : "Right Hand");
+                      dirtyRef.current && void save({ autosave: true, immediate: true });
+                    }}
                   />
                 </div>
               ) : (
@@ -2988,7 +3007,7 @@ function DesignStudio(_, ref) {
               )}
             </div>
           </section>
-          {dockMode !== "Full Set" && <FullSetPreview
+          {dockMode === "Single Nail" && <FullSetPreview
             blueprint={blueprint}
             activeNailId={activeNail.id}
             onSelectSlot={selectSlot}
@@ -3000,7 +3019,7 @@ function DesignStudio(_, ref) {
 
         {!isFocusMode && <aside
           data-testid="nail-stack-right-panel"
-          aria-label="Design Layers"
+          aria-label="Properties Inspector"
           style={{ ...UI.panel, ...UI.nailStackPanel }}
         >
           <div style={{ ...UI.panelPad, ...UI.nailStackPad }}>
