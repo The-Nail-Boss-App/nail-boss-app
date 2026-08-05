@@ -46,6 +46,32 @@ const COMPOSITIONS = [
 
 const WORKSPACE_VIEWS = COMPOSITIONS.map(({ id, label }) => ({ id, label }));
 
+
+const INSPIRATION_CARDS = [
+  { id: 'velvet-orbit', title: 'Velvet Orbit', tone: 'Cat eye noir', src: '/assets/founding-shops/cherry-lacquer/cherry-lacquer-signature-nail.png' },
+  { id: 'golden-aura', title: 'Golden Aura', tone: 'Molten French', src: '/assets/founding-shops/golden-hour/golden-hour-signature-nail.png' },
+  { id: 'kiki-gloss', title: "Kiki's Gloss", tone: 'Hot pink glass', src: '/assets/founding-shops/kikis-nail-shop/kikis-signature-nail.png' },
+  { id: 'azure-chrome', title: 'Azure Chrome', tone: 'Liquid coastal', src: '/assets/founding-shops/azure-tide/azure-tide-signature-nail.png' },
+];
+
+const SAVED_POLISHES = [
+  { id: 'obsidian-rose', name: 'Obsidian Rose', color: '#31101f' },
+  { id: 'anita-pink', name: 'Anita Pink', color: '#ff2da0' },
+  { id: '24k-veil', name: '24K Veil', color: '#d8a642' },
+  { id: 'cyan-flash', name: 'Cyan Flash', color: '#39e6f2' },
+  { id: 'oxblood-jelly', name: 'Oxblood Jelly', color: '#7b1028' },
+  { id: 'opal-smoke', name: 'Opal Smoke', color: '#c9b8d8' },
+];
+
+const ASSET_SHORTCUTS = [
+  { id: 'textures', label: 'Textures', gradient: 'linear-gradient(135deg, #2d2232, #9f6dd8)' },
+  { id: 'foils', label: 'Foils', gradient: 'radial-gradient(circle at 35% 30%, #fff2a8, #d8a642 42%, #4d3210)' },
+  { id: 'brushes', label: 'Brush Sets', gradient: 'linear-gradient(145deg, #ff2da0, #32101f)' },
+  { id: 'decals', label: 'Decals', gradient: 'linear-gradient(135deg, #111, #39e6f2 55%, #ff2da0)' },
+  { id: 'charms', label: 'Charms', gradient: 'radial-gradient(circle, #f9f2d2, #d8a642 45%, #120b04)' },
+  { id: 'objects', label: '3D Objects', gradient: 'linear-gradient(135deg, #22f0c7, #101416 58%, #ff2da0)' },
+];
+
 const WORKSPACE_SURFACES = [
   { id: 'signature', label: 'Signature', src: '/assets/anitaset/design-studio/workspace-surfaces/signature-workspace.png' },
   { id: 'cherry', label: 'Cherry Lacquer', src: '/assets/anitaset/design-studio/workspace-surfaces/cherry-lacquer-workspace.png' },
@@ -409,7 +435,35 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
         </aside>}
         {!focusMode && <button type="button" className="nail-design-studio__panel-toggle nail-design-studio__panel-toggle--right" onClick={() => setRightPanelOpen((open) => !open)} aria-expanded={rightPanelOpen} aria-controls="design-properties-panel" aria-label={`${rightPanelOpen ? 'Collapse' : 'Expand'} design properties panel`}>{rightPanelOpen ? '›' : '‹'}</button>}
       </div>
-      <footer className="nail-design-studio__bottom-workspace"><strong>Workspace</strong><p className="nail-design-studio__placeholder-copy">Layers, history, assets, and view controls will be added to this new module in their approved construction order.</p></footer>
+      <footer className="nail-design-studio__bottom-workspace nail-design-studio__bottom-workspace--complete" data-testid="design-studio-bottom-workspace" aria-label="Design Studio bottom workspace">
+        <section className="nail-design-studio__workspace-module nail-design-studio__workspace-module--inspiration" aria-label="Design Inspiration">
+          <div className="nail-design-studio__module-heading"><div><span>Design Inspiration</span><strong>Editorial looks</strong></div><button type="button" onClick={() => window.alert('Opening full Design Inspiration library')}>See All</button></div>
+          <div className="nail-design-studio__inspiration-strip" role="list">
+            {INSPIRATION_CARDS.map((card) => <button type="button" role="listitem" className="nail-design-studio__inspiration-card" key={card.id} onClick={() => window.alert(`Previewing ${card.title}`)}>
+              <i className="nail-design-studio__inspiration-art" style={{ backgroundImage: `url(${card.src})` }} aria-hidden="true" /><span>{card.title}</span><small>{card.tone}</small>
+            </button>)}
+          </div>
+        </section>
+        <section className="nail-design-studio__workspace-module nail-design-studio__workspace-module--polish" aria-label="Polish Rack">
+          <div className="nail-design-studio__module-heading"><div><span>Polish Rack™</span><strong>Saved collection</strong></div><button type="button" onClick={() => setCollectionOpen(true)}>See All</button></div>
+          <div className="nail-design-studio__shelf" role="list">
+            {SAVED_POLISHES.map((polish) => <button type="button" role="listitem" className="nail-design-studio__rack-bottle" style={{ '--saved-polish': polish.color }} key={polish.id} onClick={() => changeFinishParameter(baseColorKey(heroDocument.nail.effect.id), polish.color)} aria-label={`Select ${polish.name}`}><i /><span /><em>{polish.name}</em></button>)}
+          </div>
+        </section>
+        <section className="nail-design-studio__workspace-module nail-design-studio__workspace-module--assets" aria-label="Asset Library shortcuts">
+          <div className="nail-design-studio__module-heading"><div><span>Asset Library</span><strong>Quick launch</strong></div><button type="button" onClick={() => window.alert('Opening full Asset Library')}>See All</button></div>
+          <div className="nail-design-studio__asset-grid">{ASSET_SHORTCUTS.map((asset) => <button type="button" key={asset.id} className="nail-design-studio__asset-shortcut" onClick={() => window.alert(`Opening ${asset.label}`)}><i style={{ background: asset.gradient }} /><span>{asset.label}</span></button>)}</div>
+        </section>
+        <section className="nail-design-studio__workspace-module nail-design-studio__workspace-module--details" aria-label="Design Details summary">
+          <div className="nail-design-studio__module-heading"><div><span>Design Details</span><strong>{designName}</strong></div></div>
+          <dl className="nail-design-studio__details-list"><div><dt>Created</dt><dd>Today</dd></div><div><dt>Last Modified</dt><dd>{dirty ? 'Unsaved edits' : 'Saved'}</dd></div><div><dt>Dimensions</dt><dd>{activeComposition.nails} nail workspace</dd></div><div><dt>Nail Shape</dt><dd>{nailShape}</dd></div><div><dt>Collection</dt><dd>AnitaSet Atelier</dd></div></dl>
+          <button type="button" className="nail-design-studio__save-large" onClick={saveDesign} disabled={!dirty || saveState === 'Saving…'}>{saveState === 'Saved' ? 'Saved' : 'Save Changes'}</button>
+        </section>
+        <nav className="nail-design-studio__workspace-nav" aria-label="Workspace Navigation">
+          {COMPOSITIONS.filter((item) => ['single', 'left', 'right', 'full'].includes(item.id)).map((item) => <button type="button" key={item.id} aria-pressed={composition === item.id} onClick={() => changeComposition(item.id)}>{item.label}</button>)}
+          <button type="button" aria-pressed={focusMode} onClick={() => setFocusMode((focused) => !focused)}>Focus Perspective</button><button type="button" onClick={() => window.alert('3D preview launching soon')}>3D</button>
+        </nav>
+      </footer>
     </section>
   );
 });
