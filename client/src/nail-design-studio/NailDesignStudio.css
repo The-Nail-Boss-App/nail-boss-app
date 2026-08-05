@@ -557,3 +557,88 @@
   text-transform: uppercase;
   pointer-events: none;
 }
+
+.nail-design-studio__bottom-workspace--complete {
+  display: grid;
+  grid-template-columns: minmax(210px, 1.08fr) minmax(250px, 1.28fr) minmax(230px, 1.08fr) minmax(210px, .9fr);
+  grid-template-rows: minmax(158px, auto) auto;
+  gap: 12px;
+  align-items: stretch;
+  min-height: 238px;
+  padding: 12px;
+  overflow: hidden;
+  background: radial-gradient(circle at 12% 0%, rgba(255,45,160,.18), transparent 30%), radial-gradient(circle at 78% 0%, rgba(57,230,242,.12), transparent 28%), linear-gradient(180deg, rgba(14,14,18,.98), rgba(2,2,3,.99));
+}
+
+.nail-design-studio__workspace-module {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid rgba(245,199,115,.24);
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(255,255,255,.055), rgba(255,255,255,.018));
+  box-shadow: inset 0 1px rgba(255,255,255,.06), 0 14px 32px rgba(0,0,0,.28);
+  padding: 12px;
+}
+
+.nail-design-studio__module-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+.nail-design-studio__module-heading span { display: block; color: #f5c773; font: 800 10px/1 'DM Sans', system-ui, sans-serif; letter-spacing: .14em; text-transform: uppercase; }
+.nail-design-studio__module-heading strong { display: block; margin-top: 4px; color: #fff; font: 700 15px/1.1 Georgia, serif; }
+.nail-design-studio__module-heading button,
+.nail-design-studio__workspace-nav button,
+.nail-design-studio__save-large {
+  border: 1px solid rgba(57,230,242,.28);
+  border-radius: 999px;
+  background: rgba(8,8,10,.86);
+  color: #dffcff;
+  font: 800 10px/1 'DM Sans', system-ui, sans-serif;
+  letter-spacing: .05em;
+  cursor: pointer;
+  transition: transform 150ms ease, border-color 150ms ease, box-shadow 150ms ease, color 150ms ease;
+}
+.nail-design-studio__module-heading button { flex: 0 0 auto; padding: 8px 10px; }
+.nail-design-studio__module-heading button:hover,
+.nail-design-studio__workspace-nav button:hover,
+.nail-design-studio__save-large:hover:not(:disabled) { transform: translateY(-1px); border-color: rgba(255,45,160,.7); box-shadow: 0 0 18px rgba(255,45,160,.18); color: #fff; }
+
+.nail-design-studio__inspiration-strip,
+.nail-design-studio__shelf { display: flex; gap: 10px; min-width: 0; overflow-x: auto; overflow-y: hidden; padding: 2px 2px 8px; scrollbar-width: thin; scrollbar-color: rgba(245,199,115,.5) transparent; }
+.nail-design-studio__inspiration-card { flex: 0 0 116px; border: 1px solid rgba(255,255,255,.09); border-radius: 14px; padding: 7px; background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.025)); color: #f8f5f7; text-align: left; cursor: pointer; }
+.nail-design-studio__inspiration-card:hover { border-color: rgba(255,45,160,.55); box-shadow: 0 0 20px rgba(255,45,160,.16); }
+.nail-design-studio__inspiration-art { display: block; width: 100%; height: 92px; border-radius: 10px; background-color: #111; background-position: center; background-size: cover; }
+.nail-design-studio__inspiration-card span { display: block; margin-top: 7px; font: 800 12px/1.15 'DM Sans', system-ui, sans-serif; }
+.nail-design-studio__inspiration-card small { color: rgba(248,245,247,.62); font-size: 10px; }
+
+.nail-design-studio__shelf { position: relative; align-items: end; padding-bottom: 18px; }
+.nail-design-studio__shelf::after { content: ''; position: absolute; right: 0; bottom: 4px; left: 0; height: 12px; border-radius: 999px; background: linear-gradient(90deg, rgba(56,36,17,.4), rgba(245,199,115,.55), rgba(56,36,17,.4)); box-shadow: 0 8px 18px rgba(0,0,0,.45); }
+.nail-design-studio__rack-bottle { position: relative; flex: 0 0 54px; height: 112px; border: 0; background: transparent; cursor: pointer; color: #f8f5f7; }
+.nail-design-studio__rack-bottle i { position: absolute; top: 0; left: 16px; width: 22px; height: 30px; border-radius: 5px 5px 2px 2px; background: linear-gradient(90deg, #09090a, #60545f 50%, #09090a); }
+.nail-design-studio__rack-bottle span { position: absolute; top: 25px; left: 6px; width: 42px; height: 64px; border: 1px solid rgba(255,255,255,.35); border-radius: 14px 14px 18px 18px; background: linear-gradient(110deg, rgba(255,255,255,.72), rgba(255,255,255,.10) 28%, transparent 42%), var(--saved-polish); box-shadow: inset 8px 0 14px rgba(255,255,255,.12), inset -8px 0 12px rgba(0,0,0,.22), 0 12px 20px rgba(0,0,0,.38); }
+.nail-design-studio__rack-bottle em { position: absolute; right: 0; bottom: 0; left: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 700 9px/1 'DM Sans', system-ui, sans-serif; }
+.nail-design-studio__rack-bottle:hover { filter: drop-shadow(0 0 12px color-mix(in srgb, var(--saved-polish) 65%, transparent)); transform: translateY(-2px); }
+
+.nail-design-studio__asset-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.nail-design-studio__asset-shortcut { min-width: 0; border: 1px solid rgba(255,255,255,.08); border-radius: 13px; padding: 7px; background: rgba(0,0,0,.26); color: #f8f5f7; cursor: pointer; }
+.nail-design-studio__asset-shortcut i { display: block; height: 46px; border-radius: 10px; box-shadow: inset 0 1px rgba(255,255,255,.26); }
+.nail-design-studio__asset-shortcut span { display: block; margin-top: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 800 10px/1 'DM Sans', system-ui, sans-serif; }
+.nail-design-studio__asset-shortcut:hover { border-color: rgba(57,230,242,.55); box-shadow: 0 0 18px rgba(57,230,242,.14); }
+
+.nail-design-studio__details-list { display: grid; gap: 7px; margin: 0 0 12px; }
+.nail-design-studio__details-list div { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 8px; align-items: baseline; }
+.nail-design-studio__details-list dt { color: rgba(248,245,247,.56); font: 800 10px/1 'DM Sans', system-ui, sans-serif; text-transform: uppercase; }
+.nail-design-studio__details-list dd { min-width: 0; margin: 0; overflow: hidden; color: #fff; text-overflow: ellipsis; white-space: nowrap; font: 700 12px/1.2 'DM Sans', system-ui, sans-serif; }
+.nail-design-studio__save-large { width: 100%; padding: 13px 16px; border-color: rgba(245,199,115,.5); background: linear-gradient(135deg, #ff2da0, #d8a642); color: #08080a; font-size: 12px; }
+.nail-design-studio__save-large:disabled { opacity: .62; cursor: not-allowed; }
+
+.nail-design-studio__workspace-nav { grid-column: 1 / -1; justify-self: center; display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; max-width: 100%; padding: 2px 6px 0; }
+.nail-design-studio__workspace-nav button { padding: 10px 14px; }
+.nail-design-studio__workspace-nav button[aria-pressed="true"] { border-color: rgba(255,45,160,.78); background: linear-gradient(135deg, rgba(255,45,160,.24), rgba(57,230,242,.16)); color: #fff; box-shadow: inset 0 -2px #ff2da0, 0 0 16px rgba(255,45,160,.2); }
+
+@media (max-width: 1180px) {
+  .nail-design-studio__bottom-workspace--complete { grid-template-columns: repeat(2, minmax(0, 1fr)); overflow-y: auto; }
+  .nail-design-studio__workspace-module--details { grid-column: auto; }
+}
+
+@media (max-width: 760px) {
+  .nail-design-studio__bottom-workspace--complete { grid-template-columns: minmax(0, 1fr); max-height: 42vh; }
+  .nail-design-studio__asset-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
