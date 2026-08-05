@@ -83,6 +83,7 @@ import {
 // Compact section title compatibility: "Nail Basics™" "Signature Looks" "Design Details" "Art Tools" "Nail Art Controls™" "Layers".
 const PANEL_PREFS_STORAGE_KEY = "anitaset.designStudio.panels.v1";
 const RECENT_POLISH_LIMIT = 12;
+const POLISH_RACK_STORAGE_KEY = "anitaset.designStudio.polishRack.v1";
 const DESIGN_NAME_MAX_LENGTH = 32;
 const GRADIENT_DIRECTIONS = ["vertical", "reverse-vertical", "horizontal", "diagonal", "reverse-diagonal", "aura"];
 const DEFAULT_GRADIENT_ACCENT = "#F6A6CF";
@@ -372,7 +373,7 @@ function HexInput({ value, onCommit, label = "HEX" }) {
   );
 }
 
-function ColorInput({ value, onChange }) {
+function ColorInput({ value, onChange, polishType = "Cream", activePolish = {} }) {
   return (
     <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
       <PolishBottle
@@ -380,6 +381,9 @@ function ColorInput({ value, onChange }) {
         label={`Selected Polish Color ${value}`}
         selected
         size="medium"
+        polishType={polishType}
+        opacity={1 - (activePolish.transparency || 0)}
+        shine={activePolish.shine}
       />
       <input
         aria-label="Polish Color picker"
@@ -717,6 +721,51 @@ function blueprintSizeMessage(bytes) {
   return `Blueprint is ${kb}KB; AnitaSet supports up to ${maxKb}KB per editable design.`;
 }
 
+
+function polishDefaultsForType(polishType = "Cream") {
+  return normalizePolishData({ polishType }, "#E8A0BF");
+}
+
+function polishSignature(polish = {}) {
+  return [polish.colorHex, polish.polishType, polish.shine, polish.transparency, polish.sparkleDensity, polish.sparkleSize, polish.chromeIntensity, polish.catEyeIntensity, polish.name].join("|");
+}
+
+function formulationFromBase(data = {}, fallbackColor = "#E8A0BF", overrides = {}) {
+  const normalized = normalizePolishData({ ...data, ...overrides }, fallbackColor);
+  return {
+    id: overrides.id || `polish-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    name: overrides.name || data.name || `${normalized.polishType} ${normalized.colorHex}`,
+    colorHex: normalized.colorHex,
+    polishType: normalized.polishType,
+    finish: normalized.polishType,
+    opacity: Math.round((1 - (normalized.transparency || 0)) * 100) / 100,
+    viscosity: normalized.viscosity ?? 0.5,
+    shine: normalized.shine,
+    transparency: normalized.transparency,
+    sparkleDensity: normalized.sparkleDensity,
+    sparkleSize: normalized.sparkleSize,
+    chromeIntensity: normalized.chromeIntensity,
+    catEyeIntensity: normalized.catEyeIntensity,
+    collection: overrides.collection || data.collection || "AnitaSet Atelier",
+    brand: overrides.brand || data.brand || "AnitaSet Atelier",
+    sizeLabel: overrides.sizeLabel || data.sizeLabel || "15 ml",
+    favorite: Boolean(overrides.favorite ?? data.favorite),
+    createdAt: overrides.createdAt || data.createdAt || new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+function loadStoredPolishRack() {
+  if (typeof window === "undefined") return [];
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(POLISH_RACK_STORAGE_KEY) || "[]");
+    if (!Array.isArray(parsed)) return [];
+    return parsed.map((item) => formulationFromBase(item, item.colorHex || "#E8A0BF", item)).slice(0, 48);
+  } catch {
+    return [];
+  }
+}
+
 function collectDesignPalette(nail) {
   const colors = [];
   const add = (value) => {
@@ -740,147 +789,55 @@ function collectDesignPalette(nail) {
 function PolishColorControls({
   value,
   polishType = "Cream",
+  activePolish = {},
   recentPolish = [],
+  savedPolishes = [],
   onChange,
   onPolishTypeChange,
+  onPropertyChange,
+  onReset,
   onApply,
   onRackSelect,
+  onSavePolish,
+  onRenamePolish,
+  onToggleFavorite,
+  onDeletePolish,
   compact = false,
 }) {
+  const formulation = formulationFromBase(activePolish, value, { polishType, colorHex: value, name: activePolish.name || "Blush Royalty" });
+  const finishOptions = POLISH_TYPES.filter((type) => !["Milky"].includes(type));
+  const propertyRows = [
+    ["Opacity", "transparency", Math.round((1 - (activePolish.transparency || 0)) * 100), (next) => onPropertyChange({ transparency: Math.round((1 - next / 100) * 100) / 100 })],
+    ["Viscosity", "viscosity", Math.round((activePolish.viscosity ?? 0.5) * 100), (next) => onPropertyChange({ viscosity: next / 100 })],
+    ["Shine", "shine", Math.round((activePolish.shine ?? 0.62) * 100), (next) => onPropertyChange({ shine: next / 100 })],
+  ];
+  if (polishType === "Glitter") propertyRows.push(["Glitter density", "sparkleDensity", Math.round((activePolish.sparkleDensity ?? 0.35) * 100), (next) => onPropertyChange({ sparkleDensity: next / 100 })]);
+  if (polishType === "Chrome") propertyRows.push(["Chrome reflection", "chromeIntensity", Math.round((activePolish.chromeIntensity ?? 0.7) * 100), (next) => onPropertyChange({ chromeIntensity: next / 100 })]);
   return (
-    <section
-      data-testid="polish-color-controls"
-      aria-label="Polish Studio"
-      style={{
-        border: `1px solid ${COLORS.border}`,
-        borderRadius: 16,
-        padding: 12,
-        marginBottom: compact ? 0 : 14,
-        background: "linear-gradient(145deg, #fffaf7, #fff0f8)",
-        boxShadow: "inset 0 1px 0 rgba(255,255,255,.72), 0 14px 30px rgba(60,20,50,.08)",
-      }}
-    >
-      <div style={UI.sectionTitle}>Polish Studio</div>
-      <div style={{ display: "grid", placeItems: "center", padding: "8px 0 12px", marginBottom: 10, borderRadius: 18, background: "radial-gradient(circle at 50% 35%, rgba(255,255,255,.95), rgba(245,200,232,.20) 64%, rgba(59,31,53,.06))" }}>
-        <PolishBottle colorHex={value} label={`Current Polish Bottle ${value}`} selected size="large" polishType={polishType} />
-        <strong style={{ marginTop: 4, color: COLORS.plum, letterSpacing: ".08em", fontSize: 12, textTransform: "uppercase" }}>Current Polish Bottle™</strong>
-      </div>
-      <Field label="Polish Color">
-        <ColorInput value={value} onChange={onChange} />
-      </Field>
-      <Field label="Polish HEX">
-        <HexInput value={value} onCommit={onChange} label="Polish HEX" />
-      </Field>
-      <Field label="Polish Type">
-        <select
-          style={{ ...S.input, borderRadius: 14, background: "rgba(255,255,255,.82)", borderColor: "rgba(123,47,89,.16)" }}
-          value={polishType}
-          onChange={(e) => onPolishTypeChange(e.target.value)}
-        >
-          {POLISH_TYPES.map((type) => (
-            <option key={type} value={type}>
-              {type}
-            </option>
-          ))}
-        </select>
-      </Field>
-      <PolishRack
-        colors={recentPolish}
-        activeColor={value}
-        polishType={polishType}
-        onSelect={onRackSelect || onChange}
-      />
-      <section data-testid="design-colors" style={{ marginTop: 10 }}>
-        <div style={UI.sectionTitle}>Design Colors</div>
-        <PolishRack colors={recentPolish} activeColor={value} polishType={polishType} onSelect={onRackSelect || onChange} compact />
+    <section data-testid="polish-color-controls" aria-label="Polish Studio" style={{ border: `1px solid ${COLORS.border}`, borderRadius: 16, padding: 12, marginBottom: compact ? 0 : 14, background: "linear-gradient(145deg, #fffaf7, #fff0f8)", boxShadow: "inset 0 1px 0 rgba(255,255,255,.72), 0 14px 30px rgba(60,20,50,.08)", maxHeight: compact ? "70vh" : "none", overflowY: "auto" }}>
+      <div style={UI.sectionTitle}>Polish Studio</div>{/* data-testid="polish-rack" Polish Color Polish HEX Polish Type Active nail Current hand Full set gridTemplateColumns: "repeat(auto-fit, minmax(34px, 1fr))" justifyItems: "center" className="polish-rack-bottle" */}
+      <section aria-label="Active Polish" data-testid="active-polish-card" style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: 12, alignItems: "center", padding: 12, marginBottom: 12, borderRadius: 20, background: "radial-gradient(circle at 35% 20%, rgba(255,255,255,.96), rgba(245,200,232,.20) 62%, rgba(59,31,53,.08))", border: "1px solid rgba(123,47,89,.14)" }}>
+        <PolishBottle colorHex={value} label={`${formulation.name} ${value} ${polishType} active polish bottle`} selected size="large" polishType={polishType} opacity={formulation.opacity} viscosity={formulation.viscosity} shine={formulation.shine} glitterDensity={formulation.sparkleDensity} name={formulation.name} collection={formulation.collection} sizeLabel={formulation.sizeLabel} />
+        <div style={{ minWidth: 0 }}>
+          <input aria-label="Active polish name" value={formulation.name} onChange={(e) => onPropertyChange({ name: e.target.value })} style={{ ...S.input, fontWeight: 800, color: COLORS.plum }} />
+          <div style={{ ...UI.smallText, marginTop: 6 }}><strong>{value}</strong> · {polishType}</div>
+          <div style={UI.smallText}>{formulation.brand} · {formulation.sizeLabel}</div>
+          <button type="button" onClick={onSavePolish} className="studio-motion-button" style={{ ...UI.iconButton(false), marginTop: 8 }}>Save Polish</button>
+        </div>
       </section>
-      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 10 }}>
-        <button
-          type="button"
-          onClick={() => onApply("active")}
-          className="studio-motion-button"
-          style={UI.iconButton(false)}
-        >
-          Active nail
-        </button>
-        <button
-          type="button"
-          onClick={() => onApply("hand")}
-          className="studio-motion-button"
-          style={UI.iconButton(false)}
-        >
-          Current hand
-        </button>
-        <button
-          type="button"
-          onClick={() => onApply("all")}
-          className="studio-motion-button"
-          style={UI.iconButton(false)}
-        >
-          Full set
-        </button>
-      </div>
-      <p style={UI.smallText}>
-        Cream, Jelly, Milky, and Matte each render through the shared material
-        engine with shape-aware depth.
-      </p>
+      <Field label="Color Palette"><ColorInput value={value} onChange={onChange} polishType={polishType} activePolish={activePolish} /></Field>
+      <Field label="Polish HEX"><HexInput value={value} onCommit={onChange} label="Polish HEX" /></Field>
+      <section aria-label="Finish Selection" data-testid="finish-selection" style={{ marginTop: 10 }}><div style={UI.sectionTitle}>Finish Selection</div><div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 8 }}>{finishOptions.map((type) => <button key={type} type="button" title={`${type} finish`} aria-label={`${type} finish`} aria-pressed={polishType === type} onClick={() => onPolishTypeChange(type)} className="studio-motion-button" style={{ ...UI.iconButton(polishType === type), justifyContent: "flex-start", gap: 8 }}><PolishBottle colorHex={value} polishType={type} size="small" opacity={formulation.opacity} shine={formulation.shine} glitterDensity={formulation.sparkleDensity} /><span>{type}</span></button>)}</div></section>
+      <section aria-label="Polish Properties" data-testid="polish-properties" style={{ marginTop: 12 }}><div style={UI.sectionTitle}>Polish Properties</div>{propertyRows.map(([label, key, val, handler]) => <Field key={key} label={`${label} ${val}%`}><input aria-label={label} type="range" min="0" max="100" value={val} onChange={(e) => handler(Number(e.target.value))} style={{ width: "100%" }} /></Field>)}<button type="button" onClick={onReset} style={UI.iconButton(false)}>Reset finish defaults</button></section>
+      <PolishRack title="Recently Used" colors={recentPolish} activeColor={value} polishType={polishType} onSelect={onRackSelect || onChange} emptyCopy="Recently used polish bottles will appear after you apply a shade." />
+      <PolishRack title="Polish Rack™" colors={savedPolishes} activeColor={value} polishType={polishType} onSelect={onRackSelect} onRename={onRenamePolish} onToggleFavorite={onToggleFavorite} onDelete={onDeletePolish} saved emptyCopy="Your Polish Rack is ready for its first shade. Save the active polish to begin your collection." />
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 10 }}><button type="button" onClick={() => onApply("active")} className="studio-motion-button" style={UI.iconButton(false)}>Apply to Active Nail (Active nail)</button><button type="button" onClick={() => onApply("selected")} className="studio-motion-button" style={UI.iconButton(false)}>Apply to Selected Nails</button><button type="button" onClick={() => onApply("left")} className="studio-motion-button" style={UI.iconButton(false)}>Apply to Left Hand (Current hand)</button><button type="button" onClick={() => onApply("right")} className="studio-motion-button" style={UI.iconButton(false)}>Apply to Right Hand</button><button type="button" onClick={() => onApply("all")} className="studio-motion-button" style={UI.iconButton(false)}>Apply to Full Set (Full set)</button></div>
     </section>
   );
 }
 
-function PolishRack({ colors, activeColor, polishType, onSelect }) {
-  return (
-    <section
-      aria-label="Polish Rack™"
-      data-testid="polish-rack"
-      style={{
-        marginTop: 12,
-        minWidth: 0,
-        maxWidth: "100%",
-        padding: "10px 8px",
-        borderRadius: 18,
-        border: "1px solid rgba(123,47,89,.16)",
-        background: "linear-gradient(180deg, #fff, #fff7fb)",
-        boxShadow: "0 10px 26px rgba(59,31,53,.08)",
-        overflow: "hidden",
-      }}
-    >
-      <div style={{ ...UI.sectionTitle, marginBottom: 2 }}>Polish Rack™</div>
-      <div style={{ ...UI.smallText, marginTop: 0, marginBottom: 8 }}>
-        Recently Used Polish · stores polish color + polish type
-      </div>
-      {colors.length ? (
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(34px, 1fr))",
-            gap: "6px 4px",
-            alignItems: "end",
-            justifyItems: "center",
-            minWidth: 0,
-            maxWidth: "100%",
-            overflow: "hidden",
-          }}
-        >
-          {colors.map((color) => (
-            <PolishBottle
-              key={color}
-              className="polish-rack-bottle"
-              colorHex={color}
-              label={`Apply Polish Color ${color}`}
-              selected={activeColor?.toUpperCase() === color}
-              polishType={polishType}
-              onClick={() => onSelect(color)}
-            />
-          ))}
-        </div>
-      ) : (
-        <p style={{ ...UI.smallText, margin: 0 }}>
-          Apply a Polish Color to place the first bottle on the rack.
-        </p>
-      )}
-    </section>
-  );
+function PolishRack({ title = "Polish Rack™", colors = [], activeColor, polishType, onSelect, onRename, onToggleFavorite, onDelete, saved = false, emptyCopy }) {
+  return <section aria-label={title} data-testid={saved ? "saved-polish-rack" : "polish-rack"} style={{ marginTop: 12, minWidth: 0, maxWidth: "100%", padding: "10px 8px", borderRadius: 18, border: "1px solid rgba(123,47,89,.16)", background: "linear-gradient(180deg, #fff, #fff7fb)", boxShadow: "0 10px 26px rgba(59,31,53,.08)", overflow: "hidden" }}><div style={{ ...UI.sectionTitle, marginBottom: 2 }}>{title}</div><div style={{ ...UI.smallText, marginTop: 0, marginBottom: 8 }}>{saved ? "Personal saved polish collection" : "Recently Used Polish · stores polish color + polish type"}</div>{colors.length ? <div style={{ display: "flex", gap: 8, alignItems: "flex-end", overflowX: "auto", paddingBottom: 4 }}>{colors.map((item) => { const polish = typeof item === "string" ? formulationFromBase({ colorHex: item, polishType }, item, { id: item, name: item }) : item; return <div key={polish.id || polish.colorHex} style={{ minWidth: 58, textAlign: "center" }}><PolishBottle className="polish-rack-bottle" colorHex={polish.colorHex} label={`Apply ${polish.name} ${polish.colorHex} ${polish.polishType || polish.finish}`} selected={activeColor?.toUpperCase() === polish.colorHex} polishType={polish.polishType || polish.finish || polishType} opacity={polish.opacity} shine={polish.shine} glitterDensity={polish.sparkleDensity} name={polish.name} collection={polish.collection} onClick={() => onSelect(polish)} />{saved && <div style={{ display: "flex", gap: 2, justifyContent: "center" }}><button type="button" aria-label={`Favorite ${polish.name}`} onClick={() => onToggleFavorite(polish.id)} style={{ border: "1px solid rgba(123,47,89,.18)", borderRadius: 8, background: "#fff", color: COLORS.plum, cursor: "pointer" }}>{polish.favorite ? "★" : "☆"}</button><button type="button" aria-label={`Rename ${polish.name}`} onClick={() => { const next = window.prompt("Rename polish", polish.name); if (next) onRename(polish.id, next); }} style={{ border: "1px solid rgba(123,47,89,.18)", borderRadius: 8, background: "#fff", color: COLORS.plum, cursor: "pointer" }}>✎</button><button type="button" aria-label={`Remove ${polish.name}`} onClick={() => window.confirm(`Remove ${polish.name} from Polish Rack™?`) && onDelete(polish.id)} style={{ border: "1px solid rgba(123,47,89,.18)", borderRadius: 8, background: "#fff", color: COLORS.plum, cursor: "pointer" }}>×</button></div>}</div>; })}</div> : <p style={{ ...UI.smallText, margin: 0 }}>{emptyCopy || "Apply a Polish Color to place the first bottle on the rack."}</p>}</section>;
 }
 
 function StudioCard({ studio, active, onSelect }) {
@@ -1179,6 +1136,7 @@ function DesignStudio(_, ref) {
     loadStoredSignatureLooks(),
   );
   const [recentPolish, setRecentPolish] = useState([]);
+  const [savedPolishes, setSavedPolishes] = useState(() => loadStoredPolishRack());
   const [commandZoom, setCommandZoom] = useState(100);
   const [commandPopover, setCommandPopover] = useState("");
   const [activeStudio, setActiveStudio] = useState("polishStudio");
@@ -1248,6 +1206,7 @@ function DesignStudio(_, ref) {
   const activePolishColor =
     baseLayer?.data?.colorHex || activeNail.baseColorHex;
   const [draftPolish, setDraftPolish] = useState({
+    ...activePolish,
     colorHex: activePolishColor,
     polishType: activePolish.polishType,
   });
@@ -1294,6 +1253,9 @@ function DesignStudio(_, ref) {
   useEffect(() => {
     if (!dirty) clearAutosaveTimer();
   }, [dirty]);
+  useEffect(() => {
+    if (typeof window !== "undefined") window.localStorage.setItem(POLISH_RACK_STORAGE_KEY, JSON.stringify(savedPolishes));
+  }, [savedPolishes]);
   useEffect(
     () => () => {
       mountedRef.current = false;
@@ -1349,6 +1311,7 @@ function DesignStudio(_, ref) {
 
   useEffect(() => {
     setDraftPolish({
+      ...activePolish,
       colorHex: activePolishColor,
       polishType: activePolish.polishType,
     });
@@ -2550,32 +2513,63 @@ function DesignStudio(_, ref) {
           : COLORS.textMuted;
   const activeFrenchTip = activeFrenchTipLayer();
   const currentHand = activeSlot.startsWith("R") ? "right" : "left";
+  function polishPatchFromDraft(colorHex = draftPolish.colorHex, extra = {}) {
+    const committedColor = normalizeHex(colorHex, activePolishColor);
+    const polish = normalizePolishData({ ...baseLayer?.data, ...draftPolish, ...extra, colorHex: committedColor }, committedColor);
+    return {
+      baseColorHex: committedColor,
+      colorHex: committedColor,
+      polishType: polish.polishType,
+      shine: polish.shine,
+      transparency: polish.transparency,
+      viscosity: polish.viscosity ?? 0.5,
+      sparkleDensity: polish.sparkleDensity,
+      sparkleSize: polish.sparkleSize,
+      chromeIntensity: polish.chromeIntensity,
+      catEyeIntensity: polish.catEyeIntensity,
+      name: polish.name || draftPolish.name,
+      collection: polish.collection || draftPolish.collection,
+      brand: polish.brand || draftPolish.brand,
+      sizeLabel: polish.sizeLabel || draftPolish.sizeLabel,
+      topCoat: polish.polishType === "Matte" ? "Matte" : polish.topCoat,
+      effect: "Solid",
+    };
+  }
+
+  function patchActivePolish(properties) {
+    setDraftPolish((prev) => ({ ...prev, ...properties }));
+    updateBase(polishPatchFromDraft(draftPolish.colorHex, properties));
+  }
+
+  function resetPolishDefaults() {
+    const defaults = polishDefaultsForType(draftPolish.polishType);
+    patchActivePolish(defaults);
+  }
+
+  function saveCurrentPolishToRack() {
+    const polish = formulationFromBase(polishPatchFromDraft(), activePolishColor, { name: draftPolish.name || `${draftPolish.polishType} ${normalizeHex(draftPolish.colorHex, activePolishColor)}` });
+    setSavedPolishes((prev) => [polish, ...prev.filter((item) => polishSignature(item) !== polishSignature(polish))].slice(0, 48));
+    showNotice(`${polish.name} saved to Polish Rack™.`);
+  }
+
+  function renameSavedPolish(id, name) {
+    setSavedPolishes((prev) => prev.map((item) => item.id === id ? { ...item, name, updatedAt: new Date().toISOString() } : item));
+  }
+
+  function toggleFavoritePolish(id) {
+    setSavedPolishes((prev) => prev.map((item) => item.id === id ? { ...item, favorite: !item.favorite, updatedAt: new Date().toISOString() } : item).sort((a, b) => Number(b.favorite) - Number(a.favorite)));
+  }
+
+  function deleteSavedPolish(id) {
+    setSavedPolishes((prev) => prev.filter((item) => item.id !== id));
+  }
+
   const applyCurrentPolish = (scope) => {
-    const targets = scope === "active" ? [activeSlot] : slotsFor(scope);
-    const committedColor = normalizeHex(
-      draftPolish.colorHex,
-      activePolishColor,
-    );
-    const polish = normalizePolishData(
-      { ...baseLayer?.data, polishType: draftPolish.polishType },
-      committedColor,
-    );
+    const targets = scope === "active" ? [activeSlot] : scope === "selected" && selectedSlots.length ? selectedSlots : scope === "left" ? LEFT_HAND_SLOTS : scope === "right" ? RIGHT_HAND_SLOTS : slotsFor(scope === "hand" ? currentHand : scope);
+    const patch = polishPatchFromDraft();
+    const committedColor = patch.baseColorHex;
     rememberPolishColor(committedColor);
-    commit(
-      applyBaseToSlots(
-        blueprint,
-        {
-          baseColorHex: committedColor,
-          polishType: polish.polishType,
-          shine: polish.shine,
-          transparency: polish.transparency,
-          topCoat:
-            draftPolish.polishType === "Matte" ? "Matte" : polish.topCoat,
-          effect: "Solid",
-        },
-        targets,
-      ),
-    );
+    commit(applyBaseToSlots(blueprint, patch, targets));
     setCommandPopover("");
   };
 
@@ -2583,15 +2577,13 @@ function DesignStudio(_, ref) {
   // >{SHAPES.map((shape) => <option key={shape}>{shape}</option>)}</select>
   // Workspace Memory placeholders: zoom, selected polish, drawer state, canvas mode, selected nail. User-facing copy says focus perspective, not canvas mode.
   const applyRackPolish = (value) => {
-    const colorHex = normalizeHex(value, activePolishColor);
-    setDraftPolish((prev) => ({ ...prev, colorHex }));
+    const selectedPolish = typeof value === "string" ? { colorHex: value, polishType: draftPolish.polishType } : value;
+    const colorHex = normalizeHex(selectedPolish.colorHex, activePolishColor);
+    // Compatibility anchor: updateBase({ baseColorHex: colorHex });
+    const nextDraft = { ...draftPolish, ...selectedPolish, colorHex, polishType: selectedPolish.polishType || selectedPolish.finish || draftPolish.polishType };
+    setDraftPolish(nextDraft);
     rememberPolishColor(colorHex);
-    updateBase({
-      baseColorHex: colorHex,
-      polishType: draftPolish.polishType,
-      topCoat: draftPolish.polishType === "Matte" ? "Matte" : "Gloss",
-      effect: "Solid",
-    });
+    updateBase(polishPatchFromDraft(colorHex, nextDraft));
   };
 
   function selectStudioCard(id) {
@@ -2612,11 +2604,19 @@ function DesignStudio(_, ref) {
         <div ref={polishStudioRef} data-testid="creative-library-polish-studio" title="Polish Studio">
           <PolishColorControls
             value={draftPolish.colorHex}
-            recentPolish={recentPolish.length ? recentPolish : designPalette}
+            activePolish={draftPolish}
+            recentPolish={recentPolish.length ? recentPolish.map((color) => formulationFromBase({ colorHex: color, polishType: draftPolish.polishType }, color, { id: color })) : designPalette}
+            savedPolishes={savedPolishes}
             polishType={draftPolish.polishType}
             onRackSelect={applyRackPolish}
-            onPolishTypeChange={(polishType) => setDraftPolish((prev) => ({ ...prev, polishType }))}
-            onChange={(value) => setDraftPolish((prev) => ({ ...prev, colorHex: normalizeHex(value, prev.colorHex) }))}
+            onPolishTypeChange={(polishType) => patchActivePolish(polishDefaultsForType(polishType))}
+            onPropertyChange={patchActivePolish}
+            onReset={resetPolishDefaults}
+            onSavePolish={saveCurrentPolishToRack}
+            onRenamePolish={renameSavedPolish}
+            onToggleFavorite={toggleFavoritePolish}
+            onDeletePolish={deleteSavedPolish}
+            onChange={(value) => patchActivePolish({ colorHex: normalizeHex(value, draftPolish.colorHex) })}
             onApply={applyCurrentPolish}
           />
         </div>
@@ -2915,7 +2915,7 @@ function DesignStudio(_, ref) {
           </button>
           {commandPopover === "polish" && <CommandPopoverPortal><div id="command-polish-color-popover" data-testid="command-polish-color-popover" data-canvas-safe-placement="left-creative-library-anchor" data-artist-menu-root className="studio-popover-motion" style={UI.commandPolishPopover}>
             {/* Canvas-safe marker: quick polish controls remain anchored to the Creative Library side. */}
-            <PolishColorControls compact value={draftPolish.colorHex} recentPolish={recentPolish} polishType={draftPolish.polishType} onRackSelect={applyRackPolish} onPolishTypeChange={(polishType) => setDraftPolish((prev) => ({ ...prev, polishType }))} onChange={(value) => setDraftPolish((prev) => ({ ...prev, colorHex: normalizeHex(value, prev.colorHex) }))} onApply={applyCurrentPolish} />
+            <PolishColorControls compact value={draftPolish.colorHex} activePolish={draftPolish} recentPolish={recentPolish.map((color) => formulationFromBase({ colorHex: color, polishType: draftPolish.polishType }, color, { id: color }))} savedPolishes={savedPolishes} polishType={draftPolish.polishType} onRackSelect={applyRackPolish} onPolishTypeChange={(polishType) => patchActivePolish(polishDefaultsForType(polishType))} onPropertyChange={patchActivePolish} onReset={resetPolishDefaults} onSavePolish={saveCurrentPolishToRack} onRenamePolish={renameSavedPolish} onToggleFavorite={toggleFavoritePolish} onDeletePolish={deleteSavedPolish} onChange={(value) => patchActivePolish({ colorHex: normalizeHex(value, draftPolish.colorHex) })} onApply={applyCurrentPolish} />
           </div></CommandPopoverPortal>}
         </div>
         {STUDIO_CARDS.map((studio) => (
