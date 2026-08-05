@@ -445,3 +445,115 @@
 @media (prefers-reduced-motion: reduce) {
   .nail-design-studio__tool { transition: none; }
 }
+
+/* DS-01 repair: black creative studio shell around the unchanged photographic Nail Desk. */
+.nail-design-studio {
+  background: #020202;
+  color: #f8f5f7;
+}
+
+.nail-design-studio__workspace {
+  background: radial-gradient(circle at 18% 0%, rgba(255,45,160,.13), transparent 28%),
+    radial-gradient(circle at 82% 6%, rgba(57,230,242,.10), transparent 24%), #020202;
+}
+
+.nail-design-studio__panel,
+.nail-design-studio__bottom-workspace {
+  border-color: rgba(245, 199, 115, .28);
+  background: linear-gradient(180deg, rgba(19, 18, 22, .96), rgba(7, 7, 9, .98));
+  box-shadow: 0 22px 52px rgba(0, 0, 0, .42), inset 0 1px rgba(255, 255, 255, .04);
+  color: #ede8ec;
+}
+
+.nail-design-studio__desk {
+  border-color: rgba(245, 199, 115, .34);
+  background: linear-gradient(180deg, rgba(17, 16, 20, .96), rgba(5, 5, 7, .98));
+  box-shadow: 0 24px 60px rgba(0, 0, 0, .55), 0 0 28px rgba(255,45,160,.08), inset 0 1px rgba(255,255,255,.05);
+  color: #ede8ec;
+}
+
+.nail-design-studio__panel h2,
+.nail-design-studio__desk h2,
+.nail-design-studio__bottom-workspace strong,
+.nail-design-studio__properties legend,
+.nail-design-studio__length-control,
+.nail-design-studio__surface-control,
+.nail-design-studio__polish-studio {
+  color: #f8f5f7;
+}
+
+.nail-design-studio__placeholder-copy {
+  color: rgba(248, 245, 247, .68);
+}
+
+.nail-design-studio__panel-toggle {
+  border-color: rgba(245, 199, 115, .35);
+  background: #070707;
+  color: #ff66b6;
+}
+
+.nail-design-studio__workspace-view {
+  display: grid;
+  gap: 3px;
+  color: #f5c773;
+  font: 600 8px/1 'DM Sans', system-ui, sans-serif;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.nail-design-studio__workspace-view select {
+  width: 128px;
+  border: 1px solid rgba(57,230,242,.35);
+  border-radius: 8px;
+  padding: 5px 6px;
+  background: #111013;
+  color: #f8f5f7;
+  font: 700 10px/1 'DM Sans', system-ui, sans-serif;
+}
+
+.nail-design-studio__nail-stage--spread {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  gap: clamp(10px, 2vmin, 24px) clamp(8px, 1.7vmin, 22px);
+  padding: clamp(16px, 4%, 42px);
+}
+
+.nail-design-studio__nail-stage--left,
+.nail-design-studio__nail-stage--right {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.nail-design-studio__nail-slot {
+  position: relative;
+  border: 1px solid transparent;
+  border-radius: 18px;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.nail-design-studio__nail-slot[data-active="true"] {
+  border-color: rgba(255,45,160,.7);
+  box-shadow: 0 0 18px rgba(255,45,160,.2), inset 0 0 0 1px rgba(57,230,242,.18);
+}
+
+.nail-design-studio__nail-stage--spread .nail-design-studio__hero-nail,
+.nail-design-studio__nail-stage--full .nail-design-studio__hero-nail,
+.nail-design-studio__nail-stage--left .nail-design-studio__hero-nail,
+.nail-design-studio__nail-stage--right .nail-design-studio__hero-nail {
+  width: min(62%, 126px);
+  height: min(calc(42% + 42% * var(--nail-length)), 86%);
+}
+
+.nail-design-studio__hand-label {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: rgba(255,255,255,.84);
+  font: 800 10px/1 'DM Sans', system-ui, sans-serif;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  pointer-events: none;
+}
