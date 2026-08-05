@@ -37,10 +37,10 @@ describe('new Nail Design Studio command bar', () => {
 
   it('keeps every command in its approved group with accessible controls', () => {
     const expected = {
-      Design: ['New Design', 'Open Saved Designs', 'Duplicate', 'Saved'],
+      Design: ['New Design', 'Open Saved Design', 'Saved', 'Save As'],
       Edit: ['Undo', 'Redo'],
-      Publish: ['Share', 'Export', 'Add to Collection'],
-      Info: ['Design Details'],
+      Publish: ['Preview', 'Export'],
+      Info: ['Nail Blueprint', 'Proposal'],
     };
     Object.entries(expected).forEach(([groupName, commands]) => {
       const group = container.querySelector(`section[aria-label="${groupName}"]`);
@@ -54,7 +54,7 @@ describe('new Nail Design Studio command bar', () => {
   });
 
   it('opens and closes Saved Designs and exposes the separate inline nameplate', async () => {
-    await click(container.querySelector('button[aria-label="Open Saved Designs"]'));
+    await click(container.querySelector('button[aria-label="Open Saved Design"]'));
     expect(container.querySelector('[role="dialog"][aria-label="Saved Designs"]')).toBeTruthy();
     expect(container.querySelector('button[aria-label="Open current design menu"]').getAttribute('aria-expanded')).toBe('true');
     await click(container.querySelector('button[aria-label="Close Saved Designs"]'));
@@ -82,7 +82,7 @@ describe('new Nail Design Studio command bar', () => {
     jest.useFakeTimers();
     expect(container.querySelector('button[aria-label="Undo"]').disabled).toBe(true);
     expect(container.querySelector('button[aria-label="Redo"]').disabled).toBe(true);
-    await click(container.querySelector('button[aria-label="Duplicate"]'));
+    await click(container.querySelector('button[aria-label="Save As"]'));
     await click(container.querySelector('button[aria-label="Save Changes"]'));
     expect(container.querySelector('button[aria-label="Saving…"]').disabled).toBe(true);
     await act(async () => jest.advanceTimersByTime(150));
@@ -90,10 +90,7 @@ describe('new Nail Design Studio command bar', () => {
   });
 
   it('keeps collection and details workflows wired and dismissible', async () => {
-    await click(container.querySelector('button[aria-label="Add to Collection"]'));
-    expect(container.querySelector('[role="dialog"][aria-label="Add to Collection"]')).toBeTruthy();
-    await click(container.querySelector('button[aria-label="Close Add to Collection"]'));
-    await click(container.querySelector('button[aria-label="Design Details"]'));
+    await click(container.querySelector('button[aria-label="Nail Blueprint"]'));
     expect(container.querySelector('[role="dialog"][aria-label="Design Details"]')).toBeTruthy();
     await click(container.querySelector('button[aria-label="Close Design Details"]'));
     expect(container.querySelector('[role="dialog"]')).toBeNull();
@@ -203,7 +200,7 @@ describe('adaptive Nail Desk', () => {
     const color = container.querySelector('input[aria-label="Base Color picker"]');
     await act(async () => { color.value = '#123456'; color.dispatchEvent(new Event('change', { bubbles: true })); });
     expect(container.querySelector('[data-design-layer="polish"]').dataset.heroEffect).toBe('Chrome');
-    expect(button('Save Changes')).toBeTruthy();
+    expect(container.querySelector('button[aria-label="Save Changes"]')).toBeTruthy();
 
     const viscosity = container.querySelector('input[aria-label="Viscosity"]');
     expect(viscosity.disabled).toBe(false);
@@ -275,7 +272,7 @@ describe('adaptive Nail Desk', () => {
 
   it('offers every composition and renders exactly ten Hero Nails in Full Set mode', async () => {
     const labels = [...container.querySelectorAll('fieldset label')].map((label) => label.textContent);
-    expect(labels).toEqual(['Single Nail', 'Left Hand', 'Right Hand', 'Full Set']);
+    expect(labels).toEqual(['Single Nail', 'Left Hand', 'Right Hand', 'Full Set', 'Spread View']);
     await click(container.querySelector('input[value="full"]'));
     expect(container.querySelector('[aria-label="Full Set nail stage"]')).toBeTruthy();
     expect(container.querySelectorAll('[data-testid="stage-nail"]')).toHaveLength(10);

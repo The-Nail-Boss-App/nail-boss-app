@@ -41,7 +41,10 @@ const COMPOSITIONS = [
   { id: 'left', label: 'Left Hand', nails: 5 },
   { id: 'right', label: 'Right Hand', nails: 5 },
   { id: 'full', label: 'Full Set', nails: 10 },
+  { id: 'spread', label: 'Spread View', nails: 10 },
 ];
+
+const WORKSPACE_VIEWS = COMPOSITIONS.map(({ id, label }) => ({ id, label }));
 
 const WORKSPACE_SURFACES = [
   { id: 'signature', label: 'Signature', src: '/assets/anitaset/design-studio/workspace-surfaces/signature-workspace.png' },
@@ -88,6 +91,7 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
   const [activeToolId, setActiveToolId] = useState(TOOL_CATEGORIES[0].id);
   const [focusedToolIndex, setFocusedToolIndex] = useState(0);
   const [composition, setComposition] = useState('single');
+  const [activeNailIndex, setActiveNailIndex] = useState(0);
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [heroState, setHeroState] = useState(initialNailDeskHeroState);
@@ -113,6 +117,12 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
 
   const activeTool = TOOL_CATEGORIES.find((tool) => tool.id === activeToolId) || TOOL_CATEGORIES[0];
   const activeComposition = COMPOSITIONS.find((item) => item.id === composition) || COMPOSITIONS[0];
+  const visibleNails = Array.from({ length: activeComposition.nails }, (_, index) => ({
+    index,
+    hand: index < 5 ? 'Left hand' : 'Right hand',
+    handClass: index < 5 ? 'left' : 'right',
+    label: `${index < 5 ? 'Left' : 'Right'} nail ${index % 5 + 1}`,
+  }));
   const activeSurface = WORKSPACE_SURFACES.find((item) => item.id === surface) || WORKSPACE_SURFACES[0];
   const heroDocument = heroState.document;
   const nailShape = heroDocument.nail.shape.id;
@@ -153,7 +163,7 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
   }, heroEvents.current));
 
   const fitToView = () => { setZoom(1); setPan({ x: 0, y: 0 }); };
-  const changeComposition = (nextComposition) => { setComposition(nextComposition); fitToView(); };
+  const changeComposition = (nextComposition) => { setComposition(nextComposition); setActiveNailIndex((index) => Math.min(index, (COMPOSITIONS.find((item) => item.id === nextComposition)?.nails || 1) - 1)); fitToView(); };
   const changeZoom = (amount) => setZoom((current) => Math.min(2.5, Math.max(1, Number((current + amount).toFixed(2)))));
   const startPan = (event) => {
     if (zoom <= 1 || event.button !== 0) return;
@@ -251,7 +261,7 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
   const command = (label, icon, onClick, options = {}) => (
     <button key={options.ariaLabel || label} type="button" className="nail-design-studio__command-button"
       onClick={onClick} disabled={options.disabled} aria-label={options.ariaLabel || label} title={options.ariaLabel || label}>
-      <CommandIcon name={icon} /><span>{label}</span>
+      <CommandIcon name={icon} /><span>{options.visibleLabel || label}</span>
       {options.status && <i className="nail-design-studio__command-status" aria-hidden="true" />}
     </button>
   );
@@ -265,10 +275,10 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
 
         <section className="nail-design-studio__command-group nail-design-studio__command-group--design" aria-label="Design">
           <h2>Design</h2><div className="nail-design-studio__command-row">
-            {command('New', 'new', newDesign, { ariaLabel: 'New Design' })}
-            {command('Open', 'open', () => setSavedDesignsOpen(true), { ariaLabel: 'Open Saved Designs' })}
-            {command('Duplicate', 'duplicate', duplicateDesign)}
-            {command(saveState, 'save', saveDesign, { disabled: !dirty || saveState === 'Saving…', status: dirty, ariaLabel: saveState })}
+            {command('New Design', 'new', newDesign, { ariaLabel: 'New Design' })}
+            {command('Open Saved Design', 'open', () => setSavedDesignsOpen(true), { ariaLabel: 'Open Saved Design' })}
+            {command(saveState, 'save', saveDesign, { disabled: !dirty || saveState === 'Saving…', status: dirty, ariaLabel: saveState, visibleLabel: 'Save' })}
+            {command('Save As', 'duplicate', duplicateDesign, { ariaLabel: 'Save As' })}
           </div>
         </section>
 
@@ -293,13 +303,14 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
         </section>
         <section className="nail-design-studio__command-group nail-design-studio__command-group--publish" aria-label="Publish">
           <h2>Publish</h2><div className="nail-design-studio__command-row">
-            {command('Share', 'share', shareDesign)}{command('Export', 'export', exportDesign)}
-            {command('Add to Collection', 'collection', () => setCollectionOpen(true))}
+            {command('Preview', 'share', () => changeComposition('spread'))}{command('Export', 'export', exportDesign)}
           </div>
         </section>
         <section className="nail-design-studio__command-group nail-design-studio__command-group--info" aria-label="Info">
           <h2>Info</h2><div className="nail-design-studio__command-row">
-            {command('Design Details', 'info', () => setDetailsOpen(true))}
+            {command('Nail Blueprint', 'info', () => setDetailsOpen(true))}
+            {command('Proposal', 'collection', () => setDetailsOpen(true))}
+            <label className="nail-design-studio__workspace-view">Workspace View selector<select aria-label="Workspace View selector" value={composition} onChange={(event) => changeComposition(event.target.value)}>{WORKSPACE_VIEWS.map((item) => <option value={item.id} key={item.id}>{item.label}</option>)}</select></label>
           </div>
         </section>
       </header>
@@ -372,8 +383,9 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
           </div>
           <div className={`nail-design-studio__desk-surface${zoom > 1 ? ' is-pannable' : ''}`} style={{ backgroundImage: `url(${activeSurface.src})` }} onPointerDown={startPan} onPointerMove={movePan} onPointerUp={stopPan} onPointerCancel={stopPan} data-testid="nail-stage-container">
             <div className={`nail-design-studio__nail-stage nail-design-studio__nail-stage--${composition}`} style={{ '--stage-zoom': zoom, '--stage-x': `${pan.x}px`, '--stage-y': `${pan.y}px`, '--nail-length': nailLength / 100 }} aria-label={`${activeComposition.label} nail stage`}>
-              {Array.from({ length: activeComposition.nails }, (_, index) => (
-                <div className="nail-design-studio__nail-slot" data-testid="nail-slot" key={index}>
+              {visibleNails.map(({ index, hand, handClass, label }) => (
+                <button type="button" className={`nail-design-studio__nail-slot nail-design-studio__nail-slot--${handClass}`} data-testid="nail-slot" data-active={activeNailIndex === index} key={index} onClick={() => setActiveNailIndex(index)} aria-pressed={activeNailIndex === index} aria-label={`Select ${label}`}>
+                  {(composition === 'spread' || composition === 'full') && <span className="nail-design-studio__hand-label">{hand}</span>}
                   <svg className="nail-design-studio__hero-nail" data-testid="stage-nail" data-nail-shape={nailShape.toLowerCase()}
                     data-hero-renderer="Hero Surface Rendering Engine" data-hero-mask={renderedSurface.maskId} data-design-layer-parent="true"
                     aria-label={`Hero Nail ${index + 1}`} viewBox={renderedSurface.viewBox} preserveAspectRatio="xMidYMid meet" role="img">
@@ -385,7 +397,7 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
                     <path d={renderedSurface.path} fill={`url(#hero-light-primary-${index})`} style={{ mixBlendMode: 'screen' }} />
                     <path d={renderedSurface.path} fill={`url(#hero-light-edge-${index})`} style={{ mixBlendMode: 'screen' }} />
                   </svg>
-                </div>
+                </button>
               ))}
             </div>
           </div>
