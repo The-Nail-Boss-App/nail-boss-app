@@ -79,12 +79,21 @@ describe('DS-03 Polish Studio repair', () => {
   });
 
   it('updates the compact bottle material for every approved finish', async () => {
+    const activeBottle = container.querySelector('.nail-design-studio__active-polish .polish-bottle-figure');
+    expect(activeBottle.dataset.bottleRenderer).toBe('simplified');
+    expect(activeBottle.getAttribute('viewBox')).toBe('0 0 52 76');
+    expect(activeBottle.querySelector('[data-bottle-layer="outer-casing"]')).toBeNull();
+    expect(activeBottle.querySelector('[data-bottle-layer="front-reflection"]')).toBeTruthy();
     const select = container.querySelector('select[aria-label="Finish"]');
     for (const finish of ['Cream', 'Matte', 'Jelly', 'Glitter']) {
       await act(async () => { select.value = finish; select.dispatchEvent(new Event('change', { bubbles: true })); });
       expect(container.querySelector('.nail-design-studio__active-polish .polish-bottle-figure').dataset.polishFinish).toBe(finish);
     }
     expect(container.querySelector('[data-bottle-material-layer="suspended-glitter-particles"] circle')).toBeTruthy();
+    await click(container.querySelector('button[aria-label="Save polish to Polish Rack"]'));
+    const rackBottles = [...container.querySelectorAll('.nail-design-studio__polish-rack .polish-bottle-figure')];
+    expect(rackBottles.length).toBeGreaterThan(0);
+    expect(rackBottles.every((bottle) => bottle.dataset.bottleRenderer === 'simplified' && bottle.getAttribute('viewBox') === '0 0 38 58')).toBe(true);
   });
 
   it('renders all finishes through reusable, ordered material layers', async () => {

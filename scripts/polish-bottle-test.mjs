@@ -31,11 +31,12 @@ assert(
   "PolishBottle renders a cap",
 );
 assert(
-  bottle.includes("bodyWidth") && bottle.includes('height: "78%"'),
+  bottle.includes("bodyWidth") && bottle.includes('data-bottle-layer="polish-content"'),
   "PolishBottle renders bottle body and polish fill",
 );
 assert(
-  bottle.includes("rgba(255,255,255,.42)"),
+  bottle.includes('data-bottle-layer="edge-highlight"') &&
+    bottle.includes('data-bottle-layer="front-reflection"'),
   "PolishBottle renders a subtle highlight",
 );
 assert(
@@ -44,6 +45,18 @@ assert(
     bottle.includes("anitasetBottleSelected") === false &&
     bottle.includes("transition"),
   "PolishBottle exposes lightweight hover, focus, and reflection hooks",
+);
+assert(
+  bottle.includes('data-bottle-renderer="simplified"') &&
+    bottle.includes('overflow: "hidden"') &&
+    bottle.includes('large: { width: 78, height: 112'),
+  "PolishBottle uses compact SVG bounds for the simplified renderer",
+);
+assert(
+  !bottle.includes("-glass") &&
+    !bottle.includes('data-bottle-layer="outer-casing"') &&
+    !bottle.includes('data-bottle-layer="side-panel"'),
+  "PolishBottle does not render an outer casing or translucent side panels",
 );
 
 assert(
