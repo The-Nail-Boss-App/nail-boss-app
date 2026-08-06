@@ -1,3 +1,5 @@
+import { resolveNailMaterial } from "./materialFoundation.js";
+
 export const POLISH_TYPES = ["Cream", "Jelly", "Milky", "Matte", "Glass", "Chrome-ready", "Chrome", "Glitter"];
 export const TOP_COATS = ["Gloss", "Matte", "No-Wipe Shine", "Velvet"];
 export const POLISH_DEFAULTS = {
@@ -75,6 +77,7 @@ export function polishOpacity(data = {}) {
 
 export function polishSurfacePreset(data = {}) {
   if (SURFACE_MATERIAL_PRESETS.includes(data.materialPreset)) return data.materialPreset;
+  if (SURFACE_MATERIAL_PRESETS.includes(data.polishType)) return data.polishType;
   if (data.effect === "Chrome") return "Chrome";
   if (data.effect === "Glitter" || data.pattern === "glitter" || data.glitter === true) return "Glitter";
   if (data.polishType === "Jelly") return "Jelly";
@@ -85,28 +88,19 @@ export function polishSurfacePreset(data = {}) {
 }
 
 export function polishMaterialProfile(polishType = "Cream", shine = 0.62) {
-  if (polishType === "Matte") {
-    return { gloss: 0.035, reflection: 0.045, apex: 0.10, depth: 0.72, edge: 0.50, blur: 2.8, diffusion: 0.035, glass: 0.04, colorPreservation: 0.96, microTexture: 0.22, metallic: 0, sparkle: 0 };
-  }
-  if (polishType === "Chrome") {
-    return { gloss: Math.max(0.96, shine), reflection: 1, apex: 0.82, depth: 0.92, edge: 0.92, blur: 0.36, diffusion: 0, glass: 0.44, colorPreservation: 0.78, microTexture: 0.02, metallic: 1, sparkle: 0.16 };
-  }
-  if (polishType === "Glitter") {
-    return { gloss: Math.max(0.74, shine), reflection: 0.64, apex: 0.58, depth: 0.9, edge: 0.72, blur: 1.05, diffusion: 0.018, glass: 0.28, colorPreservation: 0.9, microTexture: 0.12, metallic: 0, sparkle: 1 };
-  }
-  if (polishType === "Jelly") {
-    return { gloss: Math.max(0.86, shine), reflection: 0.82, apex: 0.62, depth: 1, edge: 0.84, blur: 0.72, diffusion: 0.01, glass: 0.68, colorPreservation: 0.88, microTexture: 0.02, metallic: 0, sparkle: 0 };
-  }
-  if (polishType === "Glass") {
-    return { gloss: Math.max(0.94, shine), reflection: 0.94, apex: 0.76, depth: 1, edge: 0.9, blur: 0.5, diffusion: 0, glass: 1, colorPreservation: 0.9, microTexture: 0, metallic: 0, sparkle: 0 };
-  }
-  // Geometry and optical response only: this preset deliberately contains no
-  // metallic/chrome sweep. A future effect can plug into this foundation.
-  if (polishType === "Chrome-ready") {
-    return { gloss: Math.max(0.9, shine), reflection: 0.98, apex: 0.78, depth: 0.94, edge: 0.94, blur: 0.42, diffusion: 0, glass: 0.42, colorPreservation: 0.82, microTexture: 0.01, metallic: 0, sparkle: 0 };
-  }
-  if (polishType === "Milky") {
-    return { gloss: Math.min(0.56, shine), reflection: 0.32, apex: 0.72, depth: 0.72, edge: 0.52, blur: 1.45, diffusion: 0.44, glass: 0.18, colorPreservation: 0.68, microTexture: 0.08, metallic: 0, sparkle: 0 };
-  }
-  return { gloss: shine, reflection: 0.68, apex: 0.56, depth: 0.78, edge: 0.62, blur: 1, diffusion: 0.04, glass: 0.2, colorPreservation: 0.88, microTexture: 0.04, metallic: 0, sparkle: 0 };
+  const material = resolveNailMaterial(polishType);
+  const userShine = clampPolishNumber(shine, 0, 1, material.smoothness);
+  return {
+    ...material,
+    gloss: material.id === "matte" ? Math.min(.08, userShine) : Math.max(material.smoothness, userShine),
+    reflection: material.reflectionStrength,
+    apex: material.specularStrength,
+    depth: Math.max(.2, material.thicknessInfluence),
+    edge: Math.max(.18, material.thicknessInfluence),
+    blur: .35 + material.roughness * 2.65,
+    glass: material.translucency,
+    colorPreservation: 1 - material.diffusion * .5,
+    microTexture: material.roughness * .24,
+    sparkle: material.id === "glitter" ? 1 : 0,
+  };
 }
