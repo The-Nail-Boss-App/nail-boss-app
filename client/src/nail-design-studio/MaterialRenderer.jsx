@@ -31,8 +31,35 @@ function MaterialDefs({ id, color }) {
   </defs>;
 }
 
+function JellyDefs({ id, color }) {
+  return <defs>
+    <radialGradient id={`${id}-jelly-pigment`} cx="49%" cy="38%" r="72%"><stop offset="0" stopColor={color} stopOpacity=".72"/><stop offset="55%" stopColor={color} stopOpacity=".9"/><stop offset="100%" stopColor={color}/></radialGradient>
+    <radialGradient id={`${id}-jelly-depth`} cx="50%" cy="39%" r="74%"><stop offset="0" stopColor={color} stopOpacity=".16"/><stop offset="62%" stopColor={color} stopOpacity=".32"/><stop offset="88%" stopColor={color} stopOpacity=".72"/><stop offset="100%" stopColor={color}/></radialGradient>
+    <linearGradient id={`${id}-jelly-edges`} x1="0" x2="1"><stop stopColor={color} stopOpacity=".92"/><stop offset=".14" stopColor={color} stopOpacity=".22"/><stop offset=".82" stopColor={color} stopOpacity=".18"/><stop offset="1" stopColor={color} stopOpacity=".9"/></linearGradient>
+    <linearGradient id={`${id}-jelly-tip`} x1="0" y1="0" x2="0" y2="1"><stop offset=".58" stopColor={color} stopOpacity="0"/><stop offset=".86" stopColor={color} stopOpacity=".38"/><stop offset="1" stopColor={color} stopOpacity=".9"/></linearGradient>
+    <radialGradient id={`${id}-jelly-transmission`} cx="48%" cy="35%" r="58%"><stop offset="0" stopColor={color} stopOpacity=".34"/><stop offset="52%" stopColor={color} stopOpacity=".16"/><stop offset="100%" stopColor={color} stopOpacity="0"/></radialGradient>
+    <linearGradient id={`${id}-jelly-reflection`} x1="0" x2="1"><stop offset=".2" stopColor={color} stopOpacity="0"/><stop offset=".3" stopColor={color} stopOpacity=".62"/><stop offset=".345" stopColor={color} stopOpacity=".18"/><stop offset=".43" stopColor={color} stopOpacity="0"/></linearGradient>
+  </defs>;
+}
+
+function JellyLayers({ path, color, opacity, uid, baseProps }) {
+  const pigmentConcentration = .66 + Math.max(0, Math.min(1, opacity)) * .22;
+  const transmission = .56 - Math.max(0, Math.min(1, opacity)) * .16;
+  return <g data-material-renderer="MaterialRenderer" data-material-profile="JellyMaterial" data-jelly-pigment-concentration={pigmentConcentration.toFixed(3)} data-jelly-transmission={transmission.toFixed(3)}>
+    <JellyDefs id={uid} color={color}/>
+    <path {...baseProps} data-material-layer="base-jelly-pigment" d={path} fill={`url(#${uid}-jelly-pigment)`} opacity={pigmentConcentration}/>
+    <path data-material-layer="internal-color-depth" d={path} fill={`url(#${uid}-jelly-depth)`} opacity=".72" style={{ mixBlendMode: 'multiply' }}/>
+    <path data-material-layer="edge-concentration" d={path} fill={`url(#${uid}-jelly-edges)`} opacity=".54" style={{ mixBlendMode: 'multiply' }}/>
+    <path data-material-layer="tip-concentration" d={path} fill={`url(#${uid}-jelly-tip)`} opacity=".48" style={{ mixBlendMode: 'multiply' }}/>
+    <path data-material-layer="colored-light-transmission" d={path} fill={`url(#${uid}-jelly-transmission)`} opacity={transmission} style={{ mixBlendMode: 'screen' }}/>
+    <path data-material-layer="reflection" d={path} fill={`url(#${uid}-jelly-reflection)`} opacity=".78" style={{ mixBlendMode: 'screen' }}/>
+    <path data-material-layer="top-coat" d={path} fill="none" stroke={color} strokeWidth="1.35" strokeOpacity=".42" style={{ mixBlendMode: 'screen' }}/>
+  </g>;
+}
+
 /** Shared ordered pipeline: pigment → curvature → edges → material → reflection → top coat → detail. */
 export function MaterialLayers({ path, finish = 'Cream', color = '#D94C70', opacity = 1, uid = 'material', baseProps = {} }) {
+  if (finish === 'Jelly') return <JellyLayers path={path} color={color} opacity={opacity} uid={uid} baseProps={baseProps}/>;
   const p = materialProfile(finish);
   return <g data-material-renderer="MaterialRenderer" data-material-profile={`${finish}Material`}>
     <MaterialDefs id={uid} color={color}/>
