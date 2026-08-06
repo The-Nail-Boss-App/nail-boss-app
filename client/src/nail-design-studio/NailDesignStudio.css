@@ -575,6 +575,9 @@
   pointer-events: none;
 }
 
+/* Keep the hand label visually attached to the product without resizing it. */
+.nail-design-studio__hand-label + .nail-design-studio__hero-nail { margin-top: 10px; }
+
 .nail-design-studio__bottom-workspace--complete {
   display: grid;
   grid-template-columns: minmax(210px, 1.08fr) minmax(250px, 1.28fr) minmax(230px, 1.08fr) minmax(210px, .9fr);
@@ -663,7 +666,7 @@
 /* DS-03 compact luxury product treatment. */
 .nail-design-studio__creative-tools { overflow-y: auto; overscroll-behavior: contain; padding-bottom: 18px; }
 .nail-design-studio__polish-studio { gap: 10px; padding-bottom: 4px; }
-.nail-design-studio__active-polish { position: relative; grid-template-columns: 58px minmax(0, 1fr) 28px; gap: 9px; padding: 9px; min-height: 82px; }
+.nail-design-studio__active-polish { position: relative; grid-template-columns: 58px minmax(0, 1fr) 28px; gap: 9px; padding: 8px 9px; min-height: 0; }
 .nail-design-studio__active-details { min-width: 0; }
 .nail-design-studio__active-polish p { margin: 4px 0 0; }
 .nail-design-studio__active-polish input { padding-block: 5px !important; }

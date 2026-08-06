@@ -92,7 +92,7 @@ export function polishMaterialProfile(polishType = "Cream", shine = 0.62) {
     return { gloss: Math.max(0.96, shine), reflection: 1, apex: 0.82, depth: 0.92, edge: 0.92, blur: 0.36, diffusion: 0, glass: 0.44, colorPreservation: 0.78, microTexture: 0.02, metallic: 1, sparkle: 0.16 };
   }
   if (polishType === "Glitter") {
-    return { gloss: Math.max(0.8, shine), reflection: 0.78, apex: 0.64, depth: 0.86, edge: 0.78, blur: 0.8, diffusion: 0.018, glass: 0.34, colorPreservation: 0.84, microTexture: 0.12, metallic: 0.30, sparkle: 1 };
+    return { gloss: Math.max(0.74, shine), reflection: 0.64, apex: 0.58, depth: 0.9, edge: 0.72, blur: 1.05, diffusion: 0.018, glass: 0.28, colorPreservation: 0.9, microTexture: 0.12, metallic: 0, sparkle: 1 };
   }
   if (polishType === "Jelly") {
     return { gloss: Math.max(0.86, shine), reflection: 0.82, apex: 0.62, depth: 1, edge: 0.84, blur: 0.72, diffusion: 0.01, glass: 0.68, colorPreservation: 0.88, microTexture: 0.02, metallic: 0, sparkle: 0 };
