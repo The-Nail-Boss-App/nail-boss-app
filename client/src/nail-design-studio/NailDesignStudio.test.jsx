@@ -13,6 +13,68 @@ const type = async (input, value) => act(async () => {
   input.dispatchEvent(new Event('input', { bubbles: true }));
 });
 
+describe('DS-03 Polish Studio repair', () => {
+  beforeEach(async () => {
+    window.localStorage.removeItem('anitaset.designStudio.polishRack.v2');
+    window.localStorage.removeItem('anitaset.hero-design.v1:nail-desk-hero');
+    container = document.createElement('div'); document.body.appendChild(container); root = createRoot(container);
+    await act(async () => root.render(<NailDesignStudio />));
+  });
+  afterEach(() => { act(() => root.unmount()); container.remove(); window.localStorage.removeItem('anitaset.hero-design.v1:nail-desk-hero'); });
+
+  it('uses Cream terminology, a compact safe HEX editor, and the shared premium bottle renderer', async () => {
+    const finish = container.querySelector('select[aria-label="Finish"]');
+    expect([...finish.options].map((option) => option.textContent)).toEqual(expect.arrayContaining(['Cream', 'Jelly', 'Matte', 'Glass', 'Chrome-ready', 'Chrome', 'Glitter']));
+    expect([...finish.options].map((option) => option.textContent)).not.toContain('Solid');
+    expect(container.querySelector('[data-testid="active-polish-card"]')).toBeNull();
+    expect(container.querySelector('.nail-design-studio__active-polish .polish-bottle-figure').dataset.polishFinish).toBe('Cream');
+    const hex = container.querySelector('input[aria-label="Base Color HEX"]');
+    expect(hex.classList.contains('nail-design-studio__hex-input')).toBe(true);
+    await type(hex, '#ABCDEF'); await act(async () => hex.dispatchEvent(new FocusEvent('focusout', { bubbles: true })));
+    expect(container.querySelector('input[type="color"]').value.toUpperCase()).toBe('#ABCDEF');
+    await type(hex, '#BAD'); await act(async () => hex.dispatchEvent(new FocusEvent('focusout', { bubbles: true })));
+    expect(hex.getAttribute('aria-invalid')).toBe('true');
+  });
+
+  it('saves, selects, favorites, renames, deletes, and synchronizes both Polish Racks', async () => {
+    await click([...container.querySelectorAll('button')].find((item) => item.textContent === 'Save to Polish Rack'));
+    expect(container.querySelector('[aria-live="polite"]').textContent).toContain('saved to Polish Rack');
+    const leftNames = [...container.querySelectorAll('.nail-design-studio__mini-bottles > div > span')].map((node) => node.textContent);
+    const lowerNames = [...container.querySelectorAll('.nail-design-studio__lower-polish > span')].map((node) => node.textContent.replace('★ ', ''));
+    expect(leftNames).toContain('Blush Royalty'); expect(lowerNames).toContain('Blush Royalty');
+    const favorite = container.querySelector('button[aria-label="Favorite Blush Royalty"]'); await click(favorite); expect(favorite.getAttribute('aria-pressed')).toBe('true');
+    window.prompt = jest.fn(() => 'Royal Repair'); await click(container.querySelector('button[aria-label="Rename Blush Royalty"]'));
+    expect(container.textContent).toContain('Royal Repair');
+    window.confirm = jest.fn(() => true); await click(container.querySelector('button[aria-label="Delete Royal Repair"]'));
+    expect(container.querySelector('button[aria-label="Delete Royal Repair"]')).toBeNull();
+    expect(JSON.parse(window.localStorage.getItem('anitaset.designStudio.polishRack.v2'))).toEqual(expect.any(Array));
+  });
+
+  it('applies one formulation to each explicit scope as a logical undoable action', async () => {
+    await click(container.querySelector('input[name="composition"][value="full"]'));
+    for (const scope of ['current', 'left', 'right', 'full']) {
+      await click(container.querySelector(`.nail-design-studio__apply-scope input[name="polish-scope"]:nth-of-type(1)`) || container.querySelector(`input[name="polish-scope"]`));
+      const radio = [...container.querySelectorAll('input[name="polish-scope"]')].find((item) => item.parentElement.textContent === ({ current: 'Current Nail', left: 'Left Hand', right: 'Right Hand', full: 'Full Set' }[scope]));
+      await click(radio); await click([...container.querySelectorAll('button')].find((item) => item.textContent === 'Apply Polish'));
+    }
+    expect(container.querySelectorAll('.nail-design-studio__nail-polish[data-polish-finish="Cream"]')).toHaveLength(10);
+    await click(container.querySelector('button[aria-label="Undo"]'));
+    await click(container.querySelector('button[aria-label="Redo"]'));
+    expect(container.querySelectorAll('.nail-design-studio__nail-polish[data-polish-finish="Cream"]')).toHaveLength(10);
+    await click(container.querySelectorAll('[data-testid="nail-slot"]')[1]);
+    await click([...container.querySelectorAll('input[name="polish-scope"]')].find((item) => item.parentElement.textContent === 'Selected Nails'));
+    await click([...container.querySelectorAll('button')].find((item) => item.textContent === 'Apply Polish'));
+    expect(container.querySelector('[aria-live="polite"]').textContent).toContain('Select at least one nail');
+    await act(async () => container.querySelectorAll('[data-testid="nail-slot"]')[1].dispatchEvent(new MouseEvent('click', { bubbles: true, shiftKey: true })));
+    await click([...container.querySelectorAll('button')].find((item) => item.textContent === 'Apply Polish'));
+    expect(container.querySelector('[aria-live="polite"]').textContent).toContain('to 1 nail');
+    await click(container.querySelector('button[aria-label="Save Changes"]'));
+    const reopened = JSON.parse(window.localStorage.getItem('anitaset.hero-design.v1:nail-desk-hero')).metadata;
+    expect(reopened.polishFormulations).toHaveLength(10);
+    expect(reopened.activePolishFormulation).toMatchObject({ name: 'Blush Royalty', finish: 'Cream' });
+  });
+});
+
 describe('new Nail Design Studio command bar', () => {
   beforeEach(async () => {
     container = document.createElement('div');
