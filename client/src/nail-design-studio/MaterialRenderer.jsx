@@ -1,4 +1,8 @@
 import { useId } from 'react';
+import { features } from '../config/features';
+import { HybridJellyMaterial } from './HybridMaterialRenderer';
+
+export { jellyTransmissionPalette } from './HybridMaterialRenderer';
 
 /**
  * Material is deliberately independent from pigment. These immutable profiles
@@ -12,6 +16,15 @@ export const MATERIAL_PROFILES = Object.freeze({
 });
 
 export const materialProfile = (finish = 'Cream') => MATERIAL_PROFILES[finish] || MATERIAL_PROFILES.Cream;
+
+export function renderHybridJellySafely(props, hybridRenderer = HybridJellyMaterial) {
+  try {
+    return hybridRenderer(props);
+  } catch (error) {
+    if (process.env.NODE_ENV !== 'production') console.warn('Hybrid Jelly renderer failed; using legacy Jelly renderer.', error);
+    return null;
+  }
+}
 
 const PARTICLES = [
   [75,48,2.7,.92],[105,62,1.2,.58],[137,51,1.8,.8],[166,75,1,.5],[91,91,1.5,.72],
@@ -53,7 +66,7 @@ function hslToHex({ h, s, l }) {
 }
 
 /** Jelly tones change pigment brightness/concentration without changing its hue. */
-export function jellyTransmissionPalette(color) {
+function legacyJellyTransmissionPalette(color) {
   const body = /^#[\da-f]{6}$/i.test(color) ? color.toUpperCase() : '#D94C70';
   const source = hexToHsl(body);
   const tone = (lightness, saturationFloor) => hslToHex({ ...source, l: clamp(lightness, .08, .82), s: clamp(Math.max(source.s, saturationFloor)) });
@@ -80,7 +93,7 @@ function JellyLayers({ path, color, opacity, uid, baseProps }) {
   const control = clamp(opacity);
   const pigmentConcentration = .74 + control * .18;
   const transmission = .64 - control * .18;
-  const tones = jellyTransmissionPalette(color);
+  const tones = legacyJellyTransmissionPalette(color);
   return <g data-material-renderer="MaterialRenderer" data-material-profile="JellyMaterial" data-jelly-pigment-concentration={pigmentConcentration.toFixed(3)} data-jelly-transmission={transmission.toFixed(3)} data-jelly-highlight-width="14%">
     <JellyDefs id={uid} tones={tones}/>
     <path {...baseProps} data-material-layer="base-jelly-pigment" d={path} fill={`url(#${uid}-jelly-pigment)`} opacity={pigmentConcentration}/>
@@ -95,7 +108,13 @@ function JellyLayers({ path, color, opacity, uid, baseProps }) {
 
 /** Shared ordered pipeline: pigment → curvature → edges → material → reflection → top coat → detail. */
 export function MaterialLayers({ path, finish = 'Cream', color = '#D94C70', opacity = 1, uid = 'material', baseProps = {} }) {
-  if (finish === 'Jelly') return <JellyLayers path={path} color={color} opacity={opacity} uid={uid} baseProps={baseProps}/>;
+  if (finish === 'Jelly') {
+    if (features.materials.hybridJellyRenderer.enabled) {
+      const hybrid = renderHybridJellySafely({ path, color, opacity, uid, baseProps });
+      if (hybrid) return hybrid;
+    }
+    return <JellyLayers path={path} color={color} opacity={opacity} uid={uid} baseProps={baseProps}/>;
+  }
   const p = materialProfile(finish);
   return <g data-material-renderer="MaterialRenderer" data-material-profile={`${finish}Material`}>
     <MaterialDefs id={uid} color={color}/>

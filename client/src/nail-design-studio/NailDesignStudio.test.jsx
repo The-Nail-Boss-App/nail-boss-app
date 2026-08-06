@@ -103,11 +103,11 @@ describe('DS-03 Polish Studio repair', () => {
     const select = container.querySelector('select[aria-label="Finish"]');
     for (const finish of ['Cream', 'Matte', 'Jelly', 'Glitter']) {
       await act(async () => { select.value = finish; select.dispatchEvent(new Event('change', { bubbles: true })); });
-      const renderer = container.querySelector('[data-testid="stage-nail"] [data-material-renderer="MaterialRenderer"]');
-      expect(renderer.dataset.materialProfile).toBe(`${finish}Material`);
+      const renderer = container.querySelector('[data-testid="stage-nail"] [data-material-renderer]');
+      expect(renderer.dataset.materialProfile).toBe(finish === 'Jelly' ? 'HybridJelly' : `${finish}Material`);
       const layers = [...renderer.querySelectorAll('[data-material-layer]')].map((node) => node.dataset.materialLayer);
       expect(layers.slice(0, 3)).toEqual(finish === 'Jelly'
-        ? ['base-jelly-pigment', 'colored-light-transmission', 'internal-color-depth']
+        ? ['shape-mask', 'base-pigment', 'curvature-shadow']
         : ['base-pigment', 'curvature-shadow', 'edge-darkening']);
       expect(layers).toContain('reflection');
       expect(layers).toContain('top-coat');
