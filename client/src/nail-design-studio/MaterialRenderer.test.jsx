@@ -1,6 +1,6 @@
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { MATERIAL_PROFILES, MaterialLayers } from './MaterialRenderer';
+import { jellyTransmissionPalette, MATERIAL_PROFILES, MaterialLayers } from './MaterialRenderer';
 
 const PATH = 'M10 0h40v100H10Z';
 const renderMaterial = (finish, color = '#B7103A', opacity = 1) => renderToStaticMarkup(
@@ -24,23 +24,35 @@ describe('Jelly Material Engine', () => {
     }
   });
 
-  test.each(['#B7103A', '#FF69B4', '#6A0DAD', '#087F5B', '#102A72', '#5C2A18', '#E85D04', '#E0B400'])('keeps %s as the color in every Jelly light layer', (color) => {
+  test.each(['#A40A30', '#2457C5', '#7B2CBF', '#0B7A53', '#E85D04', '#6B3A2E', '#F06292', '#E6B800'])('preserves the hue family of %s through every Jelly tone', (color) => {
+    const tones = jellyTransmissionPalette(color);
     const markup = renderMaterial('Jelly', color, .55);
+    expect(tones.body).toBe(color);
+    expect(new Set(Object.values(tones)).size).toBe(4);
+    for (const tone of Object.values(tones)) expect(markup).toContain(`stop-color="${tone}"`);
     expect(markup).toContain('data-material-layer="internal-color-depth"');
     expect(markup).toContain('data-material-layer="edge-concentration"');
     expect(markup).toContain('data-material-layer="tip-concentration"');
     expect(markup).toContain('data-material-layer="colored-light-transmission"');
     expect(markup).not.toMatch(/stop-color="(?:#fff(?:fff)?|white|gray)"/i);
-    expect(markup.match(new RegExp(`stop-color="${color}"`, 'gi')).length).toBeGreaterThan(12);
+  });
+
+  test('uses cherry, wine, and burgundy transmission tones for the reported red failure', () => {
+    expect(jellyTransmissionPalette('#A40A30')).toEqual({ transmission: '#E30E43', body: '#A40A30', edge: '#700721', depth: '#4B0516' });
+    const markup = renderMaterial('Jelly', '#A40A30', .52);
+    expect(markup).toContain('data-jelly-highlight-width="14%"');
+    expect(markup).not.toMatch(/(?:#fff(?:fff)?|white|gray|silver|lavender)/i);
   });
 
   test('uses transparency as transmission and pigment concentration rather than desaturation', () => {
     const clearer = renderMaterial('Jelly', '#087F5B', .2);
     const richer = renderMaterial('Jelly', '#087F5B', .9);
-    expect(clearer).toContain('data-jelly-pigment-concentration="0.704"');
-    expect(clearer).toContain('data-jelly-transmission="0.528"');
-    expect(richer).toContain('data-jelly-pigment-concentration="0.858"');
-    expect(richer).toContain('data-jelly-transmission="0.416"');
+    expect(clearer).toContain('data-jelly-pigment-concentration="0.776"');
+    expect(clearer).toContain('data-jelly-transmission="0.604"');
+    expect(richer).toContain('data-jelly-pigment-concentration="0.902"');
+    expect(richer).toContain('data-jelly-transmission="0.478"');
+    expect(clearer).toContain('data-material-layer="base-jelly-pigment"');
+    expect(richer).toContain('data-material-layer="colored-light-transmission"');
     expect(clearer).not.toMatch(/stop-color="(?:#fff(?:fff)?|white|gray)"/i);
     expect(richer).not.toMatch(/stop-color="(?:#fff(?:fff)?|white|gray)"/i);
   });
