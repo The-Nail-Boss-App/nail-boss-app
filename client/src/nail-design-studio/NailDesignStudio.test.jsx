@@ -2,6 +2,7 @@ import React, { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import NailDesignStudio from './NailDesignStudio';
 import { heroEffectForPolish, normalizePolishForFinish } from './polishFinish';
+import { MATERIAL_PROFILES, materialProfile } from './MaterialRenderer';
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -84,6 +85,24 @@ describe('DS-03 Polish Studio repair', () => {
       expect(container.querySelector('.nail-design-studio__active-polish .polish-bottle-figure').dataset.polishFinish).toBe(finish);
     }
     expect(container.querySelector('[data-bottle-material-layer="suspended-glitter-particles"] circle')).toBeTruthy();
+  });
+
+  it('renders all finishes through reusable, ordered material layers', async () => {
+    expect(Object.keys(MATERIAL_PROFILES)).toEqual(['Cream', 'Matte', 'Jelly', 'Glitter']);
+    expect(materialProfile('Matte').reflection).toBeLessThan(materialProfile('Cream').reflection);
+    expect(materialProfile('Jelly').transmission).toBeGreaterThan(0);
+    const select = container.querySelector('select[aria-label="Finish"]');
+    for (const finish of ['Cream', 'Matte', 'Jelly', 'Glitter']) {
+      await act(async () => { select.value = finish; select.dispatchEvent(new Event('change', { bubbles: true })); });
+      const renderer = container.querySelector('[data-testid="stage-nail"] [data-material-renderer="MaterialRenderer"]');
+      expect(renderer.dataset.materialProfile).toBe(`${finish}Material`);
+      const layers = [...renderer.querySelectorAll('[data-material-layer]')].map((node) => node.dataset.materialLayer);
+      expect(layers.slice(0, 3)).toEqual(['base-pigment', 'curvature-shadow', 'edge-darkening']);
+      expect(layers).toContain('reflection');
+      expect(layers).toContain('top-coat');
+    }
+    expect(container.querySelector('[data-material-layer="submerged-glitter"] circle')).toBeTruthy();
+    expect(container.querySelector('.nail-design-studio__active-swatch [data-material-profile="GlitterMaterial"]')).toBeTruthy();
   });
 
   it('uses the filled star to unsave the active formulation from both racks', async () => {
