@@ -659,3 +659,26 @@
   .nail-design-studio__bottom-workspace--complete { grid-template-columns: minmax(0, 1fr); max-height: 42vh; }
   .nail-design-studio__asset-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+
+/* DS-03 compact luxury product treatment. */
+.nail-design-studio__creative-tools { overflow-y: auto; overscroll-behavior: contain; padding-bottom: 18px; }
+.nail-design-studio__polish-studio { gap: 10px; padding-bottom: 4px; }
+.nail-design-studio__active-polish { position: relative; grid-template-columns: 58px minmax(0, 1fr) 28px; gap: 9px; padding: 9px; min-height: 82px; }
+.nail-design-studio__active-details { min-width: 0; }
+.nail-design-studio__active-polish p { margin: 4px 0 0; }
+.nail-design-studio__active-polish input { padding-block: 5px !important; }
+.nail-design-studio__polish-star { align-self: start; width: 28px; height: 28px; padding: 0; border: 1px solid rgba(123,47,89,.22); border-radius: 50%; background: #fff; color: #9b6a18; font-size: 18px; line-height: 1; cursor: pointer; }
+.nail-design-studio__polish-star:focus-visible { outline: 2px solid #7b2f59; outline-offset: 2px; }
+.nail-design-studio__color-row { grid-template-columns: 38px 9ch; justify-content: start; }
+.nail-design-studio__polish-rack { display: block; padding-top: 10px; }
+.nail-design-studio__mini-bottles { gap: 7px; padding-block: 3px; }
+.nail-design-studio__mini-bottles > div { flex-basis: 54px; position: relative; }
+.nail-design-studio__mini-bottles > div > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; overflow-wrap: normal; }
+.nail-design-studio__mini-bottles > div > div { opacity: 0; transition: opacity 120ms ease; }
+.nail-design-studio__mini-bottles > div:hover > div,
+.nail-design-studio__mini-bottles > div:focus-within > div { opacity: 1; }
+.nail-design-studio__apply-scope { gap: 4px; padding: 10px 12px; }
+.nail-design-studio__apply-scope label { display: flex; width: 100%; min-height: 26px; gap: 8px; white-space: nowrap; cursor: pointer; }
+.nail-design-studio__apply-scope label > input { grid-column: auto; width: auto; flex: 0 0 auto; margin: 0; }
+.nail-design-studio__apply-polish { margin-top: 2px; margin-bottom: 0; }
+.nail-design-studio__polish-notice { margin-bottom: 2px; }
