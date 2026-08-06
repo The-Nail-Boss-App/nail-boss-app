@@ -383,7 +383,20 @@ describe('adaptive Nail Desk', () => {
     expect(container.querySelector('[aria-label="Full Set nail stage"]')).toBeTruthy();
     expect(container.querySelectorAll('[data-testid="stage-nail"]')).toHaveLength(10);
     expect(container.querySelectorAll('[data-testid="nail-slot"]')).toHaveLength(10);
+    expect([...container.querySelectorAll('.nail-design-studio__finger-label')].map((label) => label.textContent)).toEqual([
+      'Thumb', 'Index', 'Middle', 'Ring', 'Pinky', 'Thumb', 'Index', 'Middle', 'Ring', 'Pinky',
+    ]);
     expect(container.querySelector('.nail-design-studio__nail-stage--full')).toBeTruthy();
+  });
+
+  it('uses the shared upper-middle composition region in every Nail Desk view', async () => {
+    for (const view of ['single', 'left', 'right', 'full', 'spread']) {
+      await click(container.querySelector(`input[value="${view}"]`));
+      const stage = container.querySelector('.nail-design-studio__nail-stage');
+      expect(stage.classList.contains(`nail-design-studio__nail-stage--${view}`)).toBe(true);
+      expect(stage.parentElement).toBe(container.querySelector('[data-testid="nail-stage-container"]'));
+      expect(container.querySelectorAll('.nail-design-studio__finger-label')).toHaveLength(view === 'single' ? 1 : view === 'left' || view === 'right' ? 5 : 10);
+    }
   });
 
   it('keeps the Hero Nail composition in safe centered stage bounds', () => {
