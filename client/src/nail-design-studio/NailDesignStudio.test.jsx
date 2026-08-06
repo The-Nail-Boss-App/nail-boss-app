@@ -106,7 +106,9 @@ describe('DS-03 Polish Studio repair', () => {
       const renderer = container.querySelector('[data-testid="stage-nail"] [data-material-renderer="MaterialRenderer"]');
       expect(renderer.dataset.materialProfile).toBe(`${finish}Material`);
       const layers = [...renderer.querySelectorAll('[data-material-layer]')].map((node) => node.dataset.materialLayer);
-      expect(layers.slice(0, 3)).toEqual(['base-pigment', 'curvature-shadow', 'edge-darkening']);
+      expect(layers.slice(0, 3)).toEqual(finish === 'Jelly'
+        ? ['base-jelly-pigment', 'internal-color-depth', 'edge-concentration']
+        : ['base-pigment', 'curvature-shadow', 'edge-darkening']);
       expect(layers).toContain('reflection');
       expect(layers).toContain('top-coat');
     }
