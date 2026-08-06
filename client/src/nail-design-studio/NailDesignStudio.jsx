@@ -47,6 +47,7 @@ const COMPOSITIONS = [
 ];
 
 const WORKSPACE_VIEWS = COMPOSITIONS.map(({ id, label }) => ({ id, label }));
+const FINGER_NAMES = ['Thumb', 'Index', 'Middle', 'Ring', 'Pinky'];
 
 
 const INSPIRATION_CARDS = [
@@ -163,9 +164,8 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
   const activeComposition = COMPOSITIONS.find((item) => item.id === composition) || COMPOSITIONS[0];
   const visibleNails = Array.from({ length: activeComposition.nails }, (_, index) => ({
     index,
-    hand: index < 5 ? 'Left hand' : 'Right hand',
     handClass: index < 5 ? 'left' : 'right',
-    label: `${index < 5 ? 'Left' : 'Right'} nail ${index % 5 + 1}`,
+    label: composition === 'single' ? 'Single Nail' : FINGER_NAMES[index % FINGER_NAMES.length],
   }));
   const activeSurface = WORKSPACE_SURFACES.find((item) => item.id === surface) || WORKSPACE_SURFACES[0];
   const heroDocument = heroState.document;
@@ -470,9 +470,9 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
           </div>
           <div className={`nail-design-studio__desk-surface${zoom > 1 ? ' is-pannable' : ''}`} style={{ backgroundImage: `url(${activeSurface.src})` }} onPointerDown={startPan} onPointerMove={movePan} onPointerUp={stopPan} onPointerCancel={stopPan} data-testid="nail-stage-container">
             <div className={`nail-design-studio__nail-stage nail-design-studio__nail-stage--${composition}`} style={{ '--stage-zoom': zoom, '--stage-x': `${pan.x}px`, '--stage-y': `${pan.y}px`, '--nail-length': nailLength / 100 }} aria-label={`${activeComposition.label} nail stage`}>
-              {visibleNails.map(({ index, hand, handClass, label }) => (
+              {visibleNails.map(({ index, handClass, label }) => (
                 <button type="button" className={`nail-design-studio__nail-slot nail-design-studio__nail-slot--${handClass}`} data-testid="nail-slot" data-active={activeNailIndex === index} data-selected={selectedNails.includes(index)} key={index} onClick={(event) => { setActiveNailIndex(index); if (event.shiftKey || event.ctrlKey || event.metaKey) setSelectedNails((items) => items.includes(index) ? items.filter((item) => item !== index) : [...items, index]); }} aria-pressed={selectedNails.includes(index)} aria-label={`Select ${label}`}>
-                  {(composition === 'spread' || composition === 'full') && <span className="nail-design-studio__hand-label">{hand}</span>}
+                  <span className="nail-design-studio__finger-label">{label}</span>
                   <svg className="nail-design-studio__hero-nail" data-testid="stage-nail" data-nail-shape={nailShape.toLowerCase()}
                     data-hero-renderer="Hero Surface Rendering Engine" data-hero-mask={renderedSurface.maskId} data-design-layer-parent="true"
                     aria-label={`Hero Nail ${index + 1}`} viewBox={renderedSurface.viewBox} preserveAspectRatio="xMidYMid meet" role="img">

@@ -370,6 +370,8 @@
 
 .nail-design-studio__desk-surface {
   position: relative;
+  display: grid;
+  grid-template-rows: 6% minmax(0, 56%) minmax(0, 38%);
   width: 100%;
   height: 100%;
   min-height: 0;
@@ -387,8 +389,11 @@
 .nail-design-studio__desk-surface.is-pannable:active { cursor: grabbing; }
 
 .nail-design-studio__nail-stage {
-  position: absolute;
-  inset: 0;
+  position: relative;
+  grid-row: 2;
+  align-self: stretch;
+  width: 100%;
+  height: 100%;
   display: grid;
   place-items: center;
   grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -403,9 +408,11 @@
 .nail-design-studio__nail-stage--single { grid-template-columns: minmax(0, 1fr); padding: clamp(26px, 7%, 64px); }
 .nail-design-studio__nail-stage--full { grid-template-rows: repeat(2, minmax(0, 1fr)); }
 .nail-design-studio__nail-slot {
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  align-content: start;
+  justify-items: center;
+  gap: 8px;
   width: 100%;
   height: 100%;
   min-width: 0;
@@ -563,20 +570,14 @@
   height: min(calc(42% + 42% * var(--nail-length)), 86%);
 }
 
-.nail-design-studio__hand-label {
-  position: absolute;
-  top: 8px;
-  left: 50%;
-  transform: translateX(-50%);
+.nail-design-studio__finger-label {
+  position: relative;
   color: rgba(255,255,255,.84);
   font: 800 10px/1 'DM Sans', system-ui, sans-serif;
   letter-spacing: .08em;
   text-transform: uppercase;
   pointer-events: none;
 }
-
-/* Keep the hand label visually attached to the product without resizing it. */
-.nail-design-studio__hand-label + .nail-design-studio__hero-nail { margin-top: 10px; }
 
 .nail-design-studio__bottom-workspace--complete {
   display: grid;
