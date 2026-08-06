@@ -107,7 +107,7 @@ describe('DS-03 Polish Studio repair', () => {
       expect(renderer.dataset.materialProfile).toBe(`${finish}Material`);
       const layers = [...renderer.querySelectorAll('[data-material-layer]')].map((node) => node.dataset.materialLayer);
       expect(layers.slice(0, 3)).toEqual(finish === 'Jelly'
-        ? ['base-jelly-pigment', 'internal-color-depth', 'edge-concentration']
+        ? ['base-jelly-pigment', 'colored-light-transmission', 'internal-color-depth']
         : ['base-pigment', 'curvature-shadow', 'edge-darkening']);
       expect(layers).toContain('reflection');
       expect(layers).toContain('top-coat');
