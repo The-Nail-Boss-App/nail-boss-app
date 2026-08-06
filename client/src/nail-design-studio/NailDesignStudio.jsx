@@ -5,6 +5,7 @@ import {
   heroDesignReducer, registerHeroEffectEngine, registerHeroLightingEngine, updateHeroEffect, updateHeroShape,
 } from '../hero-design/index.ts';
 import { USER_FACING_NAIL_SHAPES } from '../config/features';
+import PolishBottle from '../design-studio/PolishBottle';
 import './NailDesignStudio.css';
 
 const TOOL_CATEGORIES = [
@@ -54,14 +55,21 @@ const INSPIRATION_CARDS = [
   { id: 'azure-chrome', title: 'Azure Chrome', tone: 'Liquid coastal', src: '/assets/founding-shops/azure-tide/azure-tide-signature-nail.png' },
 ];
 
-const SAVED_POLISHES = [
-  { id: 'obsidian-rose', name: 'Obsidian Rose', color: '#31101f' },
-  { id: 'anita-pink', name: 'Anita Pink', color: '#ff2da0' },
-  { id: '24k-veil', name: '24K Veil', color: '#d8a642' },
-  { id: 'cyan-flash', name: 'Cyan Flash', color: '#39e6f2' },
-  { id: 'oxblood-jelly', name: 'Oxblood Jelly', color: '#7b1028' },
-  { id: 'opal-smoke', name: 'Opal Smoke', color: '#c9b8d8' },
+const POLISH_RACK_KEY = 'anitaset.designStudio.polishRack.v2';
+const STARTER_POLISHES = [
+  { id: 'obsidian-rose', name: 'Obsidian Rose', colorHex: '#31101F', finish: 'Cream', opacity: 1, viscosity: .62, shine: .68, brand: 'AnitaSet Atelier', collection: 'Core', size: '15 ml', favorite: true },
+  { id: 'oxblood-jelly', name: 'Oxblood Jelly', colorHex: '#7B1028', finish: 'Jelly', opacity: .72, viscosity: .46, shine: .74, brand: 'AnitaSet Atelier', collection: 'Glass House', size: '15 ml' },
 ];
+
+const loadPolishRack = () => {
+  try { const value = JSON.parse(window.localStorage.getItem(POLISH_RACK_KEY)); return Array.isArray(value) ? value : STARTER_POLISHES; } catch { return STARTER_POLISHES; }
+};
+const loadPerNailPolish = () => {
+  try { const stored = JSON.parse(window.localStorage.getItem('anitaset.hero-design.v1:nail-desk-hero')); return Array.isArray(stored?.metadata?.polishFormulations) ? stored.metadata.polishFormulations.slice(0, 10) : Array(10).fill(null); } catch { return Array(10).fill(null); }
+};
+const loadActivePolish = () => {
+  try { return JSON.parse(window.localStorage.getItem('anitaset.hero-design.v1:nail-desk-hero'))?.metadata?.activePolishFormulation || null; } catch { return null; }
+};
 
 const ASSET_SHORTCUTS = [
   { id: 'textures', label: 'Textures', gradient: 'linear-gradient(135deg, #2d2232, #9f6dd8)' },
@@ -79,14 +87,22 @@ const WORKSPACE_SURFACES = [
 ];
 
 const FINISH_DEFAULTS = {
-  Solid: { baseColor: '#D94C70', opacity: 1, viscosity: .62, shine: .68 },
+  Cream: { baseColor: '#D94C70', opacity: 1, viscosity: .62, shine: .68 },
   Gradient: { colorA: '#D94C70', colorB: '#7D2E68', direction: 90, opacity: 1, viscosity: .62, shine: .68 },
   Chrome: { baseColor: '#D94C70', opacity: 1, viscosity: .62, shine: .9 },
   'Cat Eye': { baseColor: '#521A46', stripeDirection: 22, stripeWidth: .18, stripeStrength: .88, opacity: 1, viscosity: .68, shine: .76 },
   Marble: { baseColor: '#F1CAD8', veinColor: '#8A405D', veinDensity: .42, opacity: 1, viscosity: .72, shine: .58 },
   Jelly: { baseColor: '#D94C70', translucency: .52, opacity: 1, viscosity: .46, shine: .74 },
+  Matte: { baseColor: '#D94C70', opacity: 1, viscosity: .66, shine: .08, matteSoftness: .72 },
+  Glass: { baseColor: '#D94C70', translucency: .28, opacity: .82, viscosity: .44, shine: .92, glassClarity: .78 },
+  'Chrome-ready': { baseColor: '#D94C70', opacity: 1, viscosity: .64, shine: .88, metallicReflection: .35 },
+  Shimmer: { baseColor: '#D94C70', opacity: 1, viscosity: .62, shine: .8, shimmerIntensity: .42 },
+  Metallic: { baseColor: '#D94C70', opacity: 1, viscosity: .66, shine: .9, metallicReflection: .76 },
+  Glitter: { baseColor: '#D94C70', opacity: 1, viscosity: .7, shine: .82, glitterDensity: .46 },
 };
 
+const engineFinish = (finish) => ({ Cream: 'Solid', Matte: 'Solid', Glass: 'Jelly', 'Chrome-ready': 'Chrome', Shimmer: 'Chrome', Metallic: 'Chrome', Glitter: 'Chrome' }[finish] || finish);
+const interfaceFinish = (finish) => finish === 'Solid' ? 'Cream' : finish;
 const baseColorKey = (finish) => finish === 'Gradient' ? 'colorA' : 'baseColor';
 
 function initialNailDeskHeroState() {
@@ -109,6 +125,17 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
   const [saveState, setSaveState] = useState('Saved');
   const [history, setHistory] = useState([]);
   const [future, setFuture] = useState([]);
+  const [savedPolishes, setSavedPolishes] = useState(loadPolishRack);
+  const [polishName, setPolishName] = useState(() => loadActivePolish()?.name || 'Blush Royalty');
+  const [selectedFinish, setSelectedFinish] = useState(() => loadActivePolish()?.finish || interfaceFinish(initialNailDeskHeroState().document.nail.effect.id));
+  const [applicationScope, setApplicationScope] = useState('current');
+  const [selectedNails, setSelectedNails] = useState([]);
+  const [nailPolishes, setNailPolishes] = useState(loadPerNailPolish);
+  const [polishPast, setPolishPast] = useState([]);
+  const [polishFuture, setPolishFuture] = useState([]);
+  const [polishNotice, setPolishNotice] = useState('');
+  const [hexDraft, setHexDraft] = useState('#D94C70');
+  const [hexInvalid, setHexInvalid] = useState(false);
   const [savedDesignsOpen, setSavedDesignsOpen] = useState(false);
   const [collectionOpen, setCollectionOpen] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
@@ -159,6 +186,8 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
   const heroLightingEngine = heroEffectRegistry.current.resolve('Hero Lighting Engine');
   const appliedLighting = useMemo(() => applyHeroLightingToEffect(heroDocument, appliedEffect, heroLightingEngine), [heroDocument, appliedEffect, heroLightingEngine]);
   const activePolishColor = heroDocument.nail.effect.parameters[baseColorKey(heroDocument.nail.effect.id)];
+  const activeFinish = selectedFinish;
+  const activeFormulation = { name: polishName, colorHex: activePolishColor, finish: activeFinish, ...heroDocument.nail.effect.parameters, brand: 'AnitaSet Atelier', collection: 'AnitaSet Atelier', size: '15 ml' };
 
   const selectNailShape = (shapeId) => {
     heroRenderer.current.invalidate('shape', heroDocument.metadata.id);
@@ -172,21 +201,51 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
     setDirty(true);
     setSaveState('Save Changes');
   };
-  const changeFinish = (id) => changeHero((current) => {
-    const previous = current.document.nail.effect.parameters;
-    const color = previous[baseColorKey(current.document.nail.effect.id)];
-    return updateHeroEffect(current, { id, version: '1', parameters: {
-      ...FINISH_DEFAULTS[id],
-      [baseColorKey(id)]: color,
-      opacity: previous.opacity ?? FINISH_DEFAULTS[id].opacity,
-      viscosity: previous.viscosity ?? FINISH_DEFAULTS[id].viscosity,
-      shine: previous.shine ?? FINISH_DEFAULTS[id].shine,
-    } }, heroEvents.current);
-  });
+  const changeFinish = (finish, nextColor) => {
+    setSelectedFinish(finish);
+    changeHero((current) => {
+      const id = engineFinish(finish);
+      const defaults = FINISH_DEFAULTS[finish];
+      const previous = current.document.nail.effect.parameters;
+      const color = nextColor || previous[baseColorKey(current.document.nail.effect.id)];
+      return updateHeroEffect(current, { id, version: '1', parameters: {
+        ...defaults,
+        [baseColorKey(id)]: color,
+        opacity: previous.opacity ?? defaults.opacity,
+        viscosity: previous.viscosity ?? defaults.viscosity,
+        shine: previous.shine ?? defaults.shine,
+      } }, heroEvents.current);
+    });
+  };
   const changeFinishParameter = (key, value) => changeHero((current) => updateHeroEffect(current, {
     ...current.document.nail.effect,
     parameters: { ...current.document.nail.effect.parameters, [key]: value },
   }, heroEvents.current));
+
+  useEffect(() => { window.localStorage.setItem(POLISH_RACK_KEY, JSON.stringify(savedPolishes)); }, [savedPolishes]);
+  useEffect(() => { setHexDraft(activePolishColor); setHexInvalid(false); }, [activePolishColor]);
+
+  const selectSavedPolish = (polish) => {
+    setPolishName(polish.name);
+    changeFinish(polish.finish, polish.colorHex);
+  };
+  const savePolish = () => {
+    const now = new Date().toISOString();
+    const signature = [activeFormulation.colorHex, activeFormulation.finish, activeFormulation.opacity, activeFormulation.viscosity, activeFormulation.shine, activeFormulation.translucency, activeFormulation.matteSoftness, activeFormulation.glassClarity, activeFormulation.shimmerIntensity, activeFormulation.glitterDensity, activeFormulation.metallicReflection].join('|');
+    setSavedPolishes((rack) => {
+      const existing = rack.find((item) => item.signature === signature);
+      const saved = { ...activeFormulation, id: existing?.id || `polish-${Date.now()}`, signature, favorite: existing?.favorite || false, createdAt: existing?.createdAt || now, modifiedAt: now };
+      return [saved, ...rack.filter((item) => item.id !== saved.id && item.signature !== signature)];
+    });
+    setPolishNotice(`${polishName} saved to Polish Rack.`);
+  };
+  const applyPolish = () => {
+    const targets = applicationScope === 'current' ? [activeNailIndex] : applicationScope === 'selected' ? selectedNails : applicationScope === 'left' ? [0,1,2,3,4] : applicationScope === 'right' ? [5,6,7,8,9] : [0,1,2,3,4,5,6,7,8,9];
+    if (!targets.length) { setPolishNotice('Select at least one nail before applying.'); return; }
+    setPolishPast((items) => [...items, nailPolishes]); setPolishFuture([]);
+    setNailPolishes((current) => current.map((value, index) => targets.includes(index) ? { ...activeFormulation } : value));
+    setDirty(true); setSaveState('Save Changes'); setPolishNotice(`Applied ${polishName} to ${targets.length} nail${targets.length === 1 ? '' : 's'}.`);
+  };
 
   const fitToView = () => { setZoom(1); setPan({ x: 0, y: 0 }); };
   const changeComposition = (nextComposition) => { setComposition(nextComposition); setActiveNailIndex((index) => Math.min(index, (COMPOSITIONS.find((item) => item.id === nextComposition)?.nails || 1) - 1)); fitToView(); };
@@ -249,16 +308,24 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
   const saveDesign = async () => {
     if (!dirty || saveState === 'Saving…') return;
     setSaveState('Saving…');
-    await heroPersistence.current?.save({ ...heroDocument, metadata: { ...heroDocument.metadata, name: designName } });
+    await heroPersistence.current?.save({ ...heroDocument, metadata: { ...heroDocument.metadata, name: designName, polishFormulations: nailPolishes, activePolishFormulation: activeFormulation } });
     window.setTimeout(() => { setDirty(false); setSaveState('Saved'); }, 150);
   };
   const undo = () => {
+    if (polishPast.length) {
+      const previous = polishPast[polishPast.length - 1];
+      setPolishPast((items) => items.slice(0, -1)); setPolishFuture((items) => [nailPolishes, ...items]); setNailPolishes(previous); setDirty(true); return;
+    }
     if (!history.length) return;
     const previous = history[history.length - 1];
     setHistory((items) => items.slice(0, -1)); setFuture((items) => [designName, ...items]);
     setDesignName(previous); setDirty(true); setSaveState('Save Changes');
   };
   const redo = () => {
+    if (polishFuture.length) {
+      const next = polishFuture[0];
+      setPolishFuture((items) => items.slice(1)); setPolishPast((items) => [...items, nailPolishes]); setNailPolishes(next); setDirty(true); return;
+    }
     if (!future.length) return;
     const next = future[0];
     setFuture((items) => items.slice(1)); setHistory((items) => [...items, designName]);
@@ -324,7 +391,7 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
 
         <section className="nail-design-studio__command-group nail-design-studio__command-group--edit" aria-label="Edit">
           <h2>Edit</h2><div className="nail-design-studio__command-row">
-            {command('Undo', 'undo', undo, { disabled: !history.length })}{command('Redo', 'redo', redo, { disabled: !future.length })}
+            {command('Undo', 'undo', undo, { disabled: !history.length && !polishPast.length })}{command('Redo', 'redo', redo, { disabled: !future.length && !polishFuture.length })}
           </div>
         </section>
         <section className="nail-design-studio__command-group nail-design-studio__command-group--publish" aria-label="Publish">
@@ -374,9 +441,9 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
           <div className="nail-design-studio__panel-heading" style={{ '--tool-accent': activeTool.accent }}><ToolIcon tool={activeTool} /><h2>{activeTool.label}</h2></div>
           {['polish', 'effects'].includes(activeTool.id) ? <section className="nail-design-studio__polish-studio" aria-label={activeTool.id === 'polish' ? 'Polish Studio' : 'Effects Studio'} data-hero-material-engine="Hero Material Engine" data-hero-effect-engine="Hero Effect Engine" data-hero-lighting-engine="Hero Lighting Engine" data-hero-document-id={heroDocument.metadata.id}>
             <h3>Active Polish</h3>
-            <div className="nail-design-studio__polish-bottle" style={{ '--polish-color': activePolishColor }} aria-label={`Active polish bottle ${activePolishColor}`}><i /><span /></div>
-            <label>Color palette<span className="nail-design-studio__color-row"><input aria-label="Base Color picker" type="color" value={activePolishColor} onChange={(event) => changeFinishParameter(baseColorKey(heroDocument.nail.effect.id), event.target.value.toUpperCase())} /><input aria-label="Base Color HEX" value={activePolishColor} maxLength="7" onChange={(event) => { const value = event.target.value.toUpperCase(); if (/^#[0-9A-F]{6}$/.test(value)) changeFinishParameter(baseColorKey(heroDocument.nail.effect.id), value); }} /></span></label>
-            <label>Finish selection<select aria-label="Finish" value={heroDocument.nail.effect.id} onChange={(event) => changeFinish(event.target.value)}>{Object.keys(FINISH_DEFAULTS).map((finish) => <option key={finish}>{finish}</option>)}</select></label>
+            <div className="nail-design-studio__active-polish"><PolishBottle size="large" selected colorHex={activePolishColor} polishType={activeFinish} name={polishName} collection="AnitaSet Atelier" sizeLabel="15 ml" opacity={appliedEffect.opacity} viscosity={appliedEffect.viscosity} shine={appliedEffect.shine} glitterDensity={heroDocument.nail.effect.parameters.glitterDensity} shimmerIntensity={heroDocument.nail.effect.parameters.shimmerIntensity} /><div><label>Polish name<input aria-label="Polish name" value={polishName} maxLength="48" onChange={(event) => setPolishName(event.target.value)} /></label><p><strong>{activePolishColor}</strong> · {activeFinish}<br />AnitaSet Atelier · 15 ml</p><button type="button" className="nail-design-studio__polish-primary" onClick={savePolish}>Save to Polish Rack</button></div></div>
+            <label>Color palette<span className="nail-design-studio__color-row"><input aria-label="Base Color picker" type="color" value={activePolishColor} onChange={(event) => changeFinishParameter(baseColorKey(heroDocument.nail.effect.id), event.target.value.toUpperCase())} /><input className="nail-design-studio__hex-input" aria-label="Base Color HEX" aria-invalid={hexInvalid} value={hexDraft} maxLength="7" onChange={(event) => { const value = event.target.value.toUpperCase(); if (/^#?[0-9A-F]{0,6}$/.test(value)) { setHexDraft(value); setHexInvalid(false); } }} onBlur={() => { if (/^#[0-9A-F]{6}$/.test(hexDraft)) changeFinishParameter(baseColorKey(heroDocument.nail.effect.id), hexDraft); else { setHexInvalid(true); setHexDraft(activePolishColor); } }} onKeyDown={(event) => { if (event.key === 'Enter') event.currentTarget.blur(); }} /></span></label>
+            <label>Finish selection<select aria-label="Finish" value={activeFinish} onChange={(event) => changeFinish(event.target.value)}>{Object.keys(FINISH_DEFAULTS).map((finish) => <option key={finish}>{finish}</option>)}</select></label>
             <label>Opacity <output>{Math.round(appliedEffect.opacity * 100)}%</output><input aria-label="Opacity" type="range" min="0" max="1" step=".01" value={appliedEffect.opacity} onChange={(event) => changeFinishParameter('opacity', Number(event.target.value))} /></label>
             <label>Viscosity <output>{Math.round(appliedEffect.viscosity * 100)}%</output><input aria-label="Viscosity" type="range" min="0" max="1" step=".01" value={appliedEffect.viscosity} onChange={(event) => changeFinishParameter('viscosity', Number(event.target.value))} /></label>
             <label>Shine <output>{Math.round(appliedEffect.shine * 100)}%</output><input aria-label="Shine" type="range" min="0" max="1" step=".01" value={appliedEffect.shine} onChange={(event) => changeFinishParameter('shine', Number(event.target.value))} /></label>
@@ -384,7 +451,15 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
             {activeTool.id === 'effects' && heroDocument.nail.effect.id === 'Cat Eye' && <><label>Stripe direction <input aria-label="Stripe direction" type="range" min="0" max="360" value={heroDocument.nail.effect.parameters.stripeDirection} onChange={(event) => changeFinishParameter('stripeDirection', Number(event.target.value))} /></label><label>Stripe width <input aria-label="Stripe width" type="range" min="0" max="1" step=".01" value={heroDocument.nail.effect.parameters.stripeWidth} onChange={(event) => changeFinishParameter('stripeWidth', Number(event.target.value))} /></label><label>Stripe strength <input aria-label="Stripe strength" type="range" min="0" max="1" step=".01" value={heroDocument.nail.effect.parameters.stripeStrength} onChange={(event) => changeFinishParameter('stripeStrength', Number(event.target.value))} /></label></>}
             {activeTool.id === 'effects' && heroDocument.nail.effect.id === 'Marble' && <><label>Vein Color<input aria-label="Vein Color" type="color" value={heroDocument.nail.effect.parameters.veinColor} onChange={(event) => changeFinishParameter('veinColor', event.target.value.toUpperCase())} /></label><label>Vein density <input aria-label="Vein density" type="range" min="0" max="1" step=".01" value={heroDocument.nail.effect.parameters.veinDensity} onChange={(event) => changeFinishParameter('veinDensity', Number(event.target.value))} /></label></>}
             {activeTool.id === 'effects' && heroDocument.nail.effect.id === 'Jelly' && <label>Translucency <input aria-label="Translucency" type="range" min="0" max="1" step=".01" value={heroDocument.nail.effect.parameters.translucency} onChange={(event) => changeFinishParameter('translucency', Number(event.target.value))} /></label>}
-            <section className="nail-design-studio__polish-rack" aria-label="Polish Rack"><h3>Polish Rack</h3>{['#D94C70', '#7D2E68', '#F1CAD8', '#521A46'].map((color) => <button key={color} type="button" aria-label={`Apply polish ${color}`} style={{ '--rack-color': color }} onClick={() => changeFinishParameter(baseColorKey(heroDocument.nail.effect.id), color)} />)}</section>
+            {activeFinish === 'Jelly' && <label>Jelly Transparency <input aria-label="Jelly Transparency" type="range" min="0" max="1" step=".01" value={heroDocument.nail.effect.parameters.translucency ?? .52} onChange={(event) => changeFinishParameter('translucency', Number(event.target.value))} /></label>}
+            {activeFinish === 'Matte' && <label>Matte Softness <input aria-label="Matte Softness" type="range" min="0" max="1" step=".01" value={heroDocument.nail.effect.parameters.matteSoftness ?? .72} onChange={(event) => changeFinishParameter('matteSoftness', Number(event.target.value))} /></label>}
+            {activeFinish === 'Glass' && <label>Glass Clarity <input aria-label="Glass Clarity" type="range" min="0" max="1" step=".01" value={heroDocument.nail.effect.parameters.glassClarity ?? .78} onChange={(event) => changeFinishParameter('glassClarity', Number(event.target.value))} /></label>}
+            {activeFinish === 'Shimmer' && <label>Shimmer Intensity <input aria-label="Shimmer Intensity" type="range" min="0" max="1" step=".01" value={heroDocument.nail.effect.parameters.shimmerIntensity ?? .42} onChange={(event) => changeFinishParameter('shimmerIntensity', Number(event.target.value))} /></label>}
+            {activeFinish === 'Glitter' && <label>Glitter Density <input aria-label="Glitter Density" type="range" min="0" max="1" step=".01" value={heroDocument.nail.effect.parameters.glitterDensity ?? .46} onChange={(event) => changeFinishParameter('glitterDensity', Number(event.target.value))} /></label>}
+            {['Metallic', 'Chrome'].includes(activeFinish) && <label>Metallic Reflection <input aria-label="Metallic Reflection" type="range" min="0" max="1" step=".01" value={heroDocument.nail.effect.parameters.metallicReflection ?? .76} onChange={(event) => changeFinishParameter('metallicReflection', Number(event.target.value))} /></label>}
+            <section className="nail-design-studio__polish-rack" aria-label="Polish Rack"><h3>Polish Rack</h3><div className="nail-design-studio__mini-bottles">{savedPolishes.map((polish) => <div key={polish.id}><PolishBottle size="small" colorHex={polish.colorHex} polishType={polish.finish} name={polish.name} selected={polish.colorHex === activePolishColor && polish.finish === activeFinish} onClick={() => selectSavedPolish(polish)} /><span>{polish.favorite ? '★' : ''}{polish.name}</span><div><button type="button" aria-label={`Favorite ${polish.name}`} aria-pressed={Boolean(polish.favorite)} onClick={() => setSavedPolishes((rack) => rack.map((item) => item.id === polish.id ? { ...item, favorite: !item.favorite, modifiedAt: new Date().toISOString() } : item))}>{polish.favorite ? '★' : '☆'}</button><button type="button" aria-label={`Rename ${polish.name}`} onClick={() => { const name = window.prompt('Rename polish', polish.name)?.trim(); if (name) setSavedPolishes((rack) => rack.map((item) => item.id === polish.id ? { ...item, name, modifiedAt: new Date().toISOString() } : item)); }}>✎</button><button type="button" aria-label={`Delete ${polish.name}`} onClick={() => window.confirm(`Delete ${polish.name}?`) && setSavedPolishes((rack) => rack.filter((item) => item.id !== polish.id))}>×</button></div></div>)}</div></section>
+            <section className="nail-design-studio__apply-scope" role="radiogroup" aria-labelledby="apply-polish-heading"><h3 id="apply-polish-heading">Apply Polish To</h3>{[['current','Current Nail'],['selected','Selected Nails'],['left','Left Hand'],['right','Right Hand'],['full','Full Set']].map(([value,label]) => <label key={value}><input type="radio" name="polish-scope" checked={applicationScope === value} onChange={() => setApplicationScope(value)} />{label}</label>)}</section>
+            <button type="button" className="nail-design-studio__polish-primary" onClick={applyPolish}>Apply Polish</button><output className="nail-design-studio__polish-notice" aria-live="polite">{polishNotice}</output>
           </section> : <p className="nail-design-studio__placeholder-copy">The {activeTool.label} creative tools are scoped for construction in a future studio section.</p>}
         </aside>}
         <main className="nail-design-studio__desk" aria-label="Nail Desk">
@@ -410,13 +485,13 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
           <div className={`nail-design-studio__desk-surface${zoom > 1 ? ' is-pannable' : ''}`} style={{ backgroundImage: `url(${activeSurface.src})` }} onPointerDown={startPan} onPointerMove={movePan} onPointerUp={stopPan} onPointerCancel={stopPan} data-testid="nail-stage-container">
             <div className={`nail-design-studio__nail-stage nail-design-studio__nail-stage--${composition}`} style={{ '--stage-zoom': zoom, '--stage-x': `${pan.x}px`, '--stage-y': `${pan.y}px`, '--nail-length': nailLength / 100 }} aria-label={`${activeComposition.label} nail stage`}>
               {visibleNails.map(({ index, hand, handClass, label }) => (
-                <button type="button" className={`nail-design-studio__nail-slot nail-design-studio__nail-slot--${handClass}`} data-testid="nail-slot" data-active={activeNailIndex === index} key={index} onClick={() => setActiveNailIndex(index)} aria-pressed={activeNailIndex === index} aria-label={`Select ${label}`}>
+                <button type="button" className={`nail-design-studio__nail-slot nail-design-studio__nail-slot--${handClass}`} data-testid="nail-slot" data-active={activeNailIndex === index} data-selected={selectedNails.includes(index)} key={index} onClick={(event) => { setActiveNailIndex(index); if (event.shiftKey || event.ctrlKey || event.metaKey) setSelectedNails((items) => items.includes(index) ? items.filter((item) => item !== index) : [...items, index]); }} aria-pressed={selectedNails.includes(index)} aria-label={`Select ${label}`}>
                   {(composition === 'spread' || composition === 'full') && <span className="nail-design-studio__hand-label">{hand}</span>}
                   <svg className="nail-design-studio__hero-nail" data-testid="stage-nail" data-nail-shape={nailShape.toLowerCase()}
                     data-hero-renderer="Hero Surface Rendering Engine" data-hero-mask={renderedSurface.maskId} data-design-layer-parent="true"
                     aria-label={`Hero Nail ${index + 1}`} viewBox={renderedSurface.viewBox} preserveAspectRatio="xMidYMid meet" role="img">
                     <defs>{appliedEffect.layers.map((layer, layerIndex) => layer.kind === 'linear-gradient' && <linearGradient key={layerIndex} id={`hero-finish-${index}-${layerIndex}`} x1="0" y1="0" x2="1" y2="0" gradientTransform={`rotate(${layer.angle ?? 90} .5 .5)`}>{layer.colors.map((color, stop) => <stop key={stop} offset={`${stop / Math.max(1, layer.colors.length - 1) * 100}%`} stopColor={color} />)}</linearGradient>)}<radialGradient id={`hero-light-apex-${index}`} cx="50%" cy="28%" r="58%"><stop offset="0%" stopColor={appliedLighting.reflections[3].color} stopOpacity={appliedLighting.reflections[3].opacity} /><stop offset="56%" stopColor={appliedLighting.reflections[3].color} stopOpacity={appliedLighting.reflections[3].opacity * .22} /><stop offset="100%" stopColor={appliedLighting.reflections[3].color} stopOpacity="0" /></radialGradient><linearGradient id={`hero-light-primary-${index}`} x1="0" y1="0" x2="1" y2="0" gradientTransform={`rotate(${appliedLighting.reflections[0].angle} .5 .5)`}><stop offset="0%" stopColor={appliedLighting.reflections[0].color} stopOpacity="0" /><stop offset="42%" stopColor={appliedLighting.reflections[0].color} stopOpacity={appliedLighting.reflections[0].opacity} /><stop offset="62%" stopColor={appliedLighting.reflections[0].color} stopOpacity={appliedLighting.reflections[0].opacity * .36} /><stop offset="100%" stopColor={appliedLighting.reflections[0].color} stopOpacity="0" /></linearGradient><linearGradient id={`hero-light-edge-${index}`} x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stopColor={appliedLighting.reflections[2].color} stopOpacity={appliedLighting.reflections[2].opacity} /><stop offset="22%" stopColor={appliedLighting.reflections[2].color} stopOpacity="0" /><stop offset="78%" stopColor={appliedLighting.reflections[2].color} stopOpacity="0" /><stop offset="100%" stopColor={appliedLighting.reflections[2].color} stopOpacity={appliedLighting.reflections[2].opacity * .72} /></linearGradient><linearGradient id={`hero-light-depth-${index}`} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#000000" stopOpacity="0" /><stop offset="100%" stopColor="#000000" stopOpacity={appliedLighting.reflections[4].opacity} /></linearGradient></defs>
-                    <path className="nail-design-studio__nail-polish" data-design-layer="polish" data-hero-material-layer="true" data-hero-effect={appliedEffect.id} data-hero-lighting="Hero Lighting Engine" data-hero-reflection={appliedLighting.profile.reflection} data-material-id={renderedSurface.material.id} d={renderedSurface.path} style={{ fill: appliedEffect.layers[0].kind === 'linear-gradient' ? `url(#hero-finish-${index}-0)` : appliedEffect.layers[0].color, fillOpacity: appliedEffect.layers[0].opacity, stroke: renderedSurface.materialStyle.baseTint, strokeOpacity: renderedSurface.materialStyle.edgeOpacity, strokeWidth: renderedSurface.materialStyle.edgeWidth }} />
+                    <path className="nail-design-studio__nail-polish" data-design-layer="polish" data-hero-material-layer="true" data-polish-finish={nailPolishes[index]?.finish || activeFinish} data-hero-effect={appliedEffect.id} data-hero-lighting="Hero Lighting Engine" data-hero-reflection={appliedLighting.profile.reflection} data-material-id={renderedSurface.material.id} d={renderedSurface.path} style={{ fill: nailPolishes[index]?.colorHex || (appliedEffect.layers[0].kind === 'linear-gradient' ? `url(#hero-finish-${index}-0)` : appliedEffect.layers[0].color), fillOpacity: nailPolishes[index]?.opacity ?? appliedEffect.layers[0].opacity, stroke: renderedSurface.materialStyle.baseTint, strokeOpacity: renderedSurface.materialStyle.edgeOpacity, strokeWidth: renderedSurface.materialStyle.edgeWidth }} />
                     {appliedEffect.layers.slice(1).map((layer, layerIndex) => layer.kind === 'linear-gradient' ? <path key={layerIndex} d={renderedSurface.path} fill={`url(#hero-finish-${index}-${layerIndex + 1})`} opacity={layer.opacity} /> : layer.paths?.map((path, pathIndex) => <path key={`${layerIndex}-${pathIndex}`} d={path} stroke={layer.color} opacity={layer.opacity} fill="none" vectorEffect="non-scaling-stroke" />))}
                     <path d={renderedSurface.path} fill={`url(#hero-light-depth-${index})`} opacity={appliedLighting.profile.veinPreservation} />
                     <path d={renderedSurface.path} fill={`url(#hero-light-apex-${index})`} style={{ mixBlendMode: 'screen' }} />
@@ -447,7 +522,7 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
         <section className="nail-design-studio__workspace-module nail-design-studio__workspace-module--polish" aria-label="Polish Rack">
           <div className="nail-design-studio__module-heading"><div><span>Polish Rack™</span><strong>Saved collection</strong></div><button type="button" onClick={() => setCollectionOpen(true)}>See All</button></div>
           <div className="nail-design-studio__shelf" role="list">
-            {SAVED_POLISHES.map((polish) => <button type="button" role="listitem" className="nail-design-studio__rack-bottle" style={{ '--saved-polish': polish.color }} key={polish.id} onClick={() => changeFinishParameter(baseColorKey(heroDocument.nail.effect.id), polish.color)} aria-label={`Select ${polish.name}`}><i /><span /><em>{polish.name}</em></button>)}
+            {savedPolishes.map((polish) => <div role="listitem" className="nail-design-studio__lower-polish" key={polish.id}><PolishBottle size="medium" colorHex={polish.colorHex} polishType={polish.finish} name={polish.name} selected={polish.colorHex === activePolishColor && polish.finish === activeFinish} onClick={() => selectSavedPolish(polish)} /><span>{polish.favorite ? '★ ' : ''}{polish.name}</span></div>)}
           </div>
         </section>
         <section className="nail-design-studio__workspace-module nail-design-studio__workspace-module--assets" aria-label="Asset Library shortcuts">
