@@ -7,6 +7,8 @@ const SIZE_MAP = {
   large: { width: 92, height: 132, capWidth: 42, capHeight: 34, bodyWidth: 72, bodyHeight: 84 },
 };
 
+const BOTTLE_GLITTER = [[.31,.25,1,.9],[.52,.21,.55,.58],[.68,.29,.8,.78],[.43,.36,1.2,.86],[.61,.43,.5,.54],[.30,.48,.65,.6],[.53,.53,1,.92],[.72,.59,.55,.46],[.39,.66,.8,.72],[.59,.73,1.15,.82],[.48,.82,.55,.5]];
+
 function finishStyles(finish = "Cream", opacity = 1, shine = 0.62, glitterDensity = 0.35, shimmerIntensity = 0.35) {
   const type = finish === "Chrome-ready" ? "Chrome-ready" : finish;
   const liquidOpacity = type === "Jelly" ? 0.58 + opacity * 0.22 : type === "Glass" ? 0.42 + opacity * 0.22 : type === "Matte" ? 0.9 : Math.max(0.55, opacity);
@@ -45,13 +47,16 @@ export default function PolishBottle({ colorHex = "#E8A0BF", label, selected = f
     <path d={`M${(dims.width-dims.bodyWidth)/2+5} ${dims.capHeight+10}c3-6 5-8 10-9v${dims.bodyHeight-14}c-4 1-7 0-10-2Z`} fill="#fff" opacity=".28"/>
     <path d={`M${(dims.width-dims.bodyWidth)/2+5} ${dims.capHeight+dims.bodyHeight*.52}h${dims.bodyWidth-10}v${dims.bodyHeight*.32}c-8 5-${dims.bodyWidth-18} 5-${dims.bodyWidth-10} 0Z`} fill={`url(#${uid}-depth)`} opacity=".48"/>
     <path d={`M${(dims.width-dims.bodyWidth)/2+3} ${dims.capHeight+2}h${dims.bodyWidth-6}`} stroke="#fff" strokeWidth="1.2" strokeLinecap="round" opacity=".62"/>
-    {material.metallic > 0 && <path d={`M${(dims.width-dims.bodyWidth)/2+4} ${dims.capHeight+13}h${dims.bodyWidth-8}l-6 9h-${dims.bodyWidth-8}zM${(dims.width-dims.bodyWidth)/2+8} ${dims.capHeight+35}h${dims.bodyWidth-12}l-5 8h-${dims.bodyWidth-12}z`} fill="#fff" opacity={material.metallic}/>} 
-    {(material.glitter > 0 || material.shimmer > 0) && <path d={`M${(dims.width-dims.bodyWidth)/2+8} ${dims.capHeight+8}h${dims.bodyWidth-16}v${dims.bodyHeight-18}h-${dims.bodyWidth-16}z`} fill={`url(#${uid}-sparkle)`} opacity={Math.max(material.glitter, material.shimmer)}/>} 
+    {material.metallic > 0 && <path d={`M${(dims.width-dims.bodyWidth)/2+4} ${dims.capHeight+13}h${dims.bodyWidth-8}l-6 9h-${dims.bodyWidth-8}zM${(dims.width-dims.bodyWidth)/2+8} ${dims.capHeight+35}h${dims.bodyWidth-12}l-5 8h-${dims.bodyWidth-12}z`} fill="#fff" opacity={material.metallic}/>}
+    {material.shimmer > 0 && <path d={`M${(dims.width-dims.bodyWidth)/2+8} ${dims.capHeight+8}h${dims.bodyWidth-16}v${dims.bodyHeight-18}h-${dims.bodyWidth-16}z`} fill={`url(#${uid}-sparkle)`} opacity={material.shimmer}/>}
+    {material.glitter > 0 && <g data-bottle-material-layer="suspended-glitter-particles">{BOTTLE_GLITTER.map(([x,y,r,a], index) => <circle key={index} cx={(dims.width-dims.bodyWidth)/2 + dims.bodyWidth*x} cy={dims.capHeight + dims.bodyHeight*y} r={r * (size === "small" ? .72 : 1)} fill={index % 3 ? "#fff" : "#ffe6a3"} opacity={a * material.glitter}/>)}</g>}
     {material.catEye > 0 && <path d={`M${dims.width*.25} ${dims.capHeight+45}c14-18 24-25 38-31`} stroke="#fff6b8" strokeWidth="4" strokeLinecap="round" opacity=".58" filter="blur(.5px)"/>}
     <rect x={(dims.width-dims.bodyWidth*.62)/2} y={dims.capHeight+dims.bodyHeight*.45} width={dims.bodyWidth*.62} height={dims.bodyHeight*.28} rx="3" fill="rgba(255,250,247,.88)" stroke="rgba(59,31,53,.14)"/>
     {size !== "small" && <text x={dims.width/2} y={dims.capHeight+dims.bodyHeight*.55} textAnchor="middle" fontSize={9*labelScale} fontWeight="700" fill="#3B1F35">{String(name).slice(0, 16)}</text>}
     {size === "large" && <><text x={dims.width/2} y={dims.capHeight+dims.bodyHeight*.64} textAnchor="middle" fontSize="7" fill="#7B2F59">{String(collection || "Atelier").slice(0, 18)}</text><text x={dims.width/2} y={dims.capHeight+dims.bodyHeight*.71} textAnchor="middle" fontSize="6" fill="#6b5a66">{resolvedFinish} · {sizeLabel}</text></>}
     <path className="polish-bottle-reflection" d={`M${dims.width*.68} ${dims.capHeight+5}c8 16 7 43-2 61`} stroke="#fff" strokeWidth="2" opacity={material.glossOpacity} fill="none"/>
+    <path d={`M${(dims.width-dims.bodyWidth)/2+1} ${dims.capHeight+4}c-5 13-6 ${dims.bodyHeight-3} 2 ${dims.bodyHeight+5}`} stroke="#fff" strokeWidth="1.1" opacity=".34" fill="none"/>
+    <path d={`M${(dims.width+dims.bodyWidth)/2-1} ${dims.capHeight+4}c5 13 6 ${dims.bodyHeight-3}-2 ${dims.bodyHeight+5}`} stroke="#160b14" strokeWidth="1.2" opacity=".28" fill="none"/>
   </svg>;
 
   if (onClick) return <button type="button" aria-label={accessibleLabel} title={accessibleLabel} onClick={onClick} className={`polish-bottle-button ${className}`.trim()} style={{ display: "inline-flex", justifyContent: "center", maxWidth: "100%", border: 0, background: "transparent", padding: 2, cursor: "pointer", borderRadius: 14, boxSizing: "border-box", transition: "transform 180ms ease, filter 180ms ease, box-shadow 180ms ease" }}>{bottle}</button>;

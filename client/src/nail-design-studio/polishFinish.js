@@ -13,6 +13,11 @@ export const FINISH_DEFAULTS = Object.freeze({
   Glitter: { baseColor: '#D94C70', opacity: 1, viscosity: .7, shine: .82, glitterDensity: .46 },
 });
 
+// DS-03.3 exposes only materials whose dedicated renderer is complete. The
+// defaults above intentionally remain intact so persisted formulations keep
+// normalizing and rendering without data loss.
+export const VISIBLE_POLISH_FINISHES = Object.freeze(['Cream', 'Matte', 'Jelly', 'Glitter']);
+
 const SHARED = ['opacity', 'viscosity', 'shine'];
 const SPECIFIC = {
   Gradient: ['colorB', 'direction'], Chrome: ['metallicReflection'], 'Cat Eye': ['stripeDirection', 'stripeWidth', 'stripeStrength'],
@@ -34,7 +39,7 @@ export function normalizePolishForFinish(polish = {}, requestedFinish = 'Cream')
 /** Produces the strict, supported parameter schema consumed by the Hero engine. */
 export function heroEffectForPolish(polish) {
   const p = normalizePolishForFinish(polish, polish.finish);
-  const id = ({ Cream: 'Solid', Matte: 'Solid', Glass: 'Jelly', 'Chrome-ready': 'Chrome', Shimmer: 'Chrome', Metallic: 'Chrome', Glitter: 'Chrome' })[p.finish] || p.finish;
+  const id = ({ Cream: 'Solid', Matte: 'Solid', Glitter: 'Solid', Glass: 'Jelly', 'Chrome-ready': 'Chrome', Shimmer: 'Chrome', Metallic: 'Chrome' })[p.finish] || p.finish;
   const parameters = { [id === 'Gradient' ? 'colorA' : 'baseColor']: p.colorHex, opacity: p.opacity, viscosity: p.viscosity, shine: p.shine };
   const allowed = { Gradient: ['colorB', 'direction'], 'Cat Eye': ['stripeDirection', 'stripeWidth', 'stripeStrength'], Marble: ['veinColor', 'veinDensity'], Jelly: ['translucency'] }[id] || [];
   allowed.forEach((key) => { parameters[key] = p[key] ?? FINISH_DEFAULTS[p.finish][key]; });

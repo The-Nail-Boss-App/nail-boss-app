@@ -25,7 +25,7 @@ describe('DS-03 Polish Studio repair', () => {
 
   it('uses Cream terminology, a compact safe HEX editor, and the shared premium bottle renderer', async () => {
     const finish = container.querySelector('select[aria-label="Finish"]');
-    expect([...finish.options].map((option) => option.textContent)).toEqual(expect.arrayContaining(['Cream', 'Jelly', 'Matte', 'Glass', 'Chrome-ready', 'Chrome', 'Glitter']));
+    expect([...finish.options].map((option) => option.textContent)).toEqual(['Cream', 'Matte', 'Jelly', 'Glitter']);
     expect([...finish.options].map((option) => option.textContent)).not.toContain('Solid');
     expect(container.querySelector('[data-testid="active-polish-card"]')).toBeNull();
     expect(container.querySelector('.nail-design-studio__active-polish .polish-bottle-figure').dataset.polishFinish).toBe('Cream');
@@ -64,11 +64,26 @@ describe('DS-03 Polish Studio repair', () => {
     expect(normalizePolishForFinish({ glitterDensity: .8 }, 'retired-finish').finish).toBe('Cream');
 
     const select = container.querySelector('select[aria-label="Finish"]');
-    for (const finish of ['Cream', 'Jelly', 'Matte', 'Glass', 'Chrome-ready', 'Chrome', 'Glitter']) {
+    for (const finish of ['Cream', 'Jelly', 'Matte', 'Glitter']) {
       await act(async () => { select.value = finish; select.dispatchEvent(new Event('change', { bubbles: true })); });
       expect(select.value).toBe(finish);
       expect(container.querySelector('[data-design-layer="polish"]')).toBeTruthy();
     }
+  });
+
+  it('keeps hidden legacy finishes compatible when reopening a saved design', async () => {
+    const legacy = normalizePolishForFinish({ colorHex: '#ABCDEF', metallicReflection: .55 }, 'Chrome-ready');
+    expect(legacy).toMatchObject({ finish: 'Chrome-ready', colorHex: '#ABCDEF', metallicReflection: .55 });
+    expect(heroEffectForPolish(legacy).id).toBe('Chrome');
+  });
+
+  it('updates the compact bottle material for every approved finish', async () => {
+    const select = container.querySelector('select[aria-label="Finish"]');
+    for (const finish of ['Cream', 'Matte', 'Jelly', 'Glitter']) {
+      await act(async () => { select.value = finish; select.dispatchEvent(new Event('change', { bubbles: true })); });
+      expect(container.querySelector('.nail-design-studio__active-polish .polish-bottle-figure').dataset.polishFinish).toBe(finish);
+    }
+    expect(container.querySelector('[data-bottle-material-layer="suspended-glitter-particles"] circle')).toBeTruthy();
   });
 
   it('uses the filled star to unsave the active formulation from both racks', async () => {
@@ -285,12 +300,12 @@ describe('adaptive Nail Desk', () => {
     expect(container.querySelector('[aria-label="Polish panel"]')).toBeNull();
     expect(['Active Polish', 'Polish Rack'].every((label) => studio.textContent.includes(label))).toBe(true);
     const finish = container.querySelector('select[aria-label="Finish"]');
-    await act(async () => { finish.value = 'Chrome'; finish.dispatchEvent(new Event('change', { bubbles: true })); });
-    expect(container.querySelector('[data-design-layer="polish"]').dataset.heroEffect).toBe('Chrome');
+    await act(async () => { finish.value = 'Glitter'; finish.dispatchEvent(new Event('change', { bubbles: true })); });
+    expect(container.querySelector('[data-design-layer="polish"]').dataset.heroEffect).toBe('Solid');
 
     const color = container.querySelector('input[aria-label="Base Color picker"]');
     await act(async () => { color.value = '#123456'; color.dispatchEvent(new Event('change', { bubbles: true })); });
-    expect(container.querySelector('[data-design-layer="polish"]').dataset.heroEffect).toBe('Chrome');
+    expect(container.querySelector('[data-design-layer="polish"]').dataset.heroEffect).toBe('Solid');
     expect(container.querySelector('button[aria-label="Save Changes"]')).toBeTruthy();
 
     const viscosity = container.querySelector('input[aria-label="Viscosity"]');
@@ -302,10 +317,10 @@ describe('adaptive Nail Desk', () => {
   it('uses one Hero effect document from both Polish and Effects Studio', async () => {
     const polish = container.querySelector('[aria-label="Polish Studio"]');
     const documentId = polish.dataset.heroDocumentId;
-    const finish = polish.querySelector('select[aria-label="Finish"]');
-    await act(async () => { finish.value = 'Gradient'; finish.dispatchEvent(new Event('change', { bubbles: true })); });
     await click(button('Effects'));
     const effects = container.querySelector('[aria-label="Effects Studio"]');
+    const finish = effects.querySelector('select[aria-label="Finish"]');
+    await act(async () => { finish.value = 'Gradient'; finish.dispatchEvent(new Event('change', { bubbles: true })); });
     expect(effects.dataset.heroDocumentId).toBe(documentId);
     expect(effects.querySelector('select[aria-label="Finish"]').value).toBe('Gradient');
     expect(effects.querySelector('input[aria-label="Direction"]')).toBeTruthy();
