@@ -14,6 +14,11 @@ const type = async (input, value) => act(async () => {
   Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set.call(input, value);
   input.dispatchEvent(new Event('input', { bubbles: true }));
 });
+const editHex = async (container, value) => {
+  const input = container.querySelector('input[aria-label="Base Color HEX"]');
+  await type(input, value);
+  await act(async () => input.dispatchEvent(new FocusEvent('focusout', { bubbles: true })));
+};
 
 describe('DS-03 Polish Studio repair', () => {
   beforeEach(async () => {
@@ -146,6 +151,52 @@ describe('DS-03 Polish Studio repair', () => {
     const reopened = JSON.parse(window.localStorage.getItem('anitaset.hero-design.v1:nail-desk-hero')).metadata;
     expect(reopened.polishFormulations).toHaveLength(10);
     expect(reopened.activePolishFormulation).toMatchObject({ name: 'Blush Royalty', finish: 'Cream' });
+  });
+
+  it('live-previews the editing color on the real stage nail before Apply and commits it only on Apply', async () => {
+    await editHex(container, '#E8A0BF');
+    await click(container.querySelector('.nail-design-studio__apply-polish'));
+    let stageNail = container.querySelector('svg[data-testid="stage-nail"]');
+    expect(stageNail.dataset.appliedPolishColor).toBe('#E8A0BF');
+
+    await editHex(container, '#030303');
+    stageNail = container.querySelector('svg[data-testid="stage-nail"]');
+    expect(container.querySelector('.nail-design-studio__active-details dd').textContent).toBe('#030303');
+    expect(stageNail.dataset.activePolishColor).toBe('#030303');
+    expect(stageNail.dataset.renderColor).toBe('#030303');
+    expect(stageNail.dataset.appliedPolishColor).toBe('#E8A0BF');
+    expect(stageNail.querySelector('[data-material-renderer] stop').getAttribute('stop-color')).toBe('#030303');
+
+    await click(container.querySelector('.nail-design-studio__apply-polish'));
+    stageNail = container.querySelector('svg[data-testid="stage-nail"]');
+    expect(stageNail.dataset.renderColor).toBe('#030303');
+    expect(stageNail.dataset.appliedPolishColor).toBe('#030303');
+  });
+
+  it('keeps repeated colors and finish changes live while isolating stored colors across a full set', async () => {
+    for (const color of ['#000000', '#FFFFFF', '#991435', '#07152F', '#E8A0BF']) {
+      await editHex(container, color);
+      expect(container.querySelector('svg[data-testid="stage-nail"]').dataset.renderColor).toBe(color);
+    }
+    const finish = container.querySelector('select[aria-label="Finish"]');
+    await act(async () => { finish.value = 'Jelly'; finish.dispatchEvent(new Event('change', { bubbles: true })); });
+    expect(container.querySelector('svg[data-testid="stage-nail"]').dataset.renderColor).toBe('#E8A0BF');
+    await click(container.querySelector('.nail-design-studio__apply-polish'));
+
+    await click(container.querySelector('input[name="composition"][value="full"]'));
+    await click(container.querySelectorAll('[data-testid="nail-slot"]')[1]);
+    await editHex(container, '#07152F');
+    await click(container.querySelector('.nail-design-studio__apply-polish'));
+    await editHex(container, '#991435');
+    const nails = container.querySelectorAll('svg[data-testid="stage-nail"]');
+    expect(nails[0].dataset.renderColor).toBe('#E8A0BF');
+    expect(nails[1].dataset.renderColor).toBe('#991435');
+    expect(nails[1].dataset.appliedPolishColor).toBe('#07152F');
+
+    await click(container.querySelectorAll('[data-testid="nail-slot"]')[0]);
+    expect(container.querySelectorAll('svg[data-testid="stage-nail"]')[0].dataset.renderColor).toBe('#E8A0BF');
+    await click(container.querySelectorAll('[data-testid="nail-slot"]')[1]);
+    expect(container.querySelectorAll('svg[data-testid="stage-nail"]')[1].dataset.renderColor).toBe('#07152F');
   });
 });
 
