@@ -2537,8 +2537,12 @@ function DesignStudio(_, ref) {
   }
 
   function patchActivePolish(properties) {
-    setDraftPolish((prev) => ({ ...prev, ...properties }));
-    updateBase(polishPatchFromDraft(draftPolish.colorHex, properties));
+    const nextDraft = { ...draftPolish, ...properties };
+    setDraftPolish(nextDraft);
+    // Commit from the same snapshot shown by the controls. Passing the previous
+    // draft color here caused a newly selected color to be overwritten before it
+    // reached the active base layer.
+    updateBase(polishPatchFromDraft(nextDraft.colorHex, nextDraft));
   }
 
   function resetPolishDefaults() {

@@ -259,6 +259,7 @@ export function SharedPolishRealismLayers({ nail, path, clipId, uid, shine = 0.6
 
 // Compatibility note: polishType === "Matte" remains a supported shared material layer.
 export function GelNailSurfaceRenderer({ nail, baseLayer, path, clipId, uid }) {
+  const sourceColor = baseLayer?.data?.colorHex || nail?.baseColorHex || "";
   const data = resolvePolishDataForRender(baseLayer?.data || {}, nail?.baseColorHex || "#E8A0BF");
   const surfacePreset = polishSurfacePreset(data);
   // Cream consumes the complete UI Shine range. Other finishes retain their
@@ -273,8 +274,8 @@ export function GelNailSurfaceRenderer({ nail, baseLayer, path, clipId, uid }) {
   const pigment = resolvePigment({ baseColor: data.colorHex, opacity, saturation: data.saturation, tint: data.tint, pigmentStrength: data.pigmentStrength });
   const maps = resolveMaterialMaps(data.materialMaps || data.maps);
 
-  return <g pointerEvents="none" data-material-renderer="hybrid-layered" data-material-preset={material.id} data-material-map-fallback="procedural">
-    <g data-render-layer="base-pigment"><path data-material-layer="base-pigment" d={path} fill={pigment.baseColor} opacity={pigment.opacity * material.opacity * pigment.pigmentStrength} data-material-preset={material.id}/></g>
+  return <g pointerEvents="none" data-material-renderer="hybrid-layered" data-material-preset={material.id} data-material-map-fallback="procedural" data-source-color={sourceColor} data-resolved-color={data.colorHex} data-pigment-color={pigment.baseColor}>
+    <g data-render-layer="base-pigment"><path data-material-layer="base-pigment" d={path} fill={pigment.baseColor} opacity={pigment.opacity * material.opacity * pigment.pigmentStrength} data-material-preset={material.id} data-source-color={sourceColor} data-resolved-color={data.colorHex} data-pigment-color={pigment.baseColor}/></g>
     {material.transmission > 0 && <g data-render-layer="material-volume" data-transmission={material.transmission} data-thickness-influence={material.thicknessInfluence}><path data-material-layer="thickness-transmission" d={path} fill={`url(#${surfaceIds(uid).thickness})`} opacity={material.transmission * material.thicknessInfluence} style={{ mixBlendMode: "screen" }}/></g>}
     {surfacePreset === "Matte" && <path data-material-layer="matte-muted-pigment-veil" d={path} fill="#b9adb4" opacity=".10"/>}
     {data.polishType === "Milky" && <path data-material-layer="milky-builder-gel-veil soft-cloudy-milky-diffusion" d={path} fill="#fff8fb" opacity=".36"/>}
