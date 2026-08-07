@@ -27,7 +27,7 @@ const preset = (id, values) => Object.freeze({ id, ...values });
 
 /** Central, color-independent optical presets used by every polish surface. */
 export const NAIL_MATERIAL_PRESETS = Object.freeze({
-  Cream: preset("cream", { opacity: 1, translucency: 0, roughness: .22, smoothness: .78, specularStrength: .68, reflectionStrength: .68, diffusion: .08, transmission: 0, scattering: .08, thicknessInfluence: .18, metallic: 0, clearCoat: .62, clearCoatRoughness: .16 }),
+  Cream: preset("cream", { opacity: 1, translucency: 0, roughness: .1, smoothness: .9, specularStrength: .82, reflectionStrength: .72, diffusion: .025, transmission: 0, scattering: .015, thicknessInfluence: .24, metallic: 0, clearCoat: .92, clearCoatRoughness: .07 }),
   Jelly: preset("jelly", { opacity: .68, translucency: .58, roughness: .1, smoothness: .9, specularStrength: .78, reflectionStrength: .82, diffusion: .02, transmission: .48, scattering: .22, thicknessInfluence: .82, metallic: 0, clearCoat: .86, clearCoatRoughness: .08 }),
   Milky: preset("milky", { opacity: .78, translucency: .28, roughness: .38, smoothness: .62, specularStrength: .38, reflectionStrength: .32, diffusion: .44, transmission: .2, scattering: .64, thicknessInfluence: .52, metallic: 0, clearCoat: .48, clearCoatRoughness: .3 }),
   Matte: preset("matte", { opacity: .96, translucency: 0, roughness: .92, smoothness: .08, specularStrength: .08, reflectionStrength: .045, diffusion: .2, transmission: 0, scattering: .12, thicknessInfluence: .2, metallic: 0, clearCoat: .04, clearCoatRoughness: .94 }),
