@@ -93,10 +93,14 @@ export function polishMaterialProfile(polishType = "Cream", shine = 0.62) {
   // Cream's shine control modulates its optical top layer, while the opaque
   // pigment remains untouched. This preserves the existing control contract
   // without making low-shine Cream translucent or desaturated.
-  const creamShineResponse = material.id === "cream" ? .55 + userShine * .45 : 1;
+  const isCream = material.id === "cream";
+  // Smoothness continues to describe Cream's physical surface and therefore
+  // its highlight sharpness. Shine independently controls how much reflected
+  // light that smooth surface returns, continuously across the whole range.
+  const creamShineResponse = isCream ? .3 + userShine * .7 : 1;
   return {
     ...material,
-    gloss: material.id === "matte" ? Math.min(.08, userShine) : Math.max(material.smoothness, userShine),
+    gloss: material.id === "matte" ? Math.min(.08, userShine) : isCream ? userShine : Math.max(material.smoothness, userShine),
     reflection: material.reflectionStrength * creamShineResponse,
     apex: material.specularStrength * creamShineResponse,
     clearCoat: material.clearCoat * creamShineResponse,

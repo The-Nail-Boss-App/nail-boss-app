@@ -2,6 +2,15 @@ import { getNailArchitecture } from "./blueprint.js";
 import { polishMaterialProfile, polishOpacity, polishSurfacePreset, resolvePolishDataForRender } from "./polish.js";
 import { resolveMaterialMaps, resolveNailMaterial, resolvePigment } from "./materialFoundation.js";
 
+// Generic optics may change luminance, never hue. Keeping these tokens public
+// gives color-fidelity tests a stable contract without snapshotting the SVG.
+export const GENERIC_OPTICAL_COLORS = Object.freeze({
+  illumination: "#ffffff",
+  occlusion: "#000000",
+});
+
+const { illumination: OPTICAL_LIGHT, occlusion: OPTICAL_SHADOW } = GENERIC_OPTICAL_COLORS;
+
 function surfaceIds(uid) {
   return {
     body: `${uid}-gel-body`,
@@ -57,17 +66,17 @@ export function PolishDefs({ uid }) {
   const ids = surfaceIds(uid);
   return <>
     <linearGradient id={ids.body} x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stopColor="#ffffff" stopOpacity=".22"/>
-      <stop offset="28%" stopColor="#ffffff" stopOpacity=".04"/>
-      <stop offset="64%" stopColor="#2b1024" stopOpacity=".07"/>
-      <stop offset="100%" stopColor="#160812" stopOpacity=".14"/>
+      <stop offset="0%" stopColor={OPTICAL_LIGHT} stopOpacity=".22"/>
+      <stop offset="28%" stopColor={OPTICAL_LIGHT} stopOpacity=".04"/>
+      <stop offset="64%" stopColor={OPTICAL_SHADOW} stopOpacity=".07"/>
+      <stop offset="100%" stopColor={OPTICAL_SHADOW} stopOpacity=".14"/>
     </linearGradient>
     <linearGradient id={ids.sidewall} x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0%" stopColor="#120712" stopOpacity=".30"/>
-      <stop offset="18%" stopColor="#120712" stopOpacity=".11"/>
-      <stop offset="46%" stopColor="#ffffff" stopOpacity=".02"/>
-      <stop offset="76%" stopColor="#120712" stopOpacity=".09"/>
-      <stop offset="100%" stopColor="#120712" stopOpacity=".26"/>
+      <stop offset="0%" stopColor={OPTICAL_SHADOW} stopOpacity=".30"/>
+      <stop offset="18%" stopColor={OPTICAL_SHADOW} stopOpacity=".11"/>
+      <stop offset="46%" stopColor={OPTICAL_LIGHT} stopOpacity=".02"/>
+      <stop offset="76%" stopColor={OPTICAL_SHADOW} stopOpacity=".09"/>
+      <stop offset="100%" stopColor={OPTICAL_SHADOW} stopOpacity=".26"/>
     </linearGradient>
     <radialGradient id={ids.apex} cx="46%" cy="38%" r="58%">
       <stop offset="0%" stopColor="#ffffff" stopOpacity=".34"/>
@@ -89,8 +98,8 @@ export function PolishDefs({ uid }) {
     <radialGradient id={ids.topCoatDepth} cx="46%" cy="30%" r="78%">
       <stop offset="0%" stopColor="#ffffff" stopOpacity=".24"/>
       <stop offset="44%" stopColor="#ffffff" stopOpacity=".075"/>
-      <stop offset="78%" stopColor="#1a0815" stopOpacity=".06"/>
-      <stop offset="100%" stopColor="#1a0815" stopOpacity=".16"/>
+      <stop offset="78%" stopColor={OPTICAL_SHADOW} stopOpacity=".06"/>
+      <stop offset="100%" stopColor={OPTICAL_SHADOW} stopOpacity=".16"/>
     </radialGradient>
     <linearGradient id={ids.edgeCatch} x1="0" y1="0" x2="1" y2="0">
       <stop offset="0%" stopColor="#ffffff" stopOpacity=".42"/>
@@ -100,21 +109,21 @@ export function PolishDefs({ uid }) {
     </linearGradient>
     <linearGradient id={ids.freeEdge} x1="0" y1="0" x2="0" y2="1">
       <stop offset="0%" stopColor="#ffffff" stopOpacity=".06"/>
-      <stop offset="45%" stopColor="#3b1f35" stopOpacity=".08"/>
-      <stop offset="100%" stopColor="#120712" stopOpacity=".24"/>
+      <stop offset="45%" stopColor={OPTICAL_SHADOW} stopOpacity=".08"/>
+      <stop offset="100%" stopColor={OPTICAL_SHADOW} stopOpacity=".24"/>
     </linearGradient>
     <filter id={ids.glossBlur} x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="1.8"/></filter>
     <filter id={ids.brokenGlossBlur} x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="3.4"/></filter>
     <radialGradient id={ids.curvature} cx="50%" cy="34%" r="70%">
       <stop offset="0%" stopColor="#ffffff" stopOpacity=".20"/>
       <stop offset="38%" stopColor="#ffffff" stopOpacity=".055"/>
-      <stop offset="72%" stopColor="#321028" stopOpacity=".10"/>
-      <stop offset="100%" stopColor="#120712" stopOpacity=".24"/>
+      <stop offset="72%" stopColor={OPTICAL_SHADOW} stopOpacity=".10"/>
+      <stop offset="100%" stopColor={OPTICAL_SHADOW} stopOpacity=".24"/>
     </radialGradient>
     <linearGradient id={ids.freeEdgeRim} x1="0" y1="0" x2="0" y2="1">
       <stop offset="0%" stopColor="#ffffff" stopOpacity=".18"/>
-      <stop offset="38%" stopColor="#3b1f35" stopOpacity=".18"/>
-      <stop offset="100%" stopColor="#0f0610" stopOpacity=".36"/>
+      <stop offset="38%" stopColor={OPTICAL_SHADOW} stopOpacity=".18"/>
+      <stop offset="100%" stopColor={OPTICAL_SHADOW} stopOpacity=".36"/>
     </linearGradient>
     <radialGradient id={ids.apexTight} cx="44%" cy="31%" r="42%">
       <stop offset="0%" stopColor="#ffffff" stopOpacity=".58"/>
@@ -129,8 +138,8 @@ export function PolishDefs({ uid }) {
       <stop offset="100%" stopColor="#ffffff" stopOpacity="0"/>
     </linearGradient>
     <linearGradient id={ids.cuticleFade} x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stopColor="#160812" stopOpacity=".24"/>
-      <stop offset="8%" stopColor="#321028" stopOpacity=".10"/>
+      <stop offset="0%" stopColor={OPTICAL_SHADOW} stopOpacity=".24"/>
+      <stop offset="8%" stopColor={OPTICAL_SHADOW} stopOpacity=".10"/>
       <stop offset="22%" stopColor="#ffffff" stopOpacity="0"/>
     </linearGradient>
     <linearGradient id={ids.chromeSweep} x1="0" y1="0" x2="1" y2="1">
@@ -142,14 +151,14 @@ export function PolishDefs({ uid }) {
     </linearGradient>
     <pattern id={ids.matteGrain} width="7" height="7" patternUnits="userSpaceOnUse">
       <circle cx="1" cy="2" r=".38" fill="#fff" opacity=".22"/>
-      <circle cx="5" cy="4" r=".42" fill="#210d1c" opacity=".18"/>
+      <circle cx="5" cy="4" r=".42" fill={OPTICAL_SHADOW} opacity=".18"/>
       <circle cx="3" cy="6" r=".28" fill="#fff" opacity=".16"/>
     </pattern>
     <radialGradient id={ids.thickness} cx="50%" cy="42%" r="72%">
       <stop offset="0%" stopColor="#ffffff" stopOpacity=".34"/>
       <stop offset="48%" stopColor="#ffffff" stopOpacity=".12"/>
-      <stop offset="82%" stopColor="#160812" stopOpacity=".16"/>
-      <stop offset="100%" stopColor="#160812" stopOpacity=".42"/>
+      <stop offset="82%" stopColor={OPTICAL_SHADOW} stopOpacity=".16"/>
+      <stop offset="100%" stopColor={OPTICAL_SHADOW} stopOpacity=".42"/>
     </radialGradient>
     <filter id={ids.shadowBlur} x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="3.2"/></filter>
   </>;
@@ -210,7 +219,7 @@ export function SharedPolishRealismLayers({ nail, path, clipId, uid, shine = 0.6
   const usesCreamEdgeCalibration = material.id === "cream" && materialScope === "base-polish";
   const edgeContrastBoost = usesCreamEdgeCalibration ? (1 - relativeLuminance(colorHex)) * .08 : 0;
 
-  return <g clipPath={`url(#${clipId})`} data-realism-renderer="shared-polish-material-engine" data-renderer-version="nail-surface-v3" data-material-scope={materialScope} data-polish-material={polishType} data-material-preset={polishType.toLowerCase()} data-surface-presets="Cream Jelly Matte Glass Chrome-ready">
+  return <g clipPath={`url(#${clipId})`} data-realism-renderer="shared-polish-material-engine" data-renderer-version="nail-surface-v3" data-material-scope={materialScope} data-polish-material={polishType} data-material-preset={polishType.toLowerCase()} data-surface-presets="Cream Jelly Matte Glass Chrome-ready" data-optical-shine={shine} data-optical-reflection={material.reflection} data-optical-apex={material.apex} data-optical-clear-coat={material.clearCoat} data-optical-gloss={material.gloss}>
     <g data-render-layer="curvature" data-realism-layer="curvature-shading">
     <path data-realism-layer="curvature-shadow" d={path} fill={`url(#${ids.body})`} opacity={0.84 + material.depth * 0.14}/>
     <ellipse data-realism-layer="shape-aware-curvature" cx={arch.cx + (asymmetricLipstickReflection ? arch.width * 0.025 : 0)} cy={arch.topY + arch.height * 0.42} rx={arch.width * (flatBroadReflection ? 0.58 : 0.48) * (1 + curveBias * 0.05)} ry={arch.height * (flatBroadReflection ? 0.52 : 0.61)} fill={`url(#${ids.curvature})`} opacity={0.55 + material.depth * 0.37}/>
@@ -236,10 +245,10 @@ export function SharedPolishRealismLayers({ nail, path, clipId, uid, shine = 0.6
     <path data-realism-layer="subtle-edge-catch-lighting" data-edge-response={usesCreamEdgeCalibration ? "cream-relative-luminance" : "mat-f01-baseline"} data-edge-contrast-boost={edgeContrastBoost} d={path} fill="none" stroke={`url(#${ids.edgeCatch})`} strokeWidth={Math.max(2.6, arch.width * 0.018)} opacity={0.18 + edgeContrastBoost + material.edge * 0.24}/>
     <rect data-realism-layer="nail-thickness-depth" x={arch.left - 6} y={freeEdgeY} width={arch.width + 12} height={arch.bottomY - freeEdgeY + 10} fill={`url(#${ids.freeEdge})`} opacity={0.45 + material.depth * 0.47}/>
     <path data-realism-layer="free-edge-thickness-rim" d={`M ${arch.left + arch.width * 0.12} ${arch.bottomY - rimDepth} Q ${arch.cx} ${arch.bottomY + rimDepth * 0.28} ${arch.right - arch.width * 0.12} ${arch.bottomY - rimDepth}`} stroke={`url(#${ids.freeEdgeRim})`} strokeWidth={rimDepth} strokeLinecap="round" fill="none" opacity={0.34 + material.edge * 0.28}/>
-    <ellipse cx={arch.cx} cy={arch.bottomY - arch.height * 0.025} rx={arch.width * 0.32} ry={arch.height * 0.035} fill="#2b1024" opacity=".10" filter={`url(#${ids.shadowBlur})`}/>
+    <ellipse cx={arch.cx} cy={arch.bottomY - arch.height * 0.025} rx={arch.width * 0.32} ry={arch.height * 0.035} fill={OPTICAL_SHADOW} opacity=".10" filter={`url(#${ids.shadowBlur})`}/>
     <path data-realism-layer="soft-diffusion-veil" d={path} fill="#ffffff" opacity={material.diffusion} />
-    <path data-realism-layer="edge-shadow-left-sidewall-depth" d={`M ${arch.left + arch.width * 0.04} ${arch.topY + arch.height * 0.14} C ${arch.left + arch.width * 0.005} ${arch.apex.y + arch.height * 0.1} ${arch.left + arch.width * 0.08} ${arch.bottomY - arch.height * 0.12} ${arch.left + arch.width * 0.16} ${arch.bottomY - arch.height * 0.02}`} stroke="#1a0815" strokeWidth={Math.max(5, arch.width * 0.04)} strokeLinecap="round" fill="none" opacity=".16" filter={`url(#${ids.shadowBlur})`}/>
-    <path data-realism-layer="edge-shadow-right-sidewall-depth" d={`M ${arch.right - arch.width * 0.04} ${arch.topY + arch.height * 0.14} C ${arch.right - arch.width * 0.005} ${arch.apex.y + arch.height * 0.1} ${arch.right - arch.width * 0.08} ${arch.bottomY - arch.height * 0.12} ${arch.right - arch.width * 0.16} ${arch.bottomY - arch.height * 0.02}`} stroke="#1a0815" strokeWidth={Math.max(4, arch.width * 0.034)} strokeLinecap="round" fill="none" opacity=".12" filter={`url(#${ids.shadowBlur})`}/>
+    <path data-realism-layer="edge-shadow-left-sidewall-depth" d={`M ${arch.left + arch.width * 0.04} ${arch.topY + arch.height * 0.14} C ${arch.left + arch.width * 0.005} ${arch.apex.y + arch.height * 0.1} ${arch.left + arch.width * 0.08} ${arch.bottomY - arch.height * 0.12} ${arch.left + arch.width * 0.16} ${arch.bottomY - arch.height * 0.02}`} stroke={OPTICAL_SHADOW} strokeWidth={Math.max(5, arch.width * 0.04)} strokeLinecap="round" fill="none" opacity=".16" filter={`url(#${ids.shadowBlur})`}/>
+    <path data-realism-layer="edge-shadow-right-sidewall-depth" d={`M ${arch.right - arch.width * 0.04} ${arch.topY + arch.height * 0.14} C ${arch.right - arch.width * 0.005} ${arch.apex.y + arch.height * 0.1} ${arch.right - arch.width * 0.08} ${arch.bottomY - arch.height * 0.12} ${arch.right - arch.width * 0.16} ${arch.bottomY - arch.height * 0.02}`} stroke={OPTICAL_SHADOW} strokeWidth={Math.max(4, arch.width * 0.034)} strokeLinecap="round" fill="none" opacity=".12" filter={`url(#${ids.shadowBlur})`}/>
     </g>
     <g data-render-layer="detail-overlays" data-map-fallback="procedural">
       {polishType === "Matte" && <path data-realism-layer="velvet-micro-grain" d={path} fill={`url(#${ids.matteGrain})`} opacity=".42"/>}
@@ -252,7 +261,13 @@ export function SharedPolishRealismLayers({ nail, path, clipId, uid, shine = 0.6
 export function GelNailSurfaceRenderer({ nail, baseLayer, path, clipId, uid }) {
   const data = resolvePolishDataForRender(baseLayer?.data || {}, nail?.baseColorHex || "#E8A0BF");
   const surfacePreset = polishSurfacePreset(data);
-  const shine = surfacePreset === "Matte" ? Math.min(0.18, data.shine ?? 0.08) : Math.max(0.18, Math.min(1, data.shine ?? 0.62));
+  // Cream consumes the complete UI Shine range. Other finishes retain their
+  // established render floor; Matte remains independently capped.
+  const shine = surfacePreset === "Matte"
+    ? Math.min(0.18, data.shine ?? 0.08)
+    : surfacePreset === "Cream" && data.polishType === "Cream"
+      ? Math.max(0, Math.min(1, data.shine ?? 0.62))
+      : Math.max(0.18, Math.min(1, data.shine ?? 0.62));
   const opacity = polishOpacity(data);
   const material = resolveNailMaterial(surfacePreset, data.materialProperties);
   const pigment = resolvePigment({ baseColor: data.colorHex, opacity, saturation: data.saturation, tint: data.tint, pigmentStrength: data.pigmentStrength });
@@ -264,7 +279,7 @@ export function GelNailSurfaceRenderer({ nail, baseLayer, path, clipId, uid }) {
     {surfacePreset === "Matte" && <path data-material-layer="matte-muted-pigment-veil" d={path} fill="#b9adb4" opacity=".10"/>}
     {data.polishType === "Milky" && <path data-material-layer="milky-builder-gel-veil soft-cloudy-milky-diffusion" d={path} fill="#fff8fb" opacity=".36"/>}
     <SharedPolishRealismLayers nail={nail} path={path} clipId={clipId} uid={uid} shine={shine} colorHex={pigment.baseColor} polishType={surfacePreset} materialScope="base-polish" maps={maps}/>
-    <path d={path} fill="none" stroke="rgba(59,31,53,.26)" strokeWidth="1.2"/>
+    <path d={path} fill="none" stroke="rgba(0,0,0,.26)" strokeWidth="1.2"/>
     <path d={path} fill="none" stroke="rgba(255,255,255,.42)" strokeWidth=".8"/>
   </g>;
 }
