@@ -27,6 +27,17 @@ describe("Design Studio hybrid material renderer", () => {
     expect(renderFinish("Cream")).not.toContain('data-material-layer="thickness-transmission"');
   });
 
+  test("uses identical Cream material architecture for light and dark pigments", () => {
+    const light = renderFinish("Cream", { colorHex: "#FFF8F0" });
+    const dark = renderFinish("Cream", { colorHex: "#07152F" });
+    const architecture = (markup) => Array.from(markup.matchAll(/data-render-layer="([^"]+)"/g), (match) => match[1]);
+    expect(architecture(light)).toEqual(architecture(dark));
+    expect(light).toContain('opacity="1"');
+    expect(dark).toContain('opacity="1"');
+    expect(light).not.toContain('data-material-layer="thickness-transmission"');
+    expect(dark).not.toContain('data-material-layer="thickness-transmission"');
+  });
+
   test("renders valid maps and keeps the procedural fallback for invalid maps", () => {
     const markup = renderFinish("Cream", { materialMaps: { reflection: "/maps/studio.webp", normal: "https://unsafe.invalid/normal.png" } });
     expect(markup).toContain('data-material-map="reflection"');

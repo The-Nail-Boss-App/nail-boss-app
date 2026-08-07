@@ -183,6 +183,14 @@ function materialProfile(polishType = "Cream", shine = 0.62) {
   return polishMaterialProfile(polishType, shine);
 }
 
+function relativeLuminance(colorHex = "#E8A0BF") {
+  const channels = /^#([\da-f]{2})([\da-f]{2})([\da-f]{2})$/i.exec(colorHex)?.slice(1).map((value) => {
+    const channel = parseInt(value, 16) / 255;
+    return channel <= .04045 ? channel / 12.92 : ((channel + .055) / 1.055) ** 2.4;
+  });
+  return channels ? channels[0] * .2126 + channels[1] * .7152 + channels[2] * .0722 : .5;
+}
+
 
 export function SharedPolishRealismLayers({ nail, path, clipId, uid, shine = 0.62, colorHex = "#E8A0BF", polishType = "Cream", materialScope = "base", maps = {} }) {
   const ids = surfaceIds(uid);
@@ -194,7 +202,10 @@ export function SharedPolishRealismLayers({ nail, path, clipId, uid, shine = 0.6
   const asymmetricLipstickReflection = nail?.shape === "Lipstick";
   const rimDepth = Math.max(3.5, arch.height * (0.012 + (nail?.freeEdgeThickness ?? 0.5) * 0.012));
   const mainStrokeWidth = Math.max(7, arch.width * profile.width * (flatBroadReflection ? 1.18 : 1));
-  const darkColorEdgeBoost = /^#(?:0|1|2|3|4|5)/i.test(colorHex || "") ? 0.08 : 0;
+  // A continuous luminance response preserves edge catches on every pigment;
+  // unlike the old hex-prefix check, this is hue-independent and has no
+  // special cases for named light or dark colors.
+  const edgeContrastBoost = (1 - relativeLuminance(colorHex)) * .08;
   const material = materialProfile(polishType, shine);
   const materialMaps = resolveMaterialMaps(maps);
 
@@ -221,7 +232,7 @@ export function SharedPolishRealismLayers({ nail, path, clipId, uid, shine = 0.6
     </g>
     <g data-render-layer="top-coat" data-realism-layer="top-coat-finish" opacity={material.clearCoat}>
     <ellipse data-realism-layer="top-coat-depth-illusion" cx={arch.cx - arch.width * 0.06} cy={arch.apex.y - arch.height * 0.015} rx={arch.width * 0.48} ry={arch.height * 0.28} fill={`url(#${ids.topCoatDepth})`} opacity={0.28 + material.depth * 0.24 + material.glass * 0.26}/>
-    <path data-realism-layer="subtle-edge-catch-lighting" d={path} fill="none" stroke={`url(#${ids.edgeCatch})`} strokeWidth={Math.max(2.6, arch.width * 0.018)} opacity={0.18 + darkColorEdgeBoost + material.edge * 0.24}/>
+    <path data-realism-layer="subtle-edge-catch-lighting" d={path} fill="none" stroke={`url(#${ids.edgeCatch})`} strokeWidth={Math.max(2.6, arch.width * 0.018)} opacity={0.18 + edgeContrastBoost + material.edge * 0.24}/>
     <rect data-realism-layer="nail-thickness-depth" x={arch.left - 6} y={freeEdgeY} width={arch.width + 12} height={arch.bottomY - freeEdgeY + 10} fill={`url(#${ids.freeEdge})`} opacity={0.45 + material.depth * 0.47}/>
     <path data-realism-layer="free-edge-thickness-rim" d={`M ${arch.left + arch.width * 0.12} ${arch.bottomY - rimDepth} Q ${arch.cx} ${arch.bottomY + rimDepth * 0.28} ${arch.right - arch.width * 0.12} ${arch.bottomY - rimDepth}`} stroke={`url(#${ids.freeEdgeRim})`} strokeWidth={rimDepth} strokeLinecap="round" fill="none" opacity={0.34 + material.edge * 0.28}/>
     <ellipse cx={arch.cx} cy={arch.bottomY - arch.height * 0.025} rx={arch.width * 0.32} ry={arch.height * 0.035} fill="#2b1024" opacity=".10" filter={`url(#${ids.shadowBlur})`}/>
