@@ -39,3 +39,8 @@ specular/apex, and clear-coat intensity, with `gloss` following Shine directly.
 Cream's `.90` physical smoothness and low roughness are unchanged, preserving a
 smooth sharp-highlight surface even at low visible Shine. No material preset was
 retuned.
+
+The renderer previously applied `Math.max(0.18, shine)` to every non-Matte
+finish before profile resolution, collapsing Cream's 0–18% UI range. Cream now
+receives a bounded 0–1 input without that floor. The existing `.18` floor remains
+unchanged for other non-Matte finishes, and Matte retains its independent cap.

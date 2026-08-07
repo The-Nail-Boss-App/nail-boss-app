@@ -219,7 +219,7 @@ export function SharedPolishRealismLayers({ nail, path, clipId, uid, shine = 0.6
   const usesCreamEdgeCalibration = material.id === "cream" && materialScope === "base-polish";
   const edgeContrastBoost = usesCreamEdgeCalibration ? (1 - relativeLuminance(colorHex)) * .08 : 0;
 
-  return <g clipPath={`url(#${clipId})`} data-realism-renderer="shared-polish-material-engine" data-renderer-version="nail-surface-v3" data-material-scope={materialScope} data-polish-material={polishType} data-material-preset={polishType.toLowerCase()} data-surface-presets="Cream Jelly Matte Glass Chrome-ready">
+  return <g clipPath={`url(#${clipId})`} data-realism-renderer="shared-polish-material-engine" data-renderer-version="nail-surface-v3" data-material-scope={materialScope} data-polish-material={polishType} data-material-preset={polishType.toLowerCase()} data-surface-presets="Cream Jelly Matte Glass Chrome-ready" data-optical-shine={shine} data-optical-reflection={material.reflection} data-optical-apex={material.apex} data-optical-clear-coat={material.clearCoat} data-optical-gloss={material.gloss}>
     <g data-render-layer="curvature" data-realism-layer="curvature-shading">
     <path data-realism-layer="curvature-shadow" d={path} fill={`url(#${ids.body})`} opacity={0.84 + material.depth * 0.14}/>
     <ellipse data-realism-layer="shape-aware-curvature" cx={arch.cx + (asymmetricLipstickReflection ? arch.width * 0.025 : 0)} cy={arch.topY + arch.height * 0.42} rx={arch.width * (flatBroadReflection ? 0.58 : 0.48) * (1 + curveBias * 0.05)} ry={arch.height * (flatBroadReflection ? 0.52 : 0.61)} fill={`url(#${ids.curvature})`} opacity={0.55 + material.depth * 0.37}/>
@@ -261,7 +261,13 @@ export function SharedPolishRealismLayers({ nail, path, clipId, uid, shine = 0.6
 export function GelNailSurfaceRenderer({ nail, baseLayer, path, clipId, uid }) {
   const data = resolvePolishDataForRender(baseLayer?.data || {}, nail?.baseColorHex || "#E8A0BF");
   const surfacePreset = polishSurfacePreset(data);
-  const shine = surfacePreset === "Matte" ? Math.min(0.18, data.shine ?? 0.08) : Math.max(0.18, Math.min(1, data.shine ?? 0.62));
+  // Cream consumes the complete UI Shine range. Other finishes retain their
+  // established render floor; Matte remains independently capped.
+  const shine = surfacePreset === "Matte"
+    ? Math.min(0.18, data.shine ?? 0.08)
+    : surfacePreset === "Cream" && data.polishType === "Cream"
+      ? Math.max(0, Math.min(1, data.shine ?? 0.62))
+      : Math.max(0.18, Math.min(1, data.shine ?? 0.62));
   const opacity = polishOpacity(data);
   const material = resolveNailMaterial(surfacePreset, data.materialProperties);
   const pigment = resolvePigment({ baseColor: data.colorHex, opacity, saturation: data.saturation, tint: data.tint, pigmentStrength: data.pigmentStrength });

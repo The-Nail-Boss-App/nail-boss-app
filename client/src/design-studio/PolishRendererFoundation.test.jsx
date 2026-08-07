@@ -72,6 +72,38 @@ describe("Design Studio hybrid material renderer", () => {
     expect(profiles[0].clearCoat).toBeGreaterThan(0);
   });
 
+  test("preserves the full Cream Shine range through GelNailSurfaceRenderer", () => {
+    const shineLevels = [0, .1, .18, .25, .5, .75, 1];
+    const opticalValues = shineLevels.map((shine) => {
+      const markup = renderFinish("Cream", { colorHex: "#07152F", shine });
+      const value = (attribute) => Number(markup.match(new RegExp(`${attribute}="([^"]+)"`))?.[1]);
+      expect(markup).toContain(`data-optical-shine="${shine}"`);
+      expect(markup).toContain(`data-material-layer="base-pigment" d="${path}" fill="#07152F" opacity="1"`);
+      expect(markup).not.toContain('data-material-layer="thickness-transmission"');
+      return {
+        reflection: value("data-optical-reflection"),
+        apex: value("data-optical-apex"),
+        clearCoat: value("data-optical-clear-coat"),
+        gloss: value("data-optical-gloss"),
+      };
+    });
+
+    ["reflection", "apex", "clearCoat", "gloss"].forEach((property) => {
+      expect(new Set(opticalValues.slice(0, 3).map((values) => values[property])).size).toBe(3);
+      expect(opticalValues.map((values) => values[property])).toEqual(
+        [...opticalValues].map((values) => values[property]).sort((a, b) => a - b),
+      );
+    });
+    expect(opticalValues[0].clearCoat).toBeGreaterThan(0);
+  });
+
+  test("retains the established non-Cream Shine guards", () => {
+    expect(renderFinish("Matte", { shine: 1 })).toContain('data-optical-shine="0.18"');
+    ["Jelly", "Milky", "Glass", "Chrome-ready", "Chrome", "Glitter"].forEach((polishType) => {
+      expect(renderFinish(polishType, { shine: 0 })).toContain('data-optical-shine="0.18"');
+    });
+  });
+
   test("uses a continuous luminance-derived edge boost only for Cream base polish", () => {
     const light = renderSharedSurface({ colorHex: "#FFF8F0" });
     const dark = renderSharedSurface({ colorHex: "#07152F" });
