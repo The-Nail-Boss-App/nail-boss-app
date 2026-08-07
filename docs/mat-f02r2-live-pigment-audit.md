@@ -29,10 +29,17 @@ The correction constructs one `nextDraft` snapshot and uses its color for both
 the control state and active-base update. This preserves the existing live
 preview workflow; no new apply step or material behavior is introduced.
 
+Finish defaults are deliberately pigment-free: `polishDefaultsForType` removes
+the normalized default `colorHex` before returning its patch. Finish switching
+and Reset Finish Defaults therefore own only finish/material properties, while
+picker, HEX, palette, and rack selection actions remain the owners of explicit
+pigment changes.
+
 ## Default and fallback classification
 
-- `POLISH_DEFAULTS.colorHex` and `polishDefaultsForType`'s `#E8A0BF` are
-  legitimate initialization defaults for a new formulation.
+- `POLISH_DEFAULTS.colorHex` and normalization's `#E8A0BF` are legitimate
+  initialization defaults for a new formulation, but are excluded from finish
+  property patches.
 - Stored-rack parsing uses an item's explicit color before `#E8A0BF`; this is a
   safe missing-data fallback for malformed/legacy rack entries.
 - `resolvePolishDataForRender(baseLayer.data, nail.baseColorHex || "#E8A0BF")`

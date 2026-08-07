@@ -723,7 +723,9 @@ function blueprintSizeMessage(bytes) {
 
 
 function polishDefaultsForType(polishType = "Cream") {
-  return normalizePolishData({ polishType }, "#E8A0BF");
+  const finishDefaults = normalizePolishData({ polishType }, "#E8A0BF");
+  delete finishDefaults.colorHex;
+  return finishDefaults;
 }
 
 function polishSignature(polish = {}) {
