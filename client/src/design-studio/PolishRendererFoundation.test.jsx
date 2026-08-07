@@ -1,6 +1,7 @@
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { PolishDefs, PolishSurface, SharedPolishRealismLayers } from "./PolishRenderer";
+import { GENERIC_OPTICAL_COLORS, PolishDefs, PolishSurface, SharedPolishRealismLayers } from "./PolishRenderer";
+import { polishMaterialProfile } from "./polish";
 
 const nail = { shape: "Almond", length: 1, width: 1, freeEdgeThickness: .5, baseColorHex: "#E8A0BF" };
 const path = "M70 18 Q120 0 170 18 L160 310 Q120 340 80 310Z";
@@ -42,6 +43,33 @@ describe("Design Studio hybrid material renderer", () => {
     expect(dark).not.toContain('data-material-layer="thickness-transmission"');
     expect(light).toContain('data-edge-response="cream-relative-luminance"');
     expect(dark).toContain('data-edge-response="cream-relative-luminance"');
+  });
+
+  test.each(["#000000", "#FFFFFF", "#991435", "#07152F", "#E8A0BF"])("keeps %s as the opaque Cream base pigment", (colorHex) => {
+    const markup = renderFinish("Cream", { colorHex });
+    expect(markup).toContain(`data-material-layer="base-pigment" d="${path}" fill="${colorHex}" opacity="1"`);
+    expect(markup).not.toContain('data-material-layer="thickness-transmission"');
+  });
+
+  test("defines generic illumination and occlusion with achromatic RGB channels", () => {
+    const channels = (hex) => hex.match(/[\da-f]{2}/gi).map((channel) => parseInt(channel, 16));
+    Object.values(GENERIC_OPTICAL_COLORS).forEach((color) => {
+      const [red, green, blue] = channels(color);
+      expect(red).toBe(green);
+      expect(green).toBe(blue);
+    });
+    const defs = renderToStaticMarkup(<svg><defs><PolishDefs uid="neutral"/></defs></svg>);
+    ["#2b1024", "#160812", "#120712", "#321028", "#3b1f35", "#1a0815", "#0f0610"].forEach((contaminant) => expect(defs).not.toContain(contaminant));
+  });
+
+  test("maps Cream Shine continuously to stronger optics without changing pigment properties", () => {
+    const profiles = [0, .25, .5, .75, 1].map((shine) => polishMaterialProfile("Cream", shine));
+    ["gloss", "reflection", "apex", "clearCoat"].forEach((property) => {
+      expect(profiles.map((profile) => profile[property])).toEqual([...profiles].map((profile) => profile[property]).sort((a, b) => a - b));
+      expect(new Set(profiles.map((profile) => profile[property])).size).toBe(5);
+    });
+    profiles.forEach((profile) => expect(profile).toMatchObject({ opacity: 1, transmission: 0, translucency: 0, id: "cream" }));
+    expect(profiles[0].clearCoat).toBeGreaterThan(0);
   });
 
   test("uses a continuous luminance-derived edge boost only for Cream base polish", () => {
