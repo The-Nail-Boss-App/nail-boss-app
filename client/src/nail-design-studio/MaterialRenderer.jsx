@@ -9,7 +9,7 @@ export { jellyTransmissionPalette } from './HybridMaterialRenderer';
  * describe how a cured surface responds to light; color only tints the base.
  */
 export const MATERIAL_PROFILES = Object.freeze({
-  Cream: Object.freeze({ opacity: 1, edge: .34, curvature: .32, reflection: .78, topCoat: .44, diffuse: .08, grain: 0, transmission: 0 }),
+  Cream: Object.freeze({ opacity: 1, edge: .18, curvature: .2, reflection: .62, topCoat: .5, diffuse: .02, grain: 0, transmission: 0 }),
   Matte: Object.freeze({ opacity: .96, edge: .18, curvature: .18, reflection: .06, topCoat: .04, diffuse: .34, grain: .28, transmission: 0 }),
   Jelly: Object.freeze({ opacity: .68, edge: .48, curvature: .24, reflection: .9, topCoat: .58, diffuse: .04, grain: 0, transmission: .42 }),
   Glitter: Object.freeze({ opacity: .94, edge: .3, curvature: .28, reflection: .7, topCoat: .5, diffuse: .06, grain: 0, transmission: .08 }),
@@ -41,14 +41,26 @@ function MaterialDefs({ id, color, neutralCream = false }) {
   return <defs>
     <radialGradient id={`${id}-pigment`} cx="50%" cy="38%" r="72%"><stop offset="0" stopColor={color}/><stop offset="66%" stopColor={color}/><stop offset="100%" stopColor={pigmentEdge}/></radialGradient>
     <radialGradient id={`${id}-transmission`} cx="50%" cy="44%" r="64%"><stop offset="0" stopColor="#fff" stopOpacity=".36"/><stop offset="48%" stopColor={color} stopOpacity=".12"/><stop offset="100%" stopColor={transmissionEdge} stopOpacity=".48"/></radialGradient>
-    <linearGradient id={`${id}-edges`} x1="0" x2="1"><stop stopColor={edgeColor} stopOpacity=".72"/><stop offset=".18" stopColor={edgeColor} stopOpacity="0"/><stop offset=".78" stopColor={edgeColor} stopOpacity="0"/><stop offset="1" stopColor={edgeColor} stopOpacity=".64"/></linearGradient>
-    <radialGradient id={`${id}-curve`} cx="46%" cy="31%" r="68%"><stop stopColor="#fff" stopOpacity=".3"/><stop offset=".4" stopColor="#fff" stopOpacity=".06"/><stop offset="1" stopColor="#000" stopOpacity=".24"/></radialGradient>
-    <linearGradient id={`${id}-reflection`} x1="0" x2="1"><stop offset=".16" stopColor="#fff" stopOpacity="0"/><stop offset=".31" stopColor="#fff" stopOpacity=".86"/><stop offset=".42" stopColor="#fff" stopOpacity=".1"/><stop offset="1" stopColor="#fff" stopOpacity="0"/></linearGradient>
+    <linearGradient id={`${id}-edges`} x1="0" x2="1"><stop stopColor={edgeColor} stopOpacity={neutralCream ? '.34' : '.72'}/><stop offset={neutralCream ? '.13' : '.18'} stopColor={edgeColor} stopOpacity="0"/><stop offset={neutralCream ? '.87' : '.78'} stopColor={edgeColor} stopOpacity="0"/><stop offset="1" stopColor={edgeColor} stopOpacity={neutralCream ? '.3' : '.64'}/></linearGradient>
+    <radialGradient id={`${id}-curve`} cx="48%" cy="28%" r="76%"><stop stopColor="#fff" stopOpacity={neutralCream ? '.18' : '.3'}/><stop offset=".42" stopColor="#fff" stopOpacity={neutralCream ? '.035' : '.06'}/><stop offset="1" stopColor="#000" stopOpacity={neutralCream ? '.1' : '.24'}/></radialGradient>
+    {neutralCream
+      ? <><radialGradient id={`${id}-reflection`} cx="35%" cy="27%" r="62%" gradientTransform="matrix(.42 0 0 1 .2 0)"><stop offset="0" stopColor="#fff" stopOpacity=".92"/><stop offset="34%" stopColor="#fff" stopOpacity=".62"/><stop offset="72%" stopColor="#fff" stopOpacity=".1"/><stop offset="100%" stopColor="#fff" stopOpacity="0"/></radialGradient><radialGradient id={`${id}-secondary-reflection`} cx="72%" cy="45%" r="54%" gradientTransform="matrix(.25 0 0 .72 .54 .13)"><stop offset="0" stopColor="#fff" stopOpacity=".36"/><stop offset="100%" stopColor="#fff" stopOpacity="0"/></radialGradient></>
+      : <linearGradient id={`${id}-reflection`} x1="0" x2="1"><stop offset=".16" stopColor="#fff" stopOpacity="0"/><stop offset=".31" stopColor="#fff" stopOpacity=".86"/><stop offset=".42" stopColor="#fff" stopOpacity=".1"/><stop offset="1" stopColor="#fff" stopOpacity="0"/></linearGradient>}
     <pattern id={`${id}-grain`} width="7" height="7" patternUnits="userSpaceOnUse"><circle cx="1" cy="2" r=".55" fill="#fff" opacity=".26"/><circle cx="5" cy="5" r=".48" fill={grainColor} opacity=".2"/></pattern>
   </defs>;
 }
 
 const clamp = (value, min = 0, max = 1) => Math.min(max, Math.max(min, value));
+
+/** Cream never becomes Matte: Shine scales only its clear surface response. */
+export function creamGlossResponse(shine = .68) {
+  const control = clamp(shine);
+  return Object.freeze({
+    reflection: .28 + control * .34,
+    secondaryReflection: .08 + control * .12,
+    topCoat: .24 + control * .26,
+  });
+}
 
 function hexToHsl(hex) {
   const value = /^#[\da-f]{6}$/i.test(hex) ? hex.slice(1) : 'D94C70';
@@ -111,7 +123,7 @@ function JellyLayers({ path, color, opacity, uid, baseProps }) {
 }
 
 /** Shared ordered pipeline: pigment → curvature → edges → material → reflection → top coat → detail. */
-export function MaterialLayers({ path, finish = 'Cream', color = '#D94C70', opacity = 1, uid = 'material', baseProps = {} }) {
+export function MaterialLayers({ path, finish = 'Cream', color = '#D94C70', opacity = 1, shine = .68, uid = 'material', baseProps = {} }) {
   if (finish === 'Jelly') {
     if (features.materials.hybridJellyRenderer.enabled) {
       const hybrid = renderHybridJellySafely({ path, color, opacity, uid, baseProps });
@@ -121,7 +133,8 @@ export function MaterialLayers({ path, finish = 'Cream', color = '#D94C70', opac
   }
   const p = materialProfile(finish);
   const neutralCream = finish === 'Cream';
-  return <g data-material-renderer="MaterialRenderer" data-material-profile={`${finish}Material`} data-material-input-color={color} data-material-base-color={color} data-optical-color-model={neutralCream ? 'neutral-achromatic' : 'finish-profile'}>
+  const gloss = neutralCream ? creamGlossResponse(shine) : { reflection: p.reflection, secondaryReflection: 0, topCoat: p.topCoat };
+  return <g data-material-renderer="MaterialRenderer" data-material-profile={`${finish}Material`} data-material-input-color={color} data-material-base-color={color} data-optical-color-model={neutralCream ? 'neutral-achromatic' : 'finish-profile'} data-material-shine={neutralCream ? clamp(shine).toFixed(2) : undefined} data-clear-coat-reflection={gloss.reflection.toFixed(3)} data-clear-coat-top-coat={gloss.topCoat.toFixed(3)}>
     <MaterialDefs id={uid} color={color} neutralCream={neutralCream}/>
     <path {...baseProps} data-material-layer="base-pigment" d={path} fill={`url(#${uid}-pigment)`} opacity={opacity * p.opacity}/>
     <path data-material-layer="curvature-shadow" d={path} fill={`url(#${uid}-curve)`} opacity={p.curvature}/>
@@ -129,8 +142,9 @@ export function MaterialLayers({ path, finish = 'Cream', color = '#D94C70', opac
     {p.transmission > 0 && <path data-material-layer="internal-light-transmission" d={path} fill={`url(#${uid}-transmission)`} opacity={p.transmission}/>} 
     <path data-material-layer="material-diffusion" d={path} fill={neutralCream ? '#FFFFFF' : '#f5edf2'} opacity={neutralCream ? Math.min(p.diffuse, .025) : p.diffuse}/>
     {finish === 'Glitter' && <g data-material-layer="submerged-glitter">{PARTICLES.map(([x,y,r,a], i) => i % 6 === 0 ? <path key={i} d={`M${x-r*2} ${y}h${r*4}M${x} ${y-r*2}v${r*4}`} stroke="#fff9d6" strokeWidth={Math.max(.55,r*.45)} opacity={a}/> : <circle key={i} cx={x} cy={y} r={r} fill={i%3 ? '#fff' : '#ffd978'} opacity={a}/>)}</g>}
-    <path data-material-layer="reflection" d={path} fill={`url(#${uid}-reflection)`} opacity={p.reflection}/>
-    <path data-material-layer="top-coat" d={path} fill="none" stroke="#fff" strokeWidth="2.2" strokeOpacity={p.topCoat}/>
+    <path data-material-layer="reflection" d={path} fill={`url(#${uid}-reflection)`} opacity={gloss.reflection}/>
+    {neutralCream && <path data-material-layer="secondary-reflection" d={path} fill={`url(#${uid}-secondary-reflection)`} opacity={gloss.secondaryReflection}/>}
+    <path data-material-layer="top-coat" d={path} fill="none" stroke="#fff" strokeWidth={neutralCream ? '1.4' : '2.2'} strokeOpacity={gloss.topCoat}/>
     {p.grain > 0 && <path data-material-layer="surface-detail" d={path} fill={`url(#${uid}-grain)`} opacity={p.grain}/>} 
   </g>;
 }
