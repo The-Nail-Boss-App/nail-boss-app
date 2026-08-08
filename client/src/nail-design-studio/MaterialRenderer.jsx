@@ -10,7 +10,7 @@ export { jellyTransmissionPalette } from './HybridMaterialRenderer';
  */
 export const MATERIAL_PROFILES = Object.freeze({
   Cream: Object.freeze({ opacity: 1, edge: .14, curvature: .16, reflection: .66, topCoat: .52, diffuse: .01, grain: 0, transmission: 0 }),
-  Matte: Object.freeze({ opacity: .96, edge: .18, curvature: .18, reflection: .06, topCoat: .04, diffuse: .34, grain: .28, transmission: 0 }),
+  Matte: Object.freeze({ opacity: 1, edge: .14, curvature: .24, reflection: .018, topCoat: .012, diffuse: .12, grain: 0, transmission: 0 }),
   Jelly: Object.freeze({ opacity: .68, edge: .48, curvature: .24, reflection: .9, topCoat: .58, diffuse: .04, grain: 0, transmission: .42 }),
   Glitter: Object.freeze({ opacity: .94, edge: .3, curvature: .28, reflection: .7, topCoat: .5, diffuse: .06, grain: 0, transmission: .08 }),
 });
@@ -48,6 +48,35 @@ function MaterialDefs({ id, color, neutralCream = false }) {
       : <linearGradient id={`${id}-reflection`} x1="0" x2="1"><stop offset=".16" stopColor="#fff" stopOpacity="0"/><stop offset=".31" stopColor="#fff" stopOpacity=".86"/><stop offset=".42" stopColor="#fff" stopOpacity=".1"/><stop offset="1" stopColor="#fff" stopOpacity="0"/></linearGradient>}
     <pattern id={`${id}-grain`} width="7" height="7" patternUnits="userSpaceOnUse"><circle cx="1" cy="2" r=".55" fill="#fff" opacity=".26"/><circle cx="5" cy="5" r=".48" fill={grainColor} opacity=".2"/></pattern>
   </defs>;
+}
+
+/**
+ * MAT-F04 uses an achromatic, Matte-only light rig. Keeping these gradients out
+ * of MaterialDefs prevents the soft diffuse calibration from changing Cream,
+ * Jelly, or any legacy finish, while a solid pigment base preserves every hue.
+ */
+function MatteDefs({ id }) {
+  return <defs>
+    <linearGradient id={`${id}-matte-edges`} x1="0" x2="1"><stop stopColor="#000" stopOpacity=".52"/><stop offset=".14" stopColor="#000" stopOpacity="0"/><stop offset=".84" stopColor="#000" stopOpacity="0"/><stop offset="1" stopColor="#000" stopOpacity=".42"/></linearGradient>
+    <radialGradient id={`${id}-matte-curve`} cx="45%" cy="31%" r="78%"><stop offset="0" stopColor="#fff" stopOpacity=".12"/><stop offset=".48" stopColor="#fff" stopOpacity=".025"/><stop offset=".82" stopColor="#000" stopOpacity=".08"/><stop offset="1" stopColor="#000" stopOpacity=".28"/></radialGradient>
+    <radialGradient id={`${id}-matte-diffuse`} cx="38%" cy="30%" r="68%" gradientTransform="matrix(.72 0 0 1 .1 0)"><stop offset="0" stopColor="#fff" stopOpacity=".42"/><stop offset=".58" stopColor="#fff" stopOpacity=".12"/><stop offset="1" stopColor="#fff" stopOpacity="0"/></radialGradient>
+    <radialGradient id={`${id}-matte-reflection`} cx="35%" cy="27%" r="72%" gradientTransform="matrix(.62 0 0 1 .13 0)"><stop offset="0" stopColor="#fff" stopOpacity=".34"/><stop offset=".65" stopColor="#fff" stopOpacity=".06"/><stop offset="1" stopColor="#fff" stopOpacity="0"/></radialGradient>
+    <linearGradient id={`${id}-matte-cuticle-tip`} x1="0" y1="0" x2="0" y2="1"><stop stopColor="#000" stopOpacity=".22"/><stop offset=".09" stopColor="#000" stopOpacity="0"/><stop offset=".82" stopColor="#000" stopOpacity="0"/><stop offset="1" stopColor="#000" stopOpacity=".18"/></linearGradient>
+  </defs>;
+}
+
+function MatteLayers({ path, color, opacity, uid, baseProps }) {
+  const p = MATERIAL_PROFILES.Matte;
+  return <g data-material-renderer="MaterialRenderer" data-material-profile="MatteMaterial" data-material-contract="mat-f04-smooth-matte-gel" data-material-input-color={color} data-material-base-color={color} data-optical-color-model="matte-achromatic" data-clear-coat-reflection={p.reflection.toFixed(3)} data-clear-coat-top-coat={p.topCoat.toFixed(3)}>
+    <MatteDefs id={uid}/>
+    <path {...baseProps} data-material-layer="base-pigment" d={path} fill={color} opacity={opacity * p.opacity}/>
+    <path data-material-layer="curvature-shadow" d={path} fill={`url(#${uid}-matte-curve)`} opacity={p.curvature}/>
+    <path data-material-layer="edge-darkening" d={path} fill={`url(#${uid}-matte-edges)`} opacity={p.edge}/>
+    <path data-material-layer="cuticle-tip-depth" d={path} fill={`url(#${uid}-matte-cuticle-tip)`} opacity=".12"/>
+    <path data-material-layer="material-diffusion" d={path} fill={`url(#${uid}-matte-diffuse)`} opacity={p.diffuse}/>
+    <path data-material-layer="reflection" d={path} fill={`url(#${uid}-matte-reflection)`} opacity={p.reflection}/>
+    <path data-material-layer="top-coat" d={path} fill="none" stroke="#fff" strokeWidth=".7" strokeOpacity={p.topCoat}/>
+  </g>;
 }
 
 const clamp = (value, min = 0, max = 1) => Math.min(max, Math.max(min, value));
@@ -131,6 +160,7 @@ export function MaterialLayers({ path, finish = 'Cream', color = '#D94C70', opac
     }
     return <JellyLayers path={path} color={color} opacity={opacity} uid={uid} baseProps={baseProps}/>;
   }
+  if (finish === 'Matte') return <MatteLayers path={path} color={color} opacity={opacity} uid={uid} baseProps={baseProps}/>;
   const p = materialProfile(finish);
   const neutralCream = finish === 'Cream';
   const gloss = neutralCream ? creamGlossResponse(shine) : { reflection: p.reflection, secondaryReflection: 0, topCoat: p.topCoat };
