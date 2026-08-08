@@ -10,7 +10,7 @@ export const FINISH_DEFAULTS = Object.freeze({
   'Chrome-ready': { baseColor: '#D94C70', opacity: 1, viscosity: .64, shine: .88, metallicReflection: .35 },
   Shimmer: { baseColor: '#D94C70', opacity: 1, viscosity: .62, shine: .8, shimmerIntensity: .42 },
   Metallic: { baseColor: '#D94C70', opacity: 1, viscosity: .66, shine: .9, metallicReflection: .76 },
-  Glitter: { baseColor: '#D94C70', opacity: 1, viscosity: .7, shine: .82, glitterDensity: .46 },
+  Glitter: { baseColor: '#D94C70', fleckColor: '#E8D7A8', opacity: 1, viscosity: .7, shine: .82, glitterDensity: .46 },
 });
 
 // DS-03.3 exposes only materials whose dedicated renderer is complete. The
@@ -22,7 +22,7 @@ const SHARED = ['opacity', 'viscosity', 'shine'];
 const SPECIFIC = {
   Gradient: ['colorB', 'direction'], Chrome: ['metallicReflection'], 'Cat Eye': ['stripeDirection', 'stripeWidth', 'stripeStrength'],
   Marble: ['veinColor', 'veinDensity'], Jelly: ['translucency'], Matte: ['matteSoftness'], Glass: ['translucency', 'glassClarity'],
-  'Chrome-ready': ['metallicReflection'], Shimmer: ['shimmerIntensity'], Metallic: ['metallicReflection'], Glitter: ['glitterDensity'],
+  'Chrome-ready': ['metallicReflection'], Shimmer: ['shimmerIntensity'], Metallic: ['metallicReflection'], Glitter: ['fleckColor', 'glitterDensity'],
 };
 
 /** The only boundary at which persisted or edited polish data changes finish. */
@@ -30,9 +30,19 @@ export function normalizePolishForFinish(polish = {}, requestedFinish = 'Cream')
   const finish = FINISH_DEFAULTS[requestedFinish] ? requestedFinish : 'Cream';
   if (finish !== requestedFinish && typeof console !== 'undefined') console.warn(`Unsupported polish finish "${requestedFinish}" normalized to Cream.`);
   const defaults = FINISH_DEFAULTS[finish];
-  const colorHex = /^#[0-9a-f]{6}$/i.test(polish.colorHex || polish.baseColor || polish.colorA || '') ? (polish.colorHex || polish.baseColor || polish.colorA).toUpperCase() : defaults.baseColor || defaults.colorA;
+  const requestedColor = polish.colorHex || polish.baseColor || polish.colorA || polish.glitter?.baseColor || '';
+  const colorHex = /^#[0-9a-f]{6}$/i.test(requestedColor) ? requestedColor.toUpperCase() : defaults.baseColor || defaults.colorA;
   const normalized = { name: polish.name || 'Blush Royalty', brand: polish.brand || 'AnitaSet Atelier', collection: polish.collection || 'AnitaSet Atelier', size: polish.size || '15 ml', colorHex, finish };
   [...SHARED, ...(SPECIFIC[finish] || [])].forEach((key) => { normalized[key] = polish[key] ?? defaults[key]; });
+  if (finish === 'Glitter') {
+    // Older saves have no fleck color. This fixed warm-silver fallback remains
+    // stable across hydration and deliberately independent of base pigment.
+    normalized.fleckColor = /^#[0-9a-f]{6}$/i.test(polish.fleckColor || polish.glitter?.fleckColor || '')
+      ? (polish.fleckColor || polish.glitter.fleckColor).toUpperCase() : defaults.fleckColor;
+    const requestedDensity = Number(polish.glitterDensity ?? polish.glitter?.density ?? defaults.glitterDensity);
+    normalized.glitterDensity = Number.isFinite(requestedDensity) ? Math.min(1, Math.max(0, requestedDensity)) : defaults.glitterDensity;
+    normalized.glitter = Object.freeze({ baseColor: colorHex, fleckColor: normalized.fleckColor, density: normalized.glitterDensity });
+  }
   return normalized;
 }
 

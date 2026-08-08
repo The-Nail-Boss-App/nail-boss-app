@@ -159,6 +159,28 @@ describe('DS-03 Polish Studio repair', () => {
     }
   });
 
+  it('keeps Glitter base, fleck, and density controls independent', async () => {
+    const select = container.querySelector('select[aria-label="Finish"]');
+    await act(async () => { select.value = 'Glitter'; select.dispatchEvent(new Event('change', { bubbles: true })); });
+    const fleck = container.querySelector('input[aria-label="Fleck Color"]');
+    const density = container.querySelector('input[aria-label="Glitter Density"]');
+    expect(fleck).toBeTruthy(); expect(density).toBeTruthy();
+    await type(fleck, '#7B2CBF');
+    await type(density, '0.75');
+    await editHex(container, '#A40A30');
+    expect(fleck.value.toUpperCase()).toBe('#7B2CBF');
+    expect(density.value).toBe('0.75');
+    expect(container.querySelector('[data-material-profile="GlitterMaterial"]').dataset.materialBaseColor).toBe('#A40A30');
+    expect(container.querySelector('[data-material-profile="GlitterMaterial"]').dataset.glitterFleckColor).toBe('#7B2CBF');
+    expect(container.querySelector('[data-material-profile="GlitterMaterial"]').dataset.glitterParticleCount).toBe('210');
+  });
+
+  it('hydrates legacy Glitter safely with a deterministic independent fleck fallback', () => {
+    const legacy = normalizePolishForFinish({ finish: 'Glitter', colorHex: '#000000', glitterDensity: .25 }, 'Glitter');
+    expect(legacy).toMatchObject({ colorHex: '#000000', fleckColor: '#E8D7A8', glitterDensity: .25 });
+    expect(legacy.glitter).toEqual({ baseColor: '#000000', fleckColor: '#E8D7A8', density: .25 });
+  });
+
   it('keeps hidden legacy finishes compatible when reopening a saved design', async () => {
     const legacy = normalizePolishForFinish({ colorHex: '#ABCDEF', metallicReflection: .55 }, 'Chrome-ready');
     expect(legacy).toMatchObject({ finish: 'Chrome-ready', colorHex: '#ABCDEF', metallicReflection: .55 });
@@ -202,7 +224,7 @@ describe('DS-03 Polish Studio repair', () => {
       expect(stage.dataset.lightingColorModel).toBe(finish === 'Cream' ? 'neutral-achromatic' : 'hero-environment');
       expect([...stage.querySelectorAll('[id^="hero-light-apex"] stop, [id^="hero-light-primary"] stop, [id^="hero-light-edge"] stop')].every((stop) => stop.getAttribute('stop-color') === '#ffffff' || stop.getAttribute('stop-color') === '#FFFFFF')).toBe(true);
     }
-    expect(container.querySelector('[data-material-layer="submerged-glitter"] circle')).toBeTruthy();
+    expect(container.querySelector('[data-material-layer="glitter-particle-field"] ellipse')).toBeTruthy();
     expect(container.querySelector('.nail-design-studio__active-swatch [data-material-profile="GlitterMaterial"]')).toBeTruthy();
   });
 
