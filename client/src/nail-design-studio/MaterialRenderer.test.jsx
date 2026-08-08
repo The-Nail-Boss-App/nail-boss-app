@@ -1,11 +1,11 @@
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { jellyTransmissionPalette, MATERIAL_PROFILES, MaterialLayers, renderHybridJellySafely } from './MaterialRenderer';
+import { creamGlossResponse, jellyTransmissionPalette, MATERIAL_PROFILES, MaterialLayers, renderHybridJellySafely } from './MaterialRenderer';
 import { HYBRID_JELLY_LAYER_ORDER, JELLY_MATERIAL_PROFILE } from './HybridMaterialRenderer';
 
 const PATH = 'M10 0h40v100H10Z';
-const renderMaterial = (finish, color = '#B7103A', opacity = 1) => renderToStaticMarkup(
-  <svg><MaterialLayers path={PATH} finish={finish} color={color} opacity={opacity} uid="test-material"/></svg>,
+const renderMaterial = (finish, color = '#B7103A', opacity = 1, shine = .68) => renderToStaticMarkup(
+  <svg><MaterialLayers path={PATH} finish={finish} color={color} opacity={opacity} shine={shine} uid="test-material"/></svg>,
 );
 
 describe('Jelly Material Engine', () => {
@@ -33,7 +33,7 @@ describe('Jelly Material Engine', () => {
     expect(JELLY_MATERIAL_PROFILE).toMatchObject({ texture: null, reflectionWidth: .1, topCoatPigment: null });
   });
   test('locks the Cream, Matte, and Glitter material baselines', () => {
-    expect(MATERIAL_PROFILES.Cream).toEqual({ opacity: 1, edge: .34, curvature: .32, reflection: .78, topCoat: .44, diffuse: .08, grain: 0, transmission: 0 });
+    expect(MATERIAL_PROFILES.Cream).toEqual({ opacity: 1, edge: .18, curvature: .2, reflection: .62, topCoat: .5, diffuse: .02, grain: 0, transmission: 0 });
     expect(MATERIAL_PROFILES.Matte).toEqual({ opacity: .96, edge: .18, curvature: .18, reflection: .06, topCoat: .04, diffuse: .34, grain: .28, transmission: 0 });
     expect(MATERIAL_PROFILES.Glitter).toEqual({ opacity: .94, edge: .3, curvature: .28, reflection: .7, topCoat: .5, diffuse: .06, grain: 0, transmission: .08 });
 
@@ -46,6 +46,21 @@ describe('Jelly Material Engine', () => {
       expect(markup).toContain('stop-color="#fff"');
       expect(markup).not.toContain('data-material-layer="base-jelly-pigment"');
     }
+  });
+
+  test('models Cream as opaque pigment under a shine-controlled clear coat', () => {
+    const responses = [0, .25, .5, .75, 1].map(creamGlossResponse);
+    for (let index = 1; index < responses.length; index += 1) {
+      expect(responses[index].reflection).toBeGreaterThan(responses[index - 1].reflection);
+      expect(responses[index].topCoat).toBeGreaterThan(responses[index - 1].topCoat);
+    }
+    expect(responses[0]).toEqual({ reflection: .28, secondaryReflection: .08, topCoat: .24 });
+    const zero = renderMaterial('Cream', '#0D0D0D', 1, 0);
+    expect(zero).toContain('data-material-shine="0.00"');
+    expect(zero).toContain('data-clear-coat-reflection="0.280"');
+    expect(zero).toContain('data-clear-coat-top-coat="0.240"');
+    expect(zero).toContain('data-material-layer="secondary-reflection"');
+    expect(zero).not.toContain('data-material-layer="internal-light-transmission"');
   });
 
   test.each(['#030303', '#FFFFFF', '#991435', '#07152F', '#E8A0BF'])('keeps Cream pigment identity for %s while every optical token is achromatic', (color) => {

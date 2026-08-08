@@ -222,6 +222,20 @@ describe('DS-03 Polish Studio repair', () => {
     expect(stageNail.dataset.appliedPolishColor).toBe('#030303');
   });
 
+  it('routes continuous Shine changes into the real stage Cream clear coat', async () => {
+    const shine = container.querySelector('input[aria-label="Shine"]');
+    const samples = [];
+    for (const value of ['0', '.25', '.5', '.75', '1']) {
+      await type(shine, value);
+      const material = container.querySelector('svg[data-testid="stage-nail"] [data-material-profile="CreamMaterial"]');
+      samples.push(Number(material.dataset.clearCoatReflection));
+      expect(material.dataset.materialShine).toBe(Number(value).toFixed(2));
+      expect(Number(material.dataset.clearCoatTopCoat)).toBeGreaterThan(0);
+    }
+    expect(samples).toEqual([...samples].sort((a, b) => a - b));
+    expect(new Set(samples)).toHaveProperty('size', 5);
+  });
+
   it('keeps repeated colors and finish changes live while isolating stored colors across a full set', async () => {
     for (const color of ['#000000', '#FFFFFF', '#991435', '#07152F', '#E8A0BF']) {
       await editHex(container, color);
