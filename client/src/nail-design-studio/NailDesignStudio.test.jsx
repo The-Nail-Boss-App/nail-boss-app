@@ -1,6 +1,6 @@
 import React, { act } from 'react';
 import { createRoot } from 'react-dom/client';
-import NailDesignStudio, { creamHeroSurfaceResponse, jellyHeroSurfaceResponse } from './NailDesignStudio';
+import NailDesignStudio, { creamHeroSurfaceResponse, jellyHeroSurfaceResponse, matteHeroSurfaceResponse, stageLightingOpacity } from './NailDesignStudio';
 import { heroEffectForPolish, normalizePolishForFinish } from './polishFinish';
 import { MATERIAL_PROFILES, materialProfile } from './MaterialRenderer';
 import { createHeroDesignDocument } from '../hero-design/index.ts';
@@ -110,6 +110,19 @@ describe('DS-03 Polish Studio repair', () => {
       expect(high[role]).toBeGreaterThan(salon[role]);
       expect(high[role]).toBeLessThan(.3);
     }
+  });
+
+  it('isolates Matte from generic Solid Hero lighting while retaining depth', () => {
+    expect(matteHeroSurfaceResponse).toEqual({ apex: .08, primary: .035, edge: .08 });
+    for (const role of ['apex', 'primary', 'edge']) {
+      expect(stageLightingOpacity('Matte', .08, role, 1)).toBeLessThan(stageLightingOpacity('Solid', .08, role, 1) * .1);
+    }
+    expect(stageLightingOpacity('Solid', .08, 'primary', .42)).toBe(.42);
+    expect(stageLightingOpacity('Cream', .68, 'primary', .42)).toBe(.42 * creamHeroSurfaceResponse(.68).primary);
+    expect(stageLightingOpacity('Jelly', .74, 'primary', .42)).toBe(.42 * jellyHeroSurfaceResponse(.74).primary);
+
+    const depth = container.querySelector('[id^="hero-light-depth"] stop:last-child');
+    expect(Number(depth.getAttribute('stop-opacity'))).toBeGreaterThan(0);
   });
 
   it('saves, selects, favorites, renames, deletes, and synchronizes both Polish Racks', async () => {

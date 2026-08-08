@@ -113,9 +113,17 @@ export const jellyHeroSurfaceResponse = (shine = .74) => {
   });
 };
 
-const stageLightingOpacity = (finish, shine, role, opacity) => {
+/** Matte keeps Hero form lighting, but suppresses the specular-looking light rig. */
+export const matteHeroSurfaceResponse = Object.freeze({
+  apex: .08,
+  primary: .035,
+  edge: .08,
+});
+
+export const stageLightingOpacity = (finish, shine, role, opacity) => {
   if (finish === 'Cream') return opacity * creamHeroSurfaceResponse(shine)[role];
   if (finish === 'Jelly') return opacity * jellyHeroSurfaceResponse(shine)[role];
+  if (finish === 'Matte') return opacity * matteHeroSurfaceResponse[role];
   return opacity;
 };
 
