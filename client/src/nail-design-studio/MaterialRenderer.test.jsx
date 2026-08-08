@@ -2,6 +2,7 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { creamGlossResponse, jellyTransmissionPalette, MATERIAL_PROFILES, MaterialLayers, renderHybridJellySafely } from './MaterialRenderer';
 import { HYBRID_JELLY_LAYER_ORDER, JELLY_MATERIAL_PROFILE } from './HybridMaterialRenderer';
+import { FINISH_DEFAULTS, normalizePolishForFinish } from './polishFinish';
 
 const PATH = 'M10 0h40v100H10Z';
 const renderMaterial = (finish, color = '#B7103A', opacity = 1, shine = .68) => renderToStaticMarkup(
@@ -30,7 +31,8 @@ describe('Jelly Material Engine', () => {
     });
     expect(markup).toContain('clip-path="url(#test-material-hybrid-mask)"');
     expect(markup).toContain('data-top-coat-pigment="none"');
-    expect(JELLY_MATERIAL_PROFILE).toMatchObject({ texture: null, reflectionWidth: .1, topCoatPigment: null });
+    expect(JELLY_MATERIAL_PROFILE).toMatchObject({ id: 'hybrid-jelly', texture: null, pigmentRange: [.48, .62], transmissionRange: [.28, .18], edgeAbsorption: .3, reflectionWidth: .18, reflectionStrength: .34, topCoatPigment: null });
+    expect(markup).toContain('data-material-contract="hybrid-jelly"');
   });
   test('locks the Cream, Matte, and Glitter material baselines', () => {
     expect(MATERIAL_PROFILES.Cream).toEqual({ opacity: 1, edge: .14, curvature: .16, reflection: .66, topCoat: .52, diffuse: .01, grain: 0, transmission: 0 });
@@ -106,26 +108,56 @@ describe('Jelly Material Engine', () => {
     expect(markup).toContain('data-material-layer="curvature-shadow"');
     expect(markup).toContain('data-material-layer="edge-depth"');
     expect(markup).toContain('data-material-layer="jelly-transmission"');
-    expect(markup).not.toMatch(/stop-color="(?:#fff(?:fff)?|white|gray)"/i);
+    expect(markup).not.toMatch(/stop-color="(?:gray|silver)"/i);
   });
 
   test('uses cherry, wine, and burgundy transmission tones for the reported red failure', () => {
     expect(jellyTransmissionPalette('#A40A30')).toEqual({ transmission: '#E30E43', body: '#A40A30', edge: '#700721', depth: '#4B0516' });
     const markup = renderMaterial('Jelly', '#A40A30', .52);
-    expect(markup).toContain('data-reflection-width="10%"');
-    expect(markup).not.toMatch(/(?:#fff(?:fff)?|white|gray|silver|lavender)/i);
+    expect(markup).toContain('data-reflection-width="18%"');
+    expect(markup).toContain('data-reflection-role="soft-clear-coat"');
+    expect(markup).not.toMatch(/(?:gray|silver|lavender)/i);
   });
 
   test('uses transparency as transmission and pigment concentration rather than desaturation', () => {
     const clearer = renderMaterial('Jelly', '#087F5B', .2);
     const richer = renderMaterial('Jelly', '#087F5B', .9);
-    expect(clearer).toContain('data-jelly-pigment-concentration="0.776"');
-    expect(clearer).toContain('data-jelly-transmission="0.604"');
-    expect(richer).toContain('data-jelly-pigment-concentration="0.902"');
-    expect(richer).toContain('data-jelly-transmission="0.478"');
+    expect(clearer).toContain('data-jelly-pigment-concentration="0.508"');
+    expect(clearer).toContain('data-jelly-transmission="0.260"');
+    expect(richer).toContain('data-jelly-pigment-concentration="0.606"');
+    expect(richer).toContain('data-jelly-transmission="0.190"');
     expect(clearer).toContain('data-material-layer="base-pigment"');
     expect(richer).toContain('data-material-layer="jelly-transmission"');
-    expect(clearer).not.toMatch(/stop-color="(?:#fff(?:fff)?|white|gray)"/i);
-    expect(richer).not.toMatch(/stop-color="(?:#fff(?:fff)?|white|gray)"/i);
+    expect(clearer).not.toMatch(/stop-color="(?:gray|silver)"/i);
+    expect(richer).not.toMatch(/stop-color="(?:gray|silver)"/i);
+  });
+
+  test('keeps Jelly optical behavior isolated from protected finish contracts', () => {
+    expect(FINISH_DEFAULTS.Cream).toEqual({ baseColor: '#D94C70', opacity: 1, viscosity: .62, shine: .68 });
+    expect(FINISH_DEFAULTS.Matte).toEqual({ baseColor: '#D94C70', opacity: 1, viscosity: .66, shine: .08, matteSoftness: .72 });
+    expect(FINISH_DEFAULTS.Glass).toEqual({ baseColor: '#D94C70', translucency: .28, opacity: .82, viscosity: .44, shine: .92, glassClarity: .78 });
+    expect(FINISH_DEFAULTS['Chrome-ready']).toEqual({ baseColor: '#D94C70', opacity: 1, viscosity: .64, shine: .88, metallicReflection: .35 });
+    for (const finish of ['Cream', 'Matte', 'Glass', 'Chrome-ready']) {
+      const markup = renderMaterial(finish);
+      expect(markup).toContain(`data-material-profile="${finish}Material"`);
+      expect(markup).not.toContain('data-material-contract="hybrid-jelly"');
+    }
+  });
+
+  test('hydrates Jelly and preserves its contract across Jelly → Cream → Jelly switching', () => {
+    const saved = normalizePolishForFinish({ colorHex: '#2457C5', finish: 'Jelly', translucency: .64, opacity: .73 }, 'Jelly');
+    expect(saved).toMatchObject({ colorHex: '#2457C5', finish: 'Jelly', translucency: .64, opacity: .73 });
+    const cream = normalizePolishForFinish(saved, 'Cream');
+    const jelly = normalizePolishForFinish(cream, 'Jelly');
+    expect(renderMaterial(cream.finish, cream.colorHex)).toContain('data-material-profile="CreamMaterial"');
+    expect(renderMaterial(jelly.finish, jelly.colorHex, jelly.opacity)).toContain('data-material-contract="hybrid-jelly"');
+  });
+
+  test('keeps Jelly and Glass on visibly separate material routes', () => {
+    const jelly = renderMaterial('Jelly', '#F06292', .55);
+    const glass = renderMaterial('Glass', '#F06292', .55);
+    expect(jelly).toContain('data-material-renderer="HybridMaterialRenderer"');
+    expect(glass).toContain('data-material-profile="GlassMaterial"');
+    expect(glass).not.toContain('data-jelly-pigment-concentration');
   });
 });

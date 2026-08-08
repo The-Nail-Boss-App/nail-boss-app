@@ -1,6 +1,6 @@
 import React, { act } from 'react';
 import { createRoot } from 'react-dom/client';
-import NailDesignStudio, { creamHeroSurfaceResponse } from './NailDesignStudio';
+import NailDesignStudio, { creamHeroSurfaceResponse, jellyHeroSurfaceResponse } from './NailDesignStudio';
 import { heroEffectForPolish, normalizePolishForFinish } from './polishFinish';
 import { MATERIAL_PROFILES, materialProfile } from './MaterialRenderer';
 import { createHeroDesignDocument } from '../hero-design/index.ts';
@@ -98,6 +98,18 @@ describe('DS-03 Polish Studio repair', () => {
     const nail = container.querySelector('svg[data-testid="stage-nail"]');
     expect(Number(nail.querySelector('[id^="hero-light-primary"] stop:nth-child(2)').getAttribute('stop-opacity'))).toBeLessThan(.05);
     expect(Number(nail.querySelector('[id^="hero-light-apex"] stop').getAttribute('stop-opacity'))).toBeLessThan(.05);
+  });
+
+  it('keeps Hero lighting subordinate to the Jelly wet-gel surface', () => {
+    const low = jellyHeroSurfaceResponse(0);
+    const salon = jellyHeroSurfaceResponse(.74);
+    const high = jellyHeroSurfaceResponse(1);
+    expect(low).toEqual({ apex: .16, primary: .06, edge: .16 });
+    for (const role of ['apex', 'primary', 'edge']) {
+      expect(salon[role]).toBeGreaterThan(low[role]);
+      expect(high[role]).toBeGreaterThan(salon[role]);
+      expect(high[role]).toBeLessThan(.3);
+    }
   });
 
   it('saves, selects, favorites, renames, deletes, and synchronizes both Polish Racks', async () => {
