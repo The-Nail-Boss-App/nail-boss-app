@@ -1,12 +1,12 @@
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { creamGlossResponse, jellyTransmissionPalette, MATERIAL_PROFILES, MaterialLayers, renderHybridJellySafely } from './MaterialRenderer';
+import { creamGlossResponse, glitterParticleField, jellyTransmissionPalette, MATERIAL_PROFILES, MaterialLayers, renderHybridJellySafely } from './MaterialRenderer';
 import { HYBRID_JELLY_LAYER_ORDER, JELLY_MATERIAL_PROFILE } from './HybridMaterialRenderer';
 import { FINISH_DEFAULTS, normalizePolishForFinish } from './polishFinish';
 
 const PATH = 'M10 0h40v100H10Z';
-const renderMaterial = (finish, color = '#B7103A', opacity = 1, shine = .68) => renderToStaticMarkup(
-  <svg><MaterialLayers path={PATH} finish={finish} color={color} opacity={opacity} shine={shine} uid="test-material"/></svg>,
+const renderMaterial = (finish, color = '#B7103A', opacity = 1, shine = .68, glitter = {}) => renderToStaticMarkup(
+  <svg><MaterialLayers path={PATH} finish={finish} color={color} opacity={opacity} shine={shine} {...glitter} uid="test-material"/></svg>,
 );
 
 describe('Jelly Material Engine', () => {
@@ -45,10 +45,35 @@ describe('Jelly Material Engine', () => {
       expect(markup).toContain('data-material-layer="base-pigment"');
       expect(markup).toContain('data-material-layer="curvature-shadow"');
       expect(markup).toContain('data-material-layer="edge-darkening"');
-      expect(markup).toContain(finish === 'Cream' ? 'fill="#FFFFFF"' : finish === 'Matte' ? 'matte-diffuse' : 'fill="#f5edf2"');
+      expect(markup).toContain(finish === 'Cream' ? 'fill="#FFFFFF"' : finish === 'Matte' ? 'matte-diffuse' : 'data-material-contract="mat-f05a-particulate-glitter"');
       expect(markup).toContain('stop-color="#fff"');
       expect(markup).not.toContain('data-material-layer="base-jelly-pigment"');
     }
+  });
+
+  test('builds a dense, deterministic, depth-layered Glitter population from independent controls', () => {
+    const zero = glitterParticleField('#120B10', '#D7B45A', 0);
+    const medium = glitterParticleField('#120B10', '#D7B45A', .5);
+    const dense = glitterParticleField('#120B10', '#D7B45A', 1);
+    expect(zero).toHaveLength(0);
+    expect(medium).toHaveLength(140);
+    expect(dense).toHaveLength(280);
+    expect(dense.slice(0, medium.length)).toEqual(medium);
+    expect(glitterParticleField('#120B10', '#D7B45A', .5)).toEqual(medium);
+    expect(new Set(dense.map((particle) => particle.radius.toFixed(2))).size).toBeGreaterThan(20);
+    expect(new Set(dense.map((particle) => particle.depth))).toEqual(new Set(['embedded', 'surface', 'specular']));
+  });
+
+  test('renders fleck pigment independently inside the base polish and uses no decorative glyph paths', () => {
+    const purple = renderMaterial('Glitter', '#A40A30', 1, .82, { fleckColor: '#7B2CBF', glitterDensity: .75 });
+    const gold = renderMaterial('Glitter', '#A40A30', 1, .82, { fleckColor: '#D7B45A', glitterDensity: .75 });
+    expect(purple).toContain('data-material-base-color="#A40A30"');
+    expect(purple).toContain('data-glitter-fleck-color="#7B2CBF"');
+    expect(purple).toContain('data-glitter-particle-count="210"');
+    expect(gold).toContain('data-material-base-color="#A40A30"');
+    expect(gold).toContain('fill="#D7B45A"');
+    expect(purple.match(/<ellipse/g)).toHaveLength(210);
+    expect(purple).not.toContain('submerged-glitter');
   });
 
   test.each(['#000000', '#B7103A', '#07152F', '#0B5D45', '#D8B49C', '#E8A0BF', '#B9A2D0'])('keeps MAT-F04 pigment opaque and hue-faithful for %s', (color) => {

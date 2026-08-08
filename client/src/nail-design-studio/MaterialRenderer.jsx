@@ -26,12 +26,26 @@ export function renderHybridJellySafely(props, hybridRenderer = HybridJellyMater
   }
 }
 
-const PARTICLES = [
-  [75,48,2.7,.92],[105,62,1.2,.58],[137,51,1.8,.8],[166,75,1,.5],[91,91,1.5,.72],
-  [124,105,3.1,.88],[153,120,1.4,.62],[72,132,1,.46],[111,145,2.1,.82],[144,159,1.1,.55],
-  [170,181,2.6,.74],[87,192,1.4,.65],[128,210,1,.48],[157,225,2,.9],[102,244,2.8,.76],
-  [139,260,1.3,.57],[79,274,1.8,.7],[119,291,1,.45],[151,303,2.4,.84],[108,321,1.5,.61],
-];
+const GLITTER_PARTICLE_CAPACITY = 280;
+const hashSeed = (value) => [...value].reduce((hash, character) => Math.imul(hash ^ character.charCodeAt(0), 16777619) >>> 0, 2166136261);
+
+/** Stable prefix population: density reveals particles instead of resizing a fixed set. */
+export function glitterParticleField(baseColor = '#D94C70', fleckColor = '#E8D7A8', density = .46) {
+  let state = hashSeed(`${baseColor.toUpperCase()}|${fleckColor.toUpperCase()}|standard-glitter-v1`);
+  const random = () => { state = (Math.imul(state, 1664525) + 1013904223) >>> 0; return state / 4294967296; };
+  const count = Math.round(clamp(density) * GLITTER_PARTICLE_CAPACITY);
+  return Array.from({ length: count }, (_, index) => {
+    const scaleRoll = random();
+    const radius = scaleRoll < .76 ? .32 + random() * .42 : scaleRoll < .96 ? .76 + random() * .62 : 1.45 + random() * .8;
+    const depthRoll = random();
+    return Object.freeze({
+      index, x: 48 + random() * 144, y: 20 + random() * 326, radius,
+      squash: .58 + random() * .72, rotation: random() * 180,
+      depth: depthRoll < .58 ? 'embedded' : depthRoll < .965 ? 'surface' : 'specular',
+      opacity: depthRoll < .58 ? .2 + random() * .32 : depthRoll < .965 ? .5 + random() * .34 : .88 + random() * .12,
+    });
+  });
+}
 
 function MaterialDefs({ id, color, neutralCream = false }) {
   const pigmentEdge = neutralCream ? color : '#170812';
@@ -151,8 +165,32 @@ function JellyLayers({ path, color, opacity, uid, baseProps }) {
   </g>;
 }
 
+function GlitterLayers({ path, color, fleckColor, density, opacity, uid, baseProps }) {
+  const p = MATERIAL_PROFILES.Glitter;
+  const particles = glitterParticleField(color, fleckColor, density);
+  const paint = (particle, specular = false) => <ellipse key={particle.index} cx={particle.x} cy={particle.y} rx={particle.radius} ry={particle.radius * particle.squash}
+    transform={`rotate(${particle.rotation.toFixed(1)} ${particle.x.toFixed(2)} ${particle.y.toFixed(2)})`}
+    fill={specular ? `url(#${uid}-glitter-hit)` : fleckColor} opacity={particle.opacity.toFixed(2)}/>;
+  const population = (depth) => particles.filter((particle) => particle.depth === depth);
+  return <g data-material-renderer="MaterialRenderer" data-material-profile="GlitterMaterial" data-material-contract="mat-f05a-particulate-glitter"
+    data-material-input-color={color} data-material-base-color={color} data-glitter-fleck-color={fleckColor} data-glitter-density={clamp(density).toFixed(2)} data-glitter-particle-count={particles.length}>
+    <MaterialDefs id={uid} color={color}/>
+    <defs><clipPath id={`${uid}-glitter-mask`}><path d={path}/></clipPath><filter id={`${uid}-embedded-softness`}><feGaussianBlur stdDeviation=".32"/></filter><radialGradient id={`${uid}-glitter-hit`}><stop stopColor="#FFFFFF"/><stop offset=".32" stopColor={fleckColor}/><stop offset="1" stopColor={fleckColor} stopOpacity=".45"/></radialGradient></defs>
+    <path {...baseProps} data-material-layer="base-pigment" d={path} fill={`url(#${uid}-pigment)`} opacity={opacity * p.opacity}/>
+    <path data-material-layer="curvature-shadow" d={path} fill={`url(#${uid}-curve)`} opacity={p.curvature}/>
+    <path data-material-layer="edge-darkening" d={path} fill={`url(#${uid}-edges)`} opacity={p.edge}/>
+    <g clipPath={`url(#${uid}-glitter-mask)`} transform={uid.startsWith('swatch-') ? 'scale(.35 .15)' : undefined} data-material-layer="glitter-particle-field">
+      <g data-particle-depth="embedded" filter={`url(#${uid}-embedded-softness)`}>{population('embedded').map((particle) => paint(particle))}</g>
+      <g data-particle-depth="surface-near">{population('surface').map((particle) => paint(particle))}</g>
+      <g data-particle-depth="specular">{population('specular').map((particle) => paint(particle, true))}</g>
+    </g>
+    <path data-material-layer="reflection" d={path} fill={`url(#${uid}-reflection)`} opacity={p.reflection}/>
+    <path data-material-layer="top-coat" d={path} fill="none" stroke="#fff" strokeWidth="1" strokeOpacity={p.topCoat}/>
+  </g>;
+}
+
 /** Shared ordered pipeline: pigment → curvature → edges → material → reflection → top coat → detail. */
-export function MaterialLayers({ path, finish = 'Cream', color = '#D94C70', opacity = 1, shine = .68, uid = 'material', baseProps = {} }) {
+export function MaterialLayers({ path, finish = 'Cream', color = '#D94C70', fleckColor = '#E8D7A8', glitterDensity = .46, opacity = 1, shine = .68, uid = 'material', baseProps = {} }) {
   if (finish === 'Jelly') {
     if (features.materials.hybridJellyRenderer.enabled) {
       const hybrid = renderHybridJellySafely({ path, color, opacity, uid, baseProps });
@@ -161,6 +199,7 @@ export function MaterialLayers({ path, finish = 'Cream', color = '#D94C70', opac
     return <JellyLayers path={path} color={color} opacity={opacity} uid={uid} baseProps={baseProps}/>;
   }
   if (finish === 'Matte') return <MatteLayers path={path} color={color} opacity={opacity} uid={uid} baseProps={baseProps}/>;
+  if (finish === 'Glitter') return <GlitterLayers path={path} color={color} fleckColor={fleckColor} density={glitterDensity} opacity={opacity} uid={uid} baseProps={baseProps}/>;
   const p = materialProfile(finish);
   const neutralCream = finish === 'Cream';
   const gloss = neutralCream ? creamGlossResponse(shine) : { reflection: p.reflection, secondaryReflection: 0, topCoat: p.topCoat };
@@ -171,7 +210,6 @@ export function MaterialLayers({ path, finish = 'Cream', color = '#D94C70', opac
     <path data-material-layer="edge-darkening" d={path} fill={`url(#${uid}-edges)`} opacity={p.edge}/>
     {p.transmission > 0 && <path data-material-layer="internal-light-transmission" d={path} fill={`url(#${uid}-transmission)`} opacity={p.transmission}/>} 
     <path data-material-layer="material-diffusion" d={path} fill={neutralCream ? '#FFFFFF' : '#f5edf2'} opacity={neutralCream ? Math.min(p.diffuse, .025) : p.diffuse}/>
-    {finish === 'Glitter' && <g data-material-layer="submerged-glitter">{PARTICLES.map(([x,y,r,a], i) => i % 6 === 0 ? <path key={i} d={`M${x-r*2} ${y}h${r*4}M${x} ${y-r*2}v${r*4}`} stroke="#fff9d6" strokeWidth={Math.max(.55,r*.45)} opacity={a}/> : <circle key={i} cx={x} cy={y} r={r} fill={i%3 ? '#fff' : '#ffd978'} opacity={a}/>)}</g>}
     <path data-material-layer="reflection" d={path} fill={`url(#${uid}-reflection)`} opacity={gloss.reflection}/>
     {neutralCream && <path data-material-layer="secondary-reflection" d={path} fill={`url(#${uid}-secondary-reflection)`} opacity={gloss.secondaryReflection}/>}
     <path data-material-layer="top-coat" d={path} fill="none" stroke="#fff" strokeWidth={neutralCream ? '1.4' : '2.2'} strokeOpacity={gloss.topCoat}/>
@@ -179,8 +217,8 @@ export function MaterialLayers({ path, finish = 'Cream', color = '#D94C70', opac
   </g>;
 }
 
-export function MaterialSwatch({ finish, color, className = '' }) {
+export function MaterialSwatch({ finish, color, fleckColor, glitterDensity, className = '' }) {
   const id = useId().replace(/:/g, '');
   const path = 'M9 31C7 18 17 7 32 8c10-5 26 1 29 12 8 6 4 23-8 27-13 7-38 4-44-4-3-4-3-8 0-12Z';
-  return <svg className={className} viewBox="0 0 70 56" role="img" aria-label={`${finish} polish sample swatch`}><MaterialLayers path={path} finish={finish} color={color} uid={`swatch-${id}`}/></svg>;
+  return <svg className={className} viewBox="0 0 70 56" role="img" aria-label={`${finish} polish sample swatch`}><MaterialLayers path={path} finish={finish} color={color} fleckColor={fleckColor} glitterDensity={glitterDensity} uid={`swatch-${id}`}/></svg>;
 }
