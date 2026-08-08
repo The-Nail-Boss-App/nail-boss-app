@@ -26,7 +26,7 @@ export function renderHybridJellySafely(props, hybridRenderer = HybridJellyMater
   }
 }
 
-const GLITTER_PARTICLE_CAPACITY = 280;
+export const GLITTER_PARTICLE_CAPACITY = 1200;
 const hashSeed = (value) => [...value].reduce((hash, character) => Math.imul(hash ^ character.charCodeAt(0), 16777619) >>> 0, 2166136261);
 
 /** Stable prefix population: density reveals particles instead of resizing a fixed set. */
@@ -36,11 +36,12 @@ export function glitterParticleField(baseColor = '#D94C70', fleckColor = '#E8D7A
   const count = Math.round(clamp(density) * GLITTER_PARTICLE_CAPACITY);
   return Array.from({ length: count }, (_, index) => {
     const scaleRoll = random();
-    const radius = scaleRoll < .76 ? .32 + random() * .42 : scaleRoll < .96 ? .76 + random() * .62 : 1.45 + random() * .8;
+    const size = scaleRoll < .86 ? 'micro' : scaleRoll < .98 ? 'small' : 'medium';
+    const radius = size === 'micro' ? .18 + random() * .3 : size === 'small' ? .52 + random() * .42 : .98 + random() * .48;
     const depthRoll = random();
     return Object.freeze({
-      index, x: 48 + random() * 144, y: 20 + random() * 326, radius,
-      squash: .58 + random() * .72, rotation: random() * 180,
+      index, x: 48 + random() * 144, y: 20 + random() * 326, radius, size,
+      squash: .42 + random() * .68, rotation: random() * 180,
       depth: depthRoll < .58 ? 'embedded' : depthRoll < .965 ? 'surface' : 'specular',
       opacity: depthRoll < .58 ? .2 + random() * .32 : depthRoll < .965 ? .5 + random() * .34 : .88 + random() * .12,
     });
@@ -165,27 +166,33 @@ function JellyLayers({ path, color, opacity, uid, baseProps }) {
   </g>;
 }
 
-function GlitterLayers({ path, color, fleckColor, density, opacity, uid, baseProps }) {
-  const p = MATERIAL_PROFILES.Glitter;
+function GlitterLayers({ path, color, fleckColor, density, opacity, shine, uid, baseProps }) {
+  // Glitter is particulate suspended in the approved opaque Cream polish body.
+  // It intentionally borrows no transmission or metallic surface behavior.
+  const p = MATERIAL_PROFILES.Cream;
+  const gloss = creamGlossResponse(shine);
   const particles = glitterParticleField(color, fleckColor, density);
   const paint = (particle, specular = false) => <ellipse key={particle.index} cx={particle.x} cy={particle.y} rx={particle.radius} ry={particle.radius * particle.squash}
     transform={`rotate(${particle.rotation.toFixed(1)} ${particle.x.toFixed(2)} ${particle.y.toFixed(2)})`}
     fill={specular ? `url(#${uid}-glitter-hit)` : fleckColor} opacity={particle.opacity.toFixed(2)}/>;
   const population = (depth) => particles.filter((particle) => particle.depth === depth);
-  return <g data-material-renderer="MaterialRenderer" data-material-profile="GlitterMaterial" data-material-contract="mat-f05a-particulate-glitter"
+  return <g data-material-renderer="MaterialRenderer" data-material-profile="GlitterMaterial" data-material-contract="mat-f05b-cream-founded-particulate-glitter"
+    data-glitter-surface-foundation="Cream" data-optical-color-model="neutral-achromatic" data-material-shine={clamp(shine).toFixed(2)}
     data-material-input-color={color} data-material-base-color={color} data-glitter-fleck-color={fleckColor} data-glitter-density={clamp(density).toFixed(2)} data-glitter-particle-count={particles.length}>
-    <MaterialDefs id={uid} color={color}/>
+    <MaterialDefs id={uid} color={color} neutralCream/>
     <defs><clipPath id={`${uid}-glitter-mask`}><path d={path}/></clipPath><filter id={`${uid}-embedded-softness`}><feGaussianBlur stdDeviation=".32"/></filter><radialGradient id={`${uid}-glitter-hit`}><stop stopColor="#FFFFFF"/><stop offset=".32" stopColor={fleckColor}/><stop offset="1" stopColor={fleckColor} stopOpacity=".45"/></radialGradient></defs>
     <path {...baseProps} data-material-layer="base-pigment" d={path} fill={`url(#${uid}-pigment)`} opacity={opacity * p.opacity}/>
     <path data-material-layer="curvature-shadow" d={path} fill={`url(#${uid}-curve)`} opacity={p.curvature}/>
     <path data-material-layer="edge-darkening" d={path} fill={`url(#${uid}-edges)`} opacity={p.edge}/>
+    <path data-material-layer="material-diffusion" d={path} fill="#FFFFFF" opacity={Math.min(p.diffuse, .025)}/>
     <g clipPath={`url(#${uid}-glitter-mask)`} transform={uid.startsWith('swatch-') ? 'scale(.35 .15)' : undefined} data-material-layer="glitter-particle-field">
       <g data-particle-depth="embedded" filter={`url(#${uid}-embedded-softness)`}>{population('embedded').map((particle) => paint(particle))}</g>
       <g data-particle-depth="surface-near">{population('surface').map((particle) => paint(particle))}</g>
       <g data-particle-depth="specular">{population('specular').map((particle) => paint(particle, true))}</g>
     </g>
-    <path data-material-layer="reflection" d={path} fill={`url(#${uid}-reflection)`} opacity={p.reflection}/>
-    <path data-material-layer="top-coat" d={path} fill="none" stroke="#fff" strokeWidth="1" strokeOpacity={p.topCoat}/>
+    <path data-material-layer="reflection" d={path} fill={`url(#${uid}-reflection)`} opacity={gloss.reflection}/>
+    <path data-material-layer="secondary-reflection" d={path} fill={`url(#${uid}-secondary-reflection)`} opacity={gloss.secondaryReflection}/>
+    <path data-material-layer="top-coat" d={path} fill="none" stroke="#fff" strokeWidth="1.4" strokeOpacity={gloss.topCoat}/>
   </g>;
 }
 
@@ -199,7 +206,7 @@ export function MaterialLayers({ path, finish = 'Cream', color = '#D94C70', flec
     return <JellyLayers path={path} color={color} opacity={opacity} uid={uid} baseProps={baseProps}/>;
   }
   if (finish === 'Matte') return <MatteLayers path={path} color={color} opacity={opacity} uid={uid} baseProps={baseProps}/>;
-  if (finish === 'Glitter') return <GlitterLayers path={path} color={color} fleckColor={fleckColor} density={glitterDensity} opacity={opacity} uid={uid} baseProps={baseProps}/>;
+  if (finish === 'Glitter') return <GlitterLayers path={path} color={color} fleckColor={fleckColor} density={glitterDensity} opacity={opacity} shine={shine} uid={uid} baseProps={baseProps}/>;
   const p = materialProfile(finish);
   const neutralCream = finish === 'Cream';
   const gloss = neutralCream ? creamGlossResponse(shine) : { reflection: p.reflection, secondaryReflection: 0, topCoat: p.topCoat };
