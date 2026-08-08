@@ -71,3 +71,44 @@ Matte and Glitter profile objects remain byte-for-byte unchanged. Jelly still ro
 ## 13. Remaining limitations
 
 DOM assertions prove layer ownership, routing, pigment tokens, opacity/transmission, and monotonic Shine behavior, but not photographic parity. Browser screenshots provide only local visual evidence; founder review of the deployed renderer against the approved board remains final acceptance. Viscosity remains a later intentional material-behavior task.
+
+## 14. Post-merge clear-coat correction
+
+The first MAT-F02 pass removed the original full-height MaterialRenderer stripe, but production QA showed that black still read as a broad gray cylinder. A complete compositing audit isolated the remaining cause: MaterialRenderer's white curvature contributed at most `.18 × .20 = .036` before gradient falloff, while its primary reflection was bounded to an ellipse; the Hero stage then added a 58%-radius apex, a full-height 42%–62% primary band, and two screen-blended edge responses above the entire material. At Shine 68%, those three Hero layers overlapped the local reflection. Screen blending made their opacity stacking body-whitening rather than clear-coat sparkle. The Hero primary/apex combination—not a pigment defect—was the dominant remaining gray band.
+
+The correction preserves the selected pigment gradient exactly and changes Cream-only optical composition. MaterialRenderer now owns the obvious clear-coat reflection. Hero Lighting retains a faint environmental apex, primary response, and rim, but the stage attenuates those layers only when the interface finish is Cream. Non-Cream Hero colors, geometry, masks, lighting-engine profiles, and blend modes are unchanged.
+
+### Corrected reflection hierarchy
+
+| Parameter | Merged MAT-F02 | Corrected value | Purpose |
+| --- | ---: | ---: | --- |
+| Primary width | 42% transform | 18% transform | Concentrate brightness on the top surface rather than across the body. |
+| Primary center | 35% | 39% | Stay visibly off-center while following the upper/mid apex. |
+| Primary vertical scale | 100% | 92% | Preserve elongation with a natural terminal fade. |
+| Primary layer range | `.28–.62` | `.24–.66` | Make low Shine restrained while allowing a crisp salon highlight at high Shine. |
+| Secondary width / center | 25% / 72% | 9% / 73% | Break symmetry without introducing a decorative second stripe. |
+| Secondary layer range | `.08–.20` | `.04–.14` | Keep the environmental reflection substantially weaker than primary. |
+| Clear-coat rim range | `.24–.50` | `.22–.52` | Retain a fine transparent-surface cue without broad fill. |
+
+The primary is an 18%-wide asymmetric elliptical radial gradient at `cx=39%`, strongest in the upper/mid region and fading in both axes. The secondary is a 9%-wide response at `cx=73%`, with lower stop and layer opacity. Placement is deterministic and pigment-independent.
+
+### Body and sidewall correction
+
+Cream curvature changed from `.20` to `.16`; its white apex stop changed from `.18` to `.08`, the low-level body stop from `.035` to `.015`, and the terminal shadow from `.10` to `.08`. Edge strength changed from `.18` to `.14`. Left/right internal edge stops changed from `.34/.30` to `.22/.16`, with transparent pigment extending from 10% through 90%. This modest, intentionally unequal rolloff keeps convex form without equal dark rails or a tubular silhouette. Diffusion changed from `.02` to `.01`. Pigment opacity, color stops, and transmission remain `1`, the selected HEX at every pigment stop, and `0`, respectively.
+
+### Corrected Shine mapping and Hero restraint
+
+For clamped Shine `s`, Cream now uses:
+
+- primary clear-coat reflection: `.24 + .42s`
+- secondary clear-coat reflection: `.04 + .10s`
+- clear-coat rim: `.22 + .30s`
+- Hero apex multiplier: `.08 + .04s`
+- Hero primary multiplier: `.04 + .05s`
+- Hero edge multiplier: `.10 + .05s`
+
+All responses are monotonic at 0%, 25%, 50%, 68%, 75%, and 100%. Shine changes only the surface-response opacities; it never enters `MaterialDefs` pigment colors. At 0%, Cream retains a restrained primary, secondary, and rim rather than adopting Matte grain/diffusion. At 100%, the highlight strengthens but remains an 18%-wide faded ellipse rather than Chrome's body-wide beam.
+
+### Remaining visual limitations after correction
+
+SVG gradients approximate a photographic studio softbox and cannot model refraction, Fresnel response, or micro-surface scattering. The single deterministic setup also cannot reproduce every reflection shown across the reference board. Automated contracts can lock width, placement, hierarchy, pigment ownership, finish isolation, and Shine progression; final perceptual approval still requires browser/deployed comparison at Cream, `#000000`, opacity 100%, Shine 68%.

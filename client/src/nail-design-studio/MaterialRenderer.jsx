@@ -9,7 +9,7 @@ export { jellyTransmissionPalette } from './HybridMaterialRenderer';
  * describe how a cured surface responds to light; color only tints the base.
  */
 export const MATERIAL_PROFILES = Object.freeze({
-  Cream: Object.freeze({ opacity: 1, edge: .18, curvature: .2, reflection: .62, topCoat: .5, diffuse: .02, grain: 0, transmission: 0 }),
+  Cream: Object.freeze({ opacity: 1, edge: .14, curvature: .16, reflection: .66, topCoat: .52, diffuse: .01, grain: 0, transmission: 0 }),
   Matte: Object.freeze({ opacity: .96, edge: .18, curvature: .18, reflection: .06, topCoat: .04, diffuse: .34, grain: .28, transmission: 0 }),
   Jelly: Object.freeze({ opacity: .68, edge: .48, curvature: .24, reflection: .9, topCoat: .58, diffuse: .04, grain: 0, transmission: .42 }),
   Glitter: Object.freeze({ opacity: .94, edge: .3, curvature: .28, reflection: .7, topCoat: .5, diffuse: .06, grain: 0, transmission: .08 }),
@@ -41,10 +41,10 @@ function MaterialDefs({ id, color, neutralCream = false }) {
   return <defs>
     <radialGradient id={`${id}-pigment`} cx="50%" cy="38%" r="72%"><stop offset="0" stopColor={color}/><stop offset="66%" stopColor={color}/><stop offset="100%" stopColor={pigmentEdge}/></radialGradient>
     <radialGradient id={`${id}-transmission`} cx="50%" cy="44%" r="64%"><stop offset="0" stopColor="#fff" stopOpacity=".36"/><stop offset="48%" stopColor={color} stopOpacity=".12"/><stop offset="100%" stopColor={transmissionEdge} stopOpacity=".48"/></radialGradient>
-    <linearGradient id={`${id}-edges`} x1="0" x2="1"><stop stopColor={edgeColor} stopOpacity={neutralCream ? '.34' : '.72'}/><stop offset={neutralCream ? '.13' : '.18'} stopColor={edgeColor} stopOpacity="0"/><stop offset={neutralCream ? '.87' : '.78'} stopColor={edgeColor} stopOpacity="0"/><stop offset="1" stopColor={edgeColor} stopOpacity={neutralCream ? '.3' : '.64'}/></linearGradient>
-    <radialGradient id={`${id}-curve`} cx="48%" cy="28%" r="76%"><stop stopColor="#fff" stopOpacity={neutralCream ? '.18' : '.3'}/><stop offset=".42" stopColor="#fff" stopOpacity={neutralCream ? '.035' : '.06'}/><stop offset="1" stopColor="#000" stopOpacity={neutralCream ? '.1' : '.24'}/></radialGradient>
+    <linearGradient id={`${id}-edges`} x1="0" x2="1"><stop stopColor={edgeColor} stopOpacity={neutralCream ? '.22' : '.72'}/><stop offset={neutralCream ? '.1' : '.18'} stopColor={edgeColor} stopOpacity="0"/><stop offset={neutralCream ? '.9' : '.78'} stopColor={edgeColor} stopOpacity="0"/><stop offset="1" stopColor={edgeColor} stopOpacity={neutralCream ? '.16' : '.64'}/></linearGradient>
+    <radialGradient id={`${id}-curve`} cx="46%" cy="25%" r="82%"><stop stopColor="#fff" stopOpacity={neutralCream ? '.08' : '.3'}/><stop offset=".3" stopColor="#fff" stopOpacity={neutralCream ? '.015' : '.06'}/><stop offset="1" stopColor="#000" stopOpacity={neutralCream ? '.08' : '.24'}/></radialGradient>
     {neutralCream
-      ? <><radialGradient id={`${id}-reflection`} cx="35%" cy="27%" r="62%" gradientTransform="matrix(.42 0 0 1 .2 0)"><stop offset="0" stopColor="#fff" stopOpacity=".92"/><stop offset="34%" stopColor="#fff" stopOpacity=".62"/><stop offset="72%" stopColor="#fff" stopOpacity=".1"/><stop offset="100%" stopColor="#fff" stopOpacity="0"/></radialGradient><radialGradient id={`${id}-secondary-reflection`} cx="72%" cy="45%" r="54%" gradientTransform="matrix(.25 0 0 .72 .54 .13)"><stop offset="0" stopColor="#fff" stopOpacity=".36"/><stop offset="100%" stopColor="#fff" stopOpacity="0"/></radialGradient></>
+      ? <><radialGradient id={`${id}-reflection`} data-reflection-role="primary" data-reflection-width="18%" cx="39%" cy="31%" r="58%" gradientTransform="matrix(.18 0 0 .92 .32 .025)"><stop offset="0" stopColor="#fff" stopOpacity=".96"/><stop offset="28%" stopColor="#fff" stopOpacity=".72"/><stop offset="64%" stopColor="#fff" stopOpacity=".16"/><stop offset="100%" stopColor="#fff" stopOpacity="0"/></radialGradient><radialGradient id={`${id}-secondary-reflection`} data-reflection-role="secondary" data-reflection-width="9%" cx="73%" cy="43%" r="52%" gradientTransform="matrix(.09 0 0 .62 .665 .16)"><stop offset="0" stopColor="#fff" stopOpacity=".3"/><stop offset="42%" stopColor="#fff" stopOpacity=".12"/><stop offset="100%" stopColor="#fff" stopOpacity="0"/></radialGradient></>
       : <linearGradient id={`${id}-reflection`} x1="0" x2="1"><stop offset=".16" stopColor="#fff" stopOpacity="0"/><stop offset=".31" stopColor="#fff" stopOpacity=".86"/><stop offset=".42" stopColor="#fff" stopOpacity=".1"/><stop offset="1" stopColor="#fff" stopOpacity="0"/></linearGradient>}
     <pattern id={`${id}-grain`} width="7" height="7" patternUnits="userSpaceOnUse"><circle cx="1" cy="2" r=".55" fill="#fff" opacity=".26"/><circle cx="5" cy="5" r=".48" fill={grainColor} opacity=".2"/></pattern>
   </defs>;
@@ -56,9 +56,9 @@ const clamp = (value, min = 0, max = 1) => Math.min(max, Math.max(min, value));
 export function creamGlossResponse(shine = .68) {
   const control = clamp(shine);
   return Object.freeze({
-    reflection: .28 + control * .34,
-    secondaryReflection: .08 + control * .12,
-    topCoat: .24 + control * .26,
+    reflection: .24 + control * .42,
+    secondaryReflection: .04 + control * .1,
+    topCoat: .22 + control * .3,
   });
 }
 
