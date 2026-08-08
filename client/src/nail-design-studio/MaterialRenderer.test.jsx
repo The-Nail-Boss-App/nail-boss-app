@@ -1,6 +1,6 @@
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { creamGlossResponse, GLITTER_PARTICLE_CAPACITY, glitterParticleField, jellyTransmissionPalette, MATERIAL_PROFILES, MaterialLayers, renderHybridJellySafely } from './MaterialRenderer';
+import { creamGlossResponse, GLITTER_EMBEDDED_BLUR, GLITTER_PARTICLE_CAPACITY, glitterParticleField, jellyTransmissionPalette, MATERIAL_PROFILES, MaterialLayers, renderHybridJellySafely } from './MaterialRenderer';
 import { HYBRID_JELLY_LAYER_ORDER, JELLY_MATERIAL_PROFILE } from './HybridMaterialRenderer';
 import { FINISH_DEFAULTS, normalizePolishForFinish } from './polishFinish';
 
@@ -45,7 +45,7 @@ describe('Jelly Material Engine', () => {
       expect(markup).toContain('data-material-layer="base-pigment"');
       expect(markup).toContain('data-material-layer="curvature-shadow"');
       expect(markup).toContain('data-material-layer="edge-darkening"');
-      expect(markup).toContain(finish === 'Cream' ? 'fill="#FFFFFF"' : finish === 'Matte' ? 'matte-diffuse' : 'data-material-contract="mat-f05b-cream-founded-particulate-glitter"');
+      expect(markup).toContain(finish === 'Cream' ? 'fill="#FFFFFF"' : finish === 'Matte' ? 'matte-diffuse' : 'data-material-contract="mat-f05c-dense-micro-particulate-glitter"');
       expect(markup).toContain('stop-color="#fff"');
       expect(markup).not.toContain('data-material-layer="base-jelly-pigment"');
     }
@@ -58,7 +58,7 @@ describe('Jelly Material Engine', () => {
     const threeQuarter = glitterParticleField('#120B10', '#D7B45A', .75);
     const dense = glitterParticleField('#120B10', '#D7B45A', 1);
     expect(zero).toHaveLength(0);
-    expect([zero.length, quarter.length, medium.length, threeQuarter.length, dense.length]).toEqual([0, 300, 600, 900, 1200]);
+    expect([zero.length, quarter.length, medium.length, threeQuarter.length, dense.length]).toEqual([0, 500, 1000, 1500, 2000]);
     expect(dense).toHaveLength(GLITTER_PARTICLE_CAPACITY);
     expect(dense.length).toBeGreaterThan(900);
     expect(dense.slice(0, medium.length)).toEqual(medium);
@@ -66,10 +66,17 @@ describe('Jelly Material Engine', () => {
     expect(new Set(dense.map((particle) => particle.radius.toFixed(2))).size).toBeGreaterThan(20);
     expect(new Set(dense.map((particle) => particle.depth))).toEqual(new Set(['embedded', 'surface', 'specular']));
     const sizes = dense.reduce((counts, particle) => ({ ...counts, [particle.size]: (counts[particle.size] || 0) + 1 }), {});
-    expect(sizes.micro / dense.length).toBeGreaterThanOrEqual(.82);
-    expect(sizes.micro / dense.length).toBeLessThanOrEqual(.88);
+    expect(sizes.micro / dense.length).toBeGreaterThanOrEqual(.88);
+    expect(sizes.micro / dense.length).toBeLessThanOrEqual(.92);
     expect(sizes.medium / dense.length).toBeGreaterThanOrEqual(.01);
-    expect(sizes.medium / dense.length).toBeLessThanOrEqual(.04);
+    expect(sizes.medium / dense.length).toBeLessThanOrEqual(.02);
+    const depths = dense.reduce((counts, particle) => ({ ...counts, [particle.depth]: (counts[particle.depth] || 0) + 1 }), {});
+    expect(depths.embedded / dense.length).toBeGreaterThanOrEqual(.65);
+    expect(depths.embedded / dense.length).toBeLessThanOrEqual(.70);
+    expect(depths.specular / dense.length).toBeGreaterThanOrEqual(.01);
+    expect(depths.specular / dense.length).toBeLessThanOrEqual(.02);
+    expect(dense.filter(({ size }) => size === 'micro').every(({ radius }) => radius >= .1 && radius <= .32)).toBe(true);
+    expect(GLITTER_EMBEDDED_BLUR).toBe(.24);
   });
 
   test('renders fleck pigment independently inside the base polish and uses no decorative glyph paths', () => {
@@ -77,10 +84,10 @@ describe('Jelly Material Engine', () => {
     const gold = renderMaterial('Glitter', '#A40A30', 1, .82, { fleckColor: '#D7B45A', glitterDensity: .75 });
     expect(purple).toContain('data-material-base-color="#A40A30"');
     expect(purple).toContain('data-glitter-fleck-color="#7B2CBF"');
-    expect(purple).toContain('data-glitter-particle-count="900"');
+    expect(purple).toContain('data-glitter-particle-count="1500"');
     expect(gold).toContain('data-material-base-color="#A40A30"');
     expect(gold).toContain('fill="#D7B45A"');
-    expect(purple.match(/<ellipse/g)).toHaveLength(900);
+    expect(purple.match(/<ellipse/g)).toHaveLength(1500);
     expect(purple).not.toContain('submerged-glitter');
   });
 
@@ -91,6 +98,9 @@ describe('Jelly Material Engine', () => {
     expect(markup).toContain('data-glitter-fleck-color="#FFFFFF"');
     expect(markup).toContain('data-optical-color-model="neutral-achromatic"');
     expect(markup).toContain('data-material-layer="secondary-reflection"');
+    expect(markup).toContain('data-reflection-width="12%"');
+    expect(markup).toContain('data-glitter-highlight="restrained"');
+    expect(markup).toContain('stdDeviation="0.24"');
     expect(markup).not.toContain('data-material-layer="internal-light-transmission"');
     expect(markup).not.toMatch(/(?:ChromeMaterial|gray|silver)/i);
   });

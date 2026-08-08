@@ -26,7 +26,8 @@ export function renderHybridJellySafely(props, hybridRenderer = HybridJellyMater
   }
 }
 
-export const GLITTER_PARTICLE_CAPACITY = 1200;
+export const GLITTER_PARTICLE_CAPACITY = 2000;
+export const GLITTER_EMBEDDED_BLUR = .24;
 const hashSeed = (value) => [...value].reduce((hash, character) => Math.imul(hash ^ character.charCodeAt(0), 16777619) >>> 0, 2166136261);
 
 /** Stable prefix population: density reveals particles instead of resizing a fixed set. */
@@ -36,19 +37,19 @@ export function glitterParticleField(baseColor = '#D94C70', fleckColor = '#E8D7A
   const count = Math.round(clamp(density) * GLITTER_PARTICLE_CAPACITY);
   return Array.from({ length: count }, (_, index) => {
     const scaleRoll = random();
-    const size = scaleRoll < .86 ? 'micro' : scaleRoll < .98 ? 'small' : 'medium';
-    const radius = size === 'micro' ? .18 + random() * .3 : size === 'small' ? .52 + random() * .42 : .98 + random() * .48;
+    const size = scaleRoll < .9 ? 'micro' : scaleRoll < .985 ? 'small' : 'medium';
+    const radius = size === 'micro' ? .1 + random() * .22 : size === 'small' ? .42 + random() * .34 : .82 + random() * .38;
     const depthRoll = random();
     return Object.freeze({
       index, x: 48 + random() * 144, y: 20 + random() * 326, radius, size,
       squash: .42 + random() * .68, rotation: random() * 180,
-      depth: depthRoll < .58 ? 'embedded' : depthRoll < .965 ? 'surface' : 'specular',
-      opacity: depthRoll < .58 ? .2 + random() * .32 : depthRoll < .965 ? .5 + random() * .34 : .88 + random() * .12,
+      depth: depthRoll < .68 ? 'embedded' : depthRoll < .985 ? 'surface' : 'specular',
+      opacity: depthRoll < .68 ? .24 + random() * .3 : depthRoll < .985 ? .46 + random() * .36 : .82 + random() * .16,
     });
   });
 }
 
-function MaterialDefs({ id, color, neutralCream = false }) {
+function MaterialDefs({ id, color, neutralCream = false, restrainedGlitter = false }) {
   const pigmentEdge = neutralCream ? color : '#170812';
   const transmissionEdge = neutralCream ? color : '#200914';
   const edgeColor = neutralCream ? '#000000' : '#130710';
@@ -59,7 +60,7 @@ function MaterialDefs({ id, color, neutralCream = false }) {
     <linearGradient id={`${id}-edges`} x1="0" x2="1"><stop stopColor={edgeColor} stopOpacity={neutralCream ? '.22' : '.72'}/><stop offset={neutralCream ? '.1' : '.18'} stopColor={edgeColor} stopOpacity="0"/><stop offset={neutralCream ? '.9' : '.78'} stopColor={edgeColor} stopOpacity="0"/><stop offset="1" stopColor={edgeColor} stopOpacity={neutralCream ? '.16' : '.64'}/></linearGradient>
     <radialGradient id={`${id}-curve`} cx="46%" cy="25%" r="82%"><stop stopColor="#fff" stopOpacity={neutralCream ? '.08' : '.3'}/><stop offset=".3" stopColor="#fff" stopOpacity={neutralCream ? '.015' : '.06'}/><stop offset="1" stopColor="#000" stopOpacity={neutralCream ? '.08' : '.24'}/></radialGradient>
     {neutralCream
-      ? <><radialGradient id={`${id}-reflection`} data-reflection-role="primary" data-reflection-width="18%" cx="39%" cy="31%" r="58%" gradientTransform="matrix(.18 0 0 .92 .32 .025)"><stop offset="0" stopColor="#fff" stopOpacity=".96"/><stop offset="28%" stopColor="#fff" stopOpacity=".72"/><stop offset="64%" stopColor="#fff" stopOpacity=".16"/><stop offset="100%" stopColor="#fff" stopOpacity="0"/></radialGradient><radialGradient id={`${id}-secondary-reflection`} data-reflection-role="secondary" data-reflection-width="9%" cx="73%" cy="43%" r="52%" gradientTransform="matrix(.09 0 0 .62 .665 .16)"><stop offset="0" stopColor="#fff" stopOpacity=".3"/><stop offset="42%" stopColor="#fff" stopOpacity=".12"/><stop offset="100%" stopColor="#fff" stopOpacity="0"/></radialGradient></>
+      ? <><radialGradient id={`${id}-reflection`} data-reflection-role="primary" data-reflection-width={restrainedGlitter ? '12%' : '18%'} cx="39%" cy="31%" r="58%" gradientTransform={restrainedGlitter ? 'matrix(.12 0 0 .88 .35 .04)' : 'matrix(.18 0 0 .92 .32 .025)'}><stop offset="0" stopColor="#fff" stopOpacity={restrainedGlitter ? '.58' : '.96'}/><stop offset="28%" stopColor="#fff" stopOpacity={restrainedGlitter ? '.34' : '.72'}/><stop offset="64%" stopColor="#fff" stopOpacity={restrainedGlitter ? '.07' : '.16'}/><stop offset="100%" stopColor="#fff" stopOpacity="0"/></radialGradient><radialGradient id={`${id}-secondary-reflection`} data-reflection-role="secondary" data-reflection-width={restrainedGlitter ? '7%' : '9%'} cx="73%" cy="43%" r="52%" gradientTransform={restrainedGlitter ? 'matrix(.07 0 0 .58 .68 .18)' : 'matrix(.09 0 0 .62 .665 .16)'}><stop offset="0" stopColor="#fff" stopOpacity={restrainedGlitter ? '.18' : '.3'}/><stop offset="42%" stopColor="#fff" stopOpacity={restrainedGlitter ? '.06' : '.12'}/><stop offset="100%" stopColor="#fff" stopOpacity="0"/></radialGradient></>
       : <linearGradient id={`${id}-reflection`} x1="0" x2="1"><stop offset=".16" stopColor="#fff" stopOpacity="0"/><stop offset=".31" stopColor="#fff" stopOpacity=".86"/><stop offset=".42" stopColor="#fff" stopOpacity=".1"/><stop offset="1" stopColor="#fff" stopOpacity="0"/></linearGradient>}
     <pattern id={`${id}-grain`} width="7" height="7" patternUnits="userSpaceOnUse"><circle cx="1" cy="2" r=".55" fill="#fff" opacity=".26"/><circle cx="5" cy="5" r=".48" fill={grainColor} opacity=".2"/></pattern>
   </defs>;
@@ -171,16 +172,17 @@ function GlitterLayers({ path, color, fleckColor, density, opacity, shine, uid, 
   // It intentionally borrows no transmission or metallic surface behavior.
   const p = MATERIAL_PROFILES.Cream;
   const gloss = creamGlossResponse(shine);
+  const glitterGloss = { reflection: gloss.reflection * .58, secondaryReflection: gloss.secondaryReflection * .62, topCoat: gloss.topCoat * .84 };
   const particles = glitterParticleField(color, fleckColor, density);
   const paint = (particle, specular = false) => <ellipse key={particle.index} cx={particle.x} cy={particle.y} rx={particle.radius} ry={particle.radius * particle.squash}
     transform={`rotate(${particle.rotation.toFixed(1)} ${particle.x.toFixed(2)} ${particle.y.toFixed(2)})`}
     fill={specular ? `url(#${uid}-glitter-hit)` : fleckColor} opacity={particle.opacity.toFixed(2)}/>;
   const population = (depth) => particles.filter((particle) => particle.depth === depth);
-  return <g data-material-renderer="MaterialRenderer" data-material-profile="GlitterMaterial" data-material-contract="mat-f05b-cream-founded-particulate-glitter"
+  return <g data-material-renderer="MaterialRenderer" data-material-profile="GlitterMaterial" data-material-contract="mat-f05c-dense-micro-particulate-glitter"
     data-glitter-surface-foundation="Cream" data-optical-color-model="neutral-achromatic" data-material-shine={clamp(shine).toFixed(2)}
     data-material-input-color={color} data-material-base-color={color} data-glitter-fleck-color={fleckColor} data-glitter-density={clamp(density).toFixed(2)} data-glitter-particle-count={particles.length}>
-    <MaterialDefs id={uid} color={color} neutralCream/>
-    <defs><clipPath id={`${uid}-glitter-mask`}><path d={path}/></clipPath><filter id={`${uid}-embedded-softness`}><feGaussianBlur stdDeviation=".32"/></filter><radialGradient id={`${uid}-glitter-hit`}><stop stopColor="#FFFFFF"/><stop offset=".32" stopColor={fleckColor}/><stop offset="1" stopColor={fleckColor} stopOpacity=".45"/></radialGradient></defs>
+    <MaterialDefs id={uid} color={color} neutralCream restrainedGlitter/>
+    <defs><clipPath id={`${uid}-glitter-mask`}><path d={path}/></clipPath><filter id={`${uid}-embedded-softness`}><feGaussianBlur stdDeviation={GLITTER_EMBEDDED_BLUR}/></filter><radialGradient id={`${uid}-glitter-hit`}><stop stopColor="#FFFFFF"/><stop offset=".22" stopColor={fleckColor}/><stop offset="1" stopColor={fleckColor} stopOpacity=".38"/></radialGradient></defs>
     <path {...baseProps} data-material-layer="base-pigment" d={path} fill={`url(#${uid}-pigment)`} opacity={opacity * p.opacity}/>
     <path data-material-layer="curvature-shadow" d={path} fill={`url(#${uid}-curve)`} opacity={p.curvature}/>
     <path data-material-layer="edge-darkening" d={path} fill={`url(#${uid}-edges)`} opacity={p.edge}/>
@@ -190,9 +192,9 @@ function GlitterLayers({ path, color, fleckColor, density, opacity, shine, uid, 
       <g data-particle-depth="surface-near">{population('surface').map((particle) => paint(particle))}</g>
       <g data-particle-depth="specular">{population('specular').map((particle) => paint(particle, true))}</g>
     </g>
-    <path data-material-layer="reflection" d={path} fill={`url(#${uid}-reflection)`} opacity={gloss.reflection}/>
-    <path data-material-layer="secondary-reflection" d={path} fill={`url(#${uid}-secondary-reflection)`} opacity={gloss.secondaryReflection}/>
-    <path data-material-layer="top-coat" d={path} fill="none" stroke="#fff" strokeWidth="1.4" strokeOpacity={gloss.topCoat}/>
+    <path data-material-layer="reflection" data-glitter-highlight="restrained" d={path} fill={`url(#${uid}-reflection)`} opacity={glitterGloss.reflection}/>
+    <path data-material-layer="secondary-reflection" d={path} fill={`url(#${uid}-secondary-reflection)`} opacity={glitterGloss.secondaryReflection}/>
+    <path data-material-layer="top-coat" d={path} fill="none" stroke="#fff" strokeWidth="1.2" strokeOpacity={glitterGloss.topCoat}/>
   </g>;
 }
 

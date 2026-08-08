@@ -172,7 +172,7 @@ describe('DS-03 Polish Studio repair', () => {
     expect(density.value).toBe('0.75');
     expect(container.querySelector('[data-material-profile="GlitterMaterial"]').dataset.materialBaseColor).toBe('#A40A30');
     expect(container.querySelector('[data-material-profile="GlitterMaterial"]').dataset.glitterFleckColor).toBe('#7B2CBF');
-    expect(container.querySelector('[data-material-profile="GlitterMaterial"]').dataset.glitterParticleCount).toBe('900');
+    expect(container.querySelector('[data-material-profile="GlitterMaterial"]').dataset.glitterParticleCount).toBe('1500');
   });
 
   it('hydrates legacy Glitter safely with a deterministic independent fleck fallback', () => {
