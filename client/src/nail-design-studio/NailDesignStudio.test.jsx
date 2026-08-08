@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import NailDesignStudio from './NailDesignStudio';
 import { heroEffectForPolish, normalizePolishForFinish } from './polishFinish';
 import { MATERIAL_PROFILES, materialProfile } from './MaterialRenderer';
+import { createHeroDesignDocument } from '../hero-design/index.ts';
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -116,6 +117,9 @@ describe('DS-03 Polish Studio repair', () => {
         : ['base-pigment', 'curvature-shadow', 'edge-darkening']);
       expect(layers).toContain('reflection');
       expect(layers).toContain('top-coat');
+      const stage = container.querySelector('[data-testid="stage-nail"]');
+      expect(stage.dataset.lightingColorModel).toBe(finish === 'Cream' ? 'neutral-achromatic' : 'hero-environment');
+      expect([...stage.querySelectorAll('[id^="hero-light-apex"] stop, [id^="hero-light-primary"] stop, [id^="hero-light-edge"] stop')].every((stop) => stop.getAttribute('stop-color') === '#ffffff' || stop.getAttribute('stop-color') === '#FFFFFF')).toBe(true);
     }
     expect(container.querySelector('[data-material-layer="submerged-glitter"] circle')).toBeTruthy();
     expect(container.querySelector('.nail-design-studio__active-swatch [data-material-profile="GlitterMaterial"]')).toBeTruthy();
@@ -201,6 +205,46 @@ describe('DS-03 Polish Studio repair', () => {
     expect(container.querySelectorAll('svg[data-testid="stage-nail"]')[0].dataset.renderColor).toBe('#E8A0BF');
     await click(container.querySelectorAll('[data-testid="nail-slot"]')[1]);
     expect(container.querySelectorAll('svg[data-testid="stage-nail"]')[1].dataset.renderColor).toBe('#07152F');
+  });
+});
+
+describe('MAT-F02C finish-gated stage lighting', () => {
+  const LIGHT_COLOR = '#34A6C8';
+
+  const renderLoadedFinish = async (finish) => {
+    const formulation = normalizePolishForFinish({ colorHex: '#030303', finish }, finish);
+    const heroDocument = createHeroDesignDocument({ id: 'nail-desk-hero', name: 'Lighting test', shapeId: 'Almond', maskId: 'almond-mask' });
+    heroDocument.nail.effect = heroEffectForPolish(formulation);
+    heroDocument.lighting = { ...heroDocument.lighting, color: LIGHT_COLOR };
+    heroDocument.metadata.activePolishFormulation = formulation;
+    window.localStorage.setItem('anitaset.hero-design.v1:nail-desk-hero', JSON.stringify(heroDocument));
+    container = document.createElement('div'); document.body.appendChild(container); root = createRoot(container);
+    await act(async () => root.render(<NailDesignStudio />));
+    return container.querySelector('svg[data-testid="stage-nail"]');
+  };
+
+  afterEach(() => {
+    act(() => root.unmount()); container.remove();
+    window.localStorage.removeItem('anitaset.hero-design.v1:nail-desk-hero');
+  });
+
+  it('keeps Cream lighting achromatic when a loaded design configures colored light', async () => {
+    const nail = await renderLoadedFinish('Cream');
+    expect(nail.dataset.renderColor).toBe('#030303');
+    expect(nail.dataset.lightingColorModel).toBe('neutral-achromatic');
+    for (const id of ['apex', 'primary', 'edge']) {
+      expect([...nail.querySelectorAll(`[id^="hero-light-${id}"] stop`)].every((stop) => stop.getAttribute('stop-color') === '#FFFFFF')).toBe(true);
+    }
+    expect([...nail.querySelectorAll('[id^="hero-light-depth"] stop')].every((stop) => stop.getAttribute('stop-color') === '#000000')).toBe(true);
+  });
+
+  it.each(['Matte', 'Glitter', 'Jelly'])('preserves configured Hero Lighting colors for %s', async (finish) => {
+    const nail = await renderLoadedFinish(finish);
+    expect(nail.dataset.lightingColorModel).toBe('hero-environment');
+    for (const id of ['apex', 'primary', 'edge']) {
+      expect([...nail.querySelectorAll(`[id^="hero-light-${id}"] stop`)].every((stop) => stop.getAttribute('stop-color') === LIGHT_COLOR)).toBe(true);
+    }
+    expect([...nail.querySelectorAll('[id^="hero-light-depth"] stop')].every((stop) => stop.getAttribute('stop-color') === '#000000')).toBe(true);
   });
 });
 
