@@ -1,6 +1,6 @@
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { creamGlossResponse, GLITTER_EMBEDDED_BLUR, GLITTER_PARTICLE_CAPACITY, glitterParticleField, jellyTransmissionPalette, MATERIAL_PROFILES, MaterialLayers, renderHybridJellySafely } from './MaterialRenderer';
+import { creamGlossResponse, GLITTER_EMBEDDED_BLUR, GLITTER_MICRO_RADIUS, GLITTER_PARTICLE_CAPACITY, glitterParticleField, jellyTransmissionPalette, MATERIAL_PROFILES, MaterialLayers, renderHybridJellySafely } from './MaterialRenderer';
 import { HYBRID_JELLY_LAYER_ORDER, JELLY_MATERIAL_PROFILE } from './HybridMaterialRenderer';
 import { FINISH_DEFAULTS, normalizePolishForFinish } from './polishFinish';
 
@@ -75,7 +75,10 @@ describe('Jelly Material Engine', () => {
     expect(depths.embedded / dense.length).toBeLessThanOrEqual(.70);
     expect(depths.specular / dense.length).toBeGreaterThanOrEqual(.01);
     expect(depths.specular / dense.length).toBeLessThanOrEqual(.02);
-    expect(dense.filter(({ size }) => size === 'micro').every(({ radius }) => radius >= .1 && radius <= .32)).toBe(true);
+    expect(GLITTER_MICRO_RADIUS).toEqual({ min: .2, max: .42 });
+    expect(dense.filter(({ size }) => size === 'micro').every(({ radius }) => radius >= .2 && radius <= .42)).toBe(true);
+    expect(dense.every(({ x }) => x >= 48 && x <= 192)).toBe(true);
+    expect(dense.filter(({ y }) => y > 320).every(({ x }) => x > 88 && x < 152)).toBe(true);
     expect(GLITTER_EMBEDDED_BLUR).toBe(.24);
   });
 

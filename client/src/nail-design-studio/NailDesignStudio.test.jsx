@@ -1,6 +1,6 @@
 import React, { act } from 'react';
 import { createRoot } from 'react-dom/client';
-import NailDesignStudio, { creamHeroSurfaceResponse, jellyHeroSurfaceResponse, matteHeroSurfaceResponse, stageLightingOpacity } from './NailDesignStudio';
+import NailDesignStudio, { creamHeroSurfaceResponse, glitterHeroSurfaceResponse, jellyHeroSurfaceResponse, matteHeroSurfaceResponse, stageLightingOpacity } from './NailDesignStudio';
 import { heroEffectForPolish, normalizePolishForFinish } from './polishFinish';
 import { MATERIAL_PROFILES, materialProfile } from './MaterialRenderer';
 import { createHeroDesignDocument } from '../hero-design/index.ts';
@@ -110,6 +110,19 @@ describe('DS-03 Polish Studio repair', () => {
       expect(high[role]).toBeGreaterThan(salon[role]);
       expect(high[role]).toBeLessThan(.3);
     }
+  });
+
+  it('gives dedicated Glitter Cream-family, Shine-responsive final Hero lighting', () => {
+    expect(glitterHeroSurfaceResponse(0)).toEqual(creamHeroSurfaceResponse(0));
+    expect(glitterHeroSurfaceResponse(1)).toEqual(creamHeroSurfaceResponse(1));
+    const low = stageLightingOpacity('Glitter', 0, 'primary', .442);
+    const high = stageLightingOpacity('Glitter', 1, 'primary', .442);
+    expect(low).toBeCloseTo(.01768, 5);
+    expect(high).toBeCloseTo(.03978, 5);
+    expect(high).toBeGreaterThan(low * 2);
+    expect(stageLightingOpacity('Glitter', .68, 'apex', .399)).toBeLessThan(.05);
+    expect(stageLightingOpacity('Glitter', .68, 'primary', .442)).toBeLessThan(.05);
+    expect(stageLightingOpacity('Solid', .68, 'primary', .442)).toBe(.442);
   });
 
   it('isolates Matte from generic Solid Hero lighting while retaining depth', () => {
