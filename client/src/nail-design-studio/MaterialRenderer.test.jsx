@@ -33,8 +33,9 @@ describe('Jelly Material Engine', () => {
     expect(JELLY_MATERIAL_PROFILE).toMatchObject({ texture: null, reflectionWidth: .1, topCoatPigment: null });
   });
   test('locks the Cream, Matte, and Glitter material baselines', () => {
-    expect(MATERIAL_PROFILES.Cream).toEqual({ opacity: 1, edge: .18, curvature: .2, reflection: .62, topCoat: .5, diffuse: .02, grain: 0, transmission: 0 });
+    expect(MATERIAL_PROFILES.Cream).toEqual({ opacity: 1, edge: .14, curvature: .16, reflection: .66, topCoat: .52, diffuse: .01, grain: 0, transmission: 0 });
     expect(MATERIAL_PROFILES.Matte).toEqual({ opacity: .96, edge: .18, curvature: .18, reflection: .06, topCoat: .04, diffuse: .34, grain: .28, transmission: 0 });
+    expect(MATERIAL_PROFILES.Jelly).toEqual({ opacity: .68, edge: .48, curvature: .24, reflection: .9, topCoat: .58, diffuse: .04, grain: 0, transmission: .42 });
     expect(MATERIAL_PROFILES.Glitter).toEqual({ opacity: .94, edge: .3, curvature: .28, reflection: .7, topCoat: .5, diffuse: .06, grain: 0, transmission: .08 });
 
     for (const finish of ['Cream', 'Matte', 'Glitter']) {
@@ -54,16 +55,38 @@ describe('Jelly Material Engine', () => {
       expect(responses[index].reflection).toBeGreaterThan(responses[index - 1].reflection);
       expect(responses[index].topCoat).toBeGreaterThan(responses[index - 1].topCoat);
     }
-    expect(responses[0]).toEqual({ reflection: .28, secondaryReflection: .08, topCoat: .24 });
+    expect(responses[0]).toEqual({ reflection: .24, secondaryReflection: .04, topCoat: .22 });
     const zero = renderMaterial('Cream', '#0D0D0D', 1, 0);
     expect(zero).toContain('data-material-shine="0.00"');
-    expect(zero).toContain('data-clear-coat-reflection="0.280"');
-    expect(zero).toContain('data-clear-coat-top-coat="0.240"');
+    expect(zero).toContain('data-clear-coat-reflection="0.240"');
+    expect(zero).toContain('data-clear-coat-top-coat="0.220"');
     expect(zero).toContain('data-material-layer="secondary-reflection"');
     expect(zero).not.toContain('data-material-layer="internal-light-transmission"');
   });
 
-  test.each(['#030303', '#FFFFFF', '#991435', '#07152F', '#E8A0BF'])('keeps Cream pigment identity for %s while every optical token is achromatic', (color) => {
+  test('calibrates a narrow asymmetric primary and a weaker offset secondary clear-coat reflection', () => {
+    const markup = renderMaterial('Cream', '#000000', 1, .68);
+    expect(markup).toContain('data-reflection-role="primary" data-reflection-width="18%" cx="39%"');
+    expect(markup).toContain('data-reflection-role="secondary" data-reflection-width="9%" cx="73%"');
+    expect(18).toBeLessThan(42); // the merged MAT-F02 broad primary transform was 42%
+    expect(39).not.toBe(50);
+    const response = creamGlossResponse(.68);
+    expect(response.secondaryReflection).toBeLessThan(response.reflection);
+    expect(markup).toContain('stop-opacity=".08"');
+    expect(MATERIAL_PROFILES.Cream.curvature).toBeLessThan(.2);
+  });
+
+  test.each([0, .25, .5, .68, .75, 1])('keeps pigment fixed while Shine %p scales only Cream clear-coat response', (shine) => {
+    const black = renderMaterial('Cream', '#000000', 1, shine);
+    const nearBlack = renderMaterial('Cream', '#0D0D0D', 1, shine);
+    expect(black.match(/stop-color="#000000"/g).length).toBeGreaterThanOrEqual(3);
+    expect(nearBlack.match(/stop-color="#0D0D0D"/g).length).toBeGreaterThanOrEqual(3);
+    expect(black).toContain('data-material-profile="CreamMaterial"');
+    expect(black).not.toContain('ChromeMaterial');
+    expect(black).not.toContain('MatteMaterial');
+  });
+
+  test.each(['#000000', '#FFFFFF', '#991435', '#07152F', '#E8A0BF'])('keeps Cream pigment identity for %s while every optical token is achromatic', (color) => {
     const markup = renderMaterial('Cream', color);
     expect(markup).toContain(`data-material-input-color="${color}"`);
     expect(markup).toContain(`data-material-base-color="${color}"`);

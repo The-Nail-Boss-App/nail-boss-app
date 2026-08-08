@@ -1,6 +1,6 @@
 import React, { act } from 'react';
 import { createRoot } from 'react-dom/client';
-import NailDesignStudio from './NailDesignStudio';
+import NailDesignStudio, { creamHeroSurfaceResponse } from './NailDesignStudio';
 import { heroEffectForPolish, normalizePolishForFinish } from './polishFinish';
 import { MATERIAL_PROFILES, materialProfile } from './MaterialRenderer';
 import { createHeroDesignDocument } from '../hero-design/index.ts';
@@ -83,6 +83,21 @@ describe('DS-03 Polish Studio repair', () => {
       expect(['', 'normal']).toContain(style.mixBlendMode);
       expect(['', undefined, 'none']).toContain(style.backdropFilter);
     }
+  });
+
+  it('restrains Cream-only Hero body whitening beneath the canonical clear coat', () => {
+    const low = creamHeroSurfaceResponse(0);
+    const salon = creamHeroSurfaceResponse(.68);
+    const high = creamHeroSurfaceResponse(1);
+    expect(low).toEqual({ apex: .08, primary: .04, edge: .1 });
+    for (const role of ['apex', 'primary', 'edge']) {
+      expect(salon[role]).toBeGreaterThan(low[role]);
+      expect(high[role]).toBeGreaterThan(salon[role]);
+      expect(high[role]).toBeLessThan(.16);
+    }
+    const nail = container.querySelector('svg[data-testid="stage-nail"]');
+    expect(Number(nail.querySelector('[id^="hero-light-primary"] stop:nth-child(2)').getAttribute('stop-opacity'))).toBeLessThan(.05);
+    expect(Number(nail.querySelector('[id^="hero-light-apex"] stop').getAttribute('stop-opacity'))).toBeLessThan(.05);
   });
 
   it('saves, selects, favorites, renames, deletes, and synchronizes both Polish Racks', async () => {
