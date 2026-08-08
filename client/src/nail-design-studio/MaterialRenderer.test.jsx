@@ -42,10 +42,21 @@ describe('Jelly Material Engine', () => {
       expect(markup).toContain('data-material-layer="base-pigment"');
       expect(markup).toContain('data-material-layer="curvature-shadow"');
       expect(markup).toContain('data-material-layer="edge-darkening"');
-      expect(markup).toContain('fill="#f5edf2"');
+      expect(markup).toContain(finish === 'Cream' ? 'fill="#FFFFFF"' : 'fill="#f5edf2"');
       expect(markup).toContain('stop-color="#fff"');
       expect(markup).not.toContain('data-material-layer="base-jelly-pigment"');
     }
+  });
+
+  test.each(['#030303', '#FFFFFF', '#991435', '#07152F', '#E8A0BF'])('keeps Cream pigment identity for %s while every optical token is achromatic', (color) => {
+    const markup = renderMaterial('Cream', color);
+    expect(markup).toContain(`data-material-input-color="${color}"`);
+    expect(markup).toContain(`data-material-base-color="${color}"`);
+    expect(markup).toContain('data-optical-color-model="neutral-achromatic"');
+    expect(markup.match(new RegExp(`stop-color="${color}"`, 'g')).length).toBeGreaterThanOrEqual(3);
+    expect(markup).not.toMatch(/#170812|#200914|#130710|#190a14|#f5edf2/i);
+    const opticalColors = [...markup.matchAll(/(?:stop-color|fill|stroke)="(#[0-9A-Fa-f]{6}|#[0-9A-Fa-f]{3})"/g)].map((match) => match[1]);
+    expect(opticalColors.every((token) => token.toUpperCase() === color.toUpperCase() || /^#(?:000(?:000)?|FFF(?:FFF)?)$/i.test(token))).toBe(true);
   });
 
   test.each(['#A40A30', '#2457C5', '#7B2CBF', '#0B7A53', '#E85D04', '#6B3A2E', '#F06292', '#E6B800'])('preserves the hue family of %s through every Jelly tone', (color) => {

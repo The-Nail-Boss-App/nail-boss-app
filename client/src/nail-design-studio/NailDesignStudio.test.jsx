@@ -166,6 +166,10 @@ describe('DS-03 Polish Studio repair', () => {
     expect(stageNail.dataset.renderColor).toBe('#030303');
     expect(stageNail.dataset.appliedPolishColor).toBe('#E8A0BF');
     expect(stageNail.querySelector('[data-material-renderer] stop').getAttribute('stop-color')).toBe('#030303');
+    expect(stageNail.querySelector('[data-material-renderer]').dataset.materialBaseColor).toBe('#030303');
+    expect(stageNail.dataset.effectOverlayCount).toBe('0');
+    expect(stageNail.dataset.lightingColorModel).toBe('neutral-achromatic');
+    expect([...stageNail.querySelectorAll('[id^="hero-light-"] stop')].every((stop) => ['#FFFFFF', '#000000'].includes(stop.getAttribute('stop-color')))).toBe(true);
 
     await click(container.querySelector('.nail-design-studio__apply-polish'));
     stageNail = container.querySelector('svg[data-testid="stage-nail"]');
