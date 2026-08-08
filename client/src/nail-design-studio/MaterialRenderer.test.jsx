@@ -36,7 +36,7 @@ describe('Jelly Material Engine', () => {
   });
   test('locks the Cream, Matte, and Glitter material baselines', () => {
     expect(MATERIAL_PROFILES.Cream).toEqual({ opacity: 1, edge: .14, curvature: .16, reflection: .66, topCoat: .52, diffuse: .01, grain: 0, transmission: 0 });
-    expect(MATERIAL_PROFILES.Matte).toEqual({ opacity: .96, edge: .18, curvature: .18, reflection: .06, topCoat: .04, diffuse: .34, grain: .28, transmission: 0 });
+    expect(MATERIAL_PROFILES.Matte).toEqual({ opacity: 1, edge: .14, curvature: .24, reflection: .018, topCoat: .012, diffuse: .12, grain: 0, transmission: 0 });
     expect(MATERIAL_PROFILES.Jelly).toEqual({ opacity: .68, edge: .48, curvature: .24, reflection: .9, topCoat: .58, diffuse: .04, grain: 0, transmission: .42 });
     expect(MATERIAL_PROFILES.Glitter).toEqual({ opacity: .94, edge: .3, curvature: .28, reflection: .7, topCoat: .5, diffuse: .06, grain: 0, transmission: .08 });
 
@@ -45,10 +45,32 @@ describe('Jelly Material Engine', () => {
       expect(markup).toContain('data-material-layer="base-pigment"');
       expect(markup).toContain('data-material-layer="curvature-shadow"');
       expect(markup).toContain('data-material-layer="edge-darkening"');
-      expect(markup).toContain(finish === 'Cream' ? 'fill="#FFFFFF"' : 'fill="#f5edf2"');
+      expect(markup).toContain(finish === 'Cream' ? 'fill="#FFFFFF"' : finish === 'Matte' ? 'matte-diffuse' : 'fill="#f5edf2"');
       expect(markup).toContain('stop-color="#fff"');
       expect(markup).not.toContain('data-material-layer="base-jelly-pigment"');
     }
+  });
+
+  test.each(['#050505', '#B7103A', '#07152F', '#0B5D45', '#E8A0BF', '#B9A2D0'])('keeps MAT-F04 pigment opaque and hue-faithful for %s', (color) => {
+    const markup = renderMaterial('Matte', color, 1, 1);
+    expect(markup).toContain('data-material-contract="mat-f04-smooth-matte-gel"');
+    expect(markup).toContain(`data-material-layer="base-pigment" d="${PATH}" fill="${color}" opacity="1"`);
+    expect(markup).toContain('data-optical-color-model="matte-achromatic"');
+    expect(markup).toContain('data-clear-coat-reflection="0.018"');
+    expect(markup).toContain('data-clear-coat-top-coat="0.012"');
+    expect(markup).not.toContain('data-material-layer="surface-detail"');
+    expect(markup).not.toContain('linearGradient id="test-material-reflection"');
+  });
+
+  test('retains broad diffuse form with less specular response than Cream and Jelly', () => {
+    const matte = renderMaterial('Matte');
+    expect(MATERIAL_PROFILES.Matte.reflection).toBeLessThan(MATERIAL_PROFILES.Cream.reflection);
+    expect(MATERIAL_PROFILES.Matte.reflection).toBeLessThan(MATERIAL_PROFILES.Jelly.reflection);
+    expect(MATERIAL_PROFILES.Matte.diffuse).toBeGreaterThan(0);
+    expect(MATERIAL_PROFILES.Matte.curvature).toBeGreaterThan(0);
+    expect(matte).toContain('id="test-material-matte-diffuse"');
+    expect(matte).toContain('gradientTransform="matrix(.72 0 0 1 .1 0)"');
+    expect(matte).toContain('data-material-layer="cuticle-tip-depth"');
   });
 
   test('models Cream as opaque pigment under a shine-controlled clear coat', () => {
