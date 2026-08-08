@@ -103,6 +103,10 @@ export const creamHeroSurfaceResponse = (shine = .68) => {
   });
 };
 
+/** Glitter keeps its dedicated particulate renderer and borrows only Cream's
+ * subdued opaque-polish Hero response so post-material light cannot gray it. */
+export const glitterHeroSurfaceResponse = (shine = .68) => creamHeroSurfaceResponse(shine);
+
 /** Jelly owns its wet-gel reflection; Hero lighting supplies only soft form. */
 export const jellyHeroSurfaceResponse = (shine = .74) => {
   const control = Math.min(1, Math.max(0, shine));
@@ -122,6 +126,7 @@ export const matteHeroSurfaceResponse = Object.freeze({
 
 export const stageLightingOpacity = (finish, shine, role, opacity) => {
   if (finish === 'Cream') return opacity * creamHeroSurfaceResponse(shine)[role];
+  if (finish === 'Glitter') return opacity * glitterHeroSurfaceResponse(shine)[role];
   if (finish === 'Jelly') return opacity * jellyHeroSurfaceResponse(shine)[role];
   if (finish === 'Matte') return opacity * matteHeroSurfaceResponse[role];
   return opacity;

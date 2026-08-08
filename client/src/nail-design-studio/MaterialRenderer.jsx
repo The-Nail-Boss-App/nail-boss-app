@@ -28,6 +28,7 @@ export function renderHybridJellySafely(props, hybridRenderer = HybridJellyMater
 
 export const GLITTER_PARTICLE_CAPACITY = 2000;
 export const GLITTER_EMBEDDED_BLUR = .24;
+export const GLITTER_MICRO_RADIUS = Object.freeze({ min: .2, max: .42 });
 const hashSeed = (value) => [...value].reduce((hash, character) => Math.imul(hash ^ character.charCodeAt(0), 16777619) >>> 0, 2166136261);
 
 /** Stable prefix population: density reveals particles instead of resizing a fixed set. */
@@ -38,10 +39,17 @@ export function glitterParticleField(baseColor = '#D94C70', fleckColor = '#E8D7A
   return Array.from({ length: count }, (_, index) => {
     const scaleRoll = random();
     const size = scaleRoll < .9 ? 'micro' : scaleRoll < .985 ? 'small' : 'medium';
-    const radius = size === 'micro' ? .1 + random() * .22 : size === 'small' ? .42 + random() * .34 : .82 + random() * .38;
+    const radius = size === 'micro' ? GLITTER_MICRO_RADIUS.min + random() * (GLITTER_MICRO_RADIUS.max - GLITTER_MICRO_RADIUS.min) : size === 'small' ? .5 + random() * .34 : .9 + random() * .38;
     const depthRoll = random();
+    // Sample a conservative normalized nail envelope before the authoritative
+    // Hero clip. This preserves every shape mask while avoiding the old full-
+    // rectangle reservoir, whose corners could never contribute visible flecks.
+    const yNorm = random();
+    const shoulder = Math.min(1, .66 + yNorm * 3.4);
+    const tip = yNorm <= .68 ? 1 : Math.max(.12, 1 - ((yNorm - .68) / .32) * .88);
+    const halfWidth = 72 * shoulder * tip;
     return Object.freeze({
-      index, x: 48 + random() * 144, y: 20 + random() * 326, radius, size,
+      index, x: 120 + (random() * 2 - 1) * halfWidth, y: 20 + yNorm * 326, radius, size,
       squash: .42 + random() * .68, rotation: random() * 180,
       depth: depthRoll < .68 ? 'embedded' : depthRoll < .985 ? 'surface' : 'specular',
       opacity: depthRoll < .68 ? .24 + random() * .3 : depthRoll < .985 ? .46 + random() * .36 : .82 + random() * .16,
