@@ -1,6 +1,6 @@
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { creamGlossResponse, glitterParticleField, jellyTransmissionPalette, MATERIAL_PROFILES, MaterialLayers, renderHybridJellySafely } from './MaterialRenderer';
+import { creamGlossResponse, GLITTER_PARTICLE_CAPACITY, glitterParticleField, jellyTransmissionPalette, MATERIAL_PROFILES, MaterialLayers, renderHybridJellySafely } from './MaterialRenderer';
 import { HYBRID_JELLY_LAYER_ORDER, JELLY_MATERIAL_PROFILE } from './HybridMaterialRenderer';
 import { FINISH_DEFAULTS, normalizePolishForFinish } from './polishFinish';
 
@@ -45,7 +45,7 @@ describe('Jelly Material Engine', () => {
       expect(markup).toContain('data-material-layer="base-pigment"');
       expect(markup).toContain('data-material-layer="curvature-shadow"');
       expect(markup).toContain('data-material-layer="edge-darkening"');
-      expect(markup).toContain(finish === 'Cream' ? 'fill="#FFFFFF"' : finish === 'Matte' ? 'matte-diffuse' : 'data-material-contract="mat-f05a-particulate-glitter"');
+      expect(markup).toContain(finish === 'Cream' ? 'fill="#FFFFFF"' : finish === 'Matte' ? 'matte-diffuse' : 'data-material-contract="mat-f05b-cream-founded-particulate-glitter"');
       expect(markup).toContain('stop-color="#fff"');
       expect(markup).not.toContain('data-material-layer="base-jelly-pigment"');
     }
@@ -53,15 +53,23 @@ describe('Jelly Material Engine', () => {
 
   test('builds a dense, deterministic, depth-layered Glitter population from independent controls', () => {
     const zero = glitterParticleField('#120B10', '#D7B45A', 0);
+    const quarter = glitterParticleField('#120B10', '#D7B45A', .25);
     const medium = glitterParticleField('#120B10', '#D7B45A', .5);
+    const threeQuarter = glitterParticleField('#120B10', '#D7B45A', .75);
     const dense = glitterParticleField('#120B10', '#D7B45A', 1);
     expect(zero).toHaveLength(0);
-    expect(medium).toHaveLength(140);
-    expect(dense).toHaveLength(280);
+    expect([zero.length, quarter.length, medium.length, threeQuarter.length, dense.length]).toEqual([0, 300, 600, 900, 1200]);
+    expect(dense).toHaveLength(GLITTER_PARTICLE_CAPACITY);
+    expect(dense.length).toBeGreaterThan(900);
     expect(dense.slice(0, medium.length)).toEqual(medium);
     expect(glitterParticleField('#120B10', '#D7B45A', .5)).toEqual(medium);
     expect(new Set(dense.map((particle) => particle.radius.toFixed(2))).size).toBeGreaterThan(20);
     expect(new Set(dense.map((particle) => particle.depth))).toEqual(new Set(['embedded', 'surface', 'specular']));
+    const sizes = dense.reduce((counts, particle) => ({ ...counts, [particle.size]: (counts[particle.size] || 0) + 1 }), {});
+    expect(sizes.micro / dense.length).toBeGreaterThanOrEqual(.82);
+    expect(sizes.micro / dense.length).toBeLessThanOrEqual(.88);
+    expect(sizes.medium / dense.length).toBeGreaterThanOrEqual(.01);
+    expect(sizes.medium / dense.length).toBeLessThanOrEqual(.04);
   });
 
   test('renders fleck pigment independently inside the base polish and uses no decorative glyph paths', () => {
@@ -69,11 +77,22 @@ describe('Jelly Material Engine', () => {
     const gold = renderMaterial('Glitter', '#A40A30', 1, .82, { fleckColor: '#D7B45A', glitterDensity: .75 });
     expect(purple).toContain('data-material-base-color="#A40A30"');
     expect(purple).toContain('data-glitter-fleck-color="#7B2CBF"');
-    expect(purple).toContain('data-glitter-particle-count="210"');
+    expect(purple).toContain('data-glitter-particle-count="900"');
     expect(gold).toContain('data-material-base-color="#A40A30"');
     expect(gold).toContain('fill="#D7B45A"');
-    expect(purple.match(/<ellipse/g)).toHaveLength(210);
+    expect(purple.match(/<ellipse/g)).toHaveLength(900);
     expect(purple).not.toContain('submerged-glitter');
+  });
+
+  test('uses the approved opaque Cream surface beneath black and white Glitter inputs', () => {
+    const markup = renderMaterial('Glitter', '#000000', 1, .68, { fleckColor: '#FFFFFF', glitterDensity: 1 });
+    expect(markup).toContain('data-glitter-surface-foundation="Cream"');
+    expect(markup).toContain('data-material-base-color="#000000"');
+    expect(markup).toContain('data-glitter-fleck-color="#FFFFFF"');
+    expect(markup).toContain('data-optical-color-model="neutral-achromatic"');
+    expect(markup).toContain('data-material-layer="secondary-reflection"');
+    expect(markup).not.toContain('data-material-layer="internal-light-transmission"');
+    expect(markup).not.toMatch(/(?:ChromeMaterial|gray|silver)/i);
   });
 
   test.each(['#000000', '#B7103A', '#07152F', '#0B5D45', '#D8B49C', '#E8A0BF', '#B9A2D0'])('keeps MAT-F04 pigment opaque and hue-faithful for %s', (color) => {
