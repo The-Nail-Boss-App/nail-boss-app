@@ -429,13 +429,6 @@
   overflow: visible;
 }
 .nail-design-studio__nail-stage--single .nail-design-studio__hero-nail { width: min(44%, 240px); }
-.nail-design-studio__nail-polish {
-  fill: #e990b1;
-  stroke: rgba(85,35,64,.55);
-  stroke-width: 1.5;
-  vector-effect: non-scaling-stroke;
-}
-
 .nail-design-studio__properties { overflow: auto; }
 .nail-design-studio__properties fieldset { display: grid; gap: 8px; margin: 18px 0; padding: 0; border: 0; }
 .nail-design-studio__properties legend,

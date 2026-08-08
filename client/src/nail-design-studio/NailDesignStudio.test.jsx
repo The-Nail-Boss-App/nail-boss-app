@@ -44,6 +44,47 @@ describe('DS-03 Polish Studio repair', () => {
     expect(hex.getAttribute('aria-invalid')).toBe('true');
   });
 
+  it('keeps browser presentation from replacing the black Cream material paint servers', async () => {
+    await editHex(container, '#000000');
+
+    const nail = container.querySelector('svg[data-testid="stage-nail"]');
+    const base = nail.querySelector('[data-material-layer="base-pigment"]');
+    const materialLayers = [
+      'base-pigment',
+      'curvature-shadow',
+      'edge-darkening',
+      'material-diffusion',
+      'reflection',
+      'top-coat',
+    ];
+
+    expect(nail.dataset.renderColor).toBe('#000000');
+    expect(base.getAttribute('fill')).toMatch(/^url\(#hero-material-0-pigment\)$/);
+    // jsdom does not resolve SVG presentation attributes or paint servers into
+    // computed style. It does expose author CSS overrides, which is the part of
+    // the cascade this regression test is intended to catch.
+    const computedBase = getComputedStyle(base);
+    expect(computedBase.fill).toBe('');
+    expect(computedBase.fill).not.toMatch(/#e990b1|#d94c70|#e8a0bf|rgb\(233, 144, 177\)/i);
+    expect(base.getAttribute('opacity')).toBe('1');
+
+    for (const layer of materialLayers) {
+      const element = nail.querySelector(`[data-material-layer="${layer}"]`);
+      const style = getComputedStyle(element);
+      expect(style.fill).not.toMatch(/#e990b1|#d94c70|#e8a0bf|rgb\(233, 144, 177\)/i);
+      expect(['', 'none']).toContain(style.filter);
+      expect(['', 'normal']).toContain(style.mixBlendMode);
+    }
+
+    for (const ancestor of [nail, nail.parentElement, nail.parentElement.parentElement, nail.parentElement.parentElement.parentElement]) {
+      const style = getComputedStyle(ancestor);
+      expect(['', 'none']).toContain(style.filter);
+      expect(['', '1']).toContain(style.opacity);
+      expect(['', 'normal']).toContain(style.mixBlendMode);
+      expect(['', undefined, 'none']).toContain(style.backdropFilter);
+    }
+  });
+
   it('saves, selects, favorites, renames, deletes, and synchronizes both Polish Racks', async () => {
     await click(container.querySelector('button[aria-label="Save polish to Polish Rack"]'));
     expect(container.querySelector('[aria-live="polite"]').textContent).toContain('saved to Polish Rack');
