@@ -103,9 +103,21 @@ export const creamHeroSurfaceResponse = (shine = .68) => {
   });
 };
 
-const stageLightingOpacity = (finish, shine, role, opacity) => finish === 'Cream'
-  ? opacity * creamHeroSurfaceResponse(shine)[role]
-  : opacity;
+/** Jelly owns its wet-gel reflection; Hero lighting supplies only soft form. */
+export const jellyHeroSurfaceResponse = (shine = .74) => {
+  const control = Math.min(1, Math.max(0, shine));
+  return Object.freeze({
+    apex: .16 + control * .07,
+    primary: .06 + control * .05,
+    edge: .16 + control * .07,
+  });
+};
+
+const stageLightingOpacity = (finish, shine, role, opacity) => {
+  if (finish === 'Cream') return opacity * creamHeroSurfaceResponse(shine)[role];
+  if (finish === 'Jelly') return opacity * jellyHeroSurfaceResponse(shine)[role];
+  return opacity;
+};
 
 function initialNailDeskHeroState() {
   const fallback = createHeroDesignDocument({ id: 'nail-desk-hero', name: 'Untitled Design', shapeId: 'Almond', maskId: 'almond-mask' });
