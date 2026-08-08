@@ -33,14 +33,18 @@ const PARTICLES = [
   [139,260,1.3,.57],[79,274,1.8,.7],[119,291,1,.45],[151,303,2.4,.84],[108,321,1.5,.61],
 ];
 
-function MaterialDefs({ id, color }) {
+function MaterialDefs({ id, color, neutralCream = false }) {
+  const pigmentEdge = neutralCream ? color : '#170812';
+  const transmissionEdge = neutralCream ? color : '#200914';
+  const edgeColor = neutralCream ? '#000000' : '#130710';
+  const grainColor = neutralCream ? '#000000' : '#190a14';
   return <defs>
-    <radialGradient id={`${id}-pigment`} cx="50%" cy="38%" r="72%"><stop offset="0" stopColor={color}/><stop offset="66%" stopColor={color}/><stop offset="100%" stopColor="#170812"/></radialGradient>
-    <radialGradient id={`${id}-transmission`} cx="50%" cy="44%" r="64%"><stop offset="0" stopColor="#fff" stopOpacity=".36"/><stop offset="48%" stopColor={color} stopOpacity=".12"/><stop offset="100%" stopColor="#200914" stopOpacity=".48"/></radialGradient>
-    <linearGradient id={`${id}-edges`} x1="0" x2="1"><stop stopColor="#130710" stopOpacity=".72"/><stop offset=".18" stopColor="#130710" stopOpacity="0"/><stop offset=".78" stopColor="#130710" stopOpacity="0"/><stop offset="1" stopColor="#130710" stopOpacity=".64"/></linearGradient>
+    <radialGradient id={`${id}-pigment`} cx="50%" cy="38%" r="72%"><stop offset="0" stopColor={color}/><stop offset="66%" stopColor={color}/><stop offset="100%" stopColor={pigmentEdge}/></radialGradient>
+    <radialGradient id={`${id}-transmission`} cx="50%" cy="44%" r="64%"><stop offset="0" stopColor="#fff" stopOpacity=".36"/><stop offset="48%" stopColor={color} stopOpacity=".12"/><stop offset="100%" stopColor={transmissionEdge} stopOpacity=".48"/></radialGradient>
+    <linearGradient id={`${id}-edges`} x1="0" x2="1"><stop stopColor={edgeColor} stopOpacity=".72"/><stop offset=".18" stopColor={edgeColor} stopOpacity="0"/><stop offset=".78" stopColor={edgeColor} stopOpacity="0"/><stop offset="1" stopColor={edgeColor} stopOpacity=".64"/></linearGradient>
     <radialGradient id={`${id}-curve`} cx="46%" cy="31%" r="68%"><stop stopColor="#fff" stopOpacity=".3"/><stop offset=".4" stopColor="#fff" stopOpacity=".06"/><stop offset="1" stopColor="#000" stopOpacity=".24"/></radialGradient>
     <linearGradient id={`${id}-reflection`} x1="0" x2="1"><stop offset=".16" stopColor="#fff" stopOpacity="0"/><stop offset=".31" stopColor="#fff" stopOpacity=".86"/><stop offset=".42" stopColor="#fff" stopOpacity=".1"/><stop offset="1" stopColor="#fff" stopOpacity="0"/></linearGradient>
-    <pattern id={`${id}-grain`} width="7" height="7" patternUnits="userSpaceOnUse"><circle cx="1" cy="2" r=".55" fill="#fff" opacity=".26"/><circle cx="5" cy="5" r=".48" fill="#190a14" opacity=".2"/></pattern>
+    <pattern id={`${id}-grain`} width="7" height="7" patternUnits="userSpaceOnUse"><circle cx="1" cy="2" r=".55" fill="#fff" opacity=".26"/><circle cx="5" cy="5" r=".48" fill={grainColor} opacity=".2"/></pattern>
   </defs>;
 }
 
@@ -116,13 +120,14 @@ export function MaterialLayers({ path, finish = 'Cream', color = '#D94C70', opac
     return <JellyLayers path={path} color={color} opacity={opacity} uid={uid} baseProps={baseProps}/>;
   }
   const p = materialProfile(finish);
-  return <g data-material-renderer="MaterialRenderer" data-material-profile={`${finish}Material`}>
-    <MaterialDefs id={uid} color={color}/>
+  const neutralCream = finish === 'Cream';
+  return <g data-material-renderer="MaterialRenderer" data-material-profile={`${finish}Material`} data-material-input-color={color} data-material-base-color={color} data-optical-color-model={neutralCream ? 'neutral-achromatic' : 'finish-profile'}>
+    <MaterialDefs id={uid} color={color} neutralCream={neutralCream}/>
     <path {...baseProps} data-material-layer="base-pigment" d={path} fill={`url(#${uid}-pigment)`} opacity={opacity * p.opacity}/>
     <path data-material-layer="curvature-shadow" d={path} fill={`url(#${uid}-curve)`} opacity={p.curvature}/>
     <path data-material-layer="edge-darkening" d={path} fill={`url(#${uid}-edges)`} opacity={p.edge}/>
     {p.transmission > 0 && <path data-material-layer="internal-light-transmission" d={path} fill={`url(#${uid}-transmission)`} opacity={p.transmission}/>} 
-    <path data-material-layer="material-diffusion" d={path} fill="#f5edf2" opacity={p.diffuse}/>
+    <path data-material-layer="material-diffusion" d={path} fill={neutralCream ? '#FFFFFF' : '#f5edf2'} opacity={neutralCream ? Math.min(p.diffuse, .025) : p.diffuse}/>
     {finish === 'Glitter' && <g data-material-layer="submerged-glitter">{PARTICLES.map(([x,y,r,a], i) => i % 6 === 0 ? <path key={i} d={`M${x-r*2} ${y}h${r*4}M${x} ${y-r*2}v${r*4}`} stroke="#fff9d6" strokeWidth={Math.max(.55,r*.45)} opacity={a}/> : <circle key={i} cx={x} cy={y} r={r} fill={i%3 ? '#fff' : '#ffd978'} opacity={a}/>)}</g>}
     <path data-material-layer="reflection" d={path} fill={`url(#${uid}-reflection)`} opacity={p.reflection}/>
     <path data-material-layer="top-coat" d={path} fill="none" stroke="#fff" strokeWidth="2.2" strokeOpacity={p.topCoat}/>
