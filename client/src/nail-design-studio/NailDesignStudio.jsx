@@ -11,6 +11,12 @@ import { FINISH_DEFAULTS, VISIBLE_POLISH_FINISHES, heroEffectForPolish, normaliz
 import { addProjectPolish, touchRecentPolish } from '../design-studio/polishWorkflow';
 import './NailDesignStudio.css';
 
+export const canScrollInWheelDirection = (element, deltaY) => {
+  if (!element || deltaY === 0) return false;
+  const maxScrollTop = Math.max(0, element.scrollHeight - element.clientHeight);
+  return deltaY > 0 ? element.scrollTop < maxScrollTop : element.scrollTop > 0;
+};
+
 const TOOL_CATEGORIES = [
   { id: 'polish', label: 'Polish', accent: '#FF2DA0', icon: 'M8 3h8v4l2 3v11H6V10l2-3V3Zm0 8h10M10 3v4h4V3' },
   { id: 'technique', label: 'Technique', accent: '#F5C04A', icon: 'm4 20 3.5-1 10-10-2.5-2.5-10 10L4 20Zm12-15 1.5-1.5 3 3L19 8' },
@@ -506,7 +512,9 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
       </nav>
       <div className={`nail-design-studio__workspace${leftPanelOpen && !focusMode ? '' : ' nail-design-studio__workspace--left-closed'}${rightPanelOpen && !focusMode ? '' : ' nail-design-studio__workspace--right-closed'}`}>
         {!focusMode && <button type="button" className="nail-design-studio__panel-toggle nail-design-studio__panel-toggle--left" onClick={() => setLeftPanelOpen((open) => !open)} aria-expanded={leftPanelOpen} aria-controls="creative-tools-panel" aria-label={`${leftPanelOpen ? 'Collapse' : 'Expand'} creative tools panel`}>{leftPanelOpen ? '‹' : '›'}</button>}
-        {leftPanelOpen && !focusMode && <aside id="creative-tools-panel" className="nail-design-studio__panel nail-design-studio__creative-tools" role="tabpanel" aria-labelledby={`nail-tool-${activeTool.id}`} tabIndex="0" onWheelCapture={(event) => event.stopPropagation()}>
+        {leftPanelOpen && !focusMode && <aside id="creative-tools-panel" className="nail-design-studio__panel nail-design-studio__creative-tools" role="tabpanel" aria-labelledby={`nail-tool-${activeTool.id}`} tabIndex="0" onWheelCapture={(event) => {
+          if (canScrollInWheelDirection(event.currentTarget, event.deltaY)) event.stopPropagation();
+        }}>
           <div className="nail-design-studio__panel-heading" style={{ '--tool-accent': activeTool.accent }}><ToolIcon tool={activeTool} /><h2>{activeTool.label}</h2></div>
           {['polish', 'effects'].includes(activeTool.id) ? <section className="nail-design-studio__polish-studio" aria-label={activeTool.id === 'polish' ? 'Polish Studio' : 'Effects Studio'} data-hero-material-engine="Hero Material Engine" data-hero-effect-engine="Hero Effect Engine" data-hero-lighting-engine="Hero Lighting Engine" data-hero-document-id={heroDocument.metadata.id}>
             <div className="nail-design-studio__active-polish" data-testid="active-polish-card">
