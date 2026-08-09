@@ -9,6 +9,7 @@ const assert = (condition, message) => {
 
 const studio = read("client/src/design-studio/DesignStudio.jsx");
 const bottle = read("client/src/design-studio/PolishBottle.jsx");
+const nailStudioStyles = read("client/src/nail-design-studio/NailDesignStudio.css");
 const blueprint = read("client/src/design-studio/blueprint.js");
 const gallery = read("client/src/BlueprintGalleryRenderer.jsx");
 
@@ -31,32 +32,29 @@ assert(
   "PolishBottle renders a cap",
 );
 assert(
-  bottle.includes("bodyWidth") && bottle.includes('data-bottle-layer="polish-content"'),
+  bottle.includes("bodyPath") && bottle.includes('data-bottle-layer="polish-content"'),
   "PolishBottle renders bottle body and polish fill",
 );
 assert(
-  bottle.includes('data-bottle-layer="edge-highlight"') &&
-    bottle.includes('data-bottle-layer="front-reflection"'),
+  bottle.includes('data-bottle-layer="front-reflection"') && bottle.includes('strokeWidth="2"'),
   "PolishBottle renders a subtle highlight",
 );
 assert(
-  bottle.includes("polish-bottle-button") &&
-    bottle.includes("polish-bottle-reflection") &&
-    bottle.includes("anitasetBottleSelected") === false &&
-    bottle.includes("transition"),
+  bottle.includes("polish-bottle-button") && bottle.includes("polish-bottle-figure") &&
+    bottle.includes("anitasetBottleSelected") === false,
   "PolishBottle exposes lightweight hover, focus, and reflection hooks",
 );
 assert(
-  bottle.includes('data-bottle-renderer="simplified"') &&
-    bottle.includes('overflow: "hidden"') &&
-    bottle.includes('large: { width: 78, height: 112'),
-  "PolishBottle uses compact SVG bounds for the simplified renderer",
+  bottle.includes('data-bottle-renderer="anitaset-signature-v1"') &&
+    bottle.includes('viewBox="0 0 100 132"') &&
+    bottle.includes('large: { width: 112, height: 148'),
+  "PolishBottle uses scalable bounds for the approved Signature Bottle V1 renderer",
 );
 assert(
-  !bottle.includes("-glass") &&
+  bottle.includes("-glass") &&
     !bottle.includes('data-bottle-layer="outer-casing"') &&
     !bottle.includes('data-bottle-layer="side-panel"'),
-  "PolishBottle does not render an outer casing or translucent side panels",
+  "PolishBottle renders its glass treatment without unrelated casing panels",
 );
 
 assert(
@@ -165,8 +163,9 @@ assert(
   "Existing loading status uses a subtle skeleton fade treatment",
 );
 assert(
-  bottle.includes('maxWidth: "100%"') &&
-    bottle.includes('boxSizing: "border-box"'),
+  nailStudioStyles.includes(".polish-bottle-button") &&
+    nailStudioStyles.includes("max-width: 100%") &&
+    nailStudioStyles.includes("box-sizing: border-box"),
   "PolishBottle respects the width of narrow rack cells",
 );
 assert(

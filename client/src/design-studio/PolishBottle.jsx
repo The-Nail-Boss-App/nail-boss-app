@@ -1,64 +1,58 @@
-import { useMemo } from "react";
-import { COLORS } from "../styles.js";
+import { useId, useMemo } from "react";
 
 const SIZE_MAP = {
-  small: { width: 38, height: 58, capWidth: 18, capHeight: 15, bodyWidth: 30, bodyHeight: 38 },
-  medium: { width: 52, height: 76, capWidth: 24, capHeight: 20, bodyWidth: 40, bodyHeight: 50 },
-  large: { width: 78, height: 112, capWidth: 36, capHeight: 29, bodyWidth: 62, bodyHeight: 73 },
+  small: { width: 38, height: 52 },
+  medium: { width: 88, height: 116 },
+  large: { width: 112, height: 148 },
 };
 
-const BOTTLE_GLITTER = [[.25,.2,1,.9],[.5,.17,.55,.58],[.72,.25,.8,.78],[.38,.36,1.2,.86],[.64,.43,.5,.54],[.25,.51,.65,.6],[.51,.56,1,.92],[.74,.64,.55,.46],[.36,.72,.8,.72],[.61,.78,1.15,.82],[.48,.86,.55,.5]];
+const BOTTLE_GLITTER = [[28,57,1.3,.8],[45,53,.8,.6],[67,60,1.1,.8],[35,72,1.4,.9],[61,77,.8,.7],[25,91,1,.7],[74,94,1.4,.8],[48,106,.9,.6]];
 
-function finishStyles(finish = "Cream", opacity = 1, shine = 0.62, glitterDensity = 0.35, shimmerIntensity = 0.35) {
-  const type = finish === "Chrome-ready" ? "Chrome-ready" : finish;
+function bottleFinish(finish, opacity, shine, glitterDensity, shimmerIntensity) {
   return {
-    liquidOpacity: type === "Jelly" ? 0.58 + opacity * 0.22 : type === "Glass" ? 0.42 + opacity * 0.22 : type === "Matte" ? 0.9 : Math.max(0.55, opacity),
-    glossOpacity: type === "Matte" ? 0.1 : Math.min(0.52, 0.2 + shine * 0.4),
-    diffusion: type === "Matte" ? "saturate(.82)" : type === "Glass" || type === "Jelly" ? "saturate(1.12)" : "saturate(1.04)",
-    metallic: ["Chrome", "Metallic"].includes(type) ? 0.72 : type === "Chrome-ready" ? 0.24 : 0,
-    shimmer: ["Shimmer", "Cat Eye"].includes(type) ? shimmerIntensity : 0,
-    glitter: type === "Glitter" ? glitterDensity : 0,
-    catEye: type === "Cat Eye" ? 1 : 0,
+    liquidOpacity: finish === "Jelly" ? .48 + opacity * .32 : finish === "Matte" ? .94 : Math.max(.58, opacity),
+    reflectionOpacity: finish === "Matte" ? .1 : Math.min(.62, .2 + shine * .45),
+    glitter: finish === "Glitter" ? glitterDensity : 0,
+    shimmer: ["Shimmer", "Cat Eye"].includes(finish) ? shimmerIntensity : 0,
   };
 }
 
-export default function PolishBottle({ colorHex = "#E8A0BF", label, selected = false, size = "small", polishType, finish, opacity = 1, viscosity = 0.5, shine = 0.62, shimmerIntensity = 0.35, glitterDensity = 0.35, name = "AnitaSet", collection = "Atelier", sizeLabel = "15 ml", onClick, className = "" }) {
+/** UI-only rendering of the Founder-approved Signature Bottle V1. */
+export default function PolishBottle({ colorHex = "#E8A3B6", label, selected = false, size = "small", polishType, finish, opacity = 1, viscosity = .5, shine = .62, shimmerIntensity = .35, glitterDensity = .35, name = "AnitaSet", onClick, className = "" }) {
   const dims = SIZE_MAP[size] || SIZE_MAP.small;
   const resolvedFinish = finish || polishType || "Cream";
-  const material = useMemo(() => finishStyles(resolvedFinish, opacity, shine, glitterDensity, shimmerIntensity), [resolvedFinish, opacity, shine, glitterDensity, shimmerIntensity]);
-  const uid = useMemo(() => `polish-bottle-${Math.random().toString(36).slice(2)}`, []);
+  const material = useMemo(() => bottleFinish(resolvedFinish, opacity, shine, glitterDensity, shimmerIntensity), [resolvedFinish, opacity, shine, glitterDensity, shimmerIntensity]);
+  const reactId = useId();
+  const uid = `anitaset-bottle-${reactId.replace(/:/g, "")}`;
   const accessibleLabel = label || `${name} ${colorHex} ${resolvedFinish} polish bottle preview`;
-  const bodyX = (dims.width - dims.bodyWidth) / 2;
-  const bodyY = dims.capHeight - 1;
-  const bodyBottom = bodyY + dims.bodyHeight;
-  const bodyPath = `M${bodyX + 4} ${bodyY}h${dims.bodyWidth - 8}q4 0 4 4l2 ${dims.bodyHeight - 10}q0 6-6 6H${bodyX + 4}q-6 0-6-6l2-${dims.bodyHeight - 10}q0-4 4-4Z`;
-  const labelScale = size === "large" ? 1 : size === "medium" ? .72 : .52;
+  const bodyPath = "M18 42 Q16 42 14 48 L4 111 Q2 125 16 127 L38 127 Q44 127 46 118 L50 103 L54 118 Q56 127 62 127 L84 127 Q98 125 96 111 L86 48 Q84 42 80 42 Z";
+  const liquidPath = "M18 51 L10 112 Q9 118 17 119 L35 119 Q38 119 40 112 L48 88 Q50 83 52 88 L60 112 Q62 119 65 119 L83 119 Q91 118 90 112 L82 51 Z";
 
-  const bottle = <svg aria-hidden="true" className={`polish-bottle-figure ${selected ? "is-selected" : ""}`} width={dims.width} height={dims.height} viewBox={`0 0 ${dims.width} ${dims.height}`} style={{ display: "block", overflow: "hidden", transition: "transform 180ms ease, filter 180ms ease", filter: selected ? "drop-shadow(0 0 7px rgba(232,160,191,.38))" : undefined }} data-polish-finish={resolvedFinish} data-polish-color={colorHex} data-polish-opacity={opacity} data-polish-viscosity={viscosity} data-polish-shine={shine} data-bottle-renderer="simplified">
+  const bottle = <svg aria-hidden="true" className={`polish-bottle-figure ${selected ? "is-selected" : ""}`} width={dims.width} height={dims.height} viewBox="0 0 100 132" data-polish-finish={resolvedFinish} data-polish-color={colorHex} data-polish-opacity={opacity} data-polish-viscosity={viscosity} data-polish-shine={shine} data-bottle-renderer="anitaset-signature-v1">
     <defs>
-      <linearGradient id={`${uid}-liquid`} x1="0" x2="1" y1="0" y2="1"><stop offset="0" stopColor={colorHex} stopOpacity={material.liquidOpacity}/><stop offset=".58" stopColor={colorHex} stopOpacity={Math.min(1, material.liquidOpacity + .14)}/><stop offset="1" stopColor="#210b1d" stopOpacity=".4"/></linearGradient>
-      <linearGradient id={`${uid}-edge`} x1="0" x2="1"><stop offset="0" stopColor="#1c0918" stopOpacity=".48"/><stop offset=".16" stopColor="#fff" stopOpacity=".1"/><stop offset=".78" stopColor="#fff" stopOpacity=".04"/><stop offset="1" stopColor="#150711" stopOpacity=".5"/></linearGradient>
-      <linearGradient id={`${uid}-cap`} x1="0" x2="1"><stop offset="0" stopColor="#080608"/><stop offset=".3" stopColor="#433740"/><stop offset=".58" stopColor="#171117"/><stop offset="1" stopColor="#030203"/></linearGradient>
-      <clipPath id={`${uid}-body-clip`}><path d={bodyPath}/></clipPath>
-      <pattern id={`${uid}-sparkle`} width="9" height="8" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r=".75" fill="#fff7c7" opacity={material.glitter || material.shimmer}/><circle cx="7" cy="5" r=".45" fill="#fff" opacity={(material.glitter || material.shimmer) * .8}/></pattern>
+      <linearGradient id={`${uid}-gold`} x1="0" x2="1"><stop stopColor="#8d5526"/><stop offset=".18" stopColor="#ffe4b2"/><stop offset=".52" stopColor="#f5bf7b"/><stop offset=".82" stopColor="#fff0c8"/><stop offset="1" stopColor="#7a431e"/></linearGradient>
+      <linearGradient id={`${uid}-polish`} x1="0" x2="1" y1="0" y2="1"><stop stopColor="#fff" stopOpacity=".2"/><stop offset=".18" stopColor={colorHex}/><stop offset=".72" stopColor={colorHex}/><stop offset="1" stopColor="#17050f" stopOpacity=".55"/></linearGradient>
+      <linearGradient id={`${uid}-glass`} x1="0" x2="1"><stop stopColor="#fff" stopOpacity=".65"/><stop offset=".12" stopColor="#fff" stopOpacity=".06"/><stop offset=".8" stopColor="#fff" stopOpacity=".14"/><stop offset="1" stopColor="#fff" stopOpacity=".68"/></linearGradient>
+      <clipPath id={`${uid}-liquid-clip`}><path d={liquidPath}/></clipPath>
     </defs>
-    <ellipse data-bottle-layer="contact-shadow" cx={dims.width/2} cy={bodyBottom + 3} rx={dims.bodyWidth*.4} ry="3" fill="#000" opacity=".3"/>
-    <g data-bottle-layer="cap"><rect x={(dims.width-dims.capWidth)/2} y="1" width={dims.capWidth} height={dims.capHeight} rx="4" fill={`url(#${uid}-cap)`}/><path d={`M${(dims.width-dims.capWidth)/2+4} 3v${dims.capHeight-6}`} stroke="#fff" opacity=".18" strokeLinecap="round"/></g>
-    <g data-bottle-layer="body">
-      <path d={bodyPath} fill={`url(#${uid}-liquid)`} stroke={selected ? COLORS.plum : "#2b1525"} strokeWidth="1.2" filter={material.diffusion}/>
-      <path d={bodyPath} fill={`url(#${uid}-edge)`} pointerEvents="none"/>
-      <g clipPath={`url(#${uid}-body-clip)`} data-bottle-layer="polish-content">
-        {material.metallic > 0 && <path d={`M${bodyX} ${bodyY+13}h${dims.bodyWidth}l-7 9H${bodyX}z`} fill="#fff" opacity={material.metallic}/>}
-        {material.shimmer > 0 && <rect x={bodyX} y={bodyY} width={dims.bodyWidth} height={dims.bodyHeight} fill={`url(#${uid}-sparkle)`} opacity={material.shimmer}/>}
-        {material.glitter > 0 && <g data-bottle-material-layer="suspended-glitter-particles">{BOTTLE_GLITTER.map(([x,y,r,a], index) => <circle key={index} cx={bodyX + dims.bodyWidth*x} cy={bodyY + dims.bodyHeight*y} r={r * (size === "small" ? .72 : 1)} fill={index % 3 ? "#fff" : "#ffe6a3"} opacity={a * material.glitter}/>)}</g>}
-        {material.catEye > 0 && <path d={`M${bodyX+5} ${bodyBottom-8}L${bodyX+dims.bodyWidth-5} ${bodyY+8}`} stroke="#fff6b8" strokeWidth="3" opacity=".5"/>}
-      </g>
-      <path data-bottle-layer="edge-highlight" d={`M${bodyX+3} ${bodyY+7}v${dims.bodyHeight-15}`} stroke="#fff" strokeWidth="1" strokeLinecap="round" opacity=".22"/>
-      <path className="polish-bottle-reflection" data-bottle-layer="front-reflection" d={`M${bodyX+dims.bodyWidth*.68} ${bodyY+7}q3 5 1 12`} stroke="#fff" strokeWidth="1.3" strokeLinecap="round" opacity={material.glossOpacity} fill="none"/>
+    <ellipse cx="50" cy="128" rx="39" ry="4" fill="#000" opacity=".5"/>
+    <g data-bottle-layer="cap">
+      <path d="M27 3 L73 3 L78 11 L74 39 L26 39 L22 11 Z" fill={`url(#${uid}-gold)`} stroke="#ffe4b4" strokeWidth="1.2"/>
+      <path d="M29 7 H70" stroke="#fff8dd" strokeWidth="1.4" opacity=".8"/>
+      <text x="50" y="27" textAnchor="middle" fontFamily="Georgia, serif" fontSize="17" fontStyle="italic" fill="#70421f">AS</text>
     </g>
-    <g data-bottle-layer="label"><rect x={bodyX+dims.bodyWidth*.18} y={bodyY+dims.bodyHeight*.47} width={dims.bodyWidth*.64} height={dims.bodyHeight*.29} rx="2" fill="#fffaf7" fillOpacity=".92" stroke="#3b1f35" strokeOpacity=".16"/>{size !== "small" && <text x={dims.width/2} y={bodyY+dims.bodyHeight*.58} textAnchor="middle" fontSize={9*labelScale} fontWeight="700" fill="#3B1F35">{String(name).slice(0, 16)}</text>}{size === "large" && <><text x={dims.width/2} y={bodyY+dims.bodyHeight*.67} textAnchor="middle" fontSize="6" fill="#7B2F59">{String(collection || "Atelier").slice(0, 18)}</text><text x={dims.width/2} y={bodyY+dims.bodyHeight*.74} textAnchor="middle" fontSize="5" fill="#6b5a66">{resolvedFinish} · {sizeLabel}</text></>}</g>
+    <g data-bottle-layer="body">
+      <path d={bodyPath} fill="#fff" fillOpacity=".08" stroke="#f8e8e8" strokeWidth="3"/>
+      <path data-bottle-layer="polish-content" d={liquidPath} fill={`url(#${uid}-polish)`} fillOpacity={material.liquidOpacity}/>
+      <g clipPath={`url(#${uid}-liquid-clip)`}>
+        {(material.glitter > 0 || material.shimmer > 0) && <g data-bottle-material-layer="suspended-glitter-particles">{BOTTLE_GLITTER.map(([cx,cy,r,a], index) => <circle key={index} cx={cx} cy={cy} r={r} fill={index % 3 ? "#fff7dc" : "#ffd86e"} opacity={a * (material.glitter || material.shimmer)}/>)}</g>}
+      </g>
+      <path d={bodyPath} fill={`url(#${uid}-glass)`} stroke="#fff" strokeOpacity=".48" strokeWidth="1"/>
+      <path data-bottle-layer="front-reflection" d="M21 49 L13 108 Q12 114 18 115 M79 48 L88 108" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" opacity={material.reflectionOpacity}/>
+      <g data-bottle-layer="label" fill="#fff4dd" textAnchor="middle" fontFamily="Georgia, serif"><text x="50" y="65" fontSize="5">♛</text><text x="50" y="73" fontSize="7" letterSpacing=".8">ANITASET</text><text x="50" y="80" fontSize="4.5">GEL POLISH</text></g>
+    </g>
   </svg>;
 
-  if (onClick) return <button type="button" aria-label={accessibleLabel} title={accessibleLabel} onClick={onClick} className={`polish-bottle-button ${className}`.trim()} style={{ display: "inline-flex", justifyContent: "center", maxWidth: "100%", border: 0, background: "transparent", padding: 2, cursor: "pointer", borderRadius: 14, boxSizing: "border-box", transition: "transform 180ms ease, filter 180ms ease, box-shadow 180ms ease" }}>{bottle}</button>;
-  return <span role="img" aria-label={accessibleLabel} title={accessibleLabel} className={`polish-bottle-static ${className}`.trim()} style={{ display: "inline-flex", justifyContent: "center", maxWidth: "100%", padding: 1, boxSizing: "border-box" }}>{bottle}</span>;
+  if (onClick) return <button type="button" aria-label={accessibleLabel} title={accessibleLabel} onClick={onClick} className={`polish-bottle-button ${className}`.trim()}>{bottle}</button>;
+  return <span role="img" aria-label={accessibleLabel} title={accessibleLabel} className={`polish-bottle-static ${className}`.trim()}>{bottle}</span>;
 }
