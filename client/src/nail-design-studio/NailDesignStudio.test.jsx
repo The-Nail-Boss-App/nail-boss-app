@@ -152,7 +152,8 @@ describe('DS-03 Polish Studio repair', () => {
     await click(container.querySelector('button[aria-label="Save polish to Polish Rack"]'));
     expect(container.querySelector('[aria-live="polite"]').textContent).toContain('saved to Polish Rack');
     const lowerNames = [...container.querySelectorAll('.nail-design-studio__lower-polish > span')].map((node) => node.textContent.replace('★ ', ''));
-    expect(lowerNames).toContain('Blush Royalty');
+    expect(lowerNames).toContain('#D94C70');
+    expect(container.textContent).not.toContain('Blush Royalty');
     expect(container.querySelector('button[aria-label="Remove polish from Polish Rack"]')).toBeTruthy();
     expect(JSON.parse(window.localStorage.getItem('anitaset.designStudio.polishRack.v2'))).toEqual(expect.any(Array));
   });
@@ -189,7 +190,7 @@ describe('DS-03 Polish Studio repair', () => {
     expect(density.value).toBe('0.75');
     expect(container.querySelector('[data-material-profile="GlitterMaterial"]').dataset.materialBaseColor).toBe('#A40A30');
     expect(container.querySelector('[data-material-profile="GlitterMaterial"]').dataset.glitterFleckColor).toBe('#7B2CBF');
-    expect(container.querySelector('[data-material-profile="GlitterMaterial"]').dataset.glitterParticleCount).toBe('1500');
+    expect(container.querySelector('[data-material-profile="GlitterMaterial"]').dataset.glitterParticleCount).toBe('3750');
   });
 
   it('hydrates legacy Glitter safely with a deterministic independent fleck fallback', () => {
@@ -254,6 +255,8 @@ describe('DS-03 Polish Studio repair', () => {
     await click(apply);
     expect(container.querySelectorAll('[data-testid="project-palette-swatch"]')).toHaveLength(1);
     expect(container.querySelector('[data-testid="project-palette-swatch"]').dataset.polishFinish).toBe('Matte');
+    expect(container.querySelector('[data-testid="project-palette-swatch"]').getAttribute('aria-label')).toBe('Select #4455AA Matte');
+    expect(container.querySelector('[data-testid="project-palette-swatch"]').title).toBe('#4455AA · Matte');
     await click(apply);
     expect(container.querySelectorAll('[data-testid="project-palette-swatch"]')).toHaveLength(1);
 
@@ -323,7 +326,7 @@ describe('DS-03 Polish Studio repair', () => {
 
   it('uses the filled star to unsave the active formulation from both racks', async () => {
     await click(container.querySelector('button[aria-label="Save polish to Polish Rack"]'));
-    expect(container.querySelectorAll('button[aria-label="Blush Royalty #D94C70 Cream polish bottle preview"]')).toHaveLength(1);
+    expect(container.querySelectorAll('button[aria-label="#D94C70 #D94C70 Cream polish bottle preview"]')).toHaveLength(1);
     await click(container.querySelector('button[aria-label="Remove polish from Polish Rack"]'));
     expect(container.querySelector('button[aria-label="Save polish to Polish Rack"]')).toBeTruthy();
     expect(container.textContent).toContain('removed from Polish Rack');

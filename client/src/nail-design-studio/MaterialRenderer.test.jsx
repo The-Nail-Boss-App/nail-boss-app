@@ -1,6 +1,6 @@
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { creamGlossResponse, GLITTER_EMBEDDED_BLUR, GLITTER_MICRO_RADIUS, GLITTER_PARTICLE_CAPACITY, glitterParticleField, jellyTransmissionPalette, MATERIAL_PROFILES, MaterialLayers, renderHybridJellySafely } from './MaterialRenderer';
+import { creamGlossResponse, GLITTER_EMBEDDED_BLUR, GLITTER_MICRO_RADIUS, GLITTER_PARTICLE_CAPACITY, GLITTER_REFERENCE_PARTICLE_COUNT, GLITTER_SIZE_DISTRIBUTION, glitterParticleField, jellyTransmissionPalette, MATERIAL_PROFILES, MaterialLayers, renderHybridJellySafely } from './MaterialRenderer';
 import { HYBRID_JELLY_LAYER_ORDER, JELLY_MATERIAL_PROFILE } from './HybridMaterialRenderer';
 import { FINISH_DEFAULTS, normalizePolishForFinish } from './polishFinish';
 
@@ -58,27 +58,37 @@ describe('Jelly Material Engine', () => {
     const threeQuarter = glitterParticleField('#120B10', '#D7B45A', .75);
     const dense = glitterParticleField('#120B10', '#D7B45A', 1);
     expect(zero).toHaveLength(0);
-    expect([zero.length, quarter.length, medium.length, threeQuarter.length, dense.length]).toEqual([0, 500, 1000, 1500, 2000]);
-    expect(dense).toHaveLength(GLITTER_PARTICLE_CAPACITY);
+    expect([zero.length, quarter.length, medium.length, threeQuarter.length, dense.length]).toEqual([0, 1250, 2500, 3750, 5000]);
+    expect(dense).toHaveLength(GLITTER_REFERENCE_PARTICLE_COUNT);
+    expect(GLITTER_PARTICLE_CAPACITY).toBe(12000);
     expect(dense.length).toBeGreaterThan(900);
     expect(dense.slice(0, medium.length)).toEqual(medium);
     expect(glitterParticleField('#120B10', '#D7B45A', .5)).toEqual(medium);
     expect(new Set(dense.map((particle) => particle.radius.toFixed(2))).size).toBeGreaterThan(20);
     expect(new Set(dense.map((particle) => particle.depth))).toEqual(new Set(['embedded', 'surface', 'specular']));
     const sizes = dense.reduce((counts, particle) => ({ ...counts, [particle.size]: (counts[particle.size] || 0) + 1 }), {});
-    expect(sizes.micro / dense.length).toBeGreaterThanOrEqual(.88);
-    expect(sizes.micro / dense.length).toBeLessThanOrEqual(.92);
-    expect(sizes.medium / dense.length).toBeGreaterThanOrEqual(.01);
-    expect(sizes.medium / dense.length).toBeLessThanOrEqual(.02);
+    expect(sizes.fine / dense.length).toBeGreaterThanOrEqual(.70);
+    expect(sizes.fine / dense.length).toBeLessThanOrEqual(.75);
+    expect(sizes.medium / dense.length).toBeGreaterThanOrEqual(.18);
+    expect(sizes.medium / dense.length).toBeLessThanOrEqual(.22);
+    expect(sizes.large / dense.length).toBeGreaterThanOrEqual(.05);
+    expect(sizes.large / dense.length).toBeLessThanOrEqual(.08);
+    expect(GLITTER_SIZE_DISTRIBUTION).toEqual({ fine: .73, medium: .2, large: .07 });
     const depths = dense.reduce((counts, particle) => ({ ...counts, [particle.depth]: (counts[particle.depth] || 0) + 1 }), {});
     expect(depths.embedded / dense.length).toBeGreaterThanOrEqual(.65);
     expect(depths.embedded / dense.length).toBeLessThanOrEqual(.70);
     expect(depths.specular / dense.length).toBeGreaterThanOrEqual(.01);
     expect(depths.specular / dense.length).toBeLessThanOrEqual(.02);
     expect(GLITTER_MICRO_RADIUS).toEqual({ min: .2, max: .42 });
-    expect(dense.filter(({ size }) => size === 'micro').every(({ radius }) => radius >= .2 && radius <= .42)).toBe(true);
-    expect(dense.every(({ x }) => x >= 48 && x <= 192)).toBe(true);
-    expect(dense.filter(({ y }) => y > 320).every(({ x }) => x > 88 && x < 152)).toBe(true);
+    expect(dense.filter(({ size }) => size === 'fine').every(({ radius }) => radius >= .2 && radius <= .42)).toBe(true);
+    expect(dense.every(({ x }) => x >= 32 && x <= 208)).toBe(true);
+    expect(dense.every(({ y }) => y >= 28 && y <= 318)).toBe(true);
+    const elongated = glitterParticleField('#120B10', '#D7B45A', 1, { x: 32, y: -137, width: 176, height: 455 });
+    const wide = glitterParticleField('#120B10', '#D7B45A', 1, { x: 0, y: 28, width: 240, height: 290 });
+    expect(elongated).toHaveLength(Math.round(5000 * 455 / 290));
+    expect(wide).toHaveLength(Math.round(5000 * 240 / 176));
+    expect(elongated.some(({ y }) => y < 28)).toBe(true);
+    expect(wide.some(({ x }) => x < 32 || x > 208)).toBe(true);
     expect(GLITTER_EMBEDDED_BLUR).toBe(.24);
   });
 
@@ -87,10 +97,10 @@ describe('Jelly Material Engine', () => {
     const gold = renderMaterial('Glitter', '#A40A30', 1, .82, { fleckColor: '#D7B45A', glitterDensity: .75 });
     expect(purple).toContain('data-material-base-color="#A40A30"');
     expect(purple).toContain('data-glitter-fleck-color="#7B2CBF"');
-    expect(purple).toContain('data-glitter-particle-count="1500"');
+    expect(purple).toContain('data-glitter-particle-count="3750"');
     expect(gold).toContain('data-material-base-color="#A40A30"');
     expect(gold).toContain('fill="#D7B45A"');
-    expect(purple.match(/<ellipse/g)).toHaveLength(1500);
+    expect(purple.match(/<ellipse/g)).toHaveLength(3750);
     expect(purple).not.toContain('submerged-glitter');
   });
 
