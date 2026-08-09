@@ -783,6 +783,16 @@ describe('adaptive Nail Desk', () => {
     expect(stage.style.getPropertyValue('--stage-zoom')).toBe('1');
   });
 
+  it('keeps the explicit Zoom In, Zoom Out, and Fit to View controls working', async () => {
+    await click(container.querySelector('button[aria-label="Zoom in"]'));
+    expect(container.querySelector('output[aria-label="Zoom level"]').textContent).toBe('125%');
+    await click(container.querySelector('button[aria-label="Zoom out"]'));
+    expect(container.querySelector('output[aria-label="Zoom level"]').textContent).toBe('100%');
+    await click(container.querySelector('button[aria-label="Zoom in"]'));
+    await click(button('Fit to View'));
+    expect(container.querySelector('output[aria-label="Zoom level"]').textContent).toBe('100%');
+  });
+
   it('keeps wheel events owned by the creative-tools panel while it can scroll', async () => {
     const panel = container.querySelector('#creative-tools-panel');
     Object.defineProperties(panel, { clientHeight: { configurable: true, value: 200 }, scrollHeight: { configurable: true, value: 600 } });
@@ -857,20 +867,42 @@ describe('adaptive Nail Desk', () => {
     expect(container.querySelector('output[aria-label="Zoom level"]').textContent).toBe('100%');
   });
 
-  it('allows ordinary wheel input over the Nail Desk and properties panel to reach the page', async () => {
+  it('releases wheel input from the Nail Desk root, background surface, and visible nail to the page', async () => {
     const studio = container.querySelector('.nail-design-studio');
     const pageWheel = jest.fn();
     studio.addEventListener('wheel', pageWheel);
     const stage = container.querySelector('.nail-design-studio__nail-stage');
-    const visualState = () => [stage.style.getPropertyValue('--stage-zoom'), stage.style.getPropertyValue('--stage-x'), stage.style.getPropertyValue('--stage-y'), stage.style.getPropertyValue('--nail-length')];
+    const visualState = () => [stage.style.getPropertyValue('--stage-zoom'), stage.style.getPropertyValue('--stage-x'), stage.style.getPropertyValue('--stage-y'), stage.style.getPropertyValue('--nail-length'), stage.getAttribute('aria-label')];
     const before = visualState();
+    const targets = [
+      container.querySelector('[aria-label="Nail Desk"]'),
+      container.querySelector('[data-testid="nail-stage-container"]'),
+      container.querySelector('[data-testid="stage-nail"]'),
+    ];
 
-    await act(async () => container.querySelector('[data-testid="nail-stage-container"]').dispatchEvent(new WheelEvent('wheel', { bubbles: true, cancelable: true, deltaY: 120 })));
-    await act(async () => container.querySelector('.nail-design-studio__properties').dispatchEvent(new WheelEvent('wheel', { bubbles: true, cancelable: true, deltaY: 120 })));
+    for (let repetition = 0; repetition < 4; repetition += 1) {
+      for (const target of targets) {
+        const wheel = new WheelEvent('wheel', { bubbles: true, cancelable: true, deltaY: repetition % 2 ? -120 : 120 });
+        await act(async () => target.dispatchEvent(wheel));
+        expect(wheel.defaultPrevented).toBe(false);
+      }
+    }
 
-    expect(pageWheel).toHaveBeenCalledTimes(2);
+    expect(pageWheel).toHaveBeenCalledTimes(targets.length * 4);
     expect(visualState()).toEqual(before);
     expect(container.querySelector('output[aria-label="Zoom level"]').textContent).toBe('100%');
+  });
+
+  it('leaves properties-panel wheel propagation unchanged', async () => {
+    const studio = container.querySelector('.nail-design-studio');
+    const pageWheel = jest.fn();
+    studio.addEventListener('wheel', pageWheel);
+    const wheel = new WheelEvent('wheel', { bubbles: true, cancelable: true, deltaY: 120 });
+
+    await act(async () => container.querySelector('.nail-design-studio__properties').dispatchEvent(wheel));
+
+    expect(pageWheel).toHaveBeenCalledTimes(1);
+    expect(wheel.defaultPrevented).toBe(false);
   });
 
   it('expands into independently released panels and supports Focus Mode', async () => {
