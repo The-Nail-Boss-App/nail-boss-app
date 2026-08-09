@@ -1,6 +1,6 @@
 import React, { act } from 'react';
 import { createRoot } from 'react-dom/client';
-import NailDesignStudio, { creamHeroSurfaceResponse, glitterHeroSurfaceResponse, jellyHeroSurfaceResponse, matteHeroSurfaceResponse, stageLightingOpacity } from './NailDesignStudio';
+import NailDesignStudio, { canScrollInWheelDirection, creamHeroSurfaceResponse, glitterHeroSurfaceResponse, jellyHeroSurfaceResponse, matteHeroSurfaceResponse, stageLightingOpacity } from './NailDesignStudio';
 import { heroEffectForPolish, normalizePolishForFinish } from './polishFinish';
 import { MATERIAL_PROFILES, materialProfile } from './MaterialRenderer';
 import { createHeroDesignDocument } from '../hero-design/index.ts';
@@ -783,8 +783,10 @@ describe('adaptive Nail Desk', () => {
     expect(stage.style.getPropertyValue('--stage-zoom')).toBe('1');
   });
 
-  it('keeps wheel events owned by the scrollable creative-tools panel', async () => {
+  it('keeps wheel events owned by the creative-tools panel while it can scroll', async () => {
     const panel = container.querySelector('#creative-tools-panel');
+    Object.defineProperties(panel, { clientHeight: { configurable: true, value: 200 }, scrollHeight: { configurable: true, value: 600 } });
+    panel.scrollTop = 100;
     const workspace = container.querySelector('.nail-design-studio__workspace');
     const workspaceWheel = jest.fn();
     workspace.addEventListener('wheel', workspaceWheel);
@@ -797,6 +799,22 @@ describe('adaptive Nail Desk', () => {
     expect(panel.classList.contains('nail-design-studio__creative-tools')).toBe(true);
     expect(container.querySelector('[aria-label="Project Palette"]')).toBeTruthy();
     expect(container.querySelector('[aria-label="Recently Used"]')).toBeTruthy();
+  });
+
+  it('releases creative-tools wheel input to the page at either scroll boundary', async () => {
+    const panel = container.querySelector('#creative-tools-panel');
+    Object.defineProperties(panel, { clientHeight: { configurable: true, value: 200 }, scrollHeight: { configurable: true, value: 600 } });
+    const workspaceWheel = jest.fn();
+    panel.parentElement.addEventListener('wheel', workspaceWheel);
+
+    panel.scrollTop = 400;
+    expect(canScrollInWheelDirection(panel, 120)).toBe(false);
+    await act(async () => panel.dispatchEvent(new WheelEvent('wheel', { bubbles: true, cancelable: true, deltaY: 120 })));
+    panel.scrollTop = 0;
+    expect(canScrollInWheelDirection(panel, -120)).toBe(false);
+    await act(async () => panel.dispatchEvent(new WheelEvent('wheel', { bubbles: true, cancelable: true, deltaY: -120 })));
+
+    expect(workspaceWheel).toHaveBeenCalledTimes(2);
   });
 
   it('keeps the Nail Desk camera and composition stable through repeated panel scrolling', async () => {
@@ -823,9 +841,11 @@ describe('adaptive Nail Desk', () => {
     expect(container.querySelector('output[aria-label="Zoom level"]').textContent).toBe('125%');
   });
 
-  it('contains scrolling for other creative tool panels without disabling natural wheel behavior', async () => {
+  it('shares scroll ownership behavior with the Effects panel', async () => {
     await click(container.querySelector('#nail-tool-effects'));
     const panel = container.querySelector('#creative-tools-panel');
+    Object.defineProperties(panel, { clientHeight: { configurable: true, value: 200 }, scrollHeight: { configurable: true, value: 600 } });
+    panel.scrollTop = 100;
     const workspaceWheel = jest.fn();
     panel.parentElement.addEventListener('wheel', workspaceWheel);
     const wheel = new WheelEvent('wheel', { bubbles: true, cancelable: true, deltaY: 100 });
@@ -834,6 +854,22 @@ describe('adaptive Nail Desk', () => {
 
     expect(workspaceWheel).not.toHaveBeenCalled();
     expect(wheel.defaultPrevented).toBe(false);
+    expect(container.querySelector('output[aria-label="Zoom level"]').textContent).toBe('100%');
+  });
+
+  it('allows ordinary wheel input over the Nail Desk and properties panel to reach the page', async () => {
+    const studio = container.querySelector('.nail-design-studio');
+    const pageWheel = jest.fn();
+    studio.addEventListener('wheel', pageWheel);
+    const stage = container.querySelector('.nail-design-studio__nail-stage');
+    const visualState = () => [stage.style.getPropertyValue('--stage-zoom'), stage.style.getPropertyValue('--stage-x'), stage.style.getPropertyValue('--stage-y'), stage.style.getPropertyValue('--nail-length')];
+    const before = visualState();
+
+    await act(async () => container.querySelector('[data-testid="nail-stage-container"]').dispatchEvent(new WheelEvent('wheel', { bubbles: true, cancelable: true, deltaY: 120 })));
+    await act(async () => container.querySelector('.nail-design-studio__properties').dispatchEvent(new WheelEvent('wheel', { bubbles: true, cancelable: true, deltaY: 120 })));
+
+    expect(pageWheel).toHaveBeenCalledTimes(2);
+    expect(visualState()).toEqual(before);
     expect(container.querySelector('output[aria-label="Zoom level"]').textContent).toBe('100%');
   });
 
