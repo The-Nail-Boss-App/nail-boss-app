@@ -26,30 +26,31 @@ export function renderHybridJellySafely(props, hybridRenderer = HybridJellyMater
   }
 }
 
-export const GLITTER_PARTICLE_CAPACITY = 2000;
+export const GLITTER_REFERENCE_PARTICLE_COUNT = 5000;
+export const GLITTER_REFERENCE_BOUNDS = Object.freeze({ x: 32, y: 28, width: 176, height: 290 });
+// The supported 250% length/maximum-width surface stays below this ceiling. It
+// also protects imported legacy geometry from creating unbounded SVG work.
+export const GLITTER_PARTICLE_CAPACITY = 12000;
+export const GLITTER_SIZE_DISTRIBUTION = Object.freeze({ fine: .73, medium: .20, large: .07 });
 export const GLITTER_EMBEDDED_BLUR = .24;
 export const GLITTER_MICRO_RADIUS = Object.freeze({ min: .2, max: .42 });
 const hashSeed = (value) => [...value].reduce((hash, character) => Math.imul(hash ^ character.charCodeAt(0), 16777619) >>> 0, 2166136261);
 
 /** Stable prefix population: density reveals particles instead of resizing a fixed set. */
-export function glitterParticleField(baseColor = '#D94C70', fleckColor = '#E8D7A8', density = .46) {
+export function glitterParticleField(baseColor = '#D94C70', fleckColor = '#E8D7A8', density = .46, surfaceBounds = GLITTER_REFERENCE_BOUNDS) {
   let state = hashSeed(`${baseColor.toUpperCase()}|${fleckColor.toUpperCase()}|standard-glitter-v1`);
   const random = () => { state = (Math.imul(state, 1664525) + 1013904223) >>> 0; return state / 4294967296; };
-  const count = Math.round(clamp(density) * GLITTER_PARTICLE_CAPACITY);
+  const bounds = surfaceBounds && surfaceBounds.width > 0 && surfaceBounds.height > 0 ? surfaceBounds : GLITTER_REFERENCE_BOUNDS;
+  const referenceArea = GLITTER_REFERENCE_BOUNDS.width * GLITTER_REFERENCE_BOUNDS.height;
+  const areaScale = (bounds.width * bounds.height) / referenceArea;
+  const count = Math.min(GLITTER_PARTICLE_CAPACITY, Math.round(clamp(density) * GLITTER_REFERENCE_PARTICLE_COUNT * areaScale));
   return Array.from({ length: count }, (_, index) => {
     const scaleRoll = random();
-    const size = scaleRoll < .9 ? 'micro' : scaleRoll < .985 ? 'small' : 'medium';
-    const radius = size === 'micro' ? GLITTER_MICRO_RADIUS.min + random() * (GLITTER_MICRO_RADIUS.max - GLITTER_MICRO_RADIUS.min) : size === 'small' ? .5 + random() * .34 : .9 + random() * .38;
+    const size = scaleRoll < GLITTER_SIZE_DISTRIBUTION.fine ? 'fine' : scaleRoll < GLITTER_SIZE_DISTRIBUTION.fine + GLITTER_SIZE_DISTRIBUTION.medium ? 'medium' : 'large';
+    const radius = size === 'fine' ? GLITTER_MICRO_RADIUS.min + random() * (GLITTER_MICRO_RADIUS.max - GLITTER_MICRO_RADIUS.min) : size === 'medium' ? .5 + random() * .34 : .9 + random() * .38;
     const depthRoll = random();
-    // Sample a conservative normalized nail envelope before the authoritative
-    // Hero clip. This preserves every shape mask while avoiding the old full-
-    // rectangle reservoir, whose corners could never contribute visible flecks.
-    const yNorm = random();
-    const shoulder = Math.min(1, .66 + yNorm * 3.4);
-    const tip = yNorm <= .68 ? 1 : Math.max(.12, 1 - ((yNorm - .68) / .32) * .88);
-    const halfWidth = 72 * shoulder * tip;
     return Object.freeze({
-      index, x: 120 + (random() * 2 - 1) * halfWidth, y: 20 + yNorm * 326, radius, size,
+      index, x: bounds.x + random() * bounds.width, y: bounds.y + random() * bounds.height, radius, size,
       squash: .42 + random() * .68, rotation: random() * 180,
       depth: depthRoll < .68 ? 'embedded' : depthRoll < .985 ? 'surface' : 'specular',
       opacity: depthRoll < .68 ? .24 + random() * .3 : depthRoll < .985 ? .46 + random() * .36 : .82 + random() * .16,
@@ -175,13 +176,13 @@ function JellyLayers({ path, color, opacity, uid, baseProps }) {
   </g>;
 }
 
-function GlitterLayers({ path, color, fleckColor, density, opacity, shine, uid, baseProps }) {
+function GlitterLayers({ path, surfaceBounds, color, fleckColor, density, opacity, shine, uid, baseProps }) {
   // Glitter is particulate suspended in the approved opaque Cream polish body.
   // It intentionally borrows no transmission or metallic surface behavior.
   const p = MATERIAL_PROFILES.Cream;
   const gloss = creamGlossResponse(shine);
   const glitterGloss = { reflection: gloss.reflection * .58, secondaryReflection: gloss.secondaryReflection * .62, topCoat: gloss.topCoat * .84 };
-  const particles = glitterParticleField(color, fleckColor, density);
+  const particles = glitterParticleField(color, fleckColor, density, surfaceBounds);
   const paint = (particle, specular = false) => <ellipse key={particle.index} cx={particle.x} cy={particle.y} rx={particle.radius} ry={particle.radius * particle.squash}
     transform={`rotate(${particle.rotation.toFixed(1)} ${particle.x.toFixed(2)} ${particle.y.toFixed(2)})`}
     fill={specular ? `url(#${uid}-glitter-hit)` : fleckColor} opacity={particle.opacity.toFixed(2)}/>;
@@ -207,7 +208,7 @@ function GlitterLayers({ path, color, fleckColor, density, opacity, shine, uid, 
 }
 
 /** Shared ordered pipeline: pigment → curvature → edges → material → reflection → top coat → detail. */
-export function MaterialLayers({ path, finish = 'Cream', color = '#D94C70', fleckColor = '#E8D7A8', glitterDensity = .46, opacity = 1, shine = .68, uid = 'material', baseProps = {} }) {
+export function MaterialLayers({ path, surfaceBounds, finish = 'Cream', color = '#D94C70', fleckColor = '#E8D7A8', glitterDensity = .46, opacity = 1, shine = .68, uid = 'material', baseProps = {} }) {
   if (finish === 'Jelly') {
     if (features.materials.hybridJellyRenderer.enabled) {
       const hybrid = renderHybridJellySafely({ path, color, opacity, uid, baseProps });
@@ -216,7 +217,7 @@ export function MaterialLayers({ path, finish = 'Cream', color = '#D94C70', flec
     return <JellyLayers path={path} color={color} opacity={opacity} uid={uid} baseProps={baseProps}/>;
   }
   if (finish === 'Matte') return <MatteLayers path={path} color={color} opacity={opacity} uid={uid} baseProps={baseProps}/>;
-  if (finish === 'Glitter') return <GlitterLayers path={path} color={color} fleckColor={fleckColor} density={glitterDensity} opacity={opacity} shine={shine} uid={uid} baseProps={baseProps}/>;
+  if (finish === 'Glitter') return <GlitterLayers path={path} surfaceBounds={surfaceBounds} color={color} fleckColor={fleckColor} density={glitterDensity} opacity={opacity} shine={shine} uid={uid} baseProps={baseProps}/>;
   const p = materialProfile(finish);
   const neutralCream = finish === 'Cream';
   const gloss = neutralCream ? creamGlossResponse(shine) : { reflection: p.reflection, secondaryReflection: 0, topCoat: p.topCoat };
