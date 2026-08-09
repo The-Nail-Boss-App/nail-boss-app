@@ -232,13 +232,60 @@ describe('DS-03 Polish Studio repair', () => {
 
     const finish = container.querySelector('select[aria-label="Finish"]');
     await act(async () => { finish.value = 'Jelly'; finish.dispatchEvent(new Event('change', { bubbles: true })); });
-    expect(container.querySelectorAll('[data-testid="project-palette-swatch"]')).toHaveLength(1);
-    expect(container.querySelector('[data-testid="project-palette-swatch"]').dataset.polishFinish).toBe('Jelly');
+    await editHex(container, '#AA3366');
+    expect(container.querySelectorAll('[data-testid="project-palette-swatch"]')).toHaveLength(0);
     expect(container.querySelector('[data-testid="recently-used"] .polish-bottle-figure').dataset.polishFinish).toBe('Jelly');
     await act(async () => { finish.value = 'Cream'; finish.dispatchEvent(new Event('change', { bubbles: true })); });
     await act(async () => { finish.value = 'Jelly'; finish.dispatchEvent(new Event('change', { bubbles: true })); });
-    expect(container.querySelectorAll('[data-testid="project-palette-swatch"]')).toHaveLength(2);
+    expect(container.querySelectorAll('[data-testid="project-palette-swatch"]')).toHaveLength(0);
     expect(container.querySelectorAll('[data-testid="recently-used"] .polish-bottle-figure')[0].dataset.polishFinish).toBe('Jelly');
+    expect(container.querySelector('.nail-design-studio__workspace-module--polish[aria-label="Polish Rack"]')).toBeTruthy();
+  });
+
+  it('adds only applied formulations to Project Palette and rejects duplicates', async () => {
+    const finish = container.querySelector('select[aria-label="Finish"]');
+    await editHex(container, '#AA3366');
+    await act(async () => { finish.value = 'Jelly'; finish.dispatchEvent(new Event('change', { bubbles: true })); });
+    await editHex(container, '#4455AA');
+    await act(async () => { finish.value = 'Matte'; finish.dispatchEvent(new Event('change', { bubbles: true })); });
+    expect(container.querySelectorAll('[data-testid="project-palette-swatch"]')).toHaveLength(0);
+
+    const apply = [...container.querySelectorAll('button')].find((item) => item.textContent === 'Apply Polish');
+    await click(apply);
+    expect(container.querySelectorAll('[data-testid="project-palette-swatch"]')).toHaveLength(1);
+    expect(container.querySelector('[data-testid="project-palette-swatch"]').dataset.polishFinish).toBe('Matte');
+    await click(apply);
+    expect(container.querySelectorAll('[data-testid="project-palette-swatch"]')).toHaveLength(1);
+
+    await editHex(container, '#118855');
+    await act(async () => { finish.value = 'Cream'; finish.dispatchEvent(new Event('change', { bubbles: true })); });
+    await editHex(container, '#EE8844');
+    expect(container.querySelectorAll('[data-testid="project-palette-swatch"]')).toHaveLength(1);
+    await click(apply);
+    expect(container.querySelectorAll('[data-testid="project-palette-swatch"]')).toHaveLength(2);
+  });
+
+  it('keeps same-color applied material formulations distinct and restores them from Project Palette', async () => {
+    const finish = container.querySelector('select[aria-label="Finish"]');
+    const apply = [...container.querySelectorAll('button')].find((item) => item.textContent === 'Apply Polish');
+    await editHex(container, '#CC6699');
+    await type(container.querySelector('input[aria-label="Opacity"]'), '0.61');
+    await click(apply);
+    await act(async () => { finish.value = 'Jelly'; finish.dispatchEvent(new Event('change', { bubbles: true })); });
+    await click(apply);
+
+    const swatches = [...container.querySelectorAll('[data-testid="project-palette-swatch"]')];
+    expect(swatches).toHaveLength(2);
+    expect(swatches.map((swatch) => swatch.dataset.polishFinish)).toEqual(['Cream', 'Jelly']);
+
+    await act(async () => { finish.value = 'Glitter'; finish.dispatchEvent(new Event('change', { bubbles: true })); });
+    await editHex(container, '#123456');
+    expect(container.querySelectorAll('[data-testid="project-palette-swatch"]')).toHaveLength(2);
+    await click(swatches[0]);
+    expect(finish.value).toBe('Cream');
+    expect(container.querySelector('input[aria-label="Base Color HEX"]').value).toBe('#CC6699');
+    expect(container.querySelector('input[aria-label="Opacity"]').value).toBe('0.61');
+    expect(container.querySelector('.nail-design-studio__active-polish .polish-bottle-figure').dataset.polishFinish).toBe('Cream');
   });
 
   it('relocates opacity to the material properties while keeping the shared Hero polish state', async () => {

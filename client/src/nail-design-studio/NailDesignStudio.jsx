@@ -250,13 +250,13 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
     const normalized = normalizePolishForFinish({ ...activeFormulation, colorHex: nextColor || activePolishColor }, finish);
     setSelectedFinish(normalized.finish);
     setFinishFormulation(normalized);
-    rememberPolish(normalized, true);
+    rememberPolish(normalized);
     changeHero((current) => updateHeroEffect(current, heroEffectForPolish(normalized), heroEvents.current));
   };
   const changeFinishParameter = (key, value) => {
     const next = normalizePolishForFinish({ ...activeFormulation, [key]: value, ...(['baseColor', 'colorA'].includes(key) ? { colorHex: value } : {}) }, activeFinish);
     setFinishFormulation(next);
-    if (['baseColor', 'colorA'].includes(key)) rememberPolish(next, true);
+    if (['baseColor', 'colorA'].includes(key)) rememberPolish(next);
     const hero = heroEffectForPolish(next);
     changeHero((current) => updateHeroEffect(current, hero, heroEvents.current));
   };
