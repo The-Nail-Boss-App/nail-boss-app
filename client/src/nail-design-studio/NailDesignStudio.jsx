@@ -9,6 +9,7 @@ import PolishBottle from '../design-studio/PolishBottle';
 import { MaterialLayers } from './MaterialRenderer';
 import { FINISH_DEFAULTS, VISIBLE_POLISH_FINISHES, heroEffectForPolish, normalizePolishForFinish, polishSignature } from './polishFinish';
 import { addProjectPolish, touchRecentPolish } from '../design-studio/polishWorkflow';
+import { FrenchTipControls, FrenchTipRegion, loadFrenchTips } from './FrenchTip';
 import './NailDesignStudio.css';
 
 export const canScrollInWheelDirection = (element, deltaY) => {
@@ -19,7 +20,7 @@ export const canScrollInWheelDirection = (element, deltaY) => {
 
 const TOOL_CATEGORIES = [
   { id: 'polish', label: 'Polish', accent: '#FF2DA0', icon: 'M8 3h8v4l2 3v11H6V10l2-3V3Zm0 8h10M10 3v4h4V3' },
-  { id: 'technique', label: 'Technique', accent: '#F5C04A', icon: 'm4 20 3.5-1 10-10-2.5-2.5-10 10L4 20Zm12-15 1.5-1.5 3 3L19 8' },
+  { id: 'technique', label: 'French Tip', accent: '#F5C04A', icon: 'm4 20 3.5-1 10-10-2.5-2.5-10 10L4 20Zm12-15 1.5-1.5 3 3L19 8' },
   { id: 'brush', label: 'Brush', accent: '#FF7A45', icon: 'M14 4 20 2l-2 6-8 8M10 16c0 3-2 5-6 5 1-1 0-4 2-6 1-1 3-1 4 1Z' },
   { id: 'sticker-studio', label: 'Sticker Studio™', accent: '#B96CFF', icon: 'M5 4h11l3 3v11a2 2 0 0 1-2 2H5V4Zm11 0v4h4M8 12h8M8 16h5' },
   { id: 'charm-studio', label: 'Charm Studio™', accent: '#34E5F2', icon: 'M12 3v4m-4-2h8m-4 2 6 5-6 9-6-9 6-5Zm0 4v6m-3-3h6' },
@@ -178,6 +179,8 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
   const [polishPast, setPolishPast] = useState([]);
   const [polishFuture, setPolishFuture] = useState([]);
   const [polishNotice, setPolishNotice] = useState('');
+  const [frenchTips, setFrenchTips] = useState(() => loadFrenchTips(initialNailDeskHeroState().document));
+  const [frenchTipNotice, setFrenchTipNotice] = useState('');
   const [hexDraft, setHexDraft] = useState('#D94C70');
   const [hexInvalid, setHexInvalid] = useState(false);
   const [savedDesignsOpen, setSavedDesignsOpen] = useState(false);
@@ -304,6 +307,18 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
     setDirty(true); setSaveState('Save Changes'); setPolishNotice(`Applied ${polishDisplayHex(activeFormulation)} to ${targets.length} nail${targets.length === 1 ? '' : 's'}.`);
   };
 
+  const changeActiveFrenchTip = (tip) => {
+    setFrenchTips((current) => current.map((value, index) => index === activeNailIndex ? tip : value));
+    setDirty(true); setSaveState('Save Changes');
+  };
+  const applyFrenchTip = () => {
+    const source = frenchTips[activeNailIndex];
+    const targets = applicationScope === 'current' ? [activeNailIndex] : applicationScope === 'selected' ? selectedNails : applicationScope === 'left' ? [0,1,2,3,4] : applicationScope === 'right' ? [5,6,7,8,9] : [0,1,2,3,4,5,6,7,8,9];
+    if (!targets.length) { setFrenchTipNotice('Select at least one nail before applying.'); return; }
+    setFrenchTips((current) => current.map((value, index) => targets.includes(index) ? source : value));
+    setDirty(true); setSaveState('Save Changes'); setFrenchTipNotice(`Applied French Tip to ${targets.length} nail${targets.length === 1 ? '' : 's'}.`);
+  };
+
   const selectActiveNail = (index) => {
     setActiveNailIndex(index);
     const storedFormulation = nailPolishes[index];
@@ -383,7 +398,7 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
   const saveDesign = async () => {
     if (!dirty || saveState === 'Saving…') return;
     setSaveState('Saving…');
-    await heroPersistence.current?.save({ ...heroDocument, metadata: { ...heroDocument.metadata, name: designName, polishFormulations: nailPolishes, activePolishFormulation: activeFormulation } });
+    await heroPersistence.current?.save({ ...heroDocument, metadata: { ...heroDocument.metadata, name: designName, polishFormulations: nailPolishes, activePolishFormulation: activeFormulation, frenchTips } });
     window.setTimeout(() => { setDirty(false); setSaveState('Saved'); }, 150);
   };
   const undo = () => {
@@ -516,7 +531,7 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
           if (canScrollInWheelDirection(event.currentTarget, event.deltaY)) event.stopPropagation();
         }}>
           <div className="nail-design-studio__panel-heading" style={{ '--tool-accent': activeTool.accent }}><ToolIcon tool={activeTool} /><h2>{activeTool.label}</h2></div>
-          {['polish', 'effects'].includes(activeTool.id) ? <section className="nail-design-studio__polish-studio" aria-label={activeTool.id === 'polish' ? 'Polish Studio' : 'Effects Studio'} data-hero-material-engine="Hero Material Engine" data-hero-effect-engine="Hero Effect Engine" data-hero-lighting-engine="Hero Lighting Engine" data-hero-document-id={heroDocument.metadata.id}>
+          {activeTool.id === 'technique' ? <FrenchTipControls value={frenchTips[activeNailIndex]} scope={applicationScope} onScopeChange={setApplicationScope} onChange={changeActiveFrenchTip} onApply={applyFrenchTip} notice={frenchTipNotice} /> : ['polish', 'effects'].includes(activeTool.id) ? <section className="nail-design-studio__polish-studio" aria-label={activeTool.id === 'polish' ? 'Polish Studio' : 'Effects Studio'} data-hero-material-engine="Hero Material Engine" data-hero-effect-engine="Hero Effect Engine" data-hero-lighting-engine="Hero Lighting Engine" data-hero-document-id={heroDocument.metadata.id}>
             <div className="nail-design-studio__active-polish" data-testid="active-polish-card">
               <div className="nail-design-studio__active-polish-heading"><span>Active Polish</span><button type="button" className="nail-design-studio__polish-star" aria-label={activePolishSaved ? "Remove polish from Polish Rack" : "Save polish to Polish Rack"} aria-pressed={activePolishSaved} onClick={togglePolishSaved}>{activePolishSaved ? "★" : "☆"}</button></div>
               <div className="nail-design-studio__active-bottle"><PolishBottle size="medium" selected colorHex={activePolishColor} polishType={activeFinish} name={activePolishColor} opacity={appliedEffect.opacity} viscosity={appliedEffect.viscosity} shine={appliedEffect.shine} glitterDensity={activeFormulation.glitterDensity} shimmerIntensity={activeFormulation.shimmerIntensity} /></div>
@@ -580,6 +595,7 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
                     aria-label={`Hero Nail ${index + 1}`} viewBox={renderedSurface.viewBox} preserveAspectRatio="xMidYMid meet" role="img">
                     <defs>{appliedEffect.layers.map((layer, layerIndex) => layer.kind === 'linear-gradient' && <linearGradient key={layerIndex} id={`hero-finish-${index}-${layerIndex}`} x1="0" y1="0" x2="1" y2="0" gradientTransform={`rotate(${layer.angle ?? 90} .5 .5)`}>{layer.colors.map((color, stop) => <stop key={stop} offset={`${stop / Math.max(1, layer.colors.length - 1) * 100}%`} stopColor={color} />)}</linearGradient>)}<radialGradient id={`hero-light-apex-${index}`} cx="50%" cy="28%" r="58%"><stop offset="0%" stopColor={stageLightingColor(activeNailIndex === index ? activeFinish : (nailPolishes[index]?.finish || activeFinish), appliedLighting.reflections[3].color)} stopOpacity={nailStageLightingOpacity(index, 'apex', appliedLighting.reflections[3].opacity)} /><stop offset="56%" stopColor={stageLightingColor(activeNailIndex === index ? activeFinish : (nailPolishes[index]?.finish || activeFinish), appliedLighting.reflections[3].color)} stopOpacity={nailStageLightingOpacity(index, 'apex', appliedLighting.reflections[3].opacity * .22)} /><stop offset="100%" stopColor={stageLightingColor(activeNailIndex === index ? activeFinish : (nailPolishes[index]?.finish || activeFinish), appliedLighting.reflections[3].color)} stopOpacity="0" /></radialGradient><linearGradient id={`hero-light-primary-${index}`} x1="0" y1="0" x2="1" y2="0" gradientTransform={`rotate(${appliedLighting.reflections[0].angle} .5 .5)`}><stop offset="0%" stopColor={stageLightingColor(activeNailIndex === index ? activeFinish : (nailPolishes[index]?.finish || activeFinish), appliedLighting.reflections[0].color)} stopOpacity="0" /><stop offset="42%" stopColor={stageLightingColor(activeNailIndex === index ? activeFinish : (nailPolishes[index]?.finish || activeFinish), appliedLighting.reflections[0].color)} stopOpacity={nailStageLightingOpacity(index, 'primary', appliedLighting.reflections[0].opacity)} /><stop offset="62%" stopColor={stageLightingColor(activeNailIndex === index ? activeFinish : (nailPolishes[index]?.finish || activeFinish), appliedLighting.reflections[0].color)} stopOpacity={nailStageLightingOpacity(index, 'primary', appliedLighting.reflections[0].opacity * .36)} /><stop offset="100%" stopColor={stageLightingColor(activeNailIndex === index ? activeFinish : (nailPolishes[index]?.finish || activeFinish), appliedLighting.reflections[0].color)} stopOpacity="0" /></linearGradient><linearGradient id={`hero-light-edge-${index}`} x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stopColor={stageLightingColor(activeNailIndex === index ? activeFinish : (nailPolishes[index]?.finish || activeFinish), appliedLighting.reflections[2].color)} stopOpacity={nailStageLightingOpacity(index, 'edge', appliedLighting.reflections[2].opacity)} /><stop offset="22%" stopColor={stageLightingColor(activeNailIndex === index ? activeFinish : (nailPolishes[index]?.finish || activeFinish), appliedLighting.reflections[2].color)} stopOpacity="0" /><stop offset="78%" stopColor={stageLightingColor(activeNailIndex === index ? activeFinish : (nailPolishes[index]?.finish || activeFinish), appliedLighting.reflections[2].color)} stopOpacity="0" /><stop offset="100%" stopColor={stageLightingColor(activeNailIndex === index ? activeFinish : (nailPolishes[index]?.finish || activeFinish), appliedLighting.reflections[2].color)} stopOpacity={nailStageLightingOpacity(index, 'edge', appliedLighting.reflections[2].opacity * .72)} /></linearGradient><linearGradient id={`hero-light-depth-${index}`} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#000000" stopOpacity="0" /><stop offset="100%" stopColor="#000000" stopOpacity={appliedLighting.reflections[4].opacity} /></linearGradient></defs>
                     <MaterialLayers path={renderedSurface.path} surfaceBounds={renderedSurface.bounds} finish={activeNailIndex === index ? activeFinish : (nailPolishes[index]?.finish || activeFinish)} color={activeNailIndex === index ? activePolishColor : (nailPolishes[index]?.colorHex || activePolishColor)} fleckColor={activeNailIndex === index ? activeFormulation.fleckColor : (nailPolishes[index]?.fleckColor || activeFormulation.fleckColor)} glitterDensity={activeNailIndex === index ? activeFormulation.glitterDensity : (nailPolishes[index]?.glitterDensity ?? activeFormulation.glitterDensity)} opacity={activeNailIndex === index ? appliedEffect.layers[0].opacity : (nailPolishes[index]?.opacity ?? appliedEffect.layers[0].opacity)} shine={activeNailIndex === index ? appliedEffect.shine : (nailPolishes[index]?.shine ?? appliedEffect.shine)} uid={`hero-material-${index}`} baseProps={{ className: 'nail-design-studio__nail-polish', 'data-design-layer': 'polish', 'data-hero-material-layer': 'true', 'data-polish-finish': activeNailIndex === index ? activeFinish : (nailPolishes[index]?.finish || activeFinish), 'data-hero-effect': appliedEffect.id, 'data-hero-lighting': 'Hero Lighting Engine', 'data-hero-reflection': appliedLighting.profile.reflection, 'data-material-id': renderedSurface.material.id }}/>
+                    <FrenchTipRegion data={frenchTips[index]} nailPath={renderedSurface.path} bounds={renderedSurface.bounds} uid={`hero-french-${index}`} />
                     {appliedEffect.layers.slice(1).map((layer, layerIndex) => layer.kind === 'linear-gradient' ? <path key={layerIndex} d={renderedSurface.path} fill={`url(#hero-finish-${index}-${layerIndex + 1})`} opacity={layer.opacity} /> : layer.paths?.map((path, pathIndex) => <path key={`${layerIndex}-${pathIndex}`} d={path} stroke={layer.color} opacity={layer.opacity} fill="none" vectorEffect="non-scaling-stroke" />))}
                     <path d={renderedSurface.path} fill={`url(#hero-light-depth-${index})`} opacity={appliedLighting.profile.veinPreservation} />
                     <path d={renderedSurface.path} fill={`url(#hero-light-apex-${index})`} style={{ mixBlendMode: 'screen' }} />
