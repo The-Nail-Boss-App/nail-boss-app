@@ -148,18 +148,12 @@ describe('DS-03 Polish Studio repair', () => {
     expect(Number(depth.getAttribute('stop-opacity'))).toBeGreaterThan(0);
   });
 
-  it('saves, selects, favorites, renames, deletes, and synchronizes both Polish Racks', async () => {
+  it('saves polish to the single lower Polish Rack', async () => {
     await click(container.querySelector('button[aria-label="Save polish to Polish Rack"]'));
     expect(container.querySelector('[aria-live="polite"]').textContent).toContain('saved to Polish Rack');
-    const leftNames = [...container.querySelectorAll('.nail-design-studio__mini-bottles > div > span')].map((node) => node.textContent.replace(/^★/, ''));
     const lowerNames = [...container.querySelectorAll('.nail-design-studio__lower-polish > span')].map((node) => node.textContent.replace('★ ', ''));
-    expect(leftNames).toContain('Blush Royalty'); expect(lowerNames).toContain('Blush Royalty');
+    expect(lowerNames).toContain('Blush Royalty');
     expect(container.querySelector('button[aria-label="Remove polish from Polish Rack"]')).toBeTruthy();
-    const favorite = container.querySelector('button[aria-label="Favorite Blush Royalty"]'); await click(favorite); expect(favorite.getAttribute('aria-pressed')).toBe('false');
-    window.prompt = jest.fn(() => 'Royal Repair'); await click(container.querySelector('button[aria-label="Rename Blush Royalty"]'));
-    expect(container.textContent).toContain('Royal Repair');
-    window.confirm = jest.fn(() => true); await click(container.querySelector('button[aria-label="Delete Royal Repair"]'));
-    expect(container.querySelector('button[aria-label="Delete Royal Repair"]')).toBeNull();
     expect(JSON.parse(window.localStorage.getItem('anitaset.designStudio.polishRack.v2'))).toEqual(expect.any(Array));
   });
 
@@ -224,9 +218,27 @@ describe('DS-03 Polish Studio repair', () => {
     }
     expect(container.querySelector('[data-bottle-material-layer="suspended-glitter-particles"] circle')).toBeTruthy();
     await click(container.querySelector('button[aria-label="Save polish to Polish Rack"]'));
-    const rackBottles = [...container.querySelectorAll('.nail-design-studio__polish-rack .polish-bottle-figure')];
+    const rackBottles = [...container.querySelectorAll('.nail-design-studio__workspace-module--polish .polish-bottle-figure')];
     expect(rackBottles.length).toBeGreaterThan(0);
     expect(rackBottles.every((bottle) => bottle.dataset.bottleRenderer === 'anitaset-signature-v1' && bottle.getAttribute('viewBox') === '0 0 100 132')).toBe(true);
+  });
+
+  it('separates Project Palette swatches, Recently Used bottles, and the lower Polish Rack', async () => {
+    expect(container.querySelector('[data-testid="project-palette"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="project-palette"] .polish-bottle-figure')).toBeNull();
+    expect(container.querySelector('[data-testid="recently-used"]')).toBeTruthy();
+    expect(container.querySelector('.nail-design-studio__polish-rack')).toBeNull();
+    expect(container.querySelector('.nail-design-studio__workspace-module--polish[aria-label="Polish Rack"]')).toBeTruthy();
+
+    const finish = container.querySelector('select[aria-label="Finish"]');
+    await act(async () => { finish.value = 'Jelly'; finish.dispatchEvent(new Event('change', { bubbles: true })); });
+    expect(container.querySelectorAll('[data-testid="project-palette-swatch"]')).toHaveLength(1);
+    expect(container.querySelector('[data-testid="project-palette-swatch"]').dataset.polishFinish).toBe('Jelly');
+    expect(container.querySelector('[data-testid="recently-used"] .polish-bottle-figure').dataset.polishFinish).toBe('Jelly');
+    await act(async () => { finish.value = 'Cream'; finish.dispatchEvent(new Event('change', { bubbles: true })); });
+    await act(async () => { finish.value = 'Jelly'; finish.dispatchEvent(new Event('change', { bubbles: true })); });
+    expect(container.querySelectorAll('[data-testid="project-palette-swatch"]')).toHaveLength(2);
+    expect(container.querySelectorAll('[data-testid="recently-used"] .polish-bottle-figure')[0].dataset.polishFinish).toBe('Jelly');
   });
 
   it('relocates opacity to the material properties while keeping the shared Hero polish state', async () => {
@@ -264,7 +276,7 @@ describe('DS-03 Polish Studio repair', () => {
 
   it('uses the filled star to unsave the active formulation from both racks', async () => {
     await click(container.querySelector('button[aria-label="Save polish to Polish Rack"]'));
-    expect(container.querySelectorAll('button[aria-label="Blush Royalty #D94C70 Cream polish bottle preview"]')).toHaveLength(2);
+    expect(container.querySelectorAll('button[aria-label="Blush Royalty #D94C70 Cream polish bottle preview"]')).toHaveLength(1);
     await click(container.querySelector('button[aria-label="Remove polish from Polish Rack"]'));
     expect(container.querySelector('button[aria-label="Save polish to Polish Rack"]')).toBeTruthy();
     expect(container.textContent).toContain('removed from Polish Rack');
@@ -578,7 +590,7 @@ describe('adaptive Nail Desk', () => {
     expect(studio.dataset.heroMaterialEngine).toBe('Hero Material Engine');
     expect(studio.dataset.heroEffectEngine).toBe('Hero Effect Engine');
     expect(container.querySelector('[aria-label="Polish panel"]')).toBeNull();
-    expect(['Active Polish', 'Polish Rack'].every((label) => studio.textContent.includes(label))).toBe(true);
+    expect(['Active Polish', 'Project Palette', 'Recently Used'].every((label) => studio.textContent.includes(label))).toBe(true);
     const finish = container.querySelector('select[aria-label="Finish"]');
     await act(async () => { finish.value = 'Glitter'; finish.dispatchEvent(new Event('change', { bubbles: true })); });
     expect(container.querySelector('[data-design-layer="polish"]').dataset.heroEffect).toBe('Solid');
