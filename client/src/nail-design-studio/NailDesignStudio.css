@@ -660,16 +660,13 @@
 /* DS-03 compact luxury product treatment. */
 .nail-design-studio__creative-tools { overflow-y: auto; overscroll-behavior: contain; padding-bottom: 18px; }
 .nail-design-studio__polish-studio { gap: 10px; padding-bottom: 4px; }
-.nail-design-studio__active-polish { position: relative; grid-template: auto 1fr / 100px minmax(0, 1fr); gap: 8px 12px; padding: 11px; min-width: 0; min-height: 0; overflow: hidden; border-color: rgba(245,199,115,.28); background: radial-gradient(circle at 22% 20%, rgba(255,45,160,.14), transparent 34%), linear-gradient(145deg, #211d21, #09090b 58%, #020203); color: #f8f4f7; box-shadow: inset 0 1px rgba(255,255,255,.09), 0 12px 24px rgba(0,0,0,.36); }
+.nail-design-studio__active-polish { position: relative; grid-template-columns: minmax(0, 1fr); gap: 12px; padding: 14px; min-width: 0; min-height: 0; overflow: hidden; border-color: rgba(245,199,115,.28); background: radial-gradient(circle at 50% 22%, rgba(255,45,160,.14), transparent 38%), linear-gradient(145deg, #211d21, #09090b 58%, #020203); color: #f8f4f7; box-shadow: inset 0 1px rgba(255,255,255,.09), 0 12px 24px rgba(0,0,0,.36); }
 .nail-design-studio__active-polish-heading { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; color: #f5c773; font: 800 9px/1 'DM Sans', sans-serif; letter-spacing: .16em; text-transform: uppercase; }
-.nail-design-studio__active-bottle { display: grid; min-width: 0; place-items: center; align-self: center; filter: drop-shadow(0 10px 10px rgba(0,0,0,.6)); }
-.nail-design-studio__active-swatch { display: block; width: 58px; height: 14px; margin-top: -3px; border-radius: 999px; filter: drop-shadow(0 3px 4px rgba(0,0,0,.42)); }
+.nail-design-studio__active-bottle { display: grid; width: 100%; min-width: 0; place-items: center; justify-self: center; filter: drop-shadow(0 10px 10px rgba(0,0,0,.6)); }
 .nail-design-studio__active-details { display: grid; min-width: 0; gap: 7px; align-content: start; }
 .nail-design-studio__active-details label { min-width: 0; color: #c9bdc6; letter-spacing: .04em; }
 .nail-design-studio__active-details label > select,
 .nail-design-studio__active-details label > input { width: 100%; min-width: 0; border-color: rgba(245,199,115,.27); background: #111013; color: #fff; box-sizing: border-box; }
-.nail-design-studio__active-details .nail-design-studio__polish-name { color: #fff; font-size: 9px; }
-.nail-design-studio__active-details .nail-design-studio__polish-name input { font: 700 12px/1.2 Georgia, serif; }
 .nail-design-studio__active-details output { color: #fff; }
 .nail-design-studio__active-details input[type="range"] { accent-color: #ff4aa8; }
 .nail-design-studio__active-polish input { padding-block: 5px !important; }
@@ -678,6 +675,7 @@
 .nail-design-studio__color-row { grid-template-columns: 34px minmax(9ch, 1fr); justify-content: stretch; }
 .nail-design-studio__color-row input[type="color"] { width: 34px; min-width: 34px; }
 .nail-design-studio__active-details .nail-design-studio__hex-input { width: 100%; min-width: 0; }
+.nail-design-studio__material-properties { display: grid; min-width: 0; gap: 10px; }
 .polish-bottle-static { display: inline-flex; justify-content: center; max-width: 100%; box-sizing: border-box; }
 .polish-bottle-button { display: inline-flex; justify-content: center; max-width: 100%; padding: 2px; border: 0; border-radius: 12px; background: transparent; box-sizing: border-box; cursor: pointer; }
 .polish-bottle-button:focus-visible { outline: 2px solid #39e6f2; outline-offset: 2px; }
