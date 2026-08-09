@@ -37,7 +37,14 @@ describe('DS-03 Polish Studio repair', () => {
     const card = container.querySelector('[data-testid="active-polish-card"]');
     expect(card).toBeTruthy();
     expect(card.textContent).toContain('Active Polish');
+    const bottleRegion = card.querySelector('.nail-design-studio__active-bottle');
+    expect(bottleRegion).toBeTruthy();
+    expect(bottleRegion.parentElement).toBe(card);
     expect(card.querySelector('.polish-bottle-figure').dataset.polishFinish).toBe('Cream');
+    expect(card.querySelector('input[aria-label="Polish name"]')).toBeNull();
+    expect(card.querySelector('input[aria-label="Opacity"]')).toBeNull();
+    const details = card.querySelector('.nail-design-studio__active-details');
+    expect([...details.querySelectorAll('label')].map((label) => label.firstChild.textContent)).toEqual(['Color / HEX', 'Finish']);
     const hex = container.querySelector('input[aria-label="Base Color HEX"]');
     expect(hex.classList.contains('nail-design-studio__hex-input')).toBe(true);
     await type(hex, '#ABCDEF'); await act(async () => hex.dispatchEvent(new FocusEvent('focusout', { bubbles: true })));
@@ -222,10 +229,13 @@ describe('DS-03 Polish Studio repair', () => {
     expect(rackBottles.every((bottle) => bottle.dataset.bottleRenderer === 'anitaset-signature-v1' && bottle.getAttribute('viewBox') === '0 0 100 132')).toBe(true);
   });
 
-  it('keeps Active Polish opacity on the shared Hero polish state', async () => {
-    const opacity = container.querySelector('[data-testid="active-polish-card"] input[aria-label="Opacity"]');
+  it('relocates opacity to the material properties while keeping the shared Hero polish state', async () => {
+    const properties = container.querySelector('[data-testid="polish-material-properties"]');
+    expect(properties.getAttribute('aria-label')).toBe('Polish material properties');
+    expect([...properties.querySelectorAll(':scope > label')].slice(0, 3).map((label) => label.firstChild.textContent)).toEqual(['Opacity ', 'Shine ', 'Viscosity ']);
+    const opacity = properties.querySelector('input[aria-label="Opacity"]');
     await type(opacity, '0.43');
-    expect(container.querySelector('[data-testid="active-polish-card"] output').textContent).toBe('43%');
+    expect(properties.querySelector('label output').textContent).toBe('43%');
     expect(container.querySelector('.nail-design-studio__active-polish .polish-bottle-figure').dataset.polishOpacity).toBe('0.43');
     expect(container.querySelector('[data-design-layer="polish"]').getAttribute('opacity')).toBe('0.43');
   });
@@ -250,7 +260,6 @@ describe('DS-03 Polish Studio repair', () => {
       expect([...stage.querySelectorAll('[id^="hero-light-apex"] stop, [id^="hero-light-primary"] stop, [id^="hero-light-edge"] stop')].every((stop) => stop.getAttribute('stop-color') === '#ffffff' || stop.getAttribute('stop-color') === '#FFFFFF')).toBe(true);
     }
     expect(container.querySelector('[data-material-layer="glitter-particle-field"] ellipse')).toBeTruthy();
-    expect(container.querySelector('.nail-design-studio__active-swatch [data-material-profile="GlitterMaterial"]')).toBeTruthy();
   });
 
   it('uses the filled star to unsave the active formulation from both racks', async () => {
