@@ -1,4 +1,4 @@
-import { VIEWBOX, buildNailPath, getNailGeometry } from '../design-studio/blueprint';
+import { VIEWBOX, buildNailPath, getNailFreeEdgeExtent } from '../design-studio/blueprint';
 import { HeroDesignDocument, HeroEngine, HeroValidationIssue, HeroValidationResult } from './contracts';
 import { HeroDesignEventBus } from './events';
 import { HeroResolvedNailMask, resolveHeroNailMask } from './mask';
@@ -40,9 +40,13 @@ export class HeroSurfaceRenderingEngine implements HeroEngine<HeroSurfaceRenderI
     this.events.publish('surface.render.started', { designId: input.document.metadata.id, state: this.state });
     try {
       const nail = { shape: input.shape.id, length: input.document.nail.length, width: input.document.nail.width };
-      const geometry = getNailGeometry(nail);
+      // This is the canonical rendered extent used by the path-based surface
+      // system. It includes smooth free-edge geometry beyond the nominal nail
+      // controls (notably Round) without teaching material renderers shapes.
+      const geometry = getNailFreeEdgeExtent(nail);
+      const renderHeight = geometry.renderBottomY - geometry.topY;
       const padding = Math.max(6, geometry.width * 0.04);
-      const viewBox = `${geometry.left - padding} ${geometry.topY - padding} ${geometry.width + padding * 2} ${geometry.height + padding * 2}`;
+      const viewBox = `${geometry.left - padding} ${geometry.topY - padding} ${geometry.width + padding * 2} ${renderHeight + padding * 2}`;
       const materialStyle: HeroSurfaceMaterialStyle = {
         baseTint: input.material.baseTint ?? '#F4E8E4', opacity: input.material.opacity,
         edgeOpacity: Math.min(0.34, input.material.density * (1 - input.material.edgeSoftness) * 0.34),
@@ -50,7 +54,7 @@ export class HeroSurfaceRenderingEngine implements HeroEngine<HeroSurfaceRenderI
         centerOpacity: input.material.curvatureDepth * 0.17,
         centerTint: '#FFFFFF', softness: input.material.edgeSoftness,
       };
-      const result: HeroSurfaceRenderResult = { path: buildNailPath(input.shape.id, nail), fill: '#F4E8E4', material: input.material, materialStyle, shapeId: input.shape.id, maskId: input.mask.maskId, bounds: { x: geometry.left, y: geometry.topY, width: geometry.width, height: geometry.height }, viewBox };
+      const result: HeroSurfaceRenderResult = { path: buildNailPath(input.shape.id, nail), fill: '#F4E8E4', material: input.material, materialStyle, shapeId: input.shape.id, maskId: input.mask.maskId, bounds: { x: geometry.left, y: geometry.topY, width: geometry.width, height: renderHeight }, viewBox };
       if (!result.path) throw new Error('Hero surface geometry was empty.');
       this.lastKey = key; this.lastResult = result; this.state = 'Rendered';
       this.events.publish('surface.render.completed', { designId: input.document.metadata.id, state: this.state, result });

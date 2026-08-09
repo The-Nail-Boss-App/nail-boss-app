@@ -223,6 +223,30 @@ describe('Hero Design integration shell', () => {
     expect(engine.state).toBe('Rendered');
   });
 
+  test('reports canonical free-edge render bounds for Round at default, long, and wide geometry', () => {
+    const renderRound = (length: number, width: number) => {
+      const base = document();
+      const hero = { ...base, nail: { ...base.nail, shape: { id: 'Round' as const, version: '1' }, mask: maskReferenceForShape('Round')!, length, width } };
+      return new HeroSurfaceRenderingEngine().process(createHeroSurfaceInput(hero, { width: 240, height: 360 }));
+    };
+    const defaultRound = renderRound(.5, .5);
+    const longRound = renderRound(2.5, .5);
+    const wideRound = renderRound(.5, 1);
+    expect(defaultRound.bounds).toEqual({ x: 57, y: 83, width: 126, height: 247.925 });
+    expect(defaultRound.bounds.y + defaultRound.bounds.height).toBeGreaterThan(318);
+    expect(longRound.bounds.height).toBeCloseTo(480.025, 6);
+    expect(longRound.bounds.y + longRound.bounds.height).toBeGreaterThan(318);
+    expect(wideRound.bounds).toEqual({ x: 32, y: 83, width: 176, height: 247.925 });
+    expect(wideRound.bounds.y + wideRound.bounds.height).toBeGreaterThan(318);
+  });
+
+  test.each(['Almond', 'Coffin', 'Square', 'Stiletto'] as const)('keeps nominal render bounds for %s', (shapeId) => {
+    const base = document();
+    const hero = { ...base, nail: { ...base.nail, shape: { id: shapeId, version: '1' }, mask: maskReferenceForShape(shapeId)! } };
+    const result = new HeroSurfaceRenderingEngine().process(createHeroSurfaceInput(hero, { width: 240, height: 360 }));
+    expect(result.bounds).toEqual({ x: 32, y: 28, width: 176, height: 290 });
+  });
+
   test('registers, validates, resolves, and caches the production Hero material', () => {
     const registry = new HeroEngineRegistry();
     const engine = registerHeroMaterialEngine(registry);

@@ -1,6 +1,7 @@
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { creamGlossResponse, GLITTER_EMBEDDED_BLUR, GLITTER_MICRO_RADIUS, GLITTER_PARTICLE_CAPACITY, GLITTER_REFERENCE_PARTICLE_COUNT, GLITTER_SIZE_DISTRIBUTION, glitterParticleField, jellyTransmissionPalette, MATERIAL_PROFILES, MaterialLayers, renderHybridJellySafely } from './MaterialRenderer';
+import { getNailFreeEdgeExtent } from '../design-studio/blueprint';
 import { HYBRID_JELLY_LAYER_ORDER, JELLY_MATERIAL_PROFILE } from './HybridMaterialRenderer';
 import { FINISH_DEFAULTS, normalizePolishForFinish } from './polishFinish';
 
@@ -101,7 +102,17 @@ describe('Jelly Material Engine', () => {
     expect(gold).toContain('data-material-base-color="#A40A30"');
     expect(gold).toContain('fill="#D7B45A"');
     expect(purple.match(/<ellipse/g)).toHaveLength(3750);
+    expect(purple).toContain('clip-path="url(#test-material-glitter-mask)"');
     expect(purple).not.toContain('submerged-glitter');
+  });
+
+  test('scales the population through canonical Round free-edge render bounds', () => {
+    const geometry = getNailFreeEdgeExtent({ shape: 'Round', length: 1, width: 1 });
+    const bounds = { x: geometry.left, y: geometry.topY, width: geometry.width, height: geometry.renderBottomY - geometry.topY };
+    const particles = glitterParticleField('#120B10', '#D7B45A', 1, bounds);
+    expect(bounds.height).toBeGreaterThan(geometry.height);
+    expect(particles).toHaveLength(Math.round(5000 * bounds.height / 290));
+    expect(particles.some(({ y }) => y > geometry.bottomY)).toBe(true);
   });
 
   test('uses the approved opaque Cream surface beneath black and white Glitter inputs', () => {
