@@ -34,12 +34,15 @@ describe('DS-03 Polish Studio repair', () => {
     const finish = container.querySelector('select[aria-label="Finish"]');
     expect([...finish.options].map((option) => option.textContent)).toEqual(['Cream', 'Matte', 'Jelly', 'Glitter']);
     expect([...finish.options].map((option) => option.textContent)).not.toContain('Solid');
-    expect(container.querySelector('[data-testid="active-polish-card"]')).toBeNull();
-    expect(container.querySelector('.nail-design-studio__active-polish .polish-bottle-figure').dataset.polishFinish).toBe('Cream');
+    const card = container.querySelector('[data-testid="active-polish-card"]');
+    expect(card).toBeTruthy();
+    expect(card.textContent).toContain('Active Polish');
+    expect(card.querySelector('.polish-bottle-figure').dataset.polishFinish).toBe('Cream');
     const hex = container.querySelector('input[aria-label="Base Color HEX"]');
     expect(hex.classList.contains('nail-design-studio__hex-input')).toBe(true);
     await type(hex, '#ABCDEF'); await act(async () => hex.dispatchEvent(new FocusEvent('focusout', { bubbles: true })));
     expect(container.querySelector('input[type="color"]').value.toUpperCase()).toBe('#ABCDEF');
+    expect(card.querySelector('.polish-bottle-figure').dataset.polishColor).toBe('#ABCDEF');
     await type(hex, '#BAD'); await act(async () => hex.dispatchEvent(new FocusEvent('focusout', { bubbles: true })));
     expect(hex.getAttribute('aria-invalid')).toBe('true');
   });
@@ -202,9 +205,10 @@ describe('DS-03 Polish Studio repair', () => {
 
   it('updates the compact bottle material for every approved finish', async () => {
     const activeBottle = container.querySelector('.nail-design-studio__active-polish .polish-bottle-figure');
-    expect(activeBottle.dataset.bottleRenderer).toBe('simplified');
-    expect(activeBottle.getAttribute('viewBox')).toBe('0 0 52 76');
-    expect(activeBottle.querySelector('[data-bottle-layer="outer-casing"]')).toBeNull();
+    expect(activeBottle.dataset.bottleRenderer).toBe('anitaset-signature-v1');
+    expect(activeBottle.getAttribute('viewBox')).toBe('0 0 100 132');
+    expect(activeBottle.querySelector('[data-bottle-layer="cap"]')).toBeTruthy();
+    expect(activeBottle.querySelector('[data-bottle-layer="polish-content"]')).toBeTruthy();
     expect(activeBottle.querySelector('[data-bottle-layer="front-reflection"]')).toBeTruthy();
     const select = container.querySelector('select[aria-label="Finish"]');
     for (const finish of ['Cream', 'Matte', 'Jelly', 'Glitter']) {
@@ -215,7 +219,15 @@ describe('DS-03 Polish Studio repair', () => {
     await click(container.querySelector('button[aria-label="Save polish to Polish Rack"]'));
     const rackBottles = [...container.querySelectorAll('.nail-design-studio__polish-rack .polish-bottle-figure')];
     expect(rackBottles.length).toBeGreaterThan(0);
-    expect(rackBottles.every((bottle) => bottle.dataset.bottleRenderer === 'simplified' && bottle.getAttribute('viewBox') === '0 0 38 58')).toBe(true);
+    expect(rackBottles.every((bottle) => bottle.dataset.bottleRenderer === 'anitaset-signature-v1' && bottle.getAttribute('viewBox') === '0 0 100 132')).toBe(true);
+  });
+
+  it('keeps Active Polish opacity on the shared Hero polish state', async () => {
+    const opacity = container.querySelector('[data-testid="active-polish-card"] input[aria-label="Opacity"]');
+    await type(opacity, '0.43');
+    expect(container.querySelector('[data-testid="active-polish-card"] output').textContent).toBe('43%');
+    expect(container.querySelector('.nail-design-studio__active-polish .polish-bottle-figure').dataset.polishOpacity).toBe('0.43');
+    expect(container.querySelector('[data-design-layer="polish"]').getAttribute('opacity')).toBe('0.43');
   });
 
   it('renders all finishes through reusable, ordered material layers', async () => {
@@ -281,7 +293,7 @@ describe('DS-03 Polish Studio repair', () => {
 
     await editHex(container, '#030303');
     stageNail = container.querySelector('svg[data-testid="stage-nail"]');
-    expect(container.querySelector('.nail-design-studio__active-details dd').textContent).toBe('#030303');
+    expect(container.querySelector('.nail-design-studio__active-details input[aria-label="Base Color HEX"]').value).toBe('#030303');
     expect(stageNail.dataset.activePolishColor).toBe('#030303');
     expect(stageNail.dataset.renderColor).toBe('#030303');
     expect(stageNail.dataset.appliedPolishColor).toBe('#E8A0BF');
