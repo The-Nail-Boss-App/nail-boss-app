@@ -780,6 +780,60 @@ describe('adaptive Nail Desk', () => {
     expect(stage.style.getPropertyValue('--stage-zoom')).toBe('1');
   });
 
+  it('keeps wheel events owned by the scrollable creative-tools panel', async () => {
+    const panel = container.querySelector('#creative-tools-panel');
+    const workspace = container.querySelector('.nail-design-studio__workspace');
+    const workspaceWheel = jest.fn();
+    workspace.addEventListener('wheel', workspaceWheel);
+    const wheel = new WheelEvent('wheel', { bubbles: true, cancelable: true, deltaY: 180 });
+
+    await act(async () => panel.querySelector('[aria-label="Polish Studio"]').dispatchEvent(wheel));
+
+    expect(workspaceWheel).not.toHaveBeenCalled();
+    expect(wheel.defaultPrevented).toBe(false);
+    expect(panel.classList.contains('nail-design-studio__creative-tools')).toBe(true);
+    expect(container.querySelector('[aria-label="Project Palette"]')).toBeTruthy();
+    expect(container.querySelector('[aria-label="Recently Used"]')).toBeTruthy();
+  });
+
+  it('keeps the Nail Desk camera and composition stable through repeated panel scrolling', async () => {
+    await click(container.querySelector('button[aria-label="Zoom in"]'));
+    const panel = container.querySelector('#creative-tools-panel');
+    const stage = container.querySelector('.nail-design-studio__nail-stage');
+    const readVisualState = () => ({
+      zoom: stage.style.getPropertyValue('--stage-zoom'),
+      x: stage.style.getPropertyValue('--stage-x'),
+      y: stage.style.getPropertyValue('--stage-y'),
+      length: stage.style.getPropertyValue('--nail-length'),
+      composition: stage.getAttribute('aria-label'),
+      background: container.querySelector('[data-testid="nail-stage-container"]').style.backgroundImage,
+    });
+    const before = readVisualState();
+
+    await act(async () => {
+      for (let index = 0; index < 8; index += 1) {
+        panel.dispatchEvent(new WheelEvent('wheel', { bubbles: true, cancelable: true, deltaY: index % 2 ? -120 : 120 }));
+      }
+    });
+
+    expect(readVisualState()).toEqual(before);
+    expect(container.querySelector('output[aria-label="Zoom level"]').textContent).toBe('125%');
+  });
+
+  it('contains scrolling for other creative tool panels without disabling natural wheel behavior', async () => {
+    await click(container.querySelector('#nail-tool-effects'));
+    const panel = container.querySelector('#creative-tools-panel');
+    const workspaceWheel = jest.fn();
+    panel.parentElement.addEventListener('wheel', workspaceWheel);
+    const wheel = new WheelEvent('wheel', { bubbles: true, cancelable: true, deltaY: 100 });
+
+    await act(async () => panel.querySelector('[aria-label="Effects Studio"]').dispatchEvent(wheel));
+
+    expect(workspaceWheel).not.toHaveBeenCalled();
+    expect(wheel.defaultPrevented).toBe(false);
+    expect(container.querySelector('output[aria-label="Zoom level"]').textContent).toBe('100%');
+  });
+
   it('expands into independently released panels and supports Focus Mode', async () => {
     const workspace = container.querySelector('.nail-design-studio__workspace');
     await click(container.querySelector('button[aria-label="Collapse creative tools panel"]'));
