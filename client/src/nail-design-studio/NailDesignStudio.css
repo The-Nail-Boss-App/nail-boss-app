@@ -390,8 +390,9 @@
   height: 100%;
   min-height: 0;
   margin-top: 14px;
-  overflow: hidden;
-  touch-action: none;
+  /* Clip the fixed Desk composition without creating a wheel-owning scroll container. */
+  overflow: clip;
+  touch-action: pan-y;
   user-select: none;
   border: 1px solid rgba(216,166,66,.28);
   border-radius: 20px;
