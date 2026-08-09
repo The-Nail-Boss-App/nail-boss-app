@@ -4,6 +4,7 @@ import NailDesignStudio, { canScrollInWheelDirection, creamHeroSurfaceResponse, 
 import { heroEffectForPolish, normalizePolishForFinish } from './polishFinish';
 import { MATERIAL_PROFILES, materialProfile } from './MaterialRenderer';
 import { createHeroDesignDocument } from '../hero-design/index.ts';
+import { loadFrenchTips } from './FrenchTip';
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -546,7 +547,7 @@ describe('new Nail Design Studio command bar', () => {
 });
 
 describe('Founder-approved Nail Tool Kit', () => {
-  const labels = ['Polish', 'Technique', 'Brush', 'Sticker Studio™', 'Charm Studio™', 'Gems', 'Effects', '3D Objects', 'Top Coat'];
+  const labels = ['Polish', 'French Tip', 'Brush', 'Sticker Studio™', 'Charm Studio™', 'Gems', 'Effects', '3D Objects', 'Top Coat'];
   const accents = ['#FF2DA0', '#F5C04A', '#FF7A45', '#B96CFF', '#34E5F2', '#68B7FF', '#C8FF4A', '#22F0C7', '#FF6FCF'];
 
   beforeEach(async () => {
@@ -588,7 +589,7 @@ describe('Founder-approved Nail Tool Kit', () => {
   it('supports roving focus with arrows, Home, and End, then activation with Enter and Space', async () => {
     tabs()[0].focus();
     await keyDown(tabs()[0], 'ArrowRight');
-    expect(document.activeElement.textContent).toBe('Technique');
+    expect(document.activeElement.textContent).toBe('French Tip');
     expect(tabs()[1].getAttribute('aria-selected')).toBe('false');
     await keyDown(tabs()[1], 'Enter');
     expect(tabs()[1].getAttribute('aria-selected')).toBe('true');
@@ -607,6 +608,49 @@ describe('Founder-approved Nail Tool Kit', () => {
     const bar = container.querySelector('[data-testid="nail-design-studio-command-bar"]');
     const ribbon = container.querySelector('.nail-design-studio__tool-ribbon');
     expect([...studio.children].indexOf(ribbon)).toBe([...studio.children].indexOf(bar) + 1);
+  });
+});
+
+describe('DS-TK01A French Tip integration', () => {
+  beforeEach(async () => {
+    window.localStorage.removeItem('anitaset.hero-design.v1:nail-desk-hero');
+    container = document.createElement('div'); document.body.appendChild(container); root = createRoot(container);
+    await act(async () => root.render(<NailDesignStudio />));
+  });
+  afterEach(() => { act(() => root.unmount()); container.remove(); window.localStorage.removeItem('anitaset.hero-design.v1:nail-desk-hero'); });
+
+  it('replaces Technique navigation with working French Tip controls', async () => {
+    expect([...container.querySelectorAll('[role="tab"]')].some((tab) => tab.textContent === 'Technique')).toBe(false);
+    const tab = [...container.querySelectorAll('[role="tab"]')].find((item) => item.textContent === 'French Tip');
+    await click(tab);
+    expect(container.querySelector('[data-testid="french-tip-controls"]')).toBeTruthy();
+    expect(container.querySelector('[role="tabpanel"] h2').textContent).toBe('French Tip');
+  });
+
+  it('enables, edits, targets, renders, and disables the legacy French Tip region', async () => {
+    await click([...container.querySelectorAll('[role="tab"]')].find((item) => item.textContent === 'French Tip'));
+    const enabled = container.querySelector('input[aria-label="Enable French Tip"]');
+    await click(enabled);
+    let region = container.querySelector('[data-design-layer="french-tip"]');
+    expect(region).toBeTruthy();
+    expect(region.dataset.frenchTipStyle).toBe('classic');
+
+    const color = container.querySelector('input[aria-label="French Tip color"]');
+    await act(async () => { Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set.call(color, '#123456'); color.dispatchEvent(new Event('change', { bubbles: true })); });
+    expect(container.querySelector('[data-design-layer="french-tip"] > path').getAttribute('fill')).toBe('#123456');
+
+    await click(container.querySelector('input[name="french-scope"][value="full"]') || [...container.querySelectorAll('input[name="french-scope"]')].at(-1));
+    await click([...container.querySelectorAll('button')].find((button) => button.textContent === 'Apply French Tip'));
+    await click([...container.querySelectorAll('input[name="composition"]')].find((input) => input.value === 'full'));
+    expect(container.querySelectorAll('[data-design-layer="french-tip"]')).toHaveLength(10);
+
+    await click(enabled);
+    expect(container.querySelectorAll('[data-design-layer="french-tip"]')).toHaveLength(9);
+  });
+
+  it('loads both mounted metadata and legacy French Tip layer persistence', () => {
+    expect(loadFrenchTips({ metadata: { frenchTips: [{ style: 'v', colorHex: '#ABCDEF' }] } })[0]).toMatchObject({ style: 'v', colorHex: '#ABCDEF' });
+    expect(loadFrenchTips({ nails: [{ layers: [{ type: 'frenchTip', visible: true, data: { preset: 'deep', colorHex: '#FEDCBA' } }] }] })[0]).toMatchObject({ preset: 'deep', colorHex: '#FEDCBA' });
   });
 });
 
