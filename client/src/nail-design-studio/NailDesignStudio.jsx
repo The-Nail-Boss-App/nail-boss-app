@@ -8,6 +8,7 @@ import { USER_FACING_NAIL_SHAPES } from '../config/features';
 import PolishBottle from '../design-studio/PolishBottle';
 import { MaterialLayers } from './MaterialRenderer';
 import { FINISH_DEFAULTS, VISIBLE_POLISH_FINISHES, heroEffectForPolish, normalizePolishForFinish, polishSignature } from './polishFinish';
+import { addProjectPolish, touchRecentPolish } from '../design-studio/polishWorkflow';
 import './NailDesignStudio.css';
 
 const TOOL_CATEGORIES = [
@@ -59,6 +60,7 @@ const INSPIRATION_CARDS = [
 ];
 
 const POLISH_RACK_KEY = 'anitaset.designStudio.polishRack.v2';
+const RECENT_POLISH_LIMIT = 8;
 const STARTER_POLISHES = [
   { id: 'obsidian-rose', name: 'Obsidian Rose', colorHex: '#31101F', finish: 'Cream', opacity: 1, viscosity: .62, shine: .68, brand: 'AnitaSet Atelier', collection: 'Core', size: '15 ml', favorite: true },
   { id: 'oxblood-jelly', name: 'Oxblood Jelly', colorHex: '#7B1028', finish: 'Jelly', opacity: .72, viscosity: .46, shine: .74, brand: 'AnitaSet Atelier', collection: 'Glass House', size: '15 ml' },
@@ -158,6 +160,8 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
   const [history, setHistory] = useState([]);
   const [future, setFuture] = useState([]);
   const [savedPolishes, setSavedPolishes] = useState(loadPolishRack);
+  const [projectPalette, setProjectPalette] = useState([]);
+  const [recentPolishes, setRecentPolishes] = useState([]);
   const [polishName, setPolishName] = useState(() => loadActivePolish()?.name || 'Blush Royalty');
   const [selectedFinish, setSelectedFinish] = useState(() => normalizePolishForFinish(loadActivePolish() || {}, loadActivePolish()?.finish || interfaceFinish(initialNailDeskHeroState().document.nail.effect.id)).finish);
   const [finishFormulation, setFinishFormulation] = useState(() => normalizePolishForFinish(loadActivePolish() || {}, loadActivePolish()?.finish || 'Cream'));
@@ -237,15 +241,22 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
     setDirty(true);
     setSaveState('Save Changes');
   };
+  const rememberPolish = (polish, usedInProject = false) => {
+    const snapshot = { ...polish, signature: polishSignature(polish) };
+    setRecentPolishes((recent) => touchRecentPolish(recent, snapshot, RECENT_POLISH_LIMIT));
+    if (usedInProject) setProjectPalette((palette) => addProjectPolish(palette, snapshot));
+  };
   const changeFinish = (finish, nextColor) => {
     const normalized = normalizePolishForFinish({ ...activeFormulation, colorHex: nextColor || activePolishColor }, finish);
     setSelectedFinish(normalized.finish);
     setFinishFormulation(normalized);
+    rememberPolish(normalized, true);
     changeHero((current) => updateHeroEffect(current, heroEffectForPolish(normalized), heroEvents.current));
   };
   const changeFinishParameter = (key, value) => {
     const next = normalizePolishForFinish({ ...activeFormulation, [key]: value, ...(['baseColor', 'colorA'].includes(key) ? { colorHex: value } : {}) }, activeFinish);
     setFinishFormulation(next);
+    if (['baseColor', 'colorA'].includes(key)) rememberPolish(next, true);
     const hero = heroEffectForPolish(next);
     changeHero((current) => updateHeroEffect(current, hero, heroEvents.current));
   };
@@ -256,6 +267,14 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
   const selectSavedPolish = (polish) => {
     setPolishName(polish.name);
     changeFinish(polish.finish, polish.colorHex);
+  };
+  const selectWorkflowPolish = (polish) => {
+    setPolishName(polish.name);
+    const normalized = normalizePolishForFinish(polish, polish.finish);
+    setSelectedFinish(normalized.finish);
+    setFinishFormulation(normalized);
+    rememberPolish(normalized);
+    changeHero((current) => updateHeroEffect(current, heroEffectForPolish(normalized), heroEvents.current));
   };
   const togglePolishSaved = () => {
     const now = new Date().toISOString();
@@ -272,6 +291,7 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
   const applyPolish = () => {
     const targets = applicationScope === 'current' ? [activeNailIndex] : applicationScope === 'selected' ? selectedNails : applicationScope === 'left' ? [0,1,2,3,4] : applicationScope === 'right' ? [5,6,7,8,9] : [0,1,2,3,4,5,6,7,8,9];
     if (!targets.length) { setPolishNotice('Select at least one nail before applying.'); return; }
+    rememberPolish(activeFormulation, true);
     setPolishPast((items) => [...items, nailPolishes]); setPolishFuture([]);
     setNailPolishes((current) => current.map((value, index) => targets.includes(index) ? { ...activeFormulation } : value));
     setDirty(true); setSaveState('Save Changes'); setPolishNotice(`Applied ${polishName} to ${targets.length} nail${targets.length === 1 ? '' : 's'}.`);
@@ -511,7 +531,10 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
             {activeFinish === 'Glitter' && <><label>Fleck Color<input aria-label="Fleck Color" type="color" value={activeFormulation.fleckColor} onChange={(event) => changeFinishParameter('fleckColor', event.target.value.toUpperCase())} /></label><label>Glitter Density <output>{Math.round((activeFormulation.glitterDensity ?? .46) * 100)}%</output><input aria-label="Glitter Density" type="range" min="0" max="1" step=".01" value={activeFormulation.glitterDensity ?? .46} onChange={(event) => changeFinishParameter('glitterDensity', Number(event.target.value))} /></label></>}
             {['Metallic', 'Chrome'].includes(activeFinish) && <label>Metallic Reflection <input aria-label="Metallic Reflection" type="range" min="0" max="1" step=".01" value={activeFormulation.metallicReflection ?? .76} onChange={(event) => changeFinishParameter('metallicReflection', Number(event.target.value))} /></label>}
             </section>
-            <section className="nail-design-studio__polish-rack" aria-label="Polish Rack"><h3>Polish Rack</h3><div className="nail-design-studio__mini-bottles">{savedPolishes.map((polish) => <div key={polish.id}><PolishBottle size="small" colorHex={polish.colorHex} polishType={polish.finish} name={polish.name} selected={polish.colorHex === activePolishColor && polish.finish === activeFinish} onClick={() => selectSavedPolish(polish)} /><span>{polish.favorite ? '★' : ''}{polish.name}</span><div><button type="button" aria-label={`Favorite ${polish.name}`} aria-pressed={Boolean(polish.favorite)} onClick={() => setSavedPolishes((rack) => rack.map((item) => item.id === polish.id ? { ...item, favorite: !item.favorite, modifiedAt: new Date().toISOString() } : item))}>{polish.favorite ? '★' : '☆'}</button><button type="button" aria-label={`Rename ${polish.name}`} onClick={() => { const name = window.prompt('Rename polish', polish.name)?.trim(); if (name) setSavedPolishes((rack) => rack.map((item) => item.id === polish.id ? { ...item, name, modifiedAt: new Date().toISOString() } : item)); }}>✎</button><button type="button" aria-label={`Delete ${polish.name}`} onClick={() => window.confirm(`Delete ${polish.name}?`) && setSavedPolishes((rack) => rack.filter((item) => item.id !== polish.id))}>×</button></div></div>)}</div></section>
+            <section className="nail-design-studio__polish-workflow" aria-label="Project polish workflow">
+              <section className="nail-design-studio__project-palette" aria-label="Project Palette" data-testid="project-palette"><div><h3>Project Palette</h3><small>Polishes in this design</small></div>{projectPalette.length ? <div className="nail-design-studio__palette-swatches" role="list">{projectPalette.map((polish) => <button type="button" role="listitem" className="nail-design-studio__palette-swatch" data-testid="project-palette-swatch" data-polish-finish={polish.finish} aria-label={`Select ${polish.name} ${polish.colorHex} ${polish.finish}`} aria-pressed={polish.colorHex === activePolishColor && polish.finish === activeFinish} title={`${polish.name} · ${polish.colorHex} · ${polish.finish}`} key={polish.signature || polishSignature(polish)} onClick={() => selectWorkflowPolish(polish)}><i style={{ '--swatch-color': polish.colorHex }} aria-hidden="true" /></button>)}</div> : <p>Your project colors will appear here as you design.</p>}</section>
+              <section className="nail-design-studio__recent-polishes" aria-label="Recently Used" data-testid="recently-used"><div><h3>Recently Used</h3><small>Latest polish selections</small></div>{recentPolishes.length ? <div className="nail-design-studio__mini-bottles" role="list">{recentPolishes.map((polish) => <div role="listitem" key={polish.signature || polishSignature(polish)}><PolishBottle size="small" colorHex={polish.colorHex} polishType={polish.finish} name={polish.name} selected={polish.colorHex === activePolishColor && polish.finish === activeFinish} onClick={() => selectWorkflowPolish(polish)} /><span>{polish.name}</span></div>)}</div> : <p>No recent polish selections yet.</p>}</section>
+            </section>
             <section className="nail-design-studio__apply-scope" role="radiogroup" aria-labelledby="apply-polish-heading"><h3 id="apply-polish-heading">Apply Polish To</h3>{[['current','Current Nail'],['selected','Selected Nails'],['left','Left Hand'],['right','Right Hand'],['full','Full Set']].map(([value,label]) => <label key={value}><input type="radio" name="polish-scope" checked={applicationScope === value} onChange={() => setApplicationScope(value)} />{label}</label>)}</section>
             <button type="button" className="nail-design-studio__polish-primary nail-design-studio__apply-polish" onClick={applyPolish}>Apply Polish</button><output className="nail-design-studio__polish-notice" aria-live="polite">{polishNotice}</output>
           </section> : <p className="nail-design-studio__placeholder-copy">The {activeTool.label} creative tools are scoped for construction in a future studio section.</p>}
