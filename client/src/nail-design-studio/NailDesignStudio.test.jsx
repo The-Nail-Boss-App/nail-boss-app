@@ -637,7 +637,7 @@ describe('DS-TK01A French Tip integration', () => {
 
     const color = container.querySelector('input[aria-label="French Tip color"]');
     await act(async () => { Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set.call(color, '#123456'); color.dispatchEvent(new Event('change', { bubbles: true })); });
-    expect(container.querySelector('[data-design-layer="french-tip"] > path').getAttribute('fill')).toBe('#123456');
+    expect(container.querySelector('[data-design-layer="french-tip"] [data-material-renderer]').dataset.materialInputColor).toBe('#123456');
 
     await click(container.querySelector('input[name="french-scope"][value="full"]') || [...container.querySelectorAll('input[name="french-scope"]')].at(-1));
     await click([...container.querySelectorAll('button')].find((button) => button.textContent === 'Apply French Tip'));
@@ -649,8 +649,27 @@ describe('DS-TK01A French Tip integration', () => {
   });
 
   it('loads both mounted metadata and legacy French Tip layer persistence', () => {
-    expect(loadFrenchTips({ metadata: { frenchTips: [{ style: 'v', colorHex: '#ABCDEF' }] } })[0]).toMatchObject({ style: 'v', colorHex: '#ABCDEF' });
-    expect(loadFrenchTips({ nails: [{ layers: [{ type: 'frenchTip', visible: true, data: { preset: 'deep', colorHex: '#FEDCBA' } }] }] })[0]).toMatchObject({ preset: 'deep', colorHex: '#FEDCBA' });
+    expect(loadFrenchTips({ metadata: { frenchTips: [{ style: 'v', colorHex: '#ABCDEF', tipType: 'Matte' }] } })[0]).toMatchObject({ style: 'v', colorHex: '#ABCDEF', tipType: 'Matte' });
+    expect(loadFrenchTips({ nails: [{ layers: [{ type: 'frenchTip', visible: true, data: { preset: 'deep', colorHex: '#FEDCBA' } }] }] })[0]).toMatchObject({ preset: 'deep', colorHex: '#FEDCBA', tipType: 'Cream' });
+  });
+
+  it('offers material and geometry separately without changing the base nail material', async () => {
+    await click([...container.querySelectorAll('[role="tab"]')].find((item) => item.textContent === 'French Tip'));
+    await click(container.querySelector('input[aria-label="Enable French Tip"]'));
+    const controls = container.querySelector('[data-testid="french-tip-controls"]');
+    expect(controls.textContent).not.toContain('Preset');
+    expect(['Cream', 'Jelly', 'Matte', 'Glitter'].every((type) => controls.querySelector(`button[aria-pressed][type="button"]`) && controls.textContent.includes(type))).toBe(true);
+    expect(['Classic', 'Deep', 'Angled', 'V-French', 'Reverse'].every((style) => controls.textContent.includes(style))).toBe(true);
+    const base = container.querySelector('[data-design-layer="polish"]');
+    const baseFinish = base.dataset.polishFinish;
+    for (const type of ['Cream', 'Jelly', 'Matte', 'Glitter']) {
+      await click([...controls.querySelectorAll('button')].find((button) => button.textContent === type));
+      expect(container.querySelector('[data-design-layer="french-tip"]').dataset.frenchTipType).toBe(type);
+      expect(container.querySelector('[data-design-layer="polish"]')).toBe(base);
+      expect(base.dataset.polishFinish).toBe(baseFinish);
+    }
+    await click([...controls.querySelectorAll('button')].find((button) => button.textContent === 'V-French'));
+    expect(container.querySelector('[data-design-layer="french-tip"]').dataset.frenchTipStyle).toBe('v');
   });
 });
 

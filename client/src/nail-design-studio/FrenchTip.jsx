@@ -1,4 +1,5 @@
-import { FRENCH_TIP_PRESETS, FRENCH_TIP_STYLES, normalizeFrenchTipData } from '../design-studio/blueprint';
+import { FRENCH_TIP_STYLES, FRENCH_TIP_TYPES, normalizeFrenchTipData } from '../design-studio/blueprint';
+import { MaterialLayers } from './MaterialRenderer';
 
 export const EMPTY_FRENCH_TIPS = () => Array(10).fill(null);
 
@@ -44,25 +45,32 @@ export function FrenchTipRegion({ data, nailPath, bounds, uid }) {
   if (!data) return null;
   const normalized = normalizeFrenchTipData(data);
   const clipId = `${uid}-french-tip-clip`;
-  return <g data-design-layer="french-tip" data-french-tip-style={normalized.style} pointerEvents="none">
+  const tipPath = frenchTipPathForBounds(normalized, bounds);
+  return <g data-design-layer="french-tip" data-french-tip-style={normalized.style} data-french-tip-type={normalized.tipType} pointerEvents="none">
     <defs><clipPath id={clipId}><path d={nailPath} /></clipPath></defs>
-    <path d={frenchTipPathForBounds(normalized, bounds)} fill={normalized.colorHex} clipPath={`url(#${clipId})`} />
+    <g clipPath={`url(#${clipId})`}><MaterialLayers path={tipPath} surfaceBounds={bounds} finish={normalized.tipType} color={normalized.colorHex} uid={`${uid}-material`} baseProps={{ 'data-french-tip-material': normalized.tipType }} /></g>
   </g>;
+}
+
+const STYLE_LABELS = { classic: 'Classic', deep: 'Deep', angled: 'Angled', v: 'V-French', reverse: 'Reverse' };
+const SWATCH_PATH = 'M 2 2 H 38 V 22 H 2 Z';
+
+function MaterialSwatch({ type, color, uid }) {
+  return <svg viewBox="0 0 40 24" aria-hidden="true" focusable="false"><MaterialLayers path={SWATCH_PATH} surfaceBounds={{ x: 2, y: 2, width: 36, height: 20 }} finish={type} color={color} uid={uid} /></svg>;
 }
 
 export function FrenchTipControls({ value, scope, onScopeChange, onChange, onApply, notice }) {
   const data = normalizeFrenchTipData(value || {});
   const patch = (next) => onChange(normalizeFrenchTipData({ ...data, ...next }));
   return <section className="nail-design-studio__french-tip" aria-label="French Tip controls" data-testid="french-tip-controls">
-    <label><input type="checkbox" aria-label="Enable French Tip" checked={Boolean(value)} onChange={(event) => event.target.checked ? onChange(data) : onChange(null)} /> Enable French Tip</label>
+    <div className="nail-design-studio__french-header"><div><strong>French Tip</strong><small>Define a separate tip material and shape.</small></div><label className="nail-design-studio__french-toggle"><input type="checkbox" aria-label="Enable French Tip" checked={Boolean(value)} onChange={(event) => event.target.checked ? onChange(data) : onChange(null)} /><span aria-hidden="true" />Enable</label></div>
     <fieldset disabled={!value}>
-      <label>Preset<select aria-label="French Tip preset" value={data.preset} onChange={(event) => patch({ ...FRENCH_TIP_PRESETS[event.target.value], preset: event.target.value })}>{Object.keys(FRENCH_TIP_PRESETS).map((preset) => <option key={preset}>{preset}</option>)}</select></label>
-      <label>Style<select aria-label="French Tip style" value={data.style} onChange={(event) => patch({ style: event.target.value })}>{FRENCH_TIP_STYLES.map((style) => <option key={style}>{style}</option>)}</select></label>
-      <label>Tip color<input aria-label="French Tip color" type="color" value={data.colorHex} onChange={(event) => patch({ colorHex: event.target.value.toUpperCase() })} /></label>
-      <label>Tip height <output>{Math.round(data.tipHeight * 100)}%</output><input aria-label="French Tip height" type="range" min="8" max="72" value={Math.round(data.tipHeight * 100)} onChange={(event) => patch({ tipHeight: Number(event.target.value) / 100 })} /></label>
-      <label>Smile curve <output>{Math.round(data.smileCurve * 100)}%</output><input aria-label="French Tip smile curve" type="range" min="0" max="100" value={Math.round(data.smileCurve * 100)} onChange={(event) => patch({ smileCurve: Number(event.target.value) / 100 })} /></label>
-      <label>Smile depth <output>{Math.round(data.smileDepth * 100)}%</output><input aria-label="French Tip smile depth" type="range" min="0" max="65" value={Math.round(data.smileDepth * 100)} onChange={(event) => patch({ smileDepth: Number(event.target.value) / 100 })} /></label>
-      <label>Smile width <output>{Math.round(data.smileWidth * 100)}%</output><input aria-label="French Tip smile width" type="range" min="25" max="100" value={Math.round(data.smileWidth * 100)} onChange={(event) => patch({ smileWidth: Number(event.target.value) / 100 })} /></label>
+      <section className="nail-design-studio__french-section" aria-labelledby="tip-type-heading"><h3 id="tip-type-heading">Tip Type</h3><div className="nail-design-studio__tip-types" role="group" aria-label="Tip Type">{FRENCH_TIP_TYPES.map((type) => <button type="button" key={type} aria-pressed={data.tipType === type} onClick={() => patch({ tipType: type })}><MaterialSwatch type={type} color={data.colorHex} uid={`tip-swatch-${type.toLowerCase()}`} /><span>{type}</span></button>)}</div></section>
+      <section className="nail-design-studio__french-section" aria-labelledby="tip-style-heading"><h3 id="tip-style-heading">Tip Style</h3><div className="nail-design-studio__tip-styles" role="group" aria-label="Tip Style">{FRENCH_TIP_STYLES.map((style) => <button type="button" key={style} aria-pressed={data.style === style} onClick={() => patch({ style })}>{STYLE_LABELS[style]}</button>)}</div></section>
+      <section className="nail-design-studio__french-section nail-design-studio__tip-color" aria-labelledby="tip-color-heading"><h3 id="tip-color-heading">Tip Color</h3><label><span style={{ '--tip-color': data.colorHex }} aria-hidden="true" /><code>{data.colorHex}</code><input aria-label="French Tip color" type="color" value={data.colorHex} onChange={(event) => patch({ colorHex: event.target.value.toUpperCase() })} /></label></section>
+      <section className="nail-design-studio__french-section nail-design-studio__tip-tuning" aria-labelledby="tip-tuning-heading"><h3 id="tip-tuning-heading">Fine Tuning</h3>{[
+        ['Tip height', 'French Tip height', data.tipHeight, 8, 72, 'tipHeight'], ['Smile curve', 'French Tip smile curve', data.smileCurve, 0, 100, 'smileCurve'], ['Smile depth', 'French Tip smile depth', data.smileDepth, 0, 65, 'smileDepth'], ['Smile width', 'French Tip smile width', data.smileWidth, 25, 100, 'smileWidth'],
+      ].map(([label, ariaLabel, current, min, max, key]) => <label key={key}><span>{label}</span><output>{Math.round(current * 100)}%</output><input aria-label={ariaLabel} type="range" min={min} max={max} value={Math.round(current * 100)} onChange={(event) => patch({ [key]: Number(event.target.value) / 100 })} /></label>)}</section>
     </fieldset>
     <section className="nail-design-studio__apply-scope" role="radiogroup" aria-labelledby="apply-french-heading"><h3 id="apply-french-heading">Apply French Tip To</h3>{[['current','Current Nail'],['selected','Selected Nails'],['left','Left Hand'],['right','Right Hand'],['full','Full Set']].map(([id, label]) => <label key={id}><input type="radio" name="french-scope" value={id} checked={scope === id} onChange={() => onScopeChange(id)} />{label}</label>)}</section>
     <button type="button" className="nail-design-studio__polish-primary" disabled={!value} onClick={onApply}>Apply French Tip</button>
