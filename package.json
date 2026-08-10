@@ -14,7 +14,7 @@
     "install:all": "npm install && cd client && npm install",
     "db:migrate": "node scripts/migrate.js",
     "test:blueprint-theme-builder": "node scripts/blueprint-theme-builder-test.mjs",
-    "test:design-studio": "node scripts/command-bar-v2-test.mjs && node scripts/polish-bottle-test.mjs && node scripts/workspace-decluttering-test.mjs && node scripts/founder-review-baseline-test.mjs && node tests/workflow-behavior-reality.test.mjs"
+    "test:design-studio": "node scripts/design-studio-effects-ownership-test.mjs && node scripts/command-bar-v2-test.mjs && node scripts/polish-bottle-test.mjs && node scripts/workspace-decluttering-test.mjs && node scripts/founder-review-baseline-test.mjs && node tests/workflow-behavior-reality.test.mjs"
   },
   "dependencies": {
     "cors": "^2.8.5",
