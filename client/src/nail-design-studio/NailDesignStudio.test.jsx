@@ -746,15 +746,29 @@ describe('adaptive Nail Desk', () => {
     expect(effects.querySelector('[aria-label="Recently Used"]')).toBeNull();
     expect([...effects.querySelectorAll('button')].some((item) => item.textContent === 'Apply Polish')).toBe(false);
 
-    for (const [value, expectedControl] of [['Gradient', 'Direction'], ['Marble', 'Vein density'], ['Chrome', 'Metallic Reflection'], ['Cat Eye', 'Stripe strength']]) {
+    for (const [index, [value, expectedControl]] of [['Gradient', 'Direction'], ['Marble', 'Vein density'], ['Chrome', 'Metallic Reflection'], ['Cat Eye', 'Stripe strength']].entries()) {
       await act(async () => { selector.value = value; selector.dispatchEvent(new Event('change', { bubbles: true })); });
       expect(container.querySelector('[data-design-layer="polish"]').dataset.heroEffect).toBe(value);
       expect(effects.querySelector(`[aria-label="${expectedControl}"]`)).toBeTruthy();
+      const effectColor = effects.querySelector('input[aria-label="Base Color picker"]');
+      const color = `#${String(index + 1).repeat(6)}`;
+      await act(async () => { Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set.call(effectColor, color); effectColor.dispatchEvent(new Event('change', { bubbles: true })); });
+      expect(container.querySelector('svg[data-testid="stage-nail"]').dataset.activePolishColor).toBe(color);
     }
 
     await click(button('Polish'));
     expect(container.querySelectorAll('[data-testid="project-palette-swatch"]').length).toBe(paletteCount);
     expect(container.querySelectorAll('[data-testid="recently-used"] [role="listitem"]').length).toBe(recentCount);
+
+    const polishFinish = container.querySelector('select[aria-label="Finish"]');
+    await act(async () => { polishFinish.value = 'Cream'; polishFinish.dispatchEvent(new Event('change', { bubbles: true })); });
+    const beforePolishColorCount = container.querySelectorAll('[data-testid="recently-used"] [role="listitem"]').length;
+    const polishColor = container.querySelector('input[aria-label="Base Color picker"]');
+    await act(async () => { Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set.call(polishColor, '#A1B2C3'); polishColor.dispatchEvent(new Event('change', { bubbles: true })); });
+    expect(container.querySelectorAll('[data-testid="recently-used"] [role="listitem"]').length).toBe(beforePolishColorCount + 1);
+    expect(container.querySelectorAll('[data-testid="project-palette-swatch"]').length).toBe(paletteCount);
+    await click([...container.querySelectorAll('button')].find((item) => item.textContent === 'Apply Polish'));
+    expect(container.querySelectorAll('[data-testid="project-palette-swatch"]').length).toBe(paletteCount + 1);
   });
 
   it('keeps the legacy Gradient identifier behind the Ombré presentation label', () => {

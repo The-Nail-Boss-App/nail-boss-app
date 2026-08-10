@@ -275,7 +275,7 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
   const changeFinishParameter = (key, value) => {
     const next = normalizePolishForFinish({ ...activeFormulation, [key]: value, ...(['baseColor', 'colorA'].includes(key) ? { colorHex: value } : {}) }, activeFinish);
     setFinishFormulation(next);
-    if (['baseColor', 'colorA'].includes(key)) rememberPolish(next);
+    if (activeTool.id === 'polish' && ['baseColor', 'colorA'].includes(key)) rememberPolish(next);
     const hero = heroEffectForPolish(next);
     changeHero((current) => updateHeroEffect(current, hero, heroEvents.current));
   };
