@@ -64,6 +64,7 @@ function resolveProfile(input: HeroLightingInput): HeroLightingProfile {
   const lengthBoost = clamp((input.document.nail.length - 1) * 0.1 + 0.08);
   const base = {
     Solid: { specular: 0.42, reflection: 0.24, edgeSheen: 0.26, apex: 0.36, depthCue: 0.26, translucencyBoost: 0, veinPreservation: 1 },
+    Aura: { specular: 0.46, reflection: 0.28, edgeSheen: 0.28, apex: 0.38, depthCue: 0.28, translucencyBoost: 0, veinPreservation: 1 },
     Gradient: { specular: 0.46, reflection: 0.28, edgeSheen: 0.28, apex: 0.38, depthCue: 0.28, translucencyBoost: 0, veinPreservation: 1 },
     Chrome: { specular: 0.86, reflection: 0.78, edgeSheen: 0.55, apex: 0.62, depthCue: 0.34, translucencyBoost: 0, veinPreservation: 1 },
     'Cat Eye': { specular: 0.58, reflection: 0.44, edgeSheen: 0.38, apex: 0.5, depthCue: 0.32, translucencyBoost: 0, veinPreservation: 1 },

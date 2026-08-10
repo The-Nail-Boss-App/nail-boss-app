@@ -51,7 +51,7 @@ export interface HeroNailConfiguration {
   view: HeroViewConfiguration;
 }
 
-export type HeroEffectId = 'Solid' | 'Gradient' | 'Chrome' | 'Cat Eye' | 'Marble' | 'Jelly';
+export type HeroEffectId = 'Solid' | 'Gradient' | 'Chrome' | 'Cat Eye' | 'Marble' | 'Aura' | 'Jelly';
 export interface HeroEffectReference { id: HeroEffectId; version: '1'; parameters: Record<string, unknown> }
 
 export type HeroNailMaterialCategory = 'natural-nail' | 'clear-tip' | 'soft-gel' | 'acrylic' | 'builder-gel';

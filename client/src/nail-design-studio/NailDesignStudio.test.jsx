@@ -1,7 +1,7 @@
 import React, { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import NailDesignStudio, { canScrollInWheelDirection, creamHeroSurfaceResponse, glitterHeroSurfaceResponse, jellyHeroSurfaceResponse, matteHeroSurfaceResponse, stageLightingOpacity } from './NailDesignStudio';
-import { heroEffectForPolish, normalizePolishForFinish } from './polishFinish';
+import { heroEffectForPolish, normalizePersistedAuraEffect, normalizePolishForFinish } from './polishFinish';
 import { MATERIAL_PROFILES, materialProfile } from './MaterialRenderer';
 import { createHeroDesignDocument } from '../hero-design/index.ts';
 import { loadFrenchTips } from './FrenchTip';
@@ -741,7 +741,7 @@ describe('adaptive Nail Desk', () => {
     await click(button('Effects'));
     const effects = container.querySelector('[aria-label="Effects Studio"]');
     const selector = effects.querySelector('select[aria-label="Effect"]');
-    expect([...selector.options].map((option) => option.textContent)).toEqual(['Choose an effect', 'Ombré', 'Marble', 'Chrome', 'Cat Eye']);
+    expect([...selector.options].map((option) => option.textContent)).toEqual(['Choose an effect', 'Ombré', 'Marble', 'Chrome', 'Cat Eye', 'Aura']);
     expect(effects.querySelector('[aria-label="Project Palette"]')).toBeNull();
     expect(effects.querySelector('[aria-label="Recently Used"]')).toBeNull();
     expect([...effects.querySelectorAll('button')].some((item) => item.textContent === 'Apply Polish')).toBe(false);
@@ -769,6 +769,36 @@ describe('adaptive Nail Desk', () => {
     expect(container.querySelectorAll('[data-testid="project-palette-swatch"]').length).toBe(paletteCount);
     await click([...container.querySelectorAll('button')].find((item) => item.textContent === 'Apply Polish'));
     expect(container.querySelectorAll('[data-testid="project-palette-swatch"]').length).toBe(paletteCount + 1);
+  });
+
+  it('ports legacy Aura into a clipped radial Hero effect without touching Polish history', async () => {
+    const applyPolish = [...container.querySelectorAll('button')].find((item) => item.textContent === 'Apply Polish');
+    await click(applyPolish);
+    const paletteCount = container.querySelectorAll('[data-testid="project-palette-swatch"]').length;
+    const recentCount = container.querySelectorAll('[data-testid="recently-used"] [role="listitem"]').length;
+    await click(button('Effects'));
+    const selector = container.querySelector('select[aria-label="Effect"]');
+    await act(async () => { selector.value = 'Aura'; selector.dispatchEvent(new Event('change', { bubbles: true })); });
+    expect(selector.value).toBe('Aura');
+    expect(container.querySelector('[data-design-layer="polish"]').dataset.heroEffect).toBe('Aura');
+    const aura = container.querySelector('[data-effect-layer="aura"]');
+    expect(aura).toBeTruthy();
+    expect(aura.getAttribute('clip-path')).toMatch(/hero-effect-mask/);
+    expect(aura.getAttribute('fill')).toMatch(/hero-finish/);
+    expect(container.querySelector('[data-gradient-mode="center-glow-aura-blend"]')).toBeTruthy();
+    await type(container.querySelector('input[aria-label="Aura softness"]'), '0.42');
+    await type(container.querySelector('input[aria-label="Aura intensity"]'), '0.51');
+    await act(async () => { const color = container.querySelector('input[aria-label="Aura color"]'); Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set.call(color, '#AA3366'); color.dispatchEvent(new Event('change', { bubbles: true })); });
+    expect(container.querySelector('[data-effect-layer="aura"]').getAttribute('opacity')).toBe('0.51');
+    await click(button('Polish'));
+    expect(container.querySelectorAll('[data-testid="project-palette-swatch"]')).toHaveLength(paletteCount);
+    expect(container.querySelectorAll('[data-testid="recently-used"] [role="listitem"]')).toHaveLength(recentCount);
+  });
+
+  it('normalizes persisted legacy Aura gradient data into the mounted contract', () => {
+    const aura = normalizePersistedAuraEffect({ type: 'gradient', opacity: .68, data: { direction: 'aura', colorA: '#FFEAF2', colorB: '#FF5EA8', softness: .86, gradientStops: [{ color: '#FFEAF2' }, { color: '#FF9BC7' }, { color: '#FF5EA8' }] } });
+    expect(aura).toEqual({ id: 'Aura', version: '1', parameters: { baseColor: '#FF5EA8', centerColor: '#FFEAF2', auraColor: '#FF9BC7', softness: .86, intensity: .68, opacity: 1, viscosity: .62, shine: .68 } });
+    expect(normalizePersistedAuraEffect(aura)).toEqual(aura);
   });
 
   it('keeps the legacy Gradient identifier behind the Ombré presentation label', () => {

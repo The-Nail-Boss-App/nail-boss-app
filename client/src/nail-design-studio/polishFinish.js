@@ -4,6 +4,7 @@ export const FINISH_DEFAULTS = Object.freeze({
   Chrome: { baseColor: '#D94C70', opacity: 1, viscosity: .62, shine: .9, metallicReflection: .7 },
   'Cat Eye': { baseColor: '#521A46', stripeDirection: 22, stripeWidth: .18, stripeStrength: .88, opacity: 1, viscosity: .68, shine: .76 },
   Marble: { baseColor: '#F1CAD8', veinColor: '#8A405D', veinDensity: .42, opacity: 1, viscosity: .72, shine: .58 },
+  Aura: { baseColor: '#F9DDE8', centerColor: '#FFEAF2', auraColor: '#FF5EA8', softness: .86, intensity: .68, opacity: 1, viscosity: .62, shine: .68 },
   Jelly: { baseColor: '#D94C70', translucency: .52, opacity: 1, viscosity: .46, shine: .74 },
   Matte: { baseColor: '#D94C70', opacity: 1, viscosity: .66, shine: .08, matteSoftness: .72 },
   Glass: { baseColor: '#D94C70', translucency: .28, opacity: .82, viscosity: .44, shine: .92, glassClarity: .78 },
@@ -21,7 +22,7 @@ export const VISIBLE_POLISH_FINISHES = Object.freeze(['Cream', 'Matte', 'Jelly',
 const SHARED = ['opacity', 'viscosity', 'shine'];
 const SPECIFIC = {
   Gradient: ['colorB', 'direction'], Chrome: ['metallicReflection'], 'Cat Eye': ['stripeDirection', 'stripeWidth', 'stripeStrength'],
-  Marble: ['veinColor', 'veinDensity'], Jelly: ['translucency'], Matte: ['matteSoftness'], Glass: ['translucency', 'glassClarity'],
+  Marble: ['veinColor', 'veinDensity'], Aura: ['centerColor', 'auraColor', 'softness', 'intensity'], Jelly: ['translucency'], Matte: ['matteSoftness'], Glass: ['translucency', 'glassClarity'],
   'Chrome-ready': ['metallicReflection'], Shimmer: ['shimmerIntensity'], Metallic: ['metallicReflection'], Glitter: ['fleckColor', 'glitterDensity'],
 };
 
@@ -51,9 +52,25 @@ export function heroEffectForPolish(polish) {
   const p = normalizePolishForFinish(polish, polish.finish);
   const id = ({ Cream: 'Solid', Matte: 'Solid', Glitter: 'Solid', Glass: 'Jelly', 'Chrome-ready': 'Chrome', Shimmer: 'Chrome', Metallic: 'Chrome' })[p.finish] || p.finish;
   const parameters = { [id === 'Gradient' ? 'colorA' : 'baseColor']: p.colorHex, opacity: p.opacity, viscosity: p.viscosity, shine: p.shine };
-  const allowed = { Gradient: ['colorB', 'direction'], 'Cat Eye': ['stripeDirection', 'stripeWidth', 'stripeStrength'], Marble: ['veinColor', 'veinDensity'], Jelly: ['translucency'] }[id] || [];
+  const allowed = { Gradient: ['colorB', 'direction'], 'Cat Eye': ['stripeDirection', 'stripeWidth', 'stripeStrength'], Marble: ['veinColor', 'veinDensity'], Aura: ['centerColor', 'auraColor', 'softness', 'intensity'], Jelly: ['translucency'] }[id] || [];
   allowed.forEach((key) => { parameters[key] = p[key] ?? FINISH_DEFAULTS[p.finish][key]; });
   return { id, version: '1', parameters };
+}
+
+/** Converts the legacy center-glow gradient payload without rewriting stored data. */
+export function normalizePersistedAuraEffect(effect) {
+  const parameters = effect?.parameters || effect?.data || {};
+  const isAura = effect?.id === 'Aura' || effect?.type === 'Aura' ||
+    ((effect?.id === 'Gradient' || effect?.type === 'gradient') && parameters.direction === 'aura');
+  if (!isAura) return null;
+  const stops = Array.isArray(parameters.gradientStops) ? parameters.gradientStops : [];
+  return heroEffectForPolish(normalizePolishForFinish({
+    ...parameters, finish: 'Aura',
+    baseColor: parameters.baseColor || parameters.colorB || stops.at(-1)?.color,
+    centerColor: parameters.centerColor || parameters.colorA || stops[0]?.color,
+    auraColor: parameters.auraColor || stops[Math.floor(stops.length / 2)]?.color || parameters.colorB,
+    intensity: parameters.intensity ?? effect.opacity,
+  }, 'Aura'));
 }
 
 export function polishSignature(polish) {
