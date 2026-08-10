@@ -741,7 +741,7 @@ describe('adaptive Nail Desk', () => {
     await click(button('Effects'));
     const effects = container.querySelector('[aria-label="Effects Studio"]');
     const selector = effects.querySelector('select[aria-label="Effect"]');
-    expect([...selector.options].map((option) => option.textContent)).toEqual(['Choose an effect', 'Ombré', 'Marble', 'Chrome', 'Cat Eye', 'Aura', 'Color Block']);
+    expect([...selector.options].map((option) => option.textContent)).toEqual(['Choose an effect', 'Ombré', 'Marble', 'Chrome', 'Cat Eye', 'Aura', 'Color Block', 'Negative Space']);
     expect(effects.querySelector('[aria-label="Project Palette"]')).toBeNull();
     expect(effects.querySelector('[aria-label="Recently Used"]')).toBeNull();
     expect([...effects.querySelectorAll('button')].some((item) => item.textContent === 'Apply Polish')).toBe(false);
@@ -786,6 +786,36 @@ describe('adaptive Nail Desk', () => {
     expect(container.querySelectorAll('[data-testid="project-palette-swatch"]').length).toBe(paletteCount);
     await click([...container.querySelectorAll('button')].find((item) => item.textContent === 'Apply Polish'));
     expect(container.querySelectorAll('[data-testid="project-palette-swatch"]').length).toBe(paletteCount + 1);
+  });
+
+  it('reveals the Hero base surface through a clipped Negative Space mask without entering Polish history', async () => {
+    await click([...container.querySelectorAll('button')].find((item) => item.textContent === 'Apply Polish'));
+    const paletteCount = container.querySelectorAll('[data-testid="project-palette-swatch"]').length;
+    const recentCount = container.querySelectorAll('[data-testid="recently-used"] [role="listitem"]').length;
+    await click(button('Effects'));
+    const selector = container.querySelector('select[aria-label="Effect"]');
+    await act(async () => { selector.value = 'NegativeSpace'; selector.dispatchEvent(new Event('change', { bubbles: true })); });
+
+    const nail = container.querySelector('svg[data-testid="stage-nail"]');
+    expect(nail.querySelector('[data-design-layer="polish"]').dataset.heroEffect).toBe('NegativeSpace');
+    expect(nail.querySelector('[data-hero-base-surface="true"]')).toBeTruthy();
+    expect(nail.querySelector('[data-design-coverage="polish-and-effect"]').getAttribute('mask')).toMatch(/hero-negative-space/);
+    expect(nail.querySelector('mask path').getAttribute('fill')).toBe('white');
+    expect(nail.querySelector('[data-negative-space-region]').getAttribute('fill')).toBe('black');
+    expect(container.querySelector('input[aria-label="Base Color picker"]')).toBeNull();
+
+    const typeControl = container.querySelector('select[aria-label="Negative Space Type"]');
+    for (const [type, region] of [['vertical-band', 'vertical-band'], ['horizontal-band', 'horizontal-band'], ['diagonal-band', 'diagonal-band'], ['center-cutout', 'center-cutout']]) {
+      await act(async () => { typeControl.value = type; typeControl.dispatchEvent(new Event('change', { bubbles: true })); });
+      expect(container.querySelector(`[data-negative-space-region="${region}"]`)).toBeTruthy();
+    }
+    await type(container.querySelector('input[aria-label="Negative Space Position"]'), '0.3');
+    await type(container.querySelector('input[aria-label="Negative Space Size"]'), '0.4');
+    expect(container.querySelector('[data-negative-space-region="center-cutout"]').getAttribute('cx')).not.toBeNull();
+
+    await click(button('Polish'));
+    expect(container.querySelectorAll('[data-testid="project-palette-swatch"]')).toHaveLength(paletteCount);
+    expect(container.querySelectorAll('[data-testid="recently-used"] [role="listitem"]')).toHaveLength(recentCount);
   });
 
   it('ports legacy Aura into a clipped radial Hero effect without touching Polish history', async () => {
