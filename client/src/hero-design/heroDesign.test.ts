@@ -269,7 +269,7 @@ describe('Hero Design integration shell', () => {
     expect(registry.resolve('Hero Effect Engine')).toBe(engine);
     expect(engine.capabilities).toEqual(['effect.resolve', 'effect.validate', 'effect.apply', 'effect.invalidate', 'effect.preview']);
     const parameters = {
-      Solid: { baseColor: '#C94A68' }, Gradient: { colorA: '#E95A82', colorB: '#792050', direction: 90 }, Aura: { baseColor: '#F9DDE8', centerColor: '#FFEAF2', auraColor: '#FF5EA8', softness: 0.86, intensity: 0.68 },
+      Solid: { baseColor: '#C94A68' }, Gradient: { colorA: '#E95A82', colorB: '#792050', direction: 90 }, Aura: { baseColor: '#F9DDE8', centerColor: '#FFEAF2', auraColor: '#FF5EA8', softness: 0.86, intensity: 0.68 }, ColorBlock: { primaryColor: '#C94A68', secondaryColor: '#F5E7EC', direction: 'vertical', splitPosition: 0.5 },
       Chrome: { baseColor: '#B5A8D2' }, 'Cat Eye': { baseColor: '#351742', stripeDirection: 22, stripeWidth: 0.18, stripeStrength: 0.88 },
       Marble: { baseColor: '#F2E9E7', veinColor: '#9A727A', veinDensity: 0.4 }, Jelly: { baseColor: '#EE4775', translucency: 0.55, opacity: 1 },
     } as const;
@@ -292,7 +292,7 @@ describe('Hero Design integration shell', () => {
     expect(registry.resolve('Hero Lighting Engine')).toBe(engine);
     expect(engine.capabilities).toEqual(['lighting.resolve', 'lighting.validate', 'lighting.apply', 'lighting.invalidate', 'lighting.preview']);
     const parameters = {
-      Solid: { baseColor: '#C94A68' }, Gradient: { colorA: '#E95A82', colorB: '#792050', direction: 90 }, Aura: { baseColor: '#F9DDE8', centerColor: '#FFEAF2', auraColor: '#FF5EA8', softness: 0.86, intensity: 0.68 },
+      Solid: { baseColor: '#C94A68' }, Gradient: { colorA: '#E95A82', colorB: '#792050', direction: 90 }, Aura: { baseColor: '#F9DDE8', centerColor: '#FFEAF2', auraColor: '#FF5EA8', softness: 0.86, intensity: 0.68 }, ColorBlock: { primaryColor: '#C94A68', secondaryColor: '#F5E7EC', direction: 'vertical', splitPosition: 0.5 },
       Chrome: { baseColor: '#B5A8D2', shine: 0.9 }, 'Cat Eye': { baseColor: '#351742', stripeDirection: 22, stripeWidth: 0.18, stripeStrength: 0.88 },
       Marble: { baseColor: '#F2E9E7', veinColor: '#9A727A', veinDensity: 0.4 }, Jelly: { baseColor: '#EE4775', translucency: 0.55, opacity: 1 },
     } as const;

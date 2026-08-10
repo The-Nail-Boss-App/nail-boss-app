@@ -11,7 +11,7 @@ import { HeroDesignDocument } from './contracts';
 import { HeroDesignState, heroDesignReducer } from './state';
 import { HeroSurfaceRenderResult } from './surface';
 
-export const HERO_EFFECT_IDS = Object.freeze(['Solid', 'Gradient', 'Chrome', 'Cat Eye', 'Marble', 'Aura', 'Jelly'] as const);
+export const HERO_EFFECT_IDS = Object.freeze(['Solid', 'Gradient', 'Chrome', 'Cat Eye', 'Marble', 'Aura', 'ColorBlock', 'Jelly'] as const);
 export const DEFAULT_HERO_EFFECT_REFERENCE: Readonly<HeroEffectReference> = Object.freeze({
   id: 'Solid', version: '1', parameters: Object.freeze({ baseColor: '#D94C70', opacity: 1, viscosity: 0.62, shine: 0.68 }),
 });
@@ -20,6 +20,7 @@ type ParameterRule = { required: boolean; validate: (value: unknown) => boolean;
 const color = (value: unknown) => typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value);
 const unit = (value: unknown) => typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 1;
 const angle = (value: unknown) => typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 360;
+const blockDirection = (value: unknown) => ['vertical', 'horizontal', 'diagonal'].includes(value as string);
 const commonRules: Record<string, ParameterRule> = {
   opacity: { required: false, validate: unit, message: 'opacity must be between 0 and 1.' },
   viscosity: { required: false, validate: unit, message: 'viscosity must be between 0 and 1.' },
@@ -53,6 +54,12 @@ const finishRules: Record<HeroEffectId, Record<string, ParameterRule>> = {
     softness: { required: true, validate: unit, message: 'softness must be between 0 and 1.' },
     intensity: { required: true, validate: unit, message: 'intensity must be between 0 and 1.' },
   },
+  ColorBlock: {
+    primaryColor: { required: true, validate: color, message: 'primaryColor must be a six-digit hex color.' },
+    secondaryColor: { required: true, validate: color, message: 'secondaryColor must be a six-digit hex color.' },
+    direction: { required: true, validate: blockDirection, message: 'direction must be vertical, horizontal, or diagonal.' },
+    splitPosition: { required: true, validate: unit, message: 'splitPosition must be between 0 and 1.' },
+  },
   Jelly: {
     baseColor: { required: true, validate: color, message: 'baseColor must be a six-digit hex color.' },
     translucency: { required: true, validate: unit, message: 'translucency must be between 0 and 1.' },
@@ -84,7 +91,7 @@ export interface HeroEffectInput {
   surface?: HeroSurfaceRenderResult;
   designId?: string;
 }
-export interface HeroFinishLayer { kind: 'color' | 'linear-gradient' | 'radial-gradient' | 'veins'; opacity: number; color?: string; colors?: readonly string[]; angle?: number; position?: number; width?: number; paths?: readonly string[]; centerX?: number; centerY?: number; radius?: number; softness?: number }
+export interface HeroFinishLayer { kind: 'color' | 'linear-gradient' | 'radial-gradient' | 'veins' | 'color-block'; opacity: number; color?: string; colors?: readonly string[]; angle?: number; position?: number; width?: number; paths?: readonly string[]; centerX?: number; centerY?: number; radius?: number; softness?: number; direction?: 'vertical' | 'horizontal' | 'diagonal' }
 export interface HeroAppliedEffect {
   id: HeroEffectId;
   version: '1';
@@ -123,6 +130,10 @@ function finishLayers(effect: HeroEffectReference): readonly HeroFinishLayer[] {
     case 'Aura': return [
       { kind: 'color', color: p.baseColor as string, opacity: 1 },
       { kind: 'radial-gradient', colors: [p.centerColor as string, p.auraColor as string, p.baseColor as string], centerX: .5, centerY: .42, radius: .64, softness: p.softness as number, opacity: p.intensity as number },
+    ];
+    case 'ColorBlock': return [
+      { kind: 'color', color: p.primaryColor as string, opacity },
+      { kind: 'color-block', colors: [p.primaryColor as string, p.secondaryColor as string], direction: p.direction as 'vertical' | 'horizontal' | 'diagonal', position: p.splitPosition as number, opacity },
     ];
     case 'Jelly': return [{ kind: 'color', color: p.baseColor as string, opacity: opacity * (1 - (p.translucency as number)) }];
   }

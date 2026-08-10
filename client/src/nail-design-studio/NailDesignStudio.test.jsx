@@ -741,7 +741,7 @@ describe('adaptive Nail Desk', () => {
     await click(button('Effects'));
     const effects = container.querySelector('[aria-label="Effects Studio"]');
     const selector = effects.querySelector('select[aria-label="Effect"]');
-    expect([...selector.options].map((option) => option.textContent)).toEqual(['Choose an effect', 'Ombré', 'Marble', 'Chrome', 'Cat Eye', 'Aura']);
+    expect([...selector.options].map((option) => option.textContent)).toEqual(['Choose an effect', 'Ombré', 'Marble', 'Chrome', 'Cat Eye', 'Aura', 'Color Block']);
     expect(effects.querySelector('[aria-label="Project Palette"]')).toBeNull();
     expect(effects.querySelector('[aria-label="Recently Used"]')).toBeNull();
     expect([...effects.querySelectorAll('button')].some((item) => item.textContent === 'Apply Polish')).toBe(false);
@@ -755,6 +755,23 @@ describe('adaptive Nail Desk', () => {
       await act(async () => { Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set.call(effectColor, color); effectColor.dispatchEvent(new Event('change', { bubbles: true })); });
       expect(container.querySelector('svg[data-testid="stage-nail"]').dataset.activePolishColor).toBe(color);
     }
+
+    await act(async () => { selector.value = 'ColorBlock'; selector.dispatchEvent(new Event('change', { bubbles: true })); });
+    expect(container.querySelector('[data-design-layer="polish"]').dataset.heroEffect).toBe('ColorBlock');
+    expect(effects.querySelector('input[aria-label="Color A"]')).toBeTruthy();
+    expect(effects.querySelector('input[aria-label="Color B"]')).toBeTruthy();
+    for (const direction of ['vertical', 'horizontal', 'diagonal']) {
+      await act(async () => { const control = effects.querySelector('select[aria-label="Block Direction"]'); control.value = direction; control.dispatchEvent(new Event('change', { bubbles: true })); });
+      expect(container.querySelector('[data-effect-layer="color-block"]').dataset.blockDirection).toBe(direction);
+    }
+    await type(effects.querySelector('input[aria-label="Split Position"]'), '0.25');
+    expect(container.querySelector('[data-effect-layer="color-block"]').dataset.splitPosition).toBe('0.25');
+    expect(container.querySelector('[data-effect-layer="color-block"]').getAttribute('clip-path')).toMatch(/hero-effect-mask/);
+    await act(async () => { const color = effects.querySelector('input[aria-label="Color A"]'); Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set.call(color, '#123456'); color.dispatchEvent(new Event('change', { bubbles: true })); });
+    await act(async () => { const color = effects.querySelector('input[aria-label="Color B"]'); Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set.call(color, '#ABCDEF'); color.dispatchEvent(new Event('change', { bubbles: true })); });
+    expect(container.querySelector('[data-color-block-region="a"]').getAttribute('fill')).toBe('#123456');
+    expect(container.querySelector('[data-color-block-region="b"]').getAttribute('fill')).toBe('#ABCDEF');
+    expect(container.querySelector('[data-effect-layer="color-block"] ~ path[style*="screen"]')).toBeTruthy();
 
     await click(button('Polish'));
     expect(container.querySelectorAll('[data-testid="project-palette-swatch"]').length).toBe(paletteCount);
