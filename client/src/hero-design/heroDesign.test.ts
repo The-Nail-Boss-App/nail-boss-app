@@ -269,7 +269,7 @@ describe('Hero Design integration shell', () => {
     expect(registry.resolve('Hero Effect Engine')).toBe(engine);
     expect(engine.capabilities).toEqual(['effect.resolve', 'effect.validate', 'effect.apply', 'effect.invalidate', 'effect.preview']);
     const parameters = {
-      Solid: { baseColor: '#C94A68' }, Gradient: { colorA: '#E95A82', colorB: '#792050', direction: 90 }, Aura: { baseColor: '#F9DDE8', centerColor: '#FFEAF2', auraColor: '#FF5EA8', softness: 0.86, intensity: 0.68 }, ColorBlock: { primaryColor: '#C94A68', secondaryColor: '#F5E7EC', direction: 'vertical', splitPosition: 0.5 },
+      Solid: { baseColor: '#C94A68' }, Gradient: { colorA: '#E95A82', colorB: '#792050', direction: 90 }, Aura: { baseColor: '#F9DDE8', centerColor: '#FFEAF2', auraColor: '#FF5EA8', softness: 0.86, intensity: 0.68 }, ColorBlock: { primaryColor: '#C94A68', secondaryColor: '#F5E7EC', direction: 'vertical', splitPosition: 0.5 }, NegativeSpace: { type: 'vertical-band', position: 0.5, size: 0.26, rotation: 45 },
       Chrome: { baseColor: '#B5A8D2' }, 'Cat Eye': { baseColor: '#351742', stripeDirection: 22, stripeWidth: 0.18, stripeStrength: 0.88 },
       Marble: { baseColor: '#F2E9E7', veinColor: '#9A727A', veinDensity: 0.4 }, Jelly: { baseColor: '#EE4775', translucency: 0.55, opacity: 1 },
     } as const;
@@ -292,7 +292,7 @@ describe('Hero Design integration shell', () => {
     expect(registry.resolve('Hero Lighting Engine')).toBe(engine);
     expect(engine.capabilities).toEqual(['lighting.resolve', 'lighting.validate', 'lighting.apply', 'lighting.invalidate', 'lighting.preview']);
     const parameters = {
-      Solid: { baseColor: '#C94A68' }, Gradient: { colorA: '#E95A82', colorB: '#792050', direction: 90 }, Aura: { baseColor: '#F9DDE8', centerColor: '#FFEAF2', auraColor: '#FF5EA8', softness: 0.86, intensity: 0.68 }, ColorBlock: { primaryColor: '#C94A68', secondaryColor: '#F5E7EC', direction: 'vertical', splitPosition: 0.5 },
+      Solid: { baseColor: '#C94A68' }, Gradient: { colorA: '#E95A82', colorB: '#792050', direction: 90 }, Aura: { baseColor: '#F9DDE8', centerColor: '#FFEAF2', auraColor: '#FF5EA8', softness: 0.86, intensity: 0.68 }, ColorBlock: { primaryColor: '#C94A68', secondaryColor: '#F5E7EC', direction: 'vertical', splitPosition: 0.5 }, NegativeSpace: { type: 'vertical-band', position: 0.5, size: 0.26, rotation: 45 },
       Chrome: { baseColor: '#B5A8D2', shine: 0.9 }, 'Cat Eye': { baseColor: '#351742', stripeDirection: 22, stripeWidth: 0.18, stripeStrength: 0.88 },
       Marble: { baseColor: '#F2E9E7', veinColor: '#9A727A', veinDensity: 0.4 }, Jelly: { baseColor: '#EE4775', translucency: 0.55, opacity: 1 },
     } as const;
@@ -370,12 +370,13 @@ describe('Hero Design integration shell', () => {
     const disconnect = connectHeroSurfaceInvalidation(new HeroSurfaceRenderingEngine(events), events, redraw);
     const original = { ...document(), layers: [layer('kept')], product: { productId: 'kept' } };
     const loaded = heroDesignReducer(initialHeroDesignState, { type: 'loadDesign', document: original });
-    const changed = updateHeroEffect(loaded, { id: 'Jelly', version: '1', parameters: { baseColor: '#EE4775', translucency: 0.55, opacity: 1 } }, events);
+    const negativeSpace = { id: 'NegativeSpace' as const, version: '1' as const, parameters: { type: 'diagonal-band', position: 0.35, size: 0.3, rotation: 55 } };
+    const changed = updateHeroEffect(loaded, negativeSpace, events);
     expect(changed.document?.revision).toBe(1); expect(changed.dirty).toBe(true);
     expect(changed.document?.nail.shape).toEqual(original.nail.shape); expect(changed.document?.nail.material).toEqual(original.nail.material);
     expect(changed.document?.layers).toEqual(original.layers); expect(changed.document?.product).toEqual(original.product);
     await adapter.save(changed.document!);
-    expect((await adapter.load('design-1'))?.nail.effect).toEqual({ id: 'Jelly', version: '1', parameters: { baseColor: '#EE4775', translucency: 0.55, opacity: 1 } });
+    expect((await adapter.load('design-1'))?.nail.effect).toEqual(negativeSpace);
     expect(changedEvent).toHaveBeenCalledTimes(1);
     await Promise.resolve(); expect(redraw).toHaveBeenCalledTimes(1); disconnect();
   });

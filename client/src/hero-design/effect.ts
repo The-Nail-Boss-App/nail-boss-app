@@ -11,7 +11,7 @@ import { HeroDesignDocument } from './contracts';
 import { HeroDesignState, heroDesignReducer } from './state';
 import { HeroSurfaceRenderResult } from './surface';
 
-export const HERO_EFFECT_IDS = Object.freeze(['Solid', 'Gradient', 'Chrome', 'Cat Eye', 'Marble', 'Aura', 'ColorBlock', 'Jelly'] as const);
+export const HERO_EFFECT_IDS = Object.freeze(['Solid', 'Gradient', 'Chrome', 'Cat Eye', 'Marble', 'Aura', 'ColorBlock', 'NegativeSpace', 'Jelly'] as const);
 export const DEFAULT_HERO_EFFECT_REFERENCE: Readonly<HeroEffectReference> = Object.freeze({
   id: 'Solid', version: '1', parameters: Object.freeze({ baseColor: '#D94C70', opacity: 1, viscosity: 0.62, shine: 0.68 }),
 });
@@ -21,6 +21,7 @@ const color = (value: unknown) => typeof value === 'string' && /^#[0-9a-f]{6}$/i
 const unit = (value: unknown) => typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 1;
 const angle = (value: unknown) => typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 360;
 const blockDirection = (value: unknown) => ['vertical', 'horizontal', 'diagonal'].includes(value as string);
+const negativeSpaceType = (value: unknown) => ['vertical-band', 'horizontal-band', 'diagonal-band', 'center-cutout'].includes(value as string);
 const commonRules: Record<string, ParameterRule> = {
   opacity: { required: false, validate: unit, message: 'opacity must be between 0 and 1.' },
   viscosity: { required: false, validate: unit, message: 'viscosity must be between 0 and 1.' },
@@ -60,6 +61,12 @@ const finishRules: Record<HeroEffectId, Record<string, ParameterRule>> = {
     direction: { required: true, validate: blockDirection, message: 'direction must be vertical, horizontal, or diagonal.' },
     splitPosition: { required: true, validate: unit, message: 'splitPosition must be between 0 and 1.' },
   },
+  NegativeSpace: {
+    type: { required: true, validate: negativeSpaceType, message: 'type must be a supported negative-space reveal.' },
+    position: { required: true, validate: unit, message: 'position must be between 0 and 1.' },
+    size: { required: true, validate: unit, message: 'size must be between 0 and 1.' },
+    rotation: { required: true, validate: angle, message: 'rotation must be between 0 and 360.' },
+  },
   Jelly: {
     baseColor: { required: true, validate: color, message: 'baseColor must be a six-digit hex color.' },
     translucency: { required: true, validate: unit, message: 'translucency must be between 0 and 1.' },
@@ -91,7 +98,7 @@ export interface HeroEffectInput {
   surface?: HeroSurfaceRenderResult;
   designId?: string;
 }
-export interface HeroFinishLayer { kind: 'color' | 'linear-gradient' | 'radial-gradient' | 'veins' | 'color-block'; opacity: number; color?: string; colors?: readonly string[]; angle?: number; position?: number; width?: number; paths?: readonly string[]; centerX?: number; centerY?: number; radius?: number; softness?: number; direction?: 'vertical' | 'horizontal' | 'diagonal' }
+export interface HeroFinishLayer { kind: 'color' | 'linear-gradient' | 'radial-gradient' | 'veins' | 'color-block' | 'reveal-mask'; opacity: number; color?: string; colors?: readonly string[]; angle?: number; position?: number; width?: number; paths?: readonly string[]; centerX?: number; centerY?: number; radius?: number; softness?: number; direction?: 'vertical' | 'horizontal' | 'diagonal'; revealType?: 'vertical-band' | 'horizontal-band' | 'diagonal-band' | 'center-cutout'; size?: number; rotation?: number }
 export interface HeroAppliedEffect {
   id: HeroEffectId;
   version: '1';
@@ -135,6 +142,7 @@ function finishLayers(effect: HeroEffectReference): readonly HeroFinishLayer[] {
       { kind: 'color', color: p.primaryColor as string, opacity },
       { kind: 'color-block', colors: [p.primaryColor as string, p.secondaryColor as string], direction: p.direction as 'vertical' | 'horizontal' | 'diagonal', position: p.splitPosition as number, opacity },
     ];
+    case 'NegativeSpace': return [{ kind: 'reveal-mask', revealType: p.type as HeroFinishLayer['revealType'], position: p.position as number, size: p.size as number, rotation: p.rotation as number, opacity: 1 }];
     case 'Jelly': return [{ kind: 'color', color: p.baseColor as string, opacity: opacity * (1 - (p.translucency as number)) }];
   }
 }

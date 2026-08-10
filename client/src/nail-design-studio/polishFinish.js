@@ -20,9 +20,14 @@ export const FINISH_DEFAULTS = Object.freeze({
 export const VISIBLE_POLISH_FINISHES = Object.freeze(['Cream', 'Matte', 'Jelly', 'Glitter']);
 
 export const COLOR_BLOCK_DEFAULTS = Object.freeze({ primaryColor: '#D94C70', secondaryColor: '#F5E7EC', direction: 'vertical', splitPosition: .5, opacity: 1, viscosity: .62, shine: .68 });
+export const NEGATIVE_SPACE_DEFAULTS = Object.freeze({ type: 'vertical-band', position: .5, size: .26, rotation: 45 });
 
 export function colorBlockEffect(parameters = {}) {
   return { id: 'ColorBlock', version: '1', parameters: { ...COLOR_BLOCK_DEFAULTS, ...parameters } };
+}
+
+export function negativeSpaceEffect(parameters = {}) {
+  return { id: 'NegativeSpace', version: '1', parameters: { ...NEGATIVE_SPACE_DEFAULTS, ...parameters } };
 }
 
 const SHARED = ['opacity', 'viscosity', 'shine'];

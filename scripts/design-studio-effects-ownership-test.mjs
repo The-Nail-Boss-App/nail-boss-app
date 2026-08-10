@@ -5,7 +5,7 @@ const studio = readFileSync(new URL('../client/src/nail-design-studio/NailDesign
 const tests = readFileSync(new URL('../client/src/nail-design-studio/NailDesignStudio.test.jsx', import.meta.url), 'utf8');
 const effects = readFileSync(new URL('../client/src/hero-design/effect.ts', import.meta.url), 'utf8');
 
-for (const [value, label] of [['Gradient', 'Ombré'], ['Marble', 'Marble'], ['Chrome', 'Chrome'], ['Cat Eye', 'Cat Eye'], ['Aura', 'Aura'], ['ColorBlock', 'Color Block']]) {
+for (const [value, label] of [['Gradient', 'Ombré'], ['Marble', 'Marble'], ['Chrome', 'Chrome'], ['Cat Eye', 'Cat Eye'], ['Aura', 'Aura'], ['ColorBlock', 'Color Block'], ['NegativeSpace', 'Negative Space']]) {
   assert.ok(studio.includes(`value: '${value}', label: '${label}'`), `${label} should map to existing ${value} data`);
   assert.ok(effects.includes(value), `${value} should retain its existing Hero renderer`);
 }
