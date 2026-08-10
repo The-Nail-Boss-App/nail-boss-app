@@ -87,6 +87,7 @@ export function normalizeGradientData(data = {}) {
   };
 }
 export const FRENCH_TIP_STYLES = ["classic", "deep", "angled", "v", "reverse"];
+export const FRENCH_TIP_TYPES = ["Cream", "Jelly", "Matte", "Glitter"];
 export const FRENCH_TIP_PRESETS = {
   soft: { tipHeight: 0.24, smileCurve: 0.18, smileDepth: 0.14, smileWidth: 0.72, rotation: 0 },
   medium: { tipHeight: 0.32, smileCurve: 0.32, smileDepth: 0.24, smileWidth: 0.82, rotation: 0 },
@@ -605,6 +606,9 @@ export function normalizeFrenchTipData(data = {}) {
   const style = FRENCH_TIP_STYLES.includes(data.style) ? data.style : "classic";
   return {
     style,
+    // Older documents did not store a tip material. Cream matches their
+    // previous opaque, solid-color presentation without rewriting the source.
+    tipType: FRENCH_TIP_TYPES.includes(data.tipType) ? data.tipType : "Cream",
     preset: presetName,
     tipHeight: clamp(data.tipHeight ?? preset.tipHeight, 0.08, 0.72),
     smileCurve: clamp(data.smileCurve ?? preset.smileCurve, 0, 1),
