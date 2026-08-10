@@ -11,7 +11,7 @@ import { HeroDesignDocument } from './contracts';
 import { HeroDesignState, heroDesignReducer } from './state';
 import { HeroSurfaceRenderResult } from './surface';
 
-export const HERO_EFFECT_IDS = Object.freeze(['Solid', 'Gradient', 'Chrome', 'Cat Eye', 'Marble', 'Jelly'] as const);
+export const HERO_EFFECT_IDS = Object.freeze(['Solid', 'Gradient', 'Chrome', 'Cat Eye', 'Marble', 'Aura', 'Jelly'] as const);
 export const DEFAULT_HERO_EFFECT_REFERENCE: Readonly<HeroEffectReference> = Object.freeze({
   id: 'Solid', version: '1', parameters: Object.freeze({ baseColor: '#D94C70', opacity: 1, viscosity: 0.62, shine: 0.68 }),
 });
@@ -46,6 +46,13 @@ const finishRules: Record<HeroEffectId, Record<string, ParameterRule>> = {
     veinColor: { required: true, validate: color, message: 'veinColor must be a six-digit hex color.' },
     veinDensity: { required: true, validate: unit, message: 'veinDensity must be between 0 and 1.' },
   },
+  Aura: {
+    baseColor: { required: true, validate: color, message: 'baseColor must be a six-digit hex color.' },
+    centerColor: { required: true, validate: color, message: 'centerColor must be a six-digit hex color.' },
+    auraColor: { required: true, validate: color, message: 'auraColor must be a six-digit hex color.' },
+    softness: { required: true, validate: unit, message: 'softness must be between 0 and 1.' },
+    intensity: { required: true, validate: unit, message: 'intensity must be between 0 and 1.' },
+  },
   Jelly: {
     baseColor: { required: true, validate: color, message: 'baseColor must be a six-digit hex color.' },
     translucency: { required: true, validate: unit, message: 'translucency must be between 0 and 1.' },
@@ -77,7 +84,7 @@ export interface HeroEffectInput {
   surface?: HeroSurfaceRenderResult;
   designId?: string;
 }
-export interface HeroFinishLayer { kind: 'color' | 'linear-gradient' | 'veins'; opacity: number; color?: string; colors?: readonly string[]; angle?: number; position?: number; width?: number; paths?: readonly string[] }
+export interface HeroFinishLayer { kind: 'color' | 'linear-gradient' | 'radial-gradient' | 'veins'; opacity: number; color?: string; colors?: readonly string[]; angle?: number; position?: number; width?: number; paths?: readonly string[]; centerX?: number; centerY?: number; radius?: number; softness?: number }
 export interface HeroAppliedEffect {
   id: HeroEffectId;
   version: '1';
@@ -112,6 +119,10 @@ function finishLayers(effect: HeroEffectReference): readonly HeroFinishLayer[] {
     case 'Marble': return [
       { kind: 'color', color: p.baseColor as string, opacity: opacity * 0.94 },
       { kind: 'veins', color: p.veinColor as string, opacity: p.veinDensity as number, paths: ['M 35 95 C 80 45 115 155 165 95 S 215 180 245 120', 'M 28 255 C 75 185 125 285 185 205 S 225 130 255 105', 'M 70 20 C 95 90 165 30 205 115'] },
+    ];
+    case 'Aura': return [
+      { kind: 'color', color: p.baseColor as string, opacity: 1 },
+      { kind: 'radial-gradient', colors: [p.centerColor as string, p.auraColor as string, p.baseColor as string], centerX: .5, centerY: .42, radius: .64, softness: p.softness as number, opacity: p.intensity as number },
     ];
     case 'Jelly': return [{ kind: 'color', color: p.baseColor as string, opacity: opacity * (1 - (p.translucency as number)) }];
   }
