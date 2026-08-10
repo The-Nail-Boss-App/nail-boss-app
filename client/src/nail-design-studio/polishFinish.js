@@ -19,6 +19,12 @@ export const FINISH_DEFAULTS = Object.freeze({
 // normalizing and rendering without data loss.
 export const VISIBLE_POLISH_FINISHES = Object.freeze(['Cream', 'Matte', 'Jelly', 'Glitter']);
 
+export const COLOR_BLOCK_DEFAULTS = Object.freeze({ primaryColor: '#D94C70', secondaryColor: '#F5E7EC', direction: 'vertical', splitPosition: .5, opacity: 1, viscosity: .62, shine: .68 });
+
+export function colorBlockEffect(parameters = {}) {
+  return { id: 'ColorBlock', version: '1', parameters: { ...COLOR_BLOCK_DEFAULTS, ...parameters } };
+}
+
 const SHARED = ['opacity', 'viscosity', 'shine'];
 const SPECIFIC = {
   Gradient: ['colorB', 'direction'], Chrome: ['metallicReflection'], 'Cat Eye': ['stripeDirection', 'stripeWidth', 'stripeStrength'],
