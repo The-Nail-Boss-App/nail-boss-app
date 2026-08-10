@@ -724,12 +724,43 @@ describe('adaptive Nail Desk', () => {
     const documentId = polish.dataset.heroDocumentId;
     await click(button('Effects'));
     const effects = container.querySelector('[aria-label="Effects Studio"]');
-    const finish = effects.querySelector('select[aria-label="Finish"]');
+    const finish = effects.querySelector('select[aria-label="Effect"]');
     await act(async () => { finish.value = 'Gradient'; finish.dispatchEvent(new Event('change', { bubbles: true })); });
     expect(effects.dataset.heroDocumentId).toBe(documentId);
-    expect(effects.querySelector('select[aria-label="Finish"]').value).toBe('Gradient');
+    expect(effects.querySelector('select[aria-label="Effect"]').value).toBe('Gradient');
     expect(effects.querySelector('input[aria-label="Direction"]')).toBeTruthy();
     expect(container.querySelector('[data-design-layer="polish"]').dataset.heroEffect).toBe('Gradient');
+  });
+
+  it('gives Effects exclusive ownership of existing treatments without changing polish history', async () => {
+    const applyPolish = [...container.querySelectorAll('button')].find((item) => item.textContent === 'Apply Polish');
+    await click(applyPolish);
+    const paletteCount = container.querySelectorAll('[data-testid="project-palette-swatch"]').length;
+    const recentCount = container.querySelectorAll('[data-testid="recently-used"] [role="listitem"]').length;
+
+    await click(button('Effects'));
+    const effects = container.querySelector('[aria-label="Effects Studio"]');
+    const selector = effects.querySelector('select[aria-label="Effect"]');
+    expect([...selector.options].map((option) => option.textContent)).toEqual(['Choose an effect', 'Ombré', 'Marble', 'Chrome', 'Cat Eye']);
+    expect(effects.querySelector('[aria-label="Project Palette"]')).toBeNull();
+    expect(effects.querySelector('[aria-label="Recently Used"]')).toBeNull();
+    expect([...effects.querySelectorAll('button')].some((item) => item.textContent === 'Apply Polish')).toBe(false);
+
+    for (const [value, expectedControl] of [['Gradient', 'Direction'], ['Marble', 'Vein density'], ['Chrome', 'Metallic Reflection'], ['Cat Eye', 'Stripe strength']]) {
+      await act(async () => { selector.value = value; selector.dispatchEvent(new Event('change', { bubbles: true })); });
+      expect(container.querySelector('[data-design-layer="polish"]').dataset.heroEffect).toBe(value);
+      expect(effects.querySelector(`[aria-label="${expectedControl}"]`)).toBeTruthy();
+    }
+
+    await click(button('Polish'));
+    expect(container.querySelectorAll('[data-testid="project-palette-swatch"]').length).toBe(paletteCount);
+    expect(container.querySelectorAll('[data-testid="recently-used"] [role="listitem"]').length).toBe(recentCount);
+  });
+
+  it('keeps the legacy Gradient identifier behind the Ombré presentation label', () => {
+    const legacyGradient = normalizePolishForFinish({ finish: 'Gradient', colorA: '#123456', colorB: '#ABCDEF', direction: 135 }, 'Gradient');
+    expect(legacyGradient.finish).toBe('Gradient');
+    expect(heroEffectForPolish(legacyGradient)).toMatchObject({ id: 'Gradient', parameters: { colorA: '#123456', colorB: '#ABCDEF', direction: 135 } });
   });
 
   it('uses the Hero document as the shared source for both Nail Size controls', async () => {
