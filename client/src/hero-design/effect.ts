@@ -22,6 +22,7 @@ const unit = (value: unknown) => typeof value === 'number' && Number.isFinite(va
 const angle = (value: unknown) => typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 360;
 const blockDirection = (value: unknown) => ['vertical', 'horizontal', 'diagonal'].includes(value as string);
 const negativeSpaceType = (value: unknown) => ['vertical-band', 'horizontal-band', 'diagonal-band', 'center-cutout'].includes(value as string);
+const layoutSeed = (value: unknown) => typeof value === 'string' && value.length > 0 && value.length <= 128;
 const commonRules: Record<string, ParameterRule> = {
   opacity: { required: false, validate: unit, message: 'opacity must be between 0 and 1.' },
   viscosity: { required: false, validate: unit, message: 'viscosity must be between 0 and 1.' },
@@ -47,6 +48,7 @@ const finishRules: Record<HeroEffectId, Record<string, ParameterRule>> = {
     baseColor: { required: true, validate: color, message: 'baseColor must be a six-digit hex color.' },
     veinColor: { required: true, validate: color, message: 'veinColor must be a six-digit hex color.' },
     veinDensity: { required: true, validate: unit, message: 'veinDensity must be between 0 and 1.' },
+    marbleSeed: { required: false, validate: layoutSeed, message: 'marbleSeed must be a non-empty layout identity.' },
   },
   Aura: {
     baseColor: { required: true, validate: color, message: 'baseColor must be a six-digit hex color.' },
@@ -101,7 +103,7 @@ export interface HeroEffectInput {
   nailIdentity?: string;
 }
 export type HeroMarbleVeinClass = 'primary' | 'secondary' | 'hairline' | 'diffusion';
-export interface HeroMarbleStream { id: string; veinClass: HeroMarbleVeinClass; color: string; path: string; width: number; opacity: number; softness: number }
+export interface HeroMarbleStream { id: string; veinClass: HeroMarbleVeinClass; color: string; path: string; width: number; opacity: number; softness: number; visible: boolean }
 export interface HeroFinishLayer { kind: 'color' | 'linear-gradient' | 'radial-gradient' | 'veins' | 'color-block' | 'reveal-mask'; opacity: number; color?: string; colors?: readonly string[]; angle?: number; position?: number; width?: number; paths?: readonly string[]; streams?: readonly HeroMarbleStream[]; clipToMask?: boolean; seed?: string; centerX?: number; centerY?: number; radius?: number; softness?: number; direction?: 'vertical' | 'horizontal' | 'diagonal'; revealType?: 'vertical-band' | 'horizontal-band' | 'diagonal-band' | 'center-cutout'; size?: number; rotation?: number }
 export interface HeroAppliedEffect {
   id: HeroEffectId;
@@ -124,12 +126,21 @@ const numberParameter = (parameters: Record<string, unknown>, key: string, fallb
 const hashSeed = (value: string) => { let hash = 2166136261; for (let index = 0; index < value.length; index += 1) { hash ^= value.charCodeAt(index); hash = Math.imul(hash, 16777619); } return hash >>> 0; };
 const seededRandom = (seed: string) => { let state = hashSeed(seed) || 1; return () => { state += 0x6D2B79F5; let value = state; value = Math.imul(value ^ value >>> 15, value | 1); value ^= value + Math.imul(value ^ value >>> 7, value | 61); return ((value ^ value >>> 14) >>> 0) / 4294967296; }; };
 const rounded = (value: number) => Number(value.toFixed(2));
+export const DEFAULT_MARBLE_LAYOUT_SEED = 'marble-layout-v1';
+const MARBLE_GEOMETRY_VERSION = '1';
+interface HeroMarbleGeometryStream { id: string; veinClass: HeroMarbleVeinClass; path: string; width: number; opacity: number; softness: number; densityRank: number }
+const marbleGeometryCache = new Map<string, readonly HeroMarbleGeometryStream[]>();
 
-/** A deterministic geological model whose streams remain independently addressable. */
-export function createMarbleVeinModel(effect: HeroEffectReference, nailIdentity = 'nail-0'): readonly HeroMarbleStream[] {
-  if (effect.id !== 'Marble') return [];
-  const color = effect.parameters.veinColor as string; const density = effect.parameters.veinDensity as number;
-  const random = seededRandom(`${nailIdentity}|${JSON.stringify(effect.parameters)}`); const streams: HeroMarbleStream[] = [];
+export function normalizeMarbleLayoutSeed(value: unknown): string {
+  return layoutSeed(value) ? value as string : DEFAULT_MARBLE_LAYOUT_SEED;
+}
+
+/** Stable maximum stream geometry, cached independently from Marble styling. */
+function createMarbleGeometry(nailIdentity: string, marbleSeed: string): readonly HeroMarbleGeometryStream[] {
+  const cacheKey = `${MARBLE_GEOMETRY_VERSION}|${nailIdentity}|${marbleSeed}`;
+  const cached = marbleGeometryCache.get(cacheKey);
+  if (cached) return cached;
+  const random = seededRandom(cacheKey); const streams: HeroMarbleGeometryStream[] = [];
   const path = (startX: number, startY: number, length: number, direction: number, bends: number) => {
     let x = startX; let y = startY; let d = direction; let result = `M ${rounded(x)} ${rounded(y)}`;
     for (let bend = 0; bend < bends; bend += 1) {
@@ -143,16 +154,33 @@ export function createMarbleVeinModel(effect: HeroEffectReference, nailIdentity 
   const add = (veinClass: HeroMarbleVeinClass, count: number, width: [number, number], opacityRange: [number, number], softness: [number, number], short = false) => {
     for (let index = 0; index < count; index += 1) {
       const startX = -45 + random() * 310; const startY = -20 + random() * 350; const direction = -.95 + random() * 2.5;
-      streams.push(Object.freeze({ id: `${veinClass}-${index}`, veinClass, color,
+      streams.push(Object.freeze({ id: `${veinClass}-${index}`, veinClass,
         path: path(startX, startY, short ? 65 + random() * 90 : 250 + random() * 145, direction, short ? 2 + Math.floor(random() * 2) : 4 + Math.floor(random() * 3)),
-        width: rounded(width[0] + random() * (width[1] - width[0])), opacity: rounded((opacityRange[0] + random() * (opacityRange[1] - opacityRange[0])) * (.55 + density * .75)), softness: rounded(softness[0] + random() * (softness[1] - softness[0])) }));
+        width: rounded(width[0] + random() * (width[1] - width[0])), opacity: rounded(opacityRange[0] + random() * (opacityRange[1] - opacityRange[0])), softness: rounded(softness[0] + random() * (softness[1] - softness[0])), densityRank: rounded((index + 1) / count) }));
     }
   };
   add('diffusion', 2, [10, 19], [.055, .12], [2.4, 5.2]);
   add('primary', 3, [1.5, 3.8], [.5, .88], [0, .65]);
   add('secondary', 4, [.65, 1.55], [.28, .62], [0, .9], true);
   add('hairline', 5, [.22, .55], [.18, .48], [0, .3], true);
-  return Object.freeze(streams);
+  const geometry = Object.freeze(streams);
+  marbleGeometryCache.set(cacheKey, geometry);
+  return geometry;
+}
+
+/** A deterministic geological model whose stable paths receive current styling. */
+export function createMarbleVeinModel(effect: HeroEffectReference, nailIdentity = 'nail-0'): readonly HeroMarbleStream[] {
+  if (effect.id !== 'Marble') return [];
+  const color = effect.parameters.veinColor as string;
+  const density = numberParameter(effect.parameters, 'veinDensity', .42);
+  const marbleSeed = normalizeMarbleLayoutSeed(effect.parameters.marbleSeed);
+  return Object.freeze(createMarbleGeometry(nailIdentity, marbleSeed).map((stream) => Object.freeze({
+    id: stream.id, veinClass: stream.veinClass, color, path: stream.path, width: stream.width,
+    opacity: rounded(stream.opacity * (.55 + density * .75)), softness: stream.softness,
+    // Primary veins anchor the composition. Density progressively reveals only
+    // deterministic subordinate streams, so already-visible paths never move.
+    visible: stream.veinClass === 'primary' || stream.densityRank <= density,
+  })));
 }
 
 function finishLayers(effect: HeroEffectReference, nailIdentity?: string): readonly HeroFinishLayer[] {
@@ -170,7 +198,7 @@ function finishLayers(effect: HeroEffectReference, nailIdentity?: string): reado
     ];
     case 'Marble': return [
       { kind: 'color', color: p.baseColor as string, opacity: opacity * 0.94 },
-      { kind: 'veins', color: p.veinColor as string, opacity: 1, streams: createMarbleVeinModel(effect, nailIdentity), clipToMask: true, seed: nailIdentity },
+      { kind: 'veins', color: p.veinColor as string, opacity, streams: createMarbleVeinModel(effect, nailIdentity), clipToMask: true, seed: `${nailIdentity ?? 'nail-0'}|${normalizeMarbleLayoutSeed(p.marbleSeed)}` },
     ];
     case 'Aura': return [
       { kind: 'color', color: p.baseColor as string, opacity: 1 },

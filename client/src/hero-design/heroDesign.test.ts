@@ -300,6 +300,36 @@ describe('Hero Design integration shell', () => {
     expect(applied.maskId).toBe(input.mask.maskId);
   });
 
+  test('keeps Marble geometry independent from styling, density, unrelated state, and serialization', () => {
+    const marble = { id: 'Marble' as const, version: '1' as const, parameters: { baseColor: '#F2E9E7', veinColor: '#704F59', veinDensity: 0.46, marbleSeed: 'layout-a', opacity: .8, viscosity: .7, shine: .5 } };
+    const geometry = (effect: typeof marble, nail = 'design-1:nail-2') => createMarbleVeinModel(effect, nail).map(({ id, path }) => ({ id, path }));
+    const original = geometry(marble);
+    for (const [property, value] of [['baseColor', '#FFFFFF'], ['veinColor', '#123456'], ['veinDensity', .9], ['opacity', .2], ['viscosity', .1], ['shine', 1]] as const) {
+      expect(geometry({ ...marble, parameters: { ...marble.parameters, [property]: value } })).toEqual(original);
+    }
+    expect(geometry(JSON.parse(JSON.stringify(marble)))).toEqual(original);
+    expect(geometry(marble, 'design-1:nail-3')).not.toEqual(original);
+    expect(geometry({ ...marble, parameters: { ...marble.parameters, marbleSeed: 'layout-b' } })).not.toEqual(original);
+
+    const sparse = createMarbleVeinModel({ ...marble, parameters: { ...marble.parameters, veinDensity: .2 } }, 'design-1:nail-2');
+    const dense = createMarbleVeinModel({ ...marble, parameters: { ...marble.parameters, veinDensity: .8 } }, 'design-1:nail-2');
+    const sparseVisible = sparse.filter(({ visible }) => visible);
+    expect(dense.filter(({ visible }) => visible).length).toBeGreaterThan(sparseVisible.length);
+    sparseVisible.forEach((stream) => expect(dense.find(({ id }) => id === stream.id)?.path).toBe(stream.path));
+  });
+
+  test('hydrates legacy Marble designs with a stable layout seed', async () => {
+    const legacy = document();
+    legacy.nail.effect = { id: 'Marble', version: '1', parameters: { baseColor: '#F2E9E7', veinColor: '#704F59', veinDensity: .46 } };
+    const values = new Map([['anitaset.hero-design.v1:design-1', JSON.stringify(legacy)]]);
+    const storage = { getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => values.set(key, value), removeItem: (key: string) => values.delete(key) };
+    const adapter = new HeroLocalStoragePersistenceAdapter(storage);
+    const first = await adapter.load('design-1'); const second = await adapter.load('design-1');
+    expect(first?.nail.effect.parameters.marbleSeed).toBe('marble-layout-v1');
+    expect(second?.nail.effect.parameters.marbleSeed).toBe(first?.nail.effect.parameters.marbleSeed);
+    expect(adapter.compatibilityDiagnostics).toContain('Legacy Hero design design-1 had no Marble layout seed; the deterministic default was applied.');
+  });
+
 
   test('registers and applies the Hero Lighting Engine to every approved finish without changing geometry', () => {
     const registry = new HeroEngineRegistry(); const events = new HeroDesignEventBus(); const applied = jest.fn();
