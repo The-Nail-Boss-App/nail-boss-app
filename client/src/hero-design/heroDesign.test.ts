@@ -12,7 +12,7 @@ import {
   DEFAULT_HERO_MATERIAL_REFERENCE, HERO_MATERIAL_LIBRARY, HeroMaterialEngine,
   registerHeroMaterialEngine, resolveHeroNailMaterial, updateHeroMaterial,
   validateHeroNailMaterial,
-  HERO_EFFECT_IDS, HeroEffectEngine, registerHeroEffectEngine, applyHeroEffectToSurface,
+  HERO_EFFECT_IDS, HeroEffectEngine, registerHeroEffectEngine, applyHeroEffectToSurface, createMarbleVeinModel,
   updateHeroEffect, HeroLightingEngine, registerHeroLightingEngine, applyHeroLightingToEffect, connectHeroLightingInvalidation,
 } from './index';
 
@@ -282,6 +282,22 @@ describe('Hero Design integration shell', () => {
       expect(result.geometry).toEqual({ path: surface.path, bounds: surface.bounds, viewBox: surface.viewBox });
     });
     expect(applied).toHaveBeenCalledTimes(HERO_EFFECT_IDS.length);
+  });
+
+  test('builds deterministic, per-nail marble geology without replacing material or mask ownership', () => {
+    const marble = { id: 'Marble' as const, version: '1' as const, parameters: { baseColor: '#F2E9E7', veinColor: '#704F59', veinDensity: 0.46 } };
+    const first = createMarbleVeinModel(marble, 'design-1:nail-2');
+    expect(createMarbleVeinModel(marble, 'design-1:nail-2')).toEqual(first);
+    expect(createMarbleVeinModel(marble, 'design-1:nail-3')).not.toEqual(first);
+    expect(new Set(first.map(({ veinClass }) => veinClass))).toEqual(new Set(['primary', 'secondary', 'hairline', 'diffusion']));
+    expect(new Set(first.filter(({ veinClass }) => veinClass === 'primary').map(({ width }) => width)).size).toBeGreaterThan(1);
+    const input = createHeroSurfaceInput(document(), { width: 240, height: 360 }); const engine = new HeroEffectEngine();
+    const applied = engine.process({ ...input, effect: marble, nailIdentity: 'design-1:nail-2' });
+    const again = engine.process({ ...input, effect: marble, nailIdentity: 'design-1:nail-2', designId: 'unrelated-event-value' });
+    expect(again).toBe(applied);
+    expect(applied.material).toBe(input.material);
+    expect(applied.layers[1]).toMatchObject({ kind: 'veins', clipToMask: true });
+    expect(applied.maskId).toBe(input.mask.maskId);
   });
 
 
