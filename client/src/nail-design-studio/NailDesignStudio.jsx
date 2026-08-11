@@ -49,7 +49,7 @@ function ToolIcon({ tool }) {
 function MarbleVeins({ effect, nailIdentity, clipId }) {
   const streams = createMarbleVeinModel(effect, nailIdentity);
   return <g data-effect-layer="marble" data-marble-model="primary-secondary-hairline-diffusion" clipPath={`url(#${clipId})`}>
-    {streams.map((stream) => <path key={stream.id} data-marble-stream={stream.veinClass} d={stream.path} stroke={stream.color} strokeWidth={stream.width} strokeOpacity={stream.opacity} fill="none" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" style={stream.softness ? { filter: `blur(${stream.softness}px)` } : undefined} />)}
+    {streams.filter((stream) => stream.visible).map((stream) => <path key={stream.id} data-marble-stream={stream.veinClass} d={stream.path} stroke={stream.color} strokeWidth={stream.width} strokeOpacity={stream.opacity} fill="none" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" style={stream.softness ? { filter: `blur(${stream.softness}px)` } : undefined} />)}
   </g>;
 }
 

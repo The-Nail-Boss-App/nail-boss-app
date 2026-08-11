@@ -169,7 +169,8 @@ describe('DS-03 Polish Studio repair', () => {
     expect(glitter.stripeWidth).toBeUndefined();
     expect(heroEffectForPolish(glitter).parameters.glitterDensity).toBeUndefined();
     expect(normalizePolishForFinish({ glitterDensity: .8 }, 'retired-finish').finish).toBe('Cream');
-    expect(normalizePolishForFinish({ colorHex: '#F2E9E7', veinColor: 'broken', veinDensity: Number.NaN }, 'Marble')).toMatchObject({ veinColor: '#8A405D', veinDensity: .42 });
+    expect(normalizePolishForFinish({ colorHex: '#F2E9E7', veinColor: 'broken', veinDensity: Number.NaN }, 'Marble')).toMatchObject({ veinColor: '#8A405D', veinDensity: .42, marbleSeed: 'marble-layout-v1' });
+    expect(heroEffectForPolish(normalizePolishForFinish({ finish: 'Marble', marbleSeed: 'saved-layout' }, 'Marble')).parameters.marbleSeed).toBe('saved-layout');
 
     const select = container.querySelector('select[aria-label="Finish"]');
     for (const finish of ['Cream', 'Jelly', 'Matte', 'Glitter']) {
