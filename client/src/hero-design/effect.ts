@@ -97,8 +97,12 @@ export interface HeroEffectInput {
   material: HeroResolvedNailMaterial;
   surface?: HeroSurfaceRenderResult;
   designId?: string;
+  /** Stable per-nail identity used for coordinated, non-cloned procedural effects. */
+  nailIdentity?: string;
 }
-export interface HeroFinishLayer { kind: 'color' | 'linear-gradient' | 'radial-gradient' | 'veins' | 'color-block' | 'reveal-mask'; opacity: number; color?: string; colors?: readonly string[]; angle?: number; position?: number; width?: number; paths?: readonly string[]; centerX?: number; centerY?: number; radius?: number; softness?: number; direction?: 'vertical' | 'horizontal' | 'diagonal'; revealType?: 'vertical-band' | 'horizontal-band' | 'diagonal-band' | 'center-cutout'; size?: number; rotation?: number }
+export type HeroMarbleVeinClass = 'primary' | 'secondary' | 'hairline' | 'diffusion';
+export interface HeroMarbleStream { id: string; veinClass: HeroMarbleVeinClass; color: string; path: string; width: number; opacity: number; softness: number }
+export interface HeroFinishLayer { kind: 'color' | 'linear-gradient' | 'radial-gradient' | 'veins' | 'color-block' | 'reveal-mask'; opacity: number; color?: string; colors?: readonly string[]; angle?: number; position?: number; width?: number; paths?: readonly string[]; streams?: readonly HeroMarbleStream[]; clipToMask?: boolean; seed?: string; centerX?: number; centerY?: number; radius?: number; softness?: number; direction?: 'vertical' | 'horizontal' | 'diagonal'; revealType?: 'vertical-band' | 'horizontal-band' | 'diagonal-band' | 'center-cutout'; size?: number; rotation?: number }
 export interface HeroAppliedEffect {
   id: HeroEffectId;
   version: '1';
@@ -117,7 +121,41 @@ export interface HeroAppliedEffect {
 }
 
 const numberParameter = (parameters: Record<string, unknown>, key: string, fallback: number) => parameters[key] === undefined ? fallback : parameters[key] as number;
-function finishLayers(effect: HeroEffectReference): readonly HeroFinishLayer[] {
+const hashSeed = (value: string) => { let hash = 2166136261; for (let index = 0; index < value.length; index += 1) { hash ^= value.charCodeAt(index); hash = Math.imul(hash, 16777619); } return hash >>> 0; };
+const seededRandom = (seed: string) => { let state = hashSeed(seed) || 1; return () => { state += 0x6D2B79F5; let value = state; value = Math.imul(value ^ value >>> 15, value | 1); value ^= value + Math.imul(value ^ value >>> 7, value | 61); return ((value ^ value >>> 14) >>> 0) / 4294967296; }; };
+const rounded = (value: number) => Number(value.toFixed(2));
+
+/** A deterministic geological model whose streams remain independently addressable. */
+export function createMarbleVeinModel(effect: HeroEffectReference, nailIdentity = 'nail-0'): readonly HeroMarbleStream[] {
+  if (effect.id !== 'Marble') return [];
+  const color = effect.parameters.veinColor as string; const density = effect.parameters.veinDensity as number;
+  const random = seededRandom(`${nailIdentity}|${JSON.stringify(effect.parameters)}`); const streams: HeroMarbleStream[] = [];
+  const path = (startX: number, startY: number, length: number, direction: number, bends: number) => {
+    let x = startX; let y = startY; let d = direction; let result = `M ${rounded(x)} ${rounded(y)}`;
+    for (let bend = 0; bend < bends; bend += 1) {
+      const segment = length / bends * (.7 + random() * .65); d += (random() - .5) * 1.18;
+      const nx = x + Math.cos(d) * segment; const ny = y + Math.sin(d) * segment; const normal = (random() - .5) * segment * .75;
+      result += ` C ${rounded(x + Math.cos(d - .35) * segment * .34 + Math.cos(d + Math.PI / 2) * normal)} ${rounded(y + Math.sin(d - .35) * segment * .34 + Math.sin(d + Math.PI / 2) * normal)} ${rounded(x + Math.cos(d + .28) * segment * .72 - Math.cos(d + Math.PI / 2) * normal * .45)} ${rounded(y + Math.sin(d + .28) * segment * .72 - Math.sin(d + Math.PI / 2) * normal * .45)} ${rounded(nx)} ${rounded(ny)}`;
+      x = nx; y = ny;
+    }
+    return result;
+  };
+  const add = (veinClass: HeroMarbleVeinClass, count: number, width: [number, number], opacityRange: [number, number], softness: [number, number], short = false) => {
+    for (let index = 0; index < count; index += 1) {
+      const startX = -45 + random() * 310; const startY = -20 + random() * 350; const direction = -.95 + random() * 2.5;
+      streams.push(Object.freeze({ id: `${veinClass}-${index}`, veinClass, color,
+        path: path(startX, startY, short ? 65 + random() * 90 : 250 + random() * 145, direction, short ? 2 + Math.floor(random() * 2) : 4 + Math.floor(random() * 3)),
+        width: rounded(width[0] + random() * (width[1] - width[0])), opacity: rounded((opacityRange[0] + random() * (opacityRange[1] - opacityRange[0])) * (.55 + density * .75)), softness: rounded(softness[0] + random() * (softness[1] - softness[0])) }));
+    }
+  };
+  add('diffusion', 2, [10, 19], [.055, .12], [2.4, 5.2]);
+  add('primary', 3, [1.5, 3.8], [.5, .88], [0, .65]);
+  add('secondary', 4, [.65, 1.55], [.28, .62], [0, .9], true);
+  add('hairline', 5, [.22, .55], [.18, .48], [0, .3], true);
+  return Object.freeze(streams);
+}
+
+function finishLayers(effect: HeroEffectReference, nailIdentity?: string): readonly HeroFinishLayer[] {
   const p = effect.parameters;
   const opacity = numberParameter(p, 'opacity', effect.id === 'Jelly' ? 0.48 : 1);
   switch (effect.id) {
@@ -132,7 +170,7 @@ function finishLayers(effect: HeroEffectReference): readonly HeroFinishLayer[] {
     ];
     case 'Marble': return [
       { kind: 'color', color: p.baseColor as string, opacity: opacity * 0.94 },
-      { kind: 'veins', color: p.veinColor as string, opacity: p.veinDensity as number, paths: ['M 35 95 C 80 45 115 155 165 95 S 215 180 245 120', 'M 28 255 C 75 185 125 285 185 205 S 225 130 255 105', 'M 70 20 C 95 90 165 30 205 115'] },
+      { kind: 'veins', color: p.veinColor as string, opacity: 1, streams: createMarbleVeinModel(effect, nailIdentity), clipToMask: true, seed: nailIdentity },
     ];
     case 'Aura': return [
       { kind: 'color', color: p.baseColor as string, opacity: 1 },
@@ -165,10 +203,10 @@ export class HeroEffectEngine implements HeroEngine<HeroEffectInput, HeroApplied
   process(input: HeroEffectInput): HeroAppliedEffect {
     const validation = this.validate(input);
     if (!validation.valid) { this.events.publish('effect.validation.failed', { designId: input?.designId, issues: validation.issues }); throw new Error(`Hero effect is invalid: ${validation.issues.map(({ message }) => message).join(' ')}`); }
-    const key = [input.effect.id, input.effect.version, JSON.stringify(input.effect.parameters), input.material.cacheKey, input.shape.id, input.mask.maskId, input.surface?.path ?? ''].join(':');
+    const key = [input.effect.id, input.effect.version, JSON.stringify(input.effect.parameters), input.nailIdentity ?? input.designId ?? 'nail-0', input.material.cacheKey, input.shape.id, input.mask.maskId, input.surface?.path ?? ''].join(':');
     let applied = this.cache.get(key);
     if (!applied) {
-      applied = Object.freeze({ id: input.effect.id, version: input.effect.version, parameters: Object.freeze({ ...input.effect.parameters }), material: input.material, layers: Object.freeze(finishLayers(input.effect)), opacity: numberParameter(input.effect.parameters, 'opacity', input.effect.id === 'Jelly' ? 0.48 : 1), viscosity: numberParameter(input.effect.parameters, 'viscosity', 0.62), shine: numberParameter(input.effect.parameters, 'shine', 0.68), shapeId: input.shape.id, maskId: input.mask.maskId, geometry: input.surface ? { path: input.surface.path, bounds: input.surface.bounds, viewBox: input.surface.viewBox } : undefined, cacheKey: key });
+      applied = Object.freeze({ id: input.effect.id, version: input.effect.version, parameters: Object.freeze({ ...input.effect.parameters }), material: input.material, layers: Object.freeze(finishLayers(input.effect, input.nailIdentity ?? input.designId)), opacity: numberParameter(input.effect.parameters, 'opacity', input.effect.id === 'Jelly' ? 0.48 : 1), viscosity: numberParameter(input.effect.parameters, 'viscosity', 0.62), shine: numberParameter(input.effect.parameters, 'shine', 0.68), shapeId: input.shape.id, maskId: input.mask.maskId, geometry: input.surface ? { path: input.surface.path, bounds: input.surface.bounds, viewBox: input.surface.viewBox } : undefined, cacheKey: key });
       this.cache.set(key, applied);
     }
     this.events.publish('effect.applied', { designId: input.designId, effect: applied });

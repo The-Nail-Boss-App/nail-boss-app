@@ -46,6 +46,11 @@ export function normalizePolishForFinish(polish = {}, requestedFinish = 'Cream')
   const colorHex = /^#[0-9a-f]{6}$/i.test(requestedColor) ? requestedColor.toUpperCase() : defaults.baseColor || defaults.colorA;
   const normalized = { name: polish.name || 'Blush Royalty', brand: polish.brand || 'AnitaSet Atelier', collection: polish.collection || 'AnitaSet Atelier', size: polish.size || '15 ml', colorHex, finish };
   [...SHARED, ...(SPECIFIC[finish] || [])].forEach((key) => { normalized[key] = polish[key] ?? defaults[key]; });
+  if (finish === 'Marble') {
+    normalized.veinColor = /^#[0-9a-f]{6}$/i.test(polish.veinColor || '') ? polish.veinColor.toUpperCase() : defaults.veinColor;
+    const density = Number(polish.veinDensity);
+    normalized.veinDensity = Number.isFinite(density) ? Math.min(1, Math.max(0, density)) : defaults.veinDensity;
+  }
   if (finish === 'Glitter') {
     // Older saves have no fleck color. This fixed warm-silver fallback remains
     // stable across hydration and deliberately independent of base pigment.

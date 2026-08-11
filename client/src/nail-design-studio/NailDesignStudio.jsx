@@ -1,7 +1,7 @@
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import {
   applyHeroEffectToSurface, applyHeroLightingToEffect, createHeroDesignDocument, createHeroSurfaceInput, HeroDesignEventBus,
-  HeroEngineRegistry, HeroLocalStoragePersistenceAdapter, HeroSurfaceRenderingEngine, initialHeroDesignState,
+  HeroEngineRegistry, HeroLocalStoragePersistenceAdapter, HeroSurfaceRenderingEngine, createMarbleVeinModel, initialHeroDesignState,
   heroDesignReducer, registerHeroEffectEngine, registerHeroLightingEngine, updateHeroEffect, updateHeroShape,
 } from '../hero-design/index.ts';
 import { USER_FACING_NAIL_SHAPES } from '../config/features';
@@ -44,6 +44,13 @@ export const EFFECT_OPTIONS = Object.freeze([
 
 function ToolIcon({ tool }) {
   return <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d={tool.icon} /></svg>;
+}
+
+function MarbleVeins({ effect, nailIdentity, clipId }) {
+  const streams = createMarbleVeinModel(effect, nailIdentity);
+  return <g data-effect-layer="marble" data-marble-model="primary-secondary-hairline-diffusion" clipPath={`url(#${clipId})`}>
+    {streams.map((stream) => <path key={stream.id} data-marble-stream={stream.veinClass} d={stream.path} stroke={stream.color} strokeWidth={stream.width} strokeOpacity={stream.opacity} fill="none" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" style={stream.softness ? { filter: `blur(${stream.softness}px)` } : undefined} />)}
+  </g>;
 }
 
 const ICON_PATHS = {
@@ -683,7 +690,7 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
                     {appliedEffect.id === 'NegativeSpace' && <path data-hero-base-surface="true" data-material-id={renderedSurface.material.id} d={renderedSurface.path} fill={renderedSurface.materialStyle.baseTint} opacity={renderedSurface.materialStyle.opacity} />}
                     <DesignCoverage active={appliedEffect.id === 'NegativeSpace'} maskId={`hero-negative-space-${index}`}>
                     <MaterialLayers path={renderedSurface.path} surfaceBounds={renderedSurface.bounds} finish={activeFinish === 'NegativeSpace' ? activeFormulation.finish : (activeNailIndex === index ? activeFinish : (nailPolishes[index]?.finish || activeFinish))} color={activeNailIndex === index ? activePolishColor : (nailPolishes[index]?.colorHex || activePolishColor)} fleckColor={activeNailIndex === index ? activeFormulation.fleckColor : (nailPolishes[index]?.fleckColor || activeFormulation.fleckColor)} glitterDensity={activeNailIndex === index ? activeFormulation.glitterDensity : (nailPolishes[index]?.glitterDensity ?? activeFormulation.glitterDensity)} opacity={activeNailIndex === index ? (appliedEffect.id === 'NegativeSpace' ? activeFormulation.opacity : appliedEffect.layers[0].opacity) : (nailPolishes[index]?.opacity ?? appliedEffect.layers[0].opacity)} shine={activeNailIndex === index ? appliedEffect.shine : (nailPolishes[index]?.shine ?? appliedEffect.shine)} uid={`hero-material-${index}`} baseProps={{ className: 'nail-design-studio__nail-polish', 'data-design-layer': 'polish', 'data-hero-material-layer': 'true', 'data-polish-finish': activeFinish === 'NegativeSpace' ? activeFormulation.finish : (activeNailIndex === index ? activeFinish : (nailPolishes[index]?.finish || activeFinish)), 'data-hero-effect': appliedEffect.id, 'data-hero-lighting': 'Hero Lighting Engine', 'data-hero-reflection': appliedLighting.profile.reflection, 'data-material-id': renderedSurface.material.id }}/>
-                    {appliedEffect.layers.slice(1).map((layer, layerIndex) => layer.kind === 'color-block' ? <ColorBlockRegions key={layerIndex} layer={layer} bounds={renderedSurface.bounds} clipId={`hero-effect-mask-${index}`} /> : ['linear-gradient', 'radial-gradient'].includes(layer.kind) ? <path key={layerIndex} data-effect-layer={layer.kind === 'radial-gradient' ? 'aura' : undefined} d={renderedSurface.path} fill={`url(#hero-finish-${index}-${layerIndex + 1})`} opacity={layer.opacity} clipPath={layer.kind === 'radial-gradient' ? `url(#hero-effect-mask-${index})` : undefined} filter={layer.kind === 'radial-gradient' ? `url(#hero-aura-softness-${index})` : undefined} /> : layer.paths?.map((path, pathIndex) => <path key={`${layerIndex}-${pathIndex}`} d={path} stroke={layer.color} opacity={layer.opacity} fill="none" vectorEffect="non-scaling-stroke" />))}
+                    {appliedEffect.layers.slice(1).map((layer, layerIndex) => layer.kind === 'color-block' ? <ColorBlockRegions key={layerIndex} layer={layer} bounds={renderedSurface.bounds} clipId={`hero-effect-mask-${index}`} /> : ['linear-gradient', 'radial-gradient'].includes(layer.kind) ? <path key={layerIndex} data-effect-layer={layer.kind === 'radial-gradient' ? 'aura' : undefined} d={renderedSurface.path} fill={`url(#hero-finish-${index}-${layerIndex + 1})`} opacity={layer.opacity} clipPath={layer.kind === 'radial-gradient' ? `url(#hero-effect-mask-${index})` : undefined} filter={layer.kind === 'radial-gradient' ? `url(#hero-aura-softness-${index})` : undefined} /> : layer.kind === 'veins' ? <MarbleVeins key={layerIndex} effect={heroDocument.nail.effect} nailIdentity={`${heroDocument.metadata.id}:nail-${index}`} clipId={`hero-effect-mask-${index}`} /> : layer.paths?.map((path, pathIndex) => <path key={`${layerIndex}-${pathIndex}`} d={path} stroke={layer.color} opacity={layer.opacity} fill="none" vectorEffect="non-scaling-stroke" />))}
                     </DesignCoverage>
                     <FrenchTipRegion data={frenchTips[index]} nailPath={renderedSurface.path} bounds={renderedSurface.bounds} uid={`hero-french-${index}`} />
                     <path d={renderedSurface.path} fill={`url(#hero-light-depth-${index})`} opacity={appliedLighting.profile.veinPreservation} />
