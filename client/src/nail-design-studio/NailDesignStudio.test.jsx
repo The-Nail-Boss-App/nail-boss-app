@@ -650,6 +650,36 @@ describe('DS-TK01A French Tip integration', () => {
     expect(container.querySelectorAll('[data-design-layer="french-tip"]')).toHaveLength(9);
   });
 
+  it('paints transparent gold Marble beneath an uninterrupted blue Glitter French Tip', async () => {
+    await editHex(container, '#000000');
+    await click([...container.querySelectorAll('[role="tab"]')].find((item) => item.textContent === 'French Tip'));
+    await click(container.querySelector('input[aria-label="Enable French Tip"]'));
+    const frenchControls = container.querySelector('[data-testid="french-tip-controls"]');
+    await click([...frenchControls.querySelectorAll('button')].find((button) => button.textContent === 'Glitter'));
+    const tipColor = frenchControls.querySelector('input[aria-label="French Tip color"]');
+    await act(async () => { Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set.call(tipColor, '#164E9B'); tipColor.dispatchEvent(new Event('change', { bubbles: true })); });
+
+    await click([...container.querySelectorAll('[role="tab"]')].find((item) => item.textContent === 'Effects'));
+    const effect = container.querySelector('select[aria-label="Effect"]');
+    await act(async () => { effect.value = 'Marble'; effect.dispatchEvent(new Event('change', { bubbles: true })); });
+    const veinColor = container.querySelector('input[aria-label="Selected Vein Color"]');
+    await act(async () => { Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set.call(veinColor, '#D4AF37'); veinColor.dispatchEvent(new Event('change', { bubbles: true })); });
+
+    const nail = container.querySelector('svg[data-testid="stage-nail"]');
+    const material = nail.querySelector('[data-design-layer="polish"]');
+    const marble = nail.querySelector('[data-effect-layer="marble"]');
+    const french = nail.querySelector('[data-design-layer="french-tip"]');
+    expect(nail.dataset.renderColor).toBe('#000000');
+    expect(material.getAttribute('fill')).toMatch(/^url\(#hero-material-0-pigment\)$/);
+    expect(marble.dataset.marbleAlpha).toBe('localized-stream-geometry-only');
+    expect([...marble.querySelectorAll('path')].every((path) => path.getAttribute('fill') === 'none')).toBe(true);
+    expect(marble.querySelector('[data-stream-id="primary-0"] [data-vein-component="variable-width-core"]').getAttribute('stroke')).toBe('#D4AF37');
+    expect(french.dataset.frenchTipType).toBe('Glitter');
+    expect(french.querySelector('[data-material-renderer]').dataset.materialInputColor).toBe('#164E9B');
+    expect(marble.compareDocumentPosition(french) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(french.compareDocumentPosition(marble) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy();
+  });
+
   it('loads both mounted metadata and legacy French Tip layer persistence', () => {
     expect(loadFrenchTips({ metadata: { frenchTips: [{ style: 'v', colorHex: '#ABCDEF', tipType: 'Matte' }] } })[0]).toMatchObject({ style: 'v', colorHex: '#ABCDEF', tipType: 'Matte' });
     expect(loadFrenchTips({ nails: [{ layers: [{ type: 'frenchTip', visible: true, data: { preset: 'deep', colorHex: '#FEDCBA' } }] }] })[0]).toMatchObject({ preset: 'deep', colorHex: '#FEDCBA', tipType: 'Cream' });
@@ -752,6 +782,16 @@ describe('adaptive Nail Desk', () => {
       await act(async () => { selector.value = value; selector.dispatchEvent(new Event('change', { bubbles: true })); });
       expect(container.querySelector('[data-design-layer="polish"]').dataset.heroEffect).toBe(value);
       expect(effects.querySelector(`[aria-label="${expectedControl}"]`)).toBeTruthy();
+      if (value === 'Marble') {
+        const marble = container.querySelector('[data-effect-layer="marble"]');
+        expect(marble.dataset.marbleAlpha).toBe('localized-stream-geometry-only');
+        expect(marble.getAttribute('clip-path')).toMatch(/hero-effect-mask/);
+        expect([...marble.querySelectorAll('path')].every((path) => path.getAttribute('fill') === 'none')).toBe(true);
+        expect(marble.querySelector('[data-vein-component="body"]')).toBeTruthy();
+        expect(marble.querySelector('[data-vein-component="variable-width-core"]')).toBeTruthy();
+        expect(marble.querySelector('[data-vein-component="fracture"]')).toBeTruthy();
+        expect(marble.querySelector('[data-vein-component="mineral-fragments"]')).toBeTruthy();
+      }
       const effectColor = effects.querySelector('input[aria-label="Base Color picker"]');
       const color = `#${String(index + 1).repeat(6)}`;
       await act(async () => { Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set.call(effectColor, color); effectColor.dispatchEvent(new Event('change', { bubbles: true })); });

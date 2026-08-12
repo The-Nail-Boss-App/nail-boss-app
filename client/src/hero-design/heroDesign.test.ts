@@ -296,7 +296,9 @@ describe('Hero Design integration shell', () => {
     const again = engine.process({ ...input, effect: marble, nailIdentity: 'design-1:nail-2', designId: 'unrelated-event-value' });
     expect(again).toBe(applied);
     expect(applied.material).toBe(input.material);
-    expect(applied.layers[1]).toMatchObject({ kind: 'veins', clipToMask: true });
+    expect(applied.layers).toHaveLength(1);
+    expect(applied.layers[0]).toMatchObject({ kind: 'veins', clipToMask: true });
+    expect(applied.layers.some((layer) => layer.kind === 'color')).toBe(false);
     expect(applied.maskId).toBe(input.mask.maskId);
   });
 
