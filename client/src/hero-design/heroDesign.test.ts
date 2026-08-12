@@ -330,6 +330,33 @@ describe('Hero Design integration shell', () => {
     expect(adapter.compatibilityDiagnostics).toContain('Legacy Hero design design-1 had no Marble layout seed; the deterministic default was applied.');
   });
 
+  test('keeps Marble composition transforms and per-stream styling independent from geometry', () => {
+    const base = { id: 'Marble' as const, version: '1' as const, parameters: { baseColor: '#F2E9E7', veinColor: '#704F59', veinDensity: .8, marbleSeed: 'layout-controls' } };
+    const geometry = (effect: typeof base) => createMarbleVeinModel(effect, 'design:nail-1').map(({ id, path }) => ({ id, path }));
+    const original = geometry(base);
+    for (const marbleTransform of [{ panX: 20, panY: 0, scale: 1, rotation: 0 }, { panX: 0, panY: 0, scale: 1.7, rotation: 0 }, { panX: 0, panY: 0, scale: 1, rotation: 45 }, { panX: 0, panY: 0, scale: 1, rotation: 0 }]) {
+      expect(geometry({ ...base, parameters: { ...base.parameters, marbleTransform } })).toEqual(original);
+    }
+    const streams = createMarbleVeinModel(base, 'design:nail-1');
+    const target = streams.find(({ veinClass }) => veinClass === 'secondary')!;
+    const other = streams.find(({ id }) => id !== target.id)!;
+    const customized = { ...base, parameters: { ...base.parameters, streamOverrides: { [target.id]: { color: '#D4AF37', width: 2.2, opacity: .31, softness: 1.4, visible: false } } } };
+    const changed = createMarbleVeinModel(customized, 'design:nail-1');
+    expect(geometry(customized)).toEqual(original);
+    expect(changed.find(({ id }) => id === target.id)).toMatchObject({ color: '#D4AF37', width: 2.2, opacity: .31, softness: 1.4, visible: false });
+    expect(changed.find(({ id }) => id === other.id)).toEqual(other);
+  });
+
+  test('retains subordinate Marble overrides across density eligibility changes', () => {
+    const parameters = { baseColor: '#F2E9E7', veinColor: '#704F59', veinDensity: 1, marbleSeed: 'density-controls', streamOverrides: { 'secondary-3': { color: '#D4AF37' } } };
+    const dense = createMarbleVeinModel({ id: 'Marble', version: '1', parameters }, 'nail-2').find(({ id }) => id === 'secondary-3')!;
+    const sparse = createMarbleVeinModel({ id: 'Marble', version: '1', parameters: { ...parameters, veinDensity: 0 } }, 'nail-2').find(({ id }) => id === 'secondary-3')!;
+    const restored = createMarbleVeinModel({ id: 'Marble', version: '1', parameters }, 'nail-2').find(({ id }) => id === 'secondary-3')!;
+    expect(sparse.visible).toBe(false);
+    expect(restored).toEqual(dense);
+    expect(restored.color).toBe('#D4AF37');
+  });
+
 
   test('registers and applies the Hero Lighting Engine to every approved finish without changing geometry', () => {
     const registry = new HeroEngineRegistry(); const events = new HeroDesignEventBus(); const applied = jest.fn();
