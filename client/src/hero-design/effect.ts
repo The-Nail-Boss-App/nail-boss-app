@@ -23,6 +23,11 @@ const angle = (value: unknown) => typeof value === 'number' && Number.isFinite(v
 const blockDirection = (value: unknown) => ['vertical', 'horizontal', 'diagonal'].includes(value as string);
 const negativeSpaceType = (value: unknown) => ['vertical-band', 'horizontal-band', 'diagonal-band', 'center-cutout'].includes(value as string);
 const layoutSeed = (value: unknown) => typeof value === 'string' && value.length > 0 && value.length <= 128;
+const marbleTransform = (value: unknown) => {
+  const v = value as Record<string, unknown>;
+  return Boolean(v && typeof v === 'object' && !Array.isArray(v) && ['panX', 'panY', 'scale', 'rotation'].every((key) => typeof v[key] === 'number' && Number.isFinite(v[key] as number)));
+};
+const streamOverrides = (value: unknown) => Boolean(value && typeof value === 'object' && !Array.isArray(value));
 const commonRules: Record<string, ParameterRule> = {
   opacity: { required: false, validate: unit, message: 'opacity must be between 0 and 1.' },
   viscosity: { required: false, validate: unit, message: 'viscosity must be between 0 and 1.' },
@@ -49,6 +54,8 @@ const finishRules: Record<HeroEffectId, Record<string, ParameterRule>> = {
     veinColor: { required: true, validate: color, message: 'veinColor must be a six-digit hex color.' },
     veinDensity: { required: true, validate: unit, message: 'veinDensity must be between 0 and 1.' },
     marbleSeed: { required: false, validate: layoutSeed, message: 'marbleSeed must be a non-empty layout identity.' },
+    marbleTransform: { required: false, validate: marbleTransform, message: 'marbleTransform must contain finite panX, panY, scale, and rotation values.' },
+    streamOverrides: { required: false, validate: streamOverrides, message: 'streamOverrides must be keyed by stream ID.' },
   },
   Aura: {
     baseColor: { required: true, validate: color, message: 'baseColor must be a six-digit hex color.' },
@@ -127,12 +134,35 @@ const hashSeed = (value: string) => { let hash = 2166136261; for (let index = 0;
 const seededRandom = (seed: string) => { let state = hashSeed(seed) || 1; return () => { state += 0x6D2B79F5; let value = state; value = Math.imul(value ^ value >>> 15, value | 1); value ^= value + Math.imul(value ^ value >>> 7, value | 61); return ((value ^ value >>> 14) >>> 0) / 4294967296; }; };
 const rounded = (value: number) => Number(value.toFixed(2));
 export const DEFAULT_MARBLE_LAYOUT_SEED = 'marble-layout-v1';
+export const DEFAULT_MARBLE_TRANSFORM = Object.freeze({ panX: 0, panY: 0, scale: 1, rotation: 0 });
 const MARBLE_GEOMETRY_VERSION = '1';
 interface HeroMarbleGeometryStream { id: string; veinClass: HeroMarbleVeinClass; path: string; width: number; opacity: number; softness: number; densityRank: number }
 const marbleGeometryCache = new Map<string, readonly HeroMarbleGeometryStream[]>();
 
 export function normalizeMarbleLayoutSeed(value: unknown): string {
   return layoutSeed(value) ? value as string : DEFAULT_MARBLE_LAYOUT_SEED;
+}
+
+const clamp = (value: unknown, min: number, max: number, fallback: number) => typeof value === 'number' && Number.isFinite(value) ? Math.min(max, Math.max(min, value)) : fallback;
+export function normalizeMarbleTransform(value: unknown) {
+  const transform = value && typeof value === 'object' ? value as Record<string, unknown> : {};
+  return Object.freeze({ panX: clamp(transform.panX, -120, 120, 0), panY: clamp(transform.panY, -180, 180, 0), scale: clamp(transform.scale, .55, 2.5, 1), rotation: clamp(transform.rotation, -180, 180, 0) });
+}
+
+export function normalizeMarbleStreamOverrides(value: unknown): Record<string, Record<string, unknown>> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  const result: Record<string, Record<string, unknown>> = {};
+  Object.entries(value as Record<string, unknown>).forEach(([id, raw]) => {
+    if (!/^(primary|secondary|hairline|diffusion)-\d+$/.test(id) || !raw || typeof raw !== 'object' || Array.isArray(raw)) return;
+    const override = raw as Record<string, unknown>; const next: Record<string, unknown> = {};
+    if (color(override.color)) next.color = (override.color as string).toUpperCase();
+    if (typeof override.width === 'number') next.width = clamp(override.width, .1, id.startsWith('hairline') ? 1.5 : id.startsWith('primary') ? 8 : 5, 1);
+    if (typeof override.opacity === 'number') next.opacity = clamp(override.opacity, 0, 1, 1);
+    if (typeof override.softness === 'number') next.softness = clamp(override.softness, 0, 6, 0);
+    if (typeof override.visible === 'boolean') next.visible = override.visible;
+    if (Object.keys(next).length) result[id] = next;
+  });
+  return result;
 }
 
 /** Stable maximum stream geometry, cached independently from Marble styling. */
@@ -174,12 +204,13 @@ export function createMarbleVeinModel(effect: HeroEffectReference, nailIdentity 
   const color = effect.parameters.veinColor as string;
   const density = numberParameter(effect.parameters, 'veinDensity', .42);
   const marbleSeed = normalizeMarbleLayoutSeed(effect.parameters.marbleSeed);
+  const overrides = normalizeMarbleStreamOverrides(effect.parameters.streamOverrides);
   return Object.freeze(createMarbleGeometry(nailIdentity, marbleSeed).map((stream) => Object.freeze({
-    id: stream.id, veinClass: stream.veinClass, color, path: stream.path, width: stream.width,
-    opacity: rounded(stream.opacity * (.55 + density * .75)), softness: stream.softness,
+    id: stream.id, veinClass: stream.veinClass, color: overrides[stream.id]?.color as string || color, path: stream.path, width: overrides[stream.id]?.width as number ?? stream.width,
+    opacity: overrides[stream.id]?.opacity as number ?? rounded(stream.opacity * (.55 + density * .75)), softness: overrides[stream.id]?.softness as number ?? stream.softness,
     // Primary veins anchor the composition. Density progressively reveals only
     // deterministic subordinate streams, so already-visible paths never move.
-    visible: stream.veinClass === 'primary' || stream.densityRank <= density,
+    visible: (stream.veinClass === 'primary' || stream.densityRank <= density) && overrides[stream.id]?.visible !== false,
   })));
 }
 

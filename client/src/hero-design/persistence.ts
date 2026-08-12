@@ -1,7 +1,7 @@
 import { HeroDesignDocument } from './contracts';
 import { validateHeroDesignDocument } from './validation';
 import { DEFAULT_HERO_MATERIAL_REFERENCE } from './material';
-import { DEFAULT_HERO_EFFECT_REFERENCE, normalizeMarbleLayoutSeed } from './effect';
+import { DEFAULT_HERO_EFFECT_REFERENCE, normalizeMarbleLayoutSeed, normalizeMarbleStreamOverrides, normalizeMarbleTransform } from './effect';
 
 export interface HeroPersistenceAdapter {
   create(document: HeroDesignDocument): Promise<HeroDesignDocument>;
@@ -40,9 +40,12 @@ export class HeroLocalStoragePersistenceAdapter implements HeroPersistenceAdapte
       document = { ...document, nail: { ...document.nail, effect: { ...DEFAULT_HERO_EFFECT_REFERENCE, parameters: { ...DEFAULT_HERO_EFFECT_REFERENCE.parameters } } } };
       this.compatibilityDiagnostics.push(`Legacy Hero design ${id} had no effect reference; Solid@1 was applied without mutating its source record.`);
     }
-    if (document.nail?.effect?.id === 'Marble' && !document.nail.effect.parameters.marbleSeed) {
-      document = { ...document, nail: { ...document.nail, effect: { ...document.nail.effect, parameters: { ...document.nail.effect.parameters, marbleSeed: normalizeMarbleLayoutSeed(undefined) } } } };
+    if (document.nail?.effect?.id === 'Marble') {
+      const parameters = document.nail.effect.parameters;
+      document = { ...document, nail: { ...document.nail, effect: { ...document.nail.effect, parameters: { ...parameters, marbleSeed: normalizeMarbleLayoutSeed(parameters.marbleSeed), marbleTransform: normalizeMarbleTransform(parameters.marbleTransform), streamOverrides: normalizeMarbleStreamOverrides(parameters.streamOverrides) } } } };
+      if (!parameters.marbleSeed) {
       this.compatibilityDiagnostics.push(`Legacy Hero design ${id} had no Marble layout seed; the deterministic default was applied.`);
+      }
     }
     if (!source.nail?.material) this.compatibilityDiagnostics.push(`Legacy Hero design ${id} had no material reference; soft-gel-neutral@1 was applied without mutating its source record.`);
     const result = validateHeroDesignDocument(document);
