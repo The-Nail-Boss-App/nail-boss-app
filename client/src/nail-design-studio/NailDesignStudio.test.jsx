@@ -752,6 +752,16 @@ describe('adaptive Nail Desk', () => {
       await act(async () => { selector.value = value; selector.dispatchEvent(new Event('change', { bubbles: true })); });
       expect(container.querySelector('[data-design-layer="polish"]').dataset.heroEffect).toBe(value);
       expect(effects.querySelector(`[aria-label="${expectedControl}"]`)).toBeTruthy();
+      if (value === 'Marble') {
+        const marble = container.querySelector('[data-effect-layer="marble"]');
+        expect(marble.dataset.marbleAlpha).toBe('localized-stream-geometry-only');
+        expect(marble.getAttribute('clip-path')).toMatch(/hero-effect-mask/);
+        expect([...marble.querySelectorAll('path')].every((path) => path.getAttribute('fill') === 'none')).toBe(true);
+        expect(marble.querySelector('[data-vein-component="body"]')).toBeTruthy();
+        expect(marble.querySelector('[data-vein-component="variable-width-core"]')).toBeTruthy();
+        expect(marble.querySelector('[data-vein-component="fracture"]')).toBeTruthy();
+        expect(marble.querySelector('[data-vein-component="mineral-fragments"]')).toBeTruthy();
+      }
       const effectColor = effects.querySelector('input[aria-label="Base Color picker"]');
       const color = `#${String(index + 1).repeat(6)}`;
       await act(async () => { Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set.call(effectColor, color); effectColor.dispatchEvent(new Event('change', { bubbles: true })); });

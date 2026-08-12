@@ -227,8 +227,10 @@ function finishLayers(effect: HeroEffectReference, nailIdentity?: string): reado
       { kind: 'color', color: p.baseColor as string, opacity },
       { kind: 'linear-gradient', colors: ['transparent', '#FFFFFF', 'transparent'], angle: p.stripeDirection as number, position: 0.5, width: p.stripeWidth as number, opacity: p.stripeStrength as number },
     ];
+    // Marble is decoration, not a material.  In particular, do not emit a
+    // nail-shaped color layer here: transparent negative space is part of the
+    // effect contract and the already-resolved material remains authoritative.
     case 'Marble': return [
-      { kind: 'color', color: p.baseColor as string, opacity: opacity * 0.94 },
       { kind: 'veins', color: p.veinColor as string, opacity, streams: createMarbleVeinModel(effect, nailIdentity), clipToMask: true, seed: `${nailIdentity ?? 'nail-0'}|${normalizeMarbleLayoutSeed(p.marbleSeed)}` },
     ];
     case 'Aura': return [
