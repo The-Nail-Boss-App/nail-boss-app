@@ -1,6 +1,6 @@
 import React, { act } from 'react';
 import { createRoot } from 'react-dom/client';
-import NailDesignStudio, { canScrollInWheelDirection, creamHeroSurfaceResponse, glitterHeroSurfaceResponse, jellyHeroSurfaceResponse, matteHeroSurfaceResponse, stageLightingOpacity } from './NailDesignStudio';
+import NailDesignStudio, { canScrollInWheelDirection, creamHeroSurfaceResponse, glitterHeroSurfaceResponse, jellyHeroSurfaceResponse, matteHeroSurfaceResponse, stageLightingOpacity, surfaceMaterialFinish } from './NailDesignStudio';
 import { heroEffectForPolish, normalizePersistedAuraEffect, normalizePolishForFinish } from './polishFinish';
 import { MATERIAL_PROFILES, materialProfile } from './MaterialRenderer';
 import { createHeroDesignDocument } from '../hero-design/index.ts';
@@ -133,15 +133,16 @@ describe('DS-03 Polish Studio repair', () => {
     expect(high).toBeGreaterThan(low * 2);
     expect(stageLightingOpacity('Glitter', .68, 'apex', .399)).toBeLessThan(.05);
     expect(stageLightingOpacity('Glitter', .68, 'primary', .442)).toBeLessThan(.05);
-    expect(stageLightingOpacity('Solid', .68, 'primary', .442)).toBe(.442);
+    expect(stageLightingOpacity('Solid', .68, 'primary', .442)).toBe(stageLightingOpacity('Cream', .68, 'primary', .442));
   });
 
   it('isolates Matte from generic Solid Hero lighting while retaining depth', () => {
+    expect(['Solid', 'Marble', 'Cream', 'Jelly', 'Matte', 'Glitter'].map(surfaceMaterialFinish)).toEqual(['Cream', 'Cream', 'Cream', 'Jelly', 'Matte', 'Glitter']);
     expect(matteHeroSurfaceResponse).toEqual({ apex: .08, primary: .035, edge: .08 });
     for (const role of ['apex', 'primary', 'edge']) {
-      expect(stageLightingOpacity('Matte', .08, role, 1)).toBeLessThan(stageLightingOpacity('Solid', .08, role, 1) * .1);
+      expect(stageLightingOpacity('Matte', .08, role, 1)).toBeLessThan(stageLightingOpacity('Gradient', .08, role, 1) * .1);
     }
-    expect(stageLightingOpacity('Solid', .08, 'primary', .42)).toBe(.42);
+    expect(stageLightingOpacity('Solid', .08, 'primary', .42)).toBe(stageLightingOpacity('Cream', .08, 'primary', .42));
     expect(stageLightingOpacity('Cream', .68, 'primary', .42)).toBe(.42 * creamHeroSurfaceResponse(.68).primary);
     expect(stageLightingOpacity('Marble', .68, 'primary', .42)).toBe(stageLightingOpacity('Cream', .68, 'primary', .42));
     expect(stageLightingOpacity('Jelly', .74, 'primary', .42)).toBe(.42 * jellyHeroSurfaceResponse(.74).primary);
@@ -659,6 +660,8 @@ describe('DS-TK01A French Tip integration', () => {
     await click([...frenchControls.querySelectorAll('button')].find((button) => button.textContent === 'Glitter'));
     const tipColor = frenchControls.querySelector('input[aria-label="French Tip color"]');
     await act(async () => { Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set.call(tipColor, '#164E9B'); tipColor.dispatchEvent(new Event('change', { bubbles: true })); });
+    const creamDepthStop = container.querySelector('[id^="hero-light-depth"] stop:last-child').getAttribute('stop-opacity');
+    const creamDepthOpacity = container.querySelector('[data-hero-lighting-layer="full-surface-depth"]').getAttribute('opacity');
 
     await click([...container.querySelectorAll('[role="tab"]')].find((item) => item.textContent === 'Effects'));
     const effect = container.querySelector('select[aria-label="Effect"]');
@@ -670,8 +673,12 @@ describe('DS-TK01A French Tip integration', () => {
     const material = nail.querySelector('[data-design-layer="polish"]');
     const marble = nail.querySelector('[data-effect-layer="marble"]');
     const french = nail.querySelector('[data-design-layer="french-tip"]');
+    const depth = nail.querySelector('[data-hero-lighting-layer="full-surface-depth"]');
     expect(nail.dataset.renderColor).toBe('#000000');
     expect(nail.dataset.lightingColorModel).toBe('neutral-achromatic');
+    expect(material.closest('[data-material-renderer]').dataset.materialProfile).toBe('CreamMaterial');
+    expect(material.dataset.polishFinish).toBe('Cream');
+    expect(material.dataset.heroEffect).toBe('Marble');
     expect(material.getAttribute('fill')).toMatch(/^url\(#hero-material-0-pigment\)$/);
     expect(marble.dataset.marbleAlpha).toBe('localized-stream-geometry-only');
     expect([...marble.querySelectorAll('path')].every((path) => path.getAttribute('fill') === 'none')).toBe(true);
@@ -680,6 +687,10 @@ describe('DS-TK01A French Tip integration', () => {
     expect(french.querySelector('[data-material-renderer]').dataset.materialInputColor).toBe('#164E9B');
     expect(marble.compareDocumentPosition(french) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(french.compareDocumentPosition(marble) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy();
+    expect(depth.dataset.surfaceFinish).toBe('Solid');
+    expect(depth.getAttribute('opacity')).toBe(creamDepthOpacity);
+    expect(nail.querySelector('[id^="hero-light-depth"] stop:last-child').getAttribute('stop-opacity')).toBe(creamDepthStop);
+    expect(french.compareDocumentPosition(depth) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it('keeps every transformed, softened, and metallic Marble component inside the stationary Hero clip', async () => {
@@ -712,7 +723,7 @@ describe('DS-TK01A French Tip integration', () => {
     expect(localizedBlur.getAttribute('style')).toContain('blur');
     expect(marble.contains(localizedBlur)).toBe(true);
     expect(marble.querySelector('[data-vein-component="metallic-highlight"]')).toBeTruthy();
-    expect(marble.querySelector('[data-vein-component="mineral-fragments"')).toBeTruthy();
+    expect(marble.querySelector('[data-vein-component="mineral-fragments"]')).toBeTruthy();
     expect([...marble.querySelectorAll('path')].every((path) => path.getAttribute('fill') === 'none')).toBe(true);
   });
 
