@@ -62,7 +62,8 @@ function MarbleVeins({ effect, nailIdentity, clipId }) {
   const streams = createMarbleVeinModel(effect, nailIdentity);
   const transform = effect.parameters.marbleTransform || { panX: 0, panY: 0, scale: 1, rotation: 0 };
   const groupTransform = `translate(${transform.panX || 0} ${transform.panY || 0}) translate(120 180) rotate(${transform.rotation || 0}) scale(${transform.scale || 1}) translate(-120 -180)`;
-  return <g data-effect-layer="marble" data-marble-alpha="localized-stream-geometry-only" data-marble-model="primary-secondary-hairline-diffusion" data-marble-transform={groupTransform} transform={groupTransform} clipPath={`url(#${clipId})`}>
+  return <g data-effect-layer="marble" data-marble-alpha="localized-stream-geometry-only" data-marble-model="primary-secondary-hairline-diffusion" data-marble-clip-authority="hero-nail-mask" clipPath={`url(#${clipId})`}>
+    <g data-marble-transform={groupTransform} transform={groupTransform}>
     {streams.filter((stream) => stream.visible).map((stream) => {
       const primary = stream.veinClass === 'primary'; const secondary = stream.veinClass === 'secondary'; const diffusion = stream.veinClass === 'diffusion';
       const metallic = !diffusion && metallicMarbleColor(stream.color); const bodyWidth = stream.width * (primary ? 2.15 : secondary ? 1.72 : diffusion ? 1 : 1.18);
@@ -76,6 +77,7 @@ function MarbleVeins({ effect, nailIdentity, clipId }) {
         {(primary || secondary) && <path data-vein-component="mineral-fragments" d={stream.path} stroke={marbleColor(stream.color, metallic ? 58 : 20)} strokeWidth={Math.max(.22, stream.width * .42)} strokeOpacity={stream.opacity * .48} fill="none" strokeLinecap="round" strokeDasharray=".4 24 .7 17 1.2 31" strokeDashoffset={stream.id.length * 7} vectorEffect="non-scaling-stroke" />}
       </g>;
     })}
+    </g>
   </g>;
 }
 
@@ -145,8 +147,11 @@ const WORKSPACE_SURFACES = [
 ];
 
 const interfaceFinish = (finish) => finish === 'Solid' ? 'Cream' : finish;
+// Marble is a transparent decoration over the selected Cream material. It must
+// not opt the full Hero surface into an effect-specific reflective response.
+const surfaceMaterialFinish = (finish) => finish === 'Marble' ? 'Cream' : finish;
 const baseColorKey = (finish) => finish === 'Gradient' ? 'colorA' : finish === 'ColorBlock' ? 'primaryColor' : 'baseColor';
-const stageLightingColor = (finish, configuredColor) => finish === 'Cream' ? '#FFFFFF' : configuredColor;
+const stageLightingColor = (finish, configuredColor) => surfaceMaterialFinish(finish) === 'Cream' ? '#FFFFFF' : configuredColor;
 
 export function ColorBlockRegions({ layer, bounds, clipId }) {
   const { x, y, width, height } = bounds;
@@ -229,7 +234,7 @@ export const matteHeroSurfaceResponse = Object.freeze({
 });
 
 export const stageLightingOpacity = (finish, shine, role, opacity) => {
-  if (finish === 'Cream') return opacity * creamHeroSurfaceResponse(shine)[role];
+  if (surfaceMaterialFinish(finish) === 'Cream') return opacity * creamHeroSurfaceResponse(shine)[role];
   if (finish === 'Glitter') return opacity * glitterHeroSurfaceResponse(shine)[role];
   if (finish === 'Jelly') return opacity * jellyHeroSurfaceResponse(shine)[role];
   if (finish === 'Matte') return opacity * matteHeroSurfaceResponse[role];
@@ -334,7 +339,7 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
   const activeFinish = selectedFinish;
   const activeFormulation = ['ColorBlock', 'NegativeSpace'].includes(activeFinish) ? finishFormulation : normalizePolishForFinish({ ...finishFormulation, ...heroDocument.nail.effect.parameters, name: polishName, colorHex: activePolishColor }, activeFinish);
   const activePolishSaved = savedPolishes.some((item) => (item.signature || polishSignature(item)) === polishSignature(activeFormulation));
-  const nailStageFinish = (index) => activeNailIndex === index ? activeFinish : (nailPolishes[index]?.finish || activeFinish);
+  const nailStageFinish = (index) => surfaceMaterialFinish(activeNailIndex === index ? activeFinish : (nailPolishes[index]?.finish || activeFinish));
   const nailStageShine = (index) => activeNailIndex === index ? appliedEffect.shine : (nailPolishes[index]?.shine ?? appliedEffect.shine);
   const nailStageLightingOpacity = (index, role, opacity) => stageLightingOpacity(nailStageFinish(index), nailStageShine(index), role, opacity);
   const marbleStreams = heroDocument.nail.effect.id === 'Marble' ? createMarbleVeinModel(heroDocument.nail.effect, `${heroDocument.metadata.id}:nail-${activeNailIndex}`) : [];
@@ -748,7 +753,7 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
                   <span className="nail-design-studio__finger-label">{label}</span>
                   <svg className="nail-design-studio__hero-nail" data-testid="stage-nail" data-nail-shape={nailShape.toLowerCase()}
                     data-active-polish-color={activePolishColor} data-applied-polish-color={nailPolishes[index]?.colorHex || ''} data-render-color={activeNailIndex === index ? activePolishColor : (nailPolishes[index]?.colorHex || activePolishColor)}
-                    data-lighting-color-model={(activeNailIndex === index ? activeFinish : (nailPolishes[index]?.finish || activeFinish)) === 'Cream' ? 'neutral-achromatic' : 'hero-environment'} data-effect-overlay-count={appliedEffect.id === 'Solid' ? '0' : Math.max(0, appliedEffect.layers.length - 1)}
+                    data-lighting-color-model={surfaceMaterialFinish(activeNailIndex === index ? activeFinish : (nailPolishes[index]?.finish || activeFinish)) === 'Cream' ? 'neutral-achromatic' : 'hero-environment'} data-effect-overlay-count={appliedEffect.id === 'Solid' ? '0' : Math.max(0, appliedEffect.layers.length - 1)}
                     data-hero-renderer="Hero Surface Rendering Engine" data-hero-mask={renderedSurface.maskId} data-design-layer-parent="true"
                     aria-label={`Hero Nail ${index + 1}`} viewBox={renderedSurface.viewBox} preserveAspectRatio="xMidYMid meet" role="img">
                     <defs><clipPath id={`hero-effect-mask-${index}`}><path d={renderedSurface.path}/></clipPath>{appliedEffect.id === 'NegativeSpace' && <mask id={`hero-negative-space-${index}`} maskUnits="userSpaceOnUse" x={renderedSurface.bounds.x} y={renderedSurface.bounds.y} width={renderedSurface.bounds.width} height={renderedSurface.bounds.height}><path d={renderedSurface.path} fill="white" /> <NegativeSpaceReveal layer={appliedEffect.layers[0]} bounds={renderedSurface.bounds} /></mask>}{appliedEffect.layers.map((layer, layerIndex) => layer.kind === 'linear-gradient' ? <linearGradient key={layerIndex} id={`hero-finish-${index}-${layerIndex}`} x1="0" y1="0" x2="1" y2="0" gradientTransform={`rotate(${layer.angle ?? 90} .5 .5)`}>{layer.colors.map((color, stop) => <stop key={stop} offset={`${stop / Math.max(1, layer.colors.length - 1) * 100}%`} stopColor={color} />)}</linearGradient> : layer.kind === 'radial-gradient' ? <radialGradient key={layerIndex} id={`hero-finish-${index}-${layerIndex}`} cx={`${layer.centerX * 100}%`} cy={`${layer.centerY * 100}%`} r={`${layer.radius * 100}%`} data-gradient-mode="center-glow-aura-blend">{layer.colors.map((color, stop) => <stop key={stop} offset={`${stop / Math.max(1, layer.colors.length - 1) * 100}%`} stopColor={color} stopOpacity={stop === 1 ? .82 : undefined}/>)}</radialGradient> : null)}<filter id={`hero-aura-softness-${index}`} x="-18%" y="-18%" width="136%" height="136%"><feGaussianBlur stdDeviation={(.6 + Number(appliedEffect.parameters.softness || 0) * 3.8).toFixed(2)}/></filter><radialGradient id={`hero-light-apex-${index}`} cx="50%" cy="28%" r="58%"><stop offset="0%" stopColor={stageLightingColor(activeNailIndex === index ? activeFinish : (nailPolishes[index]?.finish || activeFinish), appliedLighting.reflections[3].color)} stopOpacity={nailStageLightingOpacity(index, 'apex', appliedLighting.reflections[3].opacity)} /><stop offset="56%" stopColor={stageLightingColor(activeNailIndex === index ? activeFinish : (nailPolishes[index]?.finish || activeFinish), appliedLighting.reflections[3].color)} stopOpacity={nailStageLightingOpacity(index, 'apex', appliedLighting.reflections[3].opacity * .22)} /><stop offset="100%" stopColor={stageLightingColor(activeNailIndex === index ? activeFinish : (nailPolishes[index]?.finish || activeFinish), appliedLighting.reflections[3].color)} stopOpacity="0" /></radialGradient><linearGradient id={`hero-light-primary-${index}`} x1="0" y1="0" x2="1" y2="0" gradientTransform={`rotate(${appliedLighting.reflections[0].angle} .5 .5)`}><stop offset="0%" stopColor={stageLightingColor(activeNailIndex === index ? activeFinish : (nailPolishes[index]?.finish || activeFinish), appliedLighting.reflections[0].color)} stopOpacity="0" /><stop offset="42%" stopColor={stageLightingColor(activeNailIndex === index ? activeFinish : (nailPolishes[index]?.finish || activeFinish), appliedLighting.reflections[0].color)} stopOpacity={nailStageLightingOpacity(index, 'primary', appliedLighting.reflections[0].opacity)} /><stop offset="62%" stopColor={stageLightingColor(activeNailIndex === index ? activeFinish : (nailPolishes[index]?.finish || activeFinish), appliedLighting.reflections[0].color)} stopOpacity={nailStageLightingOpacity(index, 'primary', appliedLighting.reflections[0].opacity * .36)} /><stop offset="100%" stopColor={stageLightingColor(activeNailIndex === index ? activeFinish : (nailPolishes[index]?.finish || activeFinish), appliedLighting.reflections[0].color)} stopOpacity="0" /></linearGradient><linearGradient id={`hero-light-edge-${index}`} x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stopColor={stageLightingColor(activeNailIndex === index ? activeFinish : (nailPolishes[index]?.finish || activeFinish), appliedLighting.reflections[2].color)} stopOpacity={nailStageLightingOpacity(index, 'edge', appliedLighting.reflections[2].opacity)} /><stop offset="22%" stopColor={stageLightingColor(activeNailIndex === index ? activeFinish : (nailPolishes[index]?.finish || activeFinish), appliedLighting.reflections[2].color)} stopOpacity="0" /><stop offset="78%" stopColor={stageLightingColor(activeNailIndex === index ? activeFinish : (nailPolishes[index]?.finish || activeFinish), appliedLighting.reflections[2].color)} stopOpacity="0" /><stop offset="100%" stopColor={stageLightingColor(activeNailIndex === index ? activeFinish : (nailPolishes[index]?.finish || activeFinish), appliedLighting.reflections[2].color)} stopOpacity={nailStageLightingOpacity(index, 'edge', appliedLighting.reflections[2].opacity * .72)} /></linearGradient><linearGradient id={`hero-light-depth-${index}`} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#000000" stopOpacity="0" /><stop offset="100%" stopColor="#000000" stopOpacity={appliedLighting.reflections[4].opacity} /></linearGradient></defs>

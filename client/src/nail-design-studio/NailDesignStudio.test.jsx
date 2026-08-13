@@ -143,6 +143,7 @@ describe('DS-03 Polish Studio repair', () => {
     }
     expect(stageLightingOpacity('Solid', .08, 'primary', .42)).toBe(.42);
     expect(stageLightingOpacity('Cream', .68, 'primary', .42)).toBe(.42 * creamHeroSurfaceResponse(.68).primary);
+    expect(stageLightingOpacity('Marble', .68, 'primary', .42)).toBe(stageLightingOpacity('Cream', .68, 'primary', .42));
     expect(stageLightingOpacity('Jelly', .74, 'primary', .42)).toBe(.42 * jellyHeroSurfaceResponse(.74).primary);
 
     const depth = container.querySelector('[id^="hero-light-depth"] stop:last-child');
@@ -670,6 +671,7 @@ describe('DS-TK01A French Tip integration', () => {
     const marble = nail.querySelector('[data-effect-layer="marble"]');
     const french = nail.querySelector('[data-design-layer="french-tip"]');
     expect(nail.dataset.renderColor).toBe('#000000');
+    expect(nail.dataset.lightingColorModel).toBe('neutral-achromatic');
     expect(material.getAttribute('fill')).toMatch(/^url\(#hero-material-0-pigment\)$/);
     expect(marble.dataset.marbleAlpha).toBe('localized-stream-geometry-only');
     expect([...marble.querySelectorAll('path')].every((path) => path.getAttribute('fill') === 'none')).toBe(true);
@@ -678,6 +680,40 @@ describe('DS-TK01A French Tip integration', () => {
     expect(french.querySelector('[data-material-renderer]').dataset.materialInputColor).toBe('#164E9B');
     expect(marble.compareDocumentPosition(french) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(french.compareDocumentPosition(marble) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy();
+  });
+
+  it('keeps every transformed, softened, and metallic Marble component inside the stationary Hero clip', async () => {
+    await click([...container.querySelectorAll('[role="tab"]')].find((item) => item.textContent === 'Effects'));
+    const effect = container.querySelector('select[aria-label="Effect"]');
+    await act(async () => { effect.value = 'Marble'; effect.dispatchEvent(new Event('change', { bubbles: true })); });
+    const veinColor = container.querySelector('input[aria-label="Selected Vein Color"]');
+    await act(async () => { Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set.call(veinColor, '#D4AF37'); veinColor.dispatchEvent(new Event('change', { bubbles: true })); });
+
+    const cases = [
+      ['Marble Horizontal Position', '120'], ['Marble Horizontal Position', '-120'],
+      ['Marble Vertical Position', '180'], ['Marble Vertical Position', '-180'],
+      ['Marble Scale', '2.5'], ['Marble Rotation', '47'],
+    ];
+    for (const [label, value] of cases) {
+      await type(container.querySelector(`input[aria-label="${label}"]`), value);
+      const marble = container.querySelector('[data-effect-layer="marble"]');
+      const transformed = marble.firstElementChild;
+      expect(marble.dataset.marbleClipAuthority).toBe('hero-nail-mask');
+      expect(marble.getAttribute('clip-path')).toBe('url(#hero-effect-mask-0)');
+      expect(marble.hasAttribute('transform')).toBe(false);
+      expect(transformed.hasAttribute('transform')).toBe(true);
+      expect([...marble.querySelectorAll('path')].every((path) => transformed.contains(path))).toBe(true);
+    }
+
+    const softness = container.querySelector('input[aria-label="Selected Vein Softness"]');
+    await type(softness, softness.max || '4');
+    const marble = container.querySelector('[data-effect-layer="marble"]');
+    const localizedBlur = marble.querySelector('[data-vein-component="localized-diffusion"]');
+    expect(localizedBlur.getAttribute('style')).toContain('blur');
+    expect(marble.contains(localizedBlur)).toBe(true);
+    expect(marble.querySelector('[data-vein-component="metallic-highlight"]')).toBeTruthy();
+    expect(marble.querySelector('[data-vein-component="mineral-fragments"')).toBeTruthy();
+    expect([...marble.querySelectorAll('path')].every((path) => path.getAttribute('fill') === 'none')).toBe(true);
   });
 
   it('loads both mounted metadata and legacy French Tip layer persistence', () => {
