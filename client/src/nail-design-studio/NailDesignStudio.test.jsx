@@ -2,7 +2,7 @@ import React, { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import NailDesignStudio, { canScrollInWheelDirection, creamHeroSurfaceResponse, glitterHeroSurfaceResponse, jellyHeroSurfaceResponse, matteHeroSurfaceResponse, stageLightingOpacity, surfaceMaterialFinish } from './NailDesignStudio';
 import { heroEffectForPolish, normalizePersistedAuraEffect, normalizePolishForFinish } from './polishFinish';
-import { MATERIAL_PROFILES, materialProfile } from './MaterialRenderer';
+import { GLITTER_REFERENCE_BOUNDS, glitterParticleField, MATERIAL_PROFILES, materialProfile } from './MaterialRenderer';
 import { createHeroDesignDocument } from '../hero-design/index.ts';
 import { loadFrenchTips } from './FrenchTip';
 
@@ -681,8 +681,8 @@ describe('DS-TK01A French Tip integration', () => {
     expect(material.dataset.heroEffect).toBe('Marble');
     expect(material.getAttribute('fill')).toMatch(/^url\(#hero-material-0-pigment\)$/);
     expect(marble.dataset.marbleAlpha).toBe('localized-stream-geometry-only');
-    expect([...marble.querySelectorAll('path')].every((path) => path.getAttribute('fill') === 'none')).toBe(true);
-    expect(marble.querySelector('[data-stream-id="primary-0"] [data-vein-component="variable-width-core"]').getAttribute('stroke')).toBe('#D4AF37');
+    expect(marble.querySelector('[data-stream-id="primary-0"] [data-vein-component="variable-width-ribbon"]')).toBeTruthy();
+    expect(marble.querySelector('[data-stream-id="primary-0"] [data-material-profile="CreamMaterial"]').dataset.materialInputColor).toBe('#D4AF37');
     expect(french.dataset.frenchTipType).toBe('Glitter');
     expect(french.querySelector('[data-material-renderer]').dataset.materialInputColor).toBe('#164E9B');
     expect(marble.compareDocumentPosition(french) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
@@ -724,7 +724,7 @@ describe('DS-TK01A French Tip integration', () => {
     expect(marble.contains(localizedBlur)).toBe(true);
     expect(marble.querySelector('[data-vein-component="metallic-highlight"]')).toBeTruthy();
     expect(marble.querySelector('[data-vein-component="mineral-fragments"]')).toBeTruthy();
-    expect([...marble.querySelectorAll('path')].every((path) => path.getAttribute('fill') === 'none')).toBe(true);
+    expect(marble.querySelectorAll('[data-vein-component="variable-width-ribbon"]').length).toBeGreaterThan(0);
   });
 
   it('synchronizes direct Marble selection and local formulation/taper controls without painting hit targets', async () => {
@@ -738,12 +738,58 @@ describe('DS-TK01A French Tip integration', () => {
     expect(container.querySelector('[data-marble-selection="primary-1"]')).toBeTruthy();
     const finish = container.querySelector('select[aria-label="Selected Vein Finish"]');
     await act(async () => { finish.value = 'Glitter'; finish.dispatchEvent(new Event('change', { bubbles: true })); });
-    expect(container.querySelector('[data-stream-id="primary-1"] [data-vein-component="glitter-particles"]')).toBeTruthy();
+    expect(container.querySelector('[data-stream-id="primary-1"] [data-material-profile="GlitterMaterial"]')).toBeTruthy();
     await type(container.querySelector('input[aria-label="Start Width"]'), '2.5'); await type(container.querySelector('input[aria-label="End Width"]'), '.25');
-    const widths = [...container.querySelectorAll('[data-stream-id="primary-1"] [data-vein-component="variable-width-core"]')].map((path) => Number(path.getAttribute('stroke-width')));
-    expect(widths[0]).toBeGreaterThan(widths.at(-1));
-    await click([...container.querySelectorAll('button')].find((button) => button.textContent === 'Edit Shape'));
+    const ribbon = container.querySelector('[data-stream-id="primary-1"] [data-vein-component="variable-width-ribbon"]');
+    expect(ribbon.dataset.widthProfile).toBe('2.5,1,0.25');
+    expect(ribbon.getAttribute('d')).toMatch(/Z$/);
+    await click([...container.querySelectorAll('button')].find((button) => button.textContent === 'Edit Vein'));
     expect(container.querySelectorAll('[data-stream-id="primary-1"] [data-marble-control-point]').length).toBeGreaterThanOrEqual(4);
+  });
+
+  it('composes selected-vein opacity once across every localized material child', async () => {
+    await click([...container.querySelectorAll('[role="tab"]')].find((item) => item.textContent === 'Effects'));
+    const effect = container.querySelector('select[aria-label="Effect"]');
+    await act(async () => { effect.value = 'Marble'; effect.dispatchEvent(new Event('change', { bubbles: true })); });
+    const finish = container.querySelector('select[aria-label="Selected Vein Finish"]');
+    const opacity = container.querySelector('input[aria-label="Selected Vein Opacity"]');
+    const initialPath = container.querySelector('[data-stream-id="primary-0"] [data-vein-component="variable-width-ribbon"]').getAttribute('d');
+    for (const formulation of ['Cream', 'Jelly', 'Matte', 'Glitter']) {
+      await act(async () => { finish.value = formulation; finish.dispatchEvent(new Event('change', { bubbles: true })); });
+      await type(opacity, '0');
+      const group = container.querySelector('[data-stream-id="primary-0"] [data-vein-component="localized-formulation"]');
+      expect(group.getAttribute('opacity')).toBe('0');
+      expect(group.querySelector('[data-material-renderer]')).toBeTruthy();
+      if (formulation === 'Glitter') expect(group.querySelectorAll('[data-material-layer="glitter-particle-field"] ellipse').length).toBeGreaterThan(0);
+      expect(container.querySelector('[data-stream-id="primary-0"] [data-vein-component="variable-width-ribbon"]').getAttribute('d')).toBe(initialPath);
+    }
+    await type(opacity, '.5');
+    const half = container.querySelector('[data-stream-id="primary-0"] [data-vein-component="localized-formulation"]');
+    expect(half.getAttribute('opacity')).toBe('0.5');
+    expect(half.querySelector('[data-vein-component="variable-width-ribbon"]').getAttribute('opacity')).toBe('1');
+    await type(opacity, '1');
+    expect(container.querySelector('[data-stream-id="primary-0"] [data-vein-component="localized-formulation"]').getAttribute('opacity')).toBe('1');
+    expect(container.querySelector('[data-stream-id="primary-0"] [data-vein-component="variable-width-ribbon"]').getAttribute('d')).toBe(initialPath);
+  });
+
+  it('generates deterministic Glitter populations from independent ribbon-local bounds', async () => {
+    await click([...container.querySelectorAll('[role="tab"]')].find((item) => item.textContent === 'Effects'));
+    const effect = container.querySelector('select[aria-label="Effect"]');
+    await act(async () => { effect.value = 'Marble'; effect.dispatchEvent(new Event('change', { bubbles: true })); });
+    const makeGlitter = async () => { const finish = container.querySelector('select[aria-label="Selected Vein Finish"]'); await act(async () => { finish.value = 'Glitter'; finish.dispatchEvent(new Event('change', { bubbles: true })); }); };
+    await makeGlitter();
+    const first = container.querySelector('[data-stream-id="primary-0"]');
+    const firstMaterial = first.querySelector('[data-material-profile="GlitterMaterial"]');
+    const firstCount = Number(firstMaterial.dataset.glitterParticleCount);
+    const fullCount = glitterParticleField('#8A405D', '#FFFFFF', .46, GLITTER_REFERENCE_BOUNDS).length;
+    expect(firstCount).toBeGreaterThan(0); expect(firstCount).toBeLessThan(fullCount / 2);
+    expect(first.querySelector('[data-material-layer="glitter-particle-field"]').getAttribute('clip-path')).toMatch(/glitter-mask/);
+    const firstBounds = first.querySelector('[data-vein-component="localized-formulation"]').dataset.localBounds;
+    await click([...container.querySelectorAll('[role="option"]')].find((option) => option.textContent.includes('Primary 2'))); await makeGlitter();
+    const second = container.querySelector('[data-stream-id="primary-1"]');
+    expect(second.querySelector('[data-vein-component="localized-formulation"]').dataset.localBounds).not.toBe(firstBounds);
+    expect(Number(second.querySelector('[data-material-profile="GlitterMaterial"]').dataset.glitterParticleCount)).toBeLessThan(fullCount / 2);
+    expect(container.querySelector('[data-effect-layer="marble"]').getAttribute('clip-path')).toMatch(/hero-effect-mask/);
   });
 
   it('loads both mounted metadata and legacy French Tip layer persistence', () => {
@@ -852,9 +898,8 @@ describe('adaptive Nail Desk', () => {
         const marble = container.querySelector('[data-effect-layer="marble"]');
         expect(marble.dataset.marbleAlpha).toBe('localized-stream-geometry-only');
         expect(marble.getAttribute('clip-path')).toMatch(/hero-effect-mask/);
-        expect([...marble.querySelectorAll('path')].every((path) => path.getAttribute('fill') === 'none')).toBe(true);
-        expect(marble.querySelector('[data-vein-component="body"]')).toBeTruthy();
-        expect(marble.querySelector('[data-vein-component="variable-width-core"]')).toBeTruthy();
+        expect(marble.querySelector('[data-vein-component="variable-width-ribbon"]')).toBeTruthy();
+        expect(marble.querySelector('[data-vein-component="localized-formulation"]')).toBeTruthy();
         expect(marble.querySelector('[data-vein-component="fracture"]')).toBeTruthy();
         expect(marble.querySelector('[data-vein-component="mineral-fragments"]')).toBeTruthy();
       }

@@ -106,6 +106,16 @@ describe('Jelly Material Engine', () => {
     expect(purple).not.toContain('submerged-glitter');
   });
 
+  test('uses optional localized particle regions without changing full-surface Glitter defaults', () => {
+    const full = renderMaterial('Glitter', '#A40A30', 1, .68, { fleckColor: '#D7B45A', glitterDensity: .46 });
+    const localized = renderMaterial('Glitter', '#A40A30', 1, .68, { fleckColor: '#D7B45A', glitterDensity: .46, particleBounds: [{ x: 10, y: 10, width: 22, height: 8 }, { x: 30, y: 16, width: 24, height: 9 }] });
+    expect(full).toContain('data-glitter-particle-count="2300"');
+    const count = Number(localized.match(/data-glitter-particle-count="(\d+)"/)[1]);
+    expect(count).toBeGreaterThan(0); expect(count).toBeLessThan(100);
+    expect(renderMaterial('Glitter', '#A40A30', 1, .68, { fleckColor: '#D7B45A', glitterDensity: .46, particleBounds: [{ x: 10, y: 10, width: 22, height: 8 }, { x: 30, y: 16, width: 24, height: 9 }] })).toBe(localized);
+    expect(localized).toContain('clip-path="url(#test-material-glitter-mask)"');
+  });
+
   test('scales the population through canonical Round free-edge render bounds', () => {
     const geometry = getNailFreeEdgeExtent({ shape: 'Round', length: 1, width: 1 });
     const bounds = { x: geometry.left, y: geometry.topY, width: geometry.width, height: geometry.renderBottomY - geometry.topY };

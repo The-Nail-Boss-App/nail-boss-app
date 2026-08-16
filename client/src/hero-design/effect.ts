@@ -196,6 +196,60 @@ export function marblePathFromPoints(points: readonly HeroMarblePoint[]): string
   return path;
 }
 
+const profileAt = (profile: HeroMarbleWidthProfile, t: number) => t <= .5
+  ? profile.start + (profile.middle - profile.start) * t * 2
+  : profile.middle + (profile.end - profile.middle) * (t - .5) * 2;
+
+/**
+ * Produces a continuous filled ribbon from the same artist-friendly shaping
+ * points used by direct editing. Material rendering consumes this outline, so
+ * taper is real localized geometry rather than a sequence of stroke widths.
+ */
+export function marbleRibbonPath(points: readonly HeroMarblePoint[], width: number, profile: HeroMarbleWidthProfile, samples = 48): string {
+  if (points.length < 2 || !Number.isFinite(width) || width <= 0) return '';
+  const sampled = Array.from({ length: Math.max(12, Math.min(96, samples)) }, (_, index) => {
+    const t = index / (Math.max(12, Math.min(96, samples)) - 1);
+    const scaled = t * (points.length - 1);
+    const i = Math.min(points.length - 2, Math.floor(scaled)); const u = scaled - i;
+    const p0 = points[Math.max(0, i - 1)], p1 = points[i], p2 = points[i + 1], p3 = points[Math.min(points.length - 1, i + 2)];
+    const cardinal = (a: number, b: number, c: number, d: number) => .5 * ((2 * b) + (-a + c) * u + (2 * a - 5 * b + 4 * c - d) * u ** 2 + (-a + 3 * b - 3 * c + d) * u ** 3);
+    return { x: cardinal(p0.x, p1.x, p2.x, p3.x), y: cardinal(p0.y, p1.y, p2.y, p3.y), t };
+  });
+  const edge = (side: number) => sampled.map((point, index) => {
+    const before = sampled[Math.max(0, index - 1)], after = sampled[Math.min(sampled.length - 1, index + 1)];
+    const length = Math.hypot(after.x - before.x, after.y - before.y) || 1;
+    const radius = width * profileAt(profile, point.t) / 2;
+    return { x: rounded(point.x - (after.y - before.y) / length * radius * side), y: rounded(point.y + (after.x - before.x) / length * radius * side) };
+  });
+  const outline = [...edge(1), ...edge(-1).reverse()];
+  return `${outline.map((point, index) => `${index ? 'L' : 'M'} ${point.x} ${point.y}`).join(' ')} Z`;
+}
+
+/** Bounds a completed ribbon, including room for the largest Glitter flecks and local surface detail. */
+export function marbleRibbonBounds(path: string, padding = 2.5) {
+  const coordinates = pathNumbers(path);
+  if (coordinates.length < 4 || coordinates.length % 2 !== 0) return Object.freeze({ x: 0, y: 0, width: 1, height: 1 });
+  const xs = coordinates.filter((_, index) => index % 2 === 0); const ys = coordinates.filter((_, index) => index % 2 === 1);
+  const safePadding = clamp(padding, 0, 12, 2.5);
+  const minX = Math.min(...xs) - safePadding; const minY = Math.min(...ys) - safePadding;
+  return Object.freeze({ x: rounded(minX), y: rounded(minY), width: rounded(Math.max(1, Math.max(...xs) - Math.min(...xs) + safePadding * 2)), height: rounded(Math.max(1, Math.max(...ys) - Math.min(...ys) + safePadding * 2)) });
+}
+
+/** Narrow generation regions follow the ribbon instead of its potentially large diagonal AABB. */
+export function marbleRibbonParticleBounds(path: string, padding = 2.5, pointsPerRegion = 8) {
+  const coordinates = pathNumbers(path); const outline = [] as HeroMarblePoint[];
+  for (let index = 0; index + 1 < coordinates.length; index += 2) outline.push({ x: coordinates[index], y: coordinates[index + 1] });
+  if (outline.length < 4 || outline.length % 2 !== 0) return [marbleRibbonBounds(path, padding)];
+  const sideLength = outline.length / 2; const regions = [];
+  for (let start = 0; start < sideLength; start += pointsPerRegion) {
+    const end = Math.min(sideLength, start + pointsPerRegion);
+    const paired = [...outline.slice(start, end), ...outline.slice(sideLength + (sideLength - end), sideLength + (sideLength - start))];
+    const localPath = paired.map((point, index) => `${index ? 'L' : 'M'} ${point.x} ${point.y}`).join(' ');
+    regions.push(marbleRibbonBounds(`${localPath} Z`, padding));
+  }
+  return Object.freeze(regions);
+}
+
 /** Stable maximum stream geometry, cached independently from Marble styling. */
 function createMarbleGeometry(nailIdentity: string, marbleSeed: string): readonly HeroMarbleGeometryStream[] {
   const cacheKey = `${MARBLE_GEOMETRY_VERSION}|${nailIdentity}|${marbleSeed}`;
