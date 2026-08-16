@@ -12,7 +12,7 @@ import {
   DEFAULT_HERO_MATERIAL_REFERENCE, HERO_MATERIAL_LIBRARY, HeroMaterialEngine,
   registerHeroMaterialEngine, resolveHeroNailMaterial, updateHeroMaterial,
   validateHeroNailMaterial,
-  HERO_EFFECT_IDS, HeroEffectEngine, registerHeroEffectEngine, applyHeroEffectToSurface, createMarbleVeinModel, marblePathFromPoints, marbleRibbonPath,
+  HERO_EFFECT_IDS, HeroEffectEngine, registerHeroEffectEngine, applyHeroEffectToSurface, createMarbleVeinModel, marblePathFromPoints, marbleRibbonBounds, marbleRibbonPath,
   updateHeroEffect, HeroLightingEngine, registerHeroLightingEngine, applyHeroLightingToEffect, connectHeroLightingInvalidation,
 } from './index';
 
@@ -384,6 +384,17 @@ describe('Hero Design integration shell', () => {
     expect(thickToThin).not.toBe(thinToThick);
     expect(marblePathFromPoints(points)).toBe(centerline);
     expect(marbleRibbonPath(points, Number.NaN, { start: 1, middle: 1, end: 1 })).toBe('');
+  });
+
+  test('bounds tapered and deformed ribbons locally with safe material padding', () => {
+    const original = [{ x: 10, y: 20 }, { x: 40, y: 70 }, { x: 80, y: 100 }];
+    const deformed = original.map((point, index) => index === 1 ? { x: point.x + 35, y: point.y - 18 } : point);
+    const ribbon = marbleRibbonPath(original, 8, { start: 2.5, middle: 1, end: .2 });
+    const editedRibbon = marbleRibbonPath(deformed, 8, { start: 2.5, middle: 1, end: .2 });
+    const bounds = marbleRibbonBounds(ribbon); const editedBounds = marbleRibbonBounds(editedRibbon);
+    expect(bounds.width).toBeLessThan(176); expect(bounds.height).toBeLessThan(290);
+    expect(editedBounds).not.toEqual(bounds);
+    expect(bounds.x).toBeLessThan(10); expect(bounds.y).toBeLessThan(20);
   });
 
 

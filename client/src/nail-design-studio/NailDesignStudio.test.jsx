@@ -2,7 +2,7 @@ import React, { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import NailDesignStudio, { canScrollInWheelDirection, creamHeroSurfaceResponse, glitterHeroSurfaceResponse, jellyHeroSurfaceResponse, matteHeroSurfaceResponse, stageLightingOpacity, surfaceMaterialFinish } from './NailDesignStudio';
 import { heroEffectForPolish, normalizePersistedAuraEffect, normalizePolishForFinish } from './polishFinish';
-import { MATERIAL_PROFILES, materialProfile } from './MaterialRenderer';
+import { GLITTER_REFERENCE_BOUNDS, glitterParticleField, MATERIAL_PROFILES, materialProfile } from './MaterialRenderer';
 import { createHeroDesignDocument } from '../hero-design/index.ts';
 import { loadFrenchTips } from './FrenchTip';
 
@@ -745,6 +745,51 @@ describe('DS-TK01A French Tip integration', () => {
     expect(ribbon.getAttribute('d')).toMatch(/Z$/);
     await click([...container.querySelectorAll('button')].find((button) => button.textContent === 'Edit Vein'));
     expect(container.querySelectorAll('[data-stream-id="primary-1"] [data-marble-control-point]').length).toBeGreaterThanOrEqual(4);
+  });
+
+  it('composes selected-vein opacity once across every localized material child', async () => {
+    await click([...container.querySelectorAll('[role="tab"]')].find((item) => item.textContent === 'Effects'));
+    const effect = container.querySelector('select[aria-label="Effect"]');
+    await act(async () => { effect.value = 'Marble'; effect.dispatchEvent(new Event('change', { bubbles: true })); });
+    const finish = container.querySelector('select[aria-label="Selected Vein Finish"]');
+    const opacity = container.querySelector('input[aria-label="Selected Vein Opacity"]');
+    const initialPath = container.querySelector('[data-stream-id="primary-0"] [data-vein-component="variable-width-ribbon"]').getAttribute('d');
+    for (const formulation of ['Cream', 'Jelly', 'Matte', 'Glitter']) {
+      await act(async () => { finish.value = formulation; finish.dispatchEvent(new Event('change', { bubbles: true })); });
+      await type(opacity, '0');
+      const group = container.querySelector('[data-stream-id="primary-0"] [data-vein-component="localized-formulation"]');
+      expect(group.getAttribute('opacity')).toBe('0');
+      expect(group.querySelector('[data-material-renderer]')).toBeTruthy();
+      if (formulation === 'Glitter') expect(group.querySelectorAll('[data-material-layer="glitter-particle-field"] ellipse').length).toBeGreaterThan(0);
+      expect(container.querySelector('[data-stream-id="primary-0"] [data-vein-component="variable-width-ribbon"]').getAttribute('d')).toBe(initialPath);
+    }
+    await type(opacity, '.5');
+    const half = container.querySelector('[data-stream-id="primary-0"] [data-vein-component="localized-formulation"]');
+    expect(half.getAttribute('opacity')).toBe('0.5');
+    expect(half.querySelector('[data-vein-component="variable-width-ribbon"]').getAttribute('opacity')).toBe('1');
+    await type(opacity, '1');
+    expect(container.querySelector('[data-stream-id="primary-0"] [data-vein-component="localized-formulation"]').getAttribute('opacity')).toBe('1');
+    expect(container.querySelector('[data-stream-id="primary-0"] [data-vein-component="variable-width-ribbon"]').getAttribute('d')).toBe(initialPath);
+  });
+
+  it('generates deterministic Glitter populations from independent ribbon-local bounds', async () => {
+    await click([...container.querySelectorAll('[role="tab"]')].find((item) => item.textContent === 'Effects'));
+    const effect = container.querySelector('select[aria-label="Effect"]');
+    await act(async () => { effect.value = 'Marble'; effect.dispatchEvent(new Event('change', { bubbles: true })); });
+    const makeGlitter = async () => { const finish = container.querySelector('select[aria-label="Selected Vein Finish"]'); await act(async () => { finish.value = 'Glitter'; finish.dispatchEvent(new Event('change', { bubbles: true })); }); };
+    await makeGlitter();
+    const first = container.querySelector('[data-stream-id="primary-0"]');
+    const firstMaterial = first.querySelector('[data-material-profile="GlitterMaterial"]');
+    const firstCount = Number(firstMaterial.dataset.glitterParticleCount);
+    const fullCount = glitterParticleField('#8A405D', '#FFFFFF', .46, GLITTER_REFERENCE_BOUNDS).length;
+    expect(firstCount).toBeGreaterThan(0); expect(firstCount).toBeLessThan(fullCount / 2);
+    expect(first.querySelector('[data-material-layer="glitter-particle-field"]').getAttribute('clip-path')).toMatch(/glitter-mask/);
+    const firstBounds = first.querySelector('[data-vein-component="localized-formulation"]').dataset.localBounds;
+    await click([...container.querySelectorAll('[role="option"]')].find((option) => option.textContent.includes('Primary 2'))); await makeGlitter();
+    const second = container.querySelector('[data-stream-id="primary-1"]');
+    expect(second.querySelector('[data-vein-component="localized-formulation"]').dataset.localBounds).not.toBe(firstBounds);
+    expect(Number(second.querySelector('[data-material-profile="GlitterMaterial"]').dataset.glitterParticleCount)).toBeLessThan(fullCount / 2);
+    expect(container.querySelector('[data-effect-layer="marble"]').getAttribute('clip-path')).toMatch(/hero-effect-mask/);
   });
 
   it('loads both mounted metadata and legacy French Tip layer persistence', () => {

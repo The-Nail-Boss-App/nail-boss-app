@@ -225,6 +225,31 @@ export function marbleRibbonPath(points: readonly HeroMarblePoint[], width: numb
   return `${outline.map((point, index) => `${index ? 'L' : 'M'} ${point.x} ${point.y}`).join(' ')} Z`;
 }
 
+/** Bounds a completed ribbon, including room for the largest Glitter flecks and local surface detail. */
+export function marbleRibbonBounds(path: string, padding = 2.5) {
+  const coordinates = pathNumbers(path);
+  if (coordinates.length < 4 || coordinates.length % 2 !== 0) return Object.freeze({ x: 0, y: 0, width: 1, height: 1 });
+  const xs = coordinates.filter((_, index) => index % 2 === 0); const ys = coordinates.filter((_, index) => index % 2 === 1);
+  const safePadding = clamp(padding, 0, 12, 2.5);
+  const minX = Math.min(...xs) - safePadding; const minY = Math.min(...ys) - safePadding;
+  return Object.freeze({ x: rounded(minX), y: rounded(minY), width: rounded(Math.max(1, Math.max(...xs) - Math.min(...xs) + safePadding * 2)), height: rounded(Math.max(1, Math.max(...ys) - Math.min(...ys) + safePadding * 2)) });
+}
+
+/** Narrow generation regions follow the ribbon instead of its potentially large diagonal AABB. */
+export function marbleRibbonParticleBounds(path: string, padding = 2.5, pointsPerRegion = 8) {
+  const coordinates = pathNumbers(path); const outline = [] as HeroMarblePoint[];
+  for (let index = 0; index + 1 < coordinates.length; index += 2) outline.push({ x: coordinates[index], y: coordinates[index + 1] });
+  if (outline.length < 4 || outline.length % 2 !== 0) return [marbleRibbonBounds(path, padding)];
+  const sideLength = outline.length / 2; const regions = [];
+  for (let start = 0; start < sideLength; start += pointsPerRegion) {
+    const end = Math.min(sideLength, start + pointsPerRegion);
+    const paired = [...outline.slice(start, end), ...outline.slice(sideLength + (sideLength - end), sideLength + (sideLength - start))];
+    const localPath = paired.map((point, index) => `${index ? 'L' : 'M'} ${point.x} ${point.y}`).join(' ');
+    regions.push(marbleRibbonBounds(`${localPath} Z`, padding));
+  }
+  return Object.freeze(regions);
+}
+
 /** Stable maximum stream geometry, cached independently from Marble styling. */
 function createMarbleGeometry(nailIdentity: string, marbleSeed: string): readonly HeroMarbleGeometryStream[] {
   const cacheKey = `${MARBLE_GEOMETRY_VERSION}|${nailIdentity}|${marbleSeed}`;
