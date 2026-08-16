@@ -12,7 +12,7 @@ import {
   DEFAULT_HERO_MATERIAL_REFERENCE, HERO_MATERIAL_LIBRARY, HeroMaterialEngine,
   registerHeroMaterialEngine, resolveHeroNailMaterial, updateHeroMaterial,
   validateHeroNailMaterial,
-  HERO_EFFECT_IDS, HeroEffectEngine, registerHeroEffectEngine, applyHeroEffectToSurface, createMarbleVeinModel,
+  HERO_EFFECT_IDS, HeroEffectEngine, registerHeroEffectEngine, applyHeroEffectToSurface, createMarbleVeinModel, marblePathFromPoints,
   updateHeroEffect, HeroLightingEngine, registerHeroLightingEngine, applyHeroLightingToEffect, connectHeroLightingInvalidation,
 } from './index';
 
@@ -357,6 +357,22 @@ describe('Hero Design integration shell', () => {
     expect(sparse.visible).toBe(false);
     expect(restored).toEqual(dense);
     expect(restored.color).toBe('#D4AF37');
+  });
+
+  test('keeps direct Marble shaping, taper, and formulation independent and persistent', async () => {
+    const base = { id: 'Marble' as const, version: '1' as const, parameters: { baseColor: '#F2E9E7', veinColor: '#704F59', veinDensity: 1, marbleSeed: 'editable-layout' } };
+    const generated = createMarbleVeinModel(base, 'design-1:nail-0'); const target = generated.find(({ id }) => id === 'primary-0')!; const untouched = generated.find(({ id }) => id === 'primary-1')!;
+    const points = target.controlPoints.map((point, index) => index === 2 ? { x: point.x + 18, y: point.y - 24 } : point);
+    const streamOverrides = { [target.id]: { geometryOverride: { points }, widthProfile: { start: 2.4, middle: 1.1, end: .25 }, formulation: { color: '#D4AF37', finish: 'Glitter' }, width: 4.2 } };
+    const effect = { ...base, parameters: { ...base.parameters, marbleTransform: { panX: 22, panY: -14, scale: 1.6, rotation: 37 }, streamOverrides } };
+    const edited = createMarbleVeinModel(effect, 'design-1:nail-0'); const changed = edited.find(({ id }) => id === target.id)!;
+    expect(changed).toMatchObject({ color: '#D4AF37', finish: 'Glitter', width: 4.2, widthProfile: { start: 2.4, middle: 1.1, end: .25 } });
+    expect(changed.path).toBe(marblePathFromPoints(points)); expect(changed.path).not.toBe(target.path);
+    expect(edited.find(({ id }) => id === untouched.id)?.path).toBe(untouched.path);
+    const hero = document(); hero.nail.effect = effect; const values = new Map<string, string>(); const adapter = new HeroLocalStoragePersistenceAdapter({ getItem: (key) => values.get(key) ?? null, setItem: (key, value) => values.set(key, value), removeItem: (key) => values.delete(key) });
+    await adapter.save(hero); const loaded = await adapter.load(hero.metadata.id); const restored = createMarbleVeinModel(loaded!.nail.effect, 'design-1:nail-0').find(({ id }) => id === target.id)!;
+    expect(restored.path).toBe(changed.path); expect(restored.widthProfile).toEqual(changed.widthProfile); expect(restored.finish).toBe('Glitter');
+    expect(createMarbleVeinModel({ ...effect, parameters: { ...effect.parameters, marbleTransform: { panX: 0, panY: 0, scale: 1, rotation: 0 } } }, 'design-1:nail-0').find(({ id }) => id === target.id)?.path).toBe(changed.path);
   });
 
 

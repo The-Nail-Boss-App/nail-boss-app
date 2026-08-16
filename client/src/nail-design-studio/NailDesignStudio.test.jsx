@@ -727,6 +727,25 @@ describe('DS-TK01A French Tip integration', () => {
     expect([...marble.querySelectorAll('path')].every((path) => path.getAttribute('fill') === 'none')).toBe(true);
   });
 
+  it('synchronizes direct Marble selection and local formulation/taper controls without painting hit targets', async () => {
+    await click([...container.querySelectorAll('[role="tab"]')].find((item) => item.textContent === 'Effects'));
+    const effect = container.querySelector('select[aria-label="Effect"]');
+    await act(async () => { effect.value = 'Marble'; effect.dispatchEvent(new Event('change', { bubbles: true })); });
+    const hit = container.querySelector('[data-marble-hit-target="primary-1"]');
+    expect(hit.getAttribute('stroke')).toBe('transparent'); expect(hit.getAttribute('fill')).toBe('none');
+    await act(async () => hit.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true })));
+    expect(container.querySelector('[role="option"][aria-selected="true"]').textContent).toContain('Primary 2');
+    expect(container.querySelector('[data-marble-selection="primary-1"]')).toBeTruthy();
+    const finish = container.querySelector('select[aria-label="Selected Vein Finish"]');
+    await act(async () => { finish.value = 'Glitter'; finish.dispatchEvent(new Event('change', { bubbles: true })); });
+    expect(container.querySelector('[data-stream-id="primary-1"] [data-vein-component="glitter-particles"]')).toBeTruthy();
+    await type(container.querySelector('input[aria-label="Start Width"]'), '2.5'); await type(container.querySelector('input[aria-label="End Width"]'), '.25');
+    const widths = [...container.querySelectorAll('[data-stream-id="primary-1"] [data-vein-component="variable-width-core"]')].map((path) => Number(path.getAttribute('stroke-width')));
+    expect(widths[0]).toBeGreaterThan(widths.at(-1));
+    await click([...container.querySelectorAll('button')].find((button) => button.textContent === 'Edit Shape'));
+    expect(container.querySelectorAll('[data-stream-id="primary-1"] [data-marble-control-point]').length).toBeGreaterThanOrEqual(4);
+  });
+
   it('loads both mounted metadata and legacy French Tip layer persistence', () => {
     expect(loadFrenchTips({ metadata: { frenchTips: [{ style: 'v', colorHex: '#ABCDEF', tipType: 'Matte' }] } })[0]).toMatchObject({ style: 'v', colorHex: '#ABCDEF', tipType: 'Matte' });
     expect(loadFrenchTips({ nails: [{ layers: [{ type: 'frenchTip', visible: true, data: { preset: 'deep', colorHex: '#FEDCBA' } }] }] })[0]).toMatchObject({ preset: 'deep', colorHex: '#FEDCBA', tipType: 'Cream' });

@@ -110,7 +110,10 @@ export interface HeroEffectInput {
   nailIdentity?: string;
 }
 export type HeroMarbleVeinClass = 'primary' | 'secondary' | 'hairline' | 'diffusion';
-export interface HeroMarbleStream { id: string; veinClass: HeroMarbleVeinClass; color: string; path: string; width: number; opacity: number; softness: number; visible: boolean }
+export type HeroMarbleVeinFinish = 'Cream' | 'Jelly' | 'Matte' | 'Glitter';
+export interface HeroMarblePoint { x: number; y: number }
+export interface HeroMarbleWidthProfile { start: number; middle: number; end: number }
+export interface HeroMarbleStream { id: string; veinClass: HeroMarbleVeinClass; color: string; finish: HeroMarbleVeinFinish; path: string; generatedPath: string; controlPoints: readonly HeroMarblePoint[]; width: number; widthProfile: HeroMarbleWidthProfile; opacity: number; softness: number; visible: boolean }
 export interface HeroFinishLayer { kind: 'color' | 'linear-gradient' | 'radial-gradient' | 'veins' | 'color-block' | 'reveal-mask'; opacity: number; color?: string; colors?: readonly string[]; angle?: number; position?: number; width?: number; paths?: readonly string[]; streams?: readonly HeroMarbleStream[]; clipToMask?: boolean; seed?: string; centerX?: number; centerY?: number; radius?: number; softness?: number; direction?: 'vertical' | 'horizontal' | 'diagonal'; revealType?: 'vertical-band' | 'horizontal-band' | 'diagonal-band' | 'center-cutout'; size?: number; rotation?: number }
 export interface HeroAppliedEffect {
   id: HeroEffectId;
@@ -160,9 +163,37 @@ export function normalizeMarbleStreamOverrides(value: unknown): Record<string, R
     if (typeof override.opacity === 'number') next.opacity = clamp(override.opacity, 0, 1, 1);
     if (typeof override.softness === 'number') next.softness = clamp(override.softness, 0, 6, 0);
     if (typeof override.visible === 'boolean') next.visible = override.visible;
+    const formulation = override.formulation && typeof override.formulation === 'object' && !Array.isArray(override.formulation) ? override.formulation as Record<string, unknown> : {};
+    const finish = formulation.finish ?? override.finish;
+    if (['Cream', 'Jelly', 'Matte', 'Glitter'].includes(finish as string)) next.formulation = { finish, ...(color(formulation.color) ? { color: (formulation.color as string).toUpperCase() } : {}) };
+    const points = override.geometryOverride && typeof override.geometryOverride === 'object' ? (override.geometryOverride as Record<string, unknown>).points : undefined;
+    if (Array.isArray(points) && points.length >= 2 && points.length <= 7 && points.every((point) => point && typeof point === 'object' && Number.isFinite(Number((point as Record<string, unknown>).x)) && Number.isFinite(Number((point as Record<string, unknown>).y)))) {
+      next.geometryOverride = { points: points.map((point) => ({ x: clamp(Number((point as Record<string, unknown>).x), -1000, 1000, 0), y: clamp(Number((point as Record<string, unknown>).y), -1000, 1200, 0) })) };
+    }
+    const profile = override.widthProfile && typeof override.widthProfile === 'object' ? override.widthProfile as Record<string, unknown> : undefined;
+    if (profile) next.widthProfile = { start: clamp(profile.start, .1, 3, 1), middle: clamp(profile.middle, .1, 3, 1), end: clamp(profile.end, .1, 3, 1) };
     if (Object.keys(next).length) result[id] = next;
   });
   return result;
+}
+
+const pathNumbers = (path: string) => (path.match(/-?\d*\.?\d+/g) || []).map(Number);
+/** Samples the generated cubic path into approachable, composition-space shaping points. */
+export function marbleControlPoints(path: string, count = 5): HeroMarblePoint[] {
+  const n = pathNumbers(path); if (n.length < 2) return [];
+  const segments: Array<[HeroMarblePoint, HeroMarblePoint, HeroMarblePoint, HeroMarblePoint]> = [];
+  let p = { x: n[0], y: n[1] };
+  for (let i = 2; i + 5 < n.length; i += 6) { const next = { x: n[i + 4], y: n[i + 5] }; segments.push([p, { x: n[i], y: n[i + 1] }, { x: n[i + 2], y: n[i + 3] }, next]); p = next; }
+  const at = (t: number) => { const scaled = Math.min(segments.length - .000001, t * segments.length); const s = segments[Math.floor(scaled)]; const u = scaled - Math.floor(scaled); const v = 1 - u; return { x: rounded(v ** 3 * s[0].x + 3 * v ** 2 * u * s[1].x + 3 * v * u ** 2 * s[2].x + u ** 3 * s[3].x), y: rounded(v ** 3 * s[0].y + 3 * v ** 2 * u * s[1].y + 3 * v * u ** 2 * s[2].y + u ** 3 * s[3].y) }; };
+  return segments.length ? Array.from({ length: count }, (_, i) => at(i / (count - 1))) : [{ x: n[0], y: n[1] }];
+}
+
+/** Cardinal spline keeps direct edits smooth without exposing tangent handles. */
+export function marblePathFromPoints(points: readonly HeroMarblePoint[]): string {
+  if (points.length < 2) return '';
+  let path = `M ${rounded(points[0].x)} ${rounded(points[0].y)}`;
+  for (let i = 0; i < points.length - 1; i += 1) { const p0 = points[Math.max(0, i - 1)], p1 = points[i], p2 = points[i + 1], p3 = points[Math.min(points.length - 1, i + 2)]; path += ` C ${rounded(p1.x + (p2.x - p0.x) / 6)} ${rounded(p1.y + (p2.y - p0.y) / 6)} ${rounded(p2.x - (p3.x - p1.x) / 6)} ${rounded(p2.y - (p3.y - p1.y) / 6)} ${rounded(p2.x)} ${rounded(p2.y)}`; }
+  return path;
 }
 
 /** Stable maximum stream geometry, cached independently from Marble styling. */
@@ -206,7 +237,11 @@ export function createMarbleVeinModel(effect: HeroEffectReference, nailIdentity 
   const marbleSeed = normalizeMarbleLayoutSeed(effect.parameters.marbleSeed);
   const overrides = normalizeMarbleStreamOverrides(effect.parameters.streamOverrides);
   return Object.freeze(createMarbleGeometry(nailIdentity, marbleSeed).map((stream) => Object.freeze({
-    id: stream.id, veinClass: stream.veinClass, color: overrides[stream.id]?.color as string || color, path: stream.path, width: overrides[stream.id]?.width as number ?? stream.width,
+    id: stream.id, veinClass: stream.veinClass, color: (overrides[stream.id]?.formulation as Record<string, unknown>)?.color as string || overrides[stream.id]?.color as string || color,
+    finish: ((overrides[stream.id]?.formulation as Record<string, unknown>)?.finish || 'Cream') as HeroMarbleVeinFinish,
+    path: overrides[stream.id]?.geometryOverride ? marblePathFromPoints((overrides[stream.id].geometryOverride as { points: HeroMarblePoint[] }).points) : stream.path, generatedPath: stream.path,
+    controlPoints: overrides[stream.id]?.geometryOverride ? (overrides[stream.id].geometryOverride as { points: HeroMarblePoint[] }).points : marbleControlPoints(stream.path, stream.veinClass === 'hairline' ? 4 : 5),
+    width: overrides[stream.id]?.width as number ?? stream.width, widthProfile: (overrides[stream.id]?.widthProfile as HeroMarbleWidthProfile) || { start: 1, middle: 1, end: 1 },
     opacity: overrides[stream.id]?.opacity as number ?? rounded(stream.opacity * (.55 + density * .75)), softness: overrides[stream.id]?.softness as number ?? stream.softness,
     // Primary veins anchor the composition. Density progressively reveals only
     // deterministic subordinate streams, so already-visible paths never move.
