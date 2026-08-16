@@ -743,8 +743,89 @@ describe('DS-TK01A French Tip integration', () => {
     const ribbon = container.querySelector('[data-stream-id="primary-1"] [data-vein-component="variable-width-ribbon"]');
     expect(ribbon.dataset.widthProfile).toBe('2.5,1,0.25');
     expect(ribbon.getAttribute('d')).toMatch(/Z$/);
-    await click([...container.querySelectorAll('button')].find((button) => button.textContent === 'Edit Vein'));
     expect(container.querySelectorAll('[data-stream-id="primary-1"] [data-marble-control-point]').length).toBeGreaterThanOrEqual(4);
+    expect(container.querySelectorAll('[data-stream-id="primary-1"] [data-marble-width-handle]').length).toBe(3);
+    expect(container.querySelector('[data-marble-hit-target="primary-1"]').closest('[data-effect-layer="marble"]')).toBe(container.querySelectorAll('[data-effect-layer="marble"]')[1]);
+    expect(container.querySelector('details summary').textContent).toContain('Accessible geometry controls');
+  });
+
+  it('moves one selected vein and edits the authoritative width profile in Marble coordinates', async () => {
+    await click([...container.querySelectorAll('[role="tab"]')].find((item) => item.textContent === 'Effects'));
+    const effect = container.querySelector('select[aria-label="Effect"]');
+    await act(async () => { effect.value = 'Marble'; effect.dispatchEvent(new Event('change', { bubbles: true })); });
+    const identity = { inverse: () => identity };
+    const originalMatrix = window.SVGElement.prototype.getScreenCTM; const originalPoint = window.SVGSVGElement.prototype.createSVGPoint;
+    window.SVGElement.prototype.getScreenCTM = () => identity;
+    window.SVGSVGElement.prototype.createSVGPoint = () => ({ x: 0, y: 0, matrixTransform() { return { x: this.x, y: this.y }; } });
+    const desk = container.querySelector('[data-testid="nail-stage-container"]');
+    const target = container.querySelector('[data-marble-hit-target="primary-1"]');
+    const before = target.getAttribute('d');
+    const otherBefore = container.querySelector('[data-stream-id="primary-0"] [data-vein-component="variable-width-ribbon"]').getAttribute('d');
+    const transformBefore = container.querySelector('[data-marble-transform]').dataset.marbleTransform;
+    await act(async () => target.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0, clientX: 10, clientY: 10 })));
+    await act(async () => desk.dispatchEvent(new MouseEvent('pointermove', { bubbles: true, button: 0, clientX: 22, clientY: 4 })));
+    expect(container.querySelector('[data-marble-hit-target="primary-1"]').getAttribute('d')).not.toBe(before);
+    expect(container.querySelector('[data-stream-id="primary-0"] [data-vein-component="variable-width-ribbon"]').getAttribute('d')).toBe(otherBefore);
+    expect(container.querySelector('[data-marble-transform]').dataset.marbleTransform).toBe(transformBefore);
+    await act(async () => desk.dispatchEvent(new MouseEvent('pointerup', { bubbles: true })));
+    const width = container.querySelector('[data-marble-width-handle="start"] rect');
+    const profileBefore = container.querySelector('[data-stream-id="primary-1"] [data-vein-component="variable-width-ribbon"]').dataset.widthProfile;
+    await act(async () => width.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0, clientX: 10, clientY: 10 })));
+    await act(async () => desk.dispatchEvent(new MouseEvent('pointermove', { bubbles: true, button: 0, clientX: 40, clientY: 40 })));
+    expect(container.querySelector('[data-stream-id="primary-1"] [data-vein-component="variable-width-ribbon"]').dataset.widthProfile).not.toBe(profileBefore);
+    expect(container.querySelectorAll('[data-marble-width-handle]').length).toBe(3);
+    window.SVGElement.prototype.getScreenCTM = originalMatrix; window.SVGSVGElement.prototype.createSVGPoint = originalPoint;
+  });
+
+  it('projects width drags through the unrotated Marble group coordinate space', async () => {
+    await click([...container.querySelectorAll('[role="tab"]')].find((item) => item.textContent === 'Effects'));
+    const effect = container.querySelector('select[aria-label="Effect"]');
+    await act(async () => { effect.value = 'Marble'; effect.dispatchEvent(new Event('change', { bubbles: true })); });
+    const scale = container.querySelector('input[aria-label="Marble Scale"]');
+    const rotation = container.querySelector('input[aria-label="Marble Rotation"]');
+    await type(scale, '2'); await type(rotation, '60');
+
+    const radians = Math.PI / 3; const globalScale = 2;
+    const toScreen = ({ x, y }) => ({ x: globalScale * (x * Math.cos(radians) - y * Math.sin(radians)), y: globalScale * (x * Math.sin(radians) + y * Math.cos(radians)) });
+    const groupInverse = { apply: ({ x, y }) => ({ x: (x * Math.cos(radians) + y * Math.sin(radians)) / globalScale, y: (-x * Math.sin(radians) + y * Math.cos(radians)) / globalScale }) };
+    const rotatedDiamondInverse = { apply: ({ x, y }) => ({ x: (x + y) / Math.SQRT2, y: (y - x) / Math.SQRT2 }) };
+    const originalMatrix = window.SVGElement.prototype.getScreenCTM; const originalPoint = window.SVGSVGElement.prototype.createSVGPoint;
+    const groupMatrix = jest.fn(() => ({ inverse: () => groupInverse })); const diamondMatrix = jest.fn(() => ({ inverse: () => rotatedDiamondInverse }));
+    window.SVGSVGElement.prototype.createSVGPoint = () => ({ x: 0, y: 0, matrixTransform(matrix) { return matrix.apply(this); } });
+    const desk = container.querySelector('[data-testid="nail-stage-container"]');
+    const ribbonProfile = () => container.querySelector('[data-stream-id="primary-0"] [data-vein-component="variable-width-ribbon"]').dataset.widthProfile.split(',').map(Number);
+    const dragWidth = async (position, localDelta) => {
+      const handle = container.querySelector(`[data-marble-width-handle="${position}"]`); const diamond = handle.querySelector('rect');
+      handle.getScreenCTM = groupMatrix; diamond.getScreenCTM = diamondMatrix;
+      const screenDelta = toScreen(localDelta);
+      await act(async () => diamond.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0, clientX: 0, clientY: 0 })));
+      await act(async () => desk.dispatchEvent(new MouseEvent('pointermove', { bubbles: true, button: 0, clientX: screenDelta.x, clientY: screenDelta.y })));
+      await act(async () => desk.dispatchEvent(new MouseEvent('pointerup', { bubbles: true })));
+      return diamond;
+    };
+    const handleDirection = (position) => {
+      const handle = container.querySelector(`[data-marble-width-handle="${position}"]`); const line = handle.querySelector('line');
+      const x = Number(line.getAttribute('x2')) - Number(line.getAttribute('x1')); const y = Number(line.getAttribute('y2')) - Number(line.getAttribute('y1')); const length = Math.hypot(x, y);
+      return { normal: { x: x / length, y: y / length }, tangent: { x: -y / length, y: x / length } };
+    };
+
+    for (const [position, index] of [['start', 0], ['middle', 1], ['end', 2]]) {
+      const before = ribbonProfile(); const { normal } = handleDirection(position);
+      const diamond = await dragWidth(position, { x: normal.x * 4, y: normal.y * 4 }); const after = ribbonProfile();
+      expect(diamond.getAttribute('transform')).toMatch(/^rotate\(45 /);
+      expect(after[index]).toBeGreaterThan(before[index]);
+      expect(after.filter((_, profileIndex) => profileIndex !== index)).toEqual(before.filter((_, profileIndex) => profileIndex !== index));
+    }
+    const increased = ribbonProfile(); const { normal, tangent } = handleDirection('start');
+    await dragWidth('start', { x: -normal.x * 4, y: -normal.y * 4 });
+    expect(ribbonProfile()[0]).toBeLessThan(increased[0]);
+    const beforeTangent = ribbonProfile(); await dragWidth('start', { x: tangent.x * 8, y: tangent.y * 8 });
+    const afterTangent = ribbonProfile();
+    expect(Math.abs(afterTangent[0] - beforeTangent[0])).toBeLessThan(.1);
+    expect(afterTangent.slice(1)).toEqual(beforeTangent.slice(1));
+    expect(groupMatrix).toHaveBeenCalled(); expect(diamondMatrix).not.toHaveBeenCalled();
+    expect(container.querySelector('[data-marble-transform]').getAttribute('transform')).toContain('rotate(60) scale(2)');
+    window.SVGElement.prototype.getScreenCTM = originalMatrix; window.SVGSVGElement.prototype.createSVGPoint = originalPoint;
   });
 
   it('gives Move Marble precedence over the direct vein editing overlay and restores editing afterward', async () => {
@@ -760,7 +841,6 @@ describe('DS-TK01A French Tip integration', () => {
     // Direct selection and handles remain authoritative while Move Marble is off.
     await act(async () => container.querySelector('[data-marble-hit-target="primary-1"]').dispatchEvent(pointer('pointerdown', 1, 100, 100)));
     expect(container.querySelector('[role="option"][aria-selected="true"]').textContent).toContain('Primary 2');
-    await click([...container.querySelectorAll('button')].find((button) => button.textContent === 'Edit Vein'));
     const controlPoint = container.querySelector('[data-stream-id="primary-1"] [data-marble-control-point]');
     expect(controlPoint).toBeTruthy();
 
