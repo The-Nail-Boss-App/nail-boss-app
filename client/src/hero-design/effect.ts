@@ -196,6 +196,35 @@ export function marblePathFromPoints(points: readonly HeroMarblePoint[]): string
   return path;
 }
 
+const profileAt = (profile: HeroMarbleWidthProfile, t: number) => t <= .5
+  ? profile.start + (profile.middle - profile.start) * t * 2
+  : profile.middle + (profile.end - profile.middle) * (t - .5) * 2;
+
+/**
+ * Produces a continuous filled ribbon from the same artist-friendly shaping
+ * points used by direct editing. Material rendering consumes this outline, so
+ * taper is real localized geometry rather than a sequence of stroke widths.
+ */
+export function marbleRibbonPath(points: readonly HeroMarblePoint[], width: number, profile: HeroMarbleWidthProfile, samples = 48): string {
+  if (points.length < 2 || !Number.isFinite(width) || width <= 0) return '';
+  const sampled = Array.from({ length: Math.max(12, Math.min(96, samples)) }, (_, index) => {
+    const t = index / (Math.max(12, Math.min(96, samples)) - 1);
+    const scaled = t * (points.length - 1);
+    const i = Math.min(points.length - 2, Math.floor(scaled)); const u = scaled - i;
+    const p0 = points[Math.max(0, i - 1)], p1 = points[i], p2 = points[i + 1], p3 = points[Math.min(points.length - 1, i + 2)];
+    const cardinal = (a: number, b: number, c: number, d: number) => .5 * ((2 * b) + (-a + c) * u + (2 * a - 5 * b + 4 * c - d) * u ** 2 + (-a + 3 * b - 3 * c + d) * u ** 3);
+    return { x: cardinal(p0.x, p1.x, p2.x, p3.x), y: cardinal(p0.y, p1.y, p2.y, p3.y), t };
+  });
+  const edge = (side: number) => sampled.map((point, index) => {
+    const before = sampled[Math.max(0, index - 1)], after = sampled[Math.min(sampled.length - 1, index + 1)];
+    const length = Math.hypot(after.x - before.x, after.y - before.y) || 1;
+    const radius = width * profileAt(profile, point.t) / 2;
+    return { x: rounded(point.x - (after.y - before.y) / length * radius * side), y: rounded(point.y + (after.x - before.x) / length * radius * side) };
+  });
+  const outline = [...edge(1), ...edge(-1).reverse()];
+  return `${outline.map((point, index) => `${index ? 'L' : 'M'} ${point.x} ${point.y}`).join(' ')} Z`;
+}
+
 /** Stable maximum stream geometry, cached independently from Marble styling. */
 function createMarbleGeometry(nailIdentity: string, marbleSeed: string): readonly HeroMarbleGeometryStream[] {
   const cacheKey = `${MARBLE_GEOMETRY_VERSION}|${nailIdentity}|${marbleSeed}`;

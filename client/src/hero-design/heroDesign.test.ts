@@ -12,7 +12,7 @@ import {
   DEFAULT_HERO_MATERIAL_REFERENCE, HERO_MATERIAL_LIBRARY, HeroMaterialEngine,
   registerHeroMaterialEngine, resolveHeroNailMaterial, updateHeroMaterial,
   validateHeroNailMaterial,
-  HERO_EFFECT_IDS, HeroEffectEngine, registerHeroEffectEngine, applyHeroEffectToSurface, createMarbleVeinModel, marblePathFromPoints,
+  HERO_EFFECT_IDS, HeroEffectEngine, registerHeroEffectEngine, applyHeroEffectToSurface, createMarbleVeinModel, marblePathFromPoints, marbleRibbonPath,
   updateHeroEffect, HeroLightingEngine, registerHeroLightingEngine, applyHeroLightingToEffect, connectHeroLightingInvalidation,
 } from './index';
 
@@ -373,6 +373,17 @@ describe('Hero Design integration shell', () => {
     await adapter.save(hero); const loaded = await adapter.load(hero.metadata.id); const restored = createMarbleVeinModel(loaded!.nail.effect, 'design-1:nail-0').find(({ id }) => id === target.id)!;
     expect(restored.path).toBe(changed.path); expect(restored.widthProfile).toEqual(changed.widthProfile); expect(restored.finish).toBe('Glitter');
     expect(createMarbleVeinModel({ ...effect, parameters: { ...effect.parameters, marbleTransform: { panX: 0, panY: 0, scale: 1, rotation: 0 } } }, 'design-1:nail-0').find(({ id }) => id === target.id)?.path).toBe(changed.path);
+  });
+
+  test('builds a continuous variable-width ribbon without changing its centerline', () => {
+    const points = [{ x: 10, y: 10 }, { x: 30, y: 45 }, { x: 65, y: 70 }, { x: 90, y: 110 }];
+    const centerline = marblePathFromPoints(points);
+    const thickToThin = marbleRibbonPath(points, 6, { start: 2, middle: 1, end: .2 });
+    const thinToThick = marbleRibbonPath(points, 6, { start: .2, middle: 1, end: 2 });
+    expect(thickToThin).toMatch(/^M .* Z$/); expect(thinToThick).toMatch(/^M .* Z$/);
+    expect(thickToThin).not.toBe(thinToThick);
+    expect(marblePathFromPoints(points)).toBe(centerline);
+    expect(marbleRibbonPath(points, Number.NaN, { start: 1, middle: 1, end: 1 })).toBe('');
   });
 
 
