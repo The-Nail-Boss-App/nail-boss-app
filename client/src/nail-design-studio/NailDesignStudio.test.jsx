@@ -747,6 +747,59 @@ describe('DS-TK01A French Tip integration', () => {
     expect(container.querySelectorAll('[data-stream-id="primary-1"] [data-marble-control-point]').length).toBeGreaterThanOrEqual(4);
   });
 
+  it('gives Move Marble precedence over the direct vein editing overlay and restores editing afterward', async () => {
+    await click([...container.querySelectorAll('[role="tab"]')].find((item) => item.textContent === 'Effects'));
+    const effect = container.querySelector('select[aria-label="Effect"]');
+    await act(async () => { effect.value = 'Marble'; effect.dispatchEvent(new Event('change', { bubbles: true })); });
+    const pointer = (type, pointerId, clientX, clientY) => {
+      const event = new MouseEvent(type, { bubbles: true, button: 0, clientX, clientY });
+      Object.defineProperty(event, 'pointerId', { value: pointerId });
+      return event;
+    };
+
+    // Direct selection and handles remain authoritative while Move Marble is off.
+    await act(async () => container.querySelector('[data-marble-hit-target="primary-1"]').dispatchEvent(pointer('pointerdown', 1, 100, 100)));
+    expect(container.querySelector('[role="option"][aria-selected="true"]').textContent).toContain('Primary 2');
+    await click([...container.querySelectorAll('button')].find((button) => button.textContent === 'Edit Vein'));
+    const controlPoint = container.querySelector('[data-stream-id="primary-1"] [data-marble-control-point]');
+    expect(controlPoint).toBeTruthy();
+
+    const selectedPath = container.querySelector('[data-stream-id="primary-1"] [data-vein-component="variable-width-ribbon"]').getAttribute('d');
+    const nailSvg = controlPoint.ownerSVGElement;
+    nailSvg.createSVGPoint = () => ({ x: 0, y: 0, matrixTransform: () => ({ x: 130, y: 190 }) });
+    controlPoint.getScreenCTM = () => ({ inverse: () => ({}) });
+    controlPoint.setPointerCapture = jest.fn();
+    controlPoint.hasPointerCapture = jest.fn(() => true);
+    controlPoint.releasePointerCapture = jest.fn();
+    await act(async () => controlPoint.dispatchEvent(pointer('pointerdown', 6, 100, 100)));
+
+    const moveButton = [...container.querySelectorAll('button')].find((button) => button.textContent === 'Move Marble');
+    await click(moveButton);
+    expect(controlPoint.releasePointerCapture).toHaveBeenCalledWith(6);
+    expect(moveButton.getAttribute('aria-pressed')).toBe('true');
+    expect(container.querySelector('[data-marble-hit-target]')).toBeNull();
+    expect(container.querySelector('[data-marble-control-point]')).toBeNull();
+    expect(container.querySelector('[data-marble-selection]')).toBeNull();
+
+    const stage = container.querySelector('[data-testid="nail-stage-container"]');
+    const nail = container.querySelector('svg[data-testid="stage-nail"]');
+    nail.setPointerCapture = jest.fn();
+    await act(async () => nail.dispatchEvent(pointer('pointerdown', 7, 100, 100)));
+    await act(async () => stage.dispatchEvent(pointer('pointermove', 7, 124, 116)));
+    expect(container.querySelector('[data-marble-transform]').getAttribute('transform')).toContain('translate(24 16)');
+    expect(container.querySelector('[data-stream-id="primary-1"] [data-vein-component="variable-width-ribbon"]').getAttribute('d')).toBe(selectedPath);
+
+    // Empty nail space uses that same established stage-level Marble transform.
+    await act(async () => stage.dispatchEvent(pointer('pointerup', 7, 124, 116)));
+    await act(async () => nail.dispatchEvent(pointer('pointerdown', 8, 40, 40)));
+    await act(async () => stage.dispatchEvent(pointer('pointermove', 8, 46, 49)));
+    expect(container.querySelector('[data-marble-transform]').getAttribute('transform')).toContain('translate(30 25)');
+
+    await click(moveButton);
+    expect(container.querySelector('[data-marble-hit-target="primary-1"]')).toBeTruthy();
+    expect(container.querySelector('[data-marble-selection="primary-1"]')).toBeTruthy();
+  });
+
   it('composes selected-vein opacity once across every localized material child', async () => {
     await click([...container.querySelectorAll('[role="tab"]')].find((item) => item.textContent === 'Effects'));
     const effect = container.querySelector('select[aria-label="Effect"]');

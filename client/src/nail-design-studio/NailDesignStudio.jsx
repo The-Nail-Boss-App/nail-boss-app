@@ -363,8 +363,12 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
   const marbleStreams = heroDocument.nail.effect.id === 'Marble' ? createMarbleVeinModel(heroDocument.nail.effect, `${heroDocument.metadata.id}:nail-${activeNailIndex}`) : [];
   const selectedStream = marbleStreams.find(({ id }) => id === selectedMarbleStream) || marbleStreams[0];
   useEffect(() => {
-    if (drag.current?.vein && (!editMarbleShape || !selectedStream?.visible || drag.current.streamId !== selectedStream.id)) drag.current = null;
-  }, [editMarbleShape, selectedStream?.id, selectedStream?.visible]);
+    if (drag.current?.vein && (moveMarble || !editMarbleShape || !selectedStream?.visible || drag.current.streamId !== selectedStream.id)) {
+      const activeDrag = drag.current;
+      if (activeDrag.captureTarget?.hasPointerCapture?.(activeDrag.pointerId)) activeDrag.captureTarget.releasePointerCapture?.(activeDrag.pointerId);
+      drag.current = null;
+    }
+  }, [moveMarble, editMarbleShape, selectedStream?.id, selectedStream?.visible]);
 
   const selectNailShape = (shapeId) => {
     heroRenderer.current.invalidate('shape', heroDocument.metadata.id);
@@ -518,7 +522,7 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
   };
   const startVeinPointDrag = (event, stream, pointIndex) => {
     const svg = event.currentTarget.ownerSVGElement; const matrix = event.currentTarget.getScreenCTM?.(); if (!svg || !matrix) return;
-    drag.current = { vein: true, pointerId: event.pointerId, streamId: stream.id, pointIndex, points: stream.controlPoints.map((point) => ({ ...point })), inverse: matrix.inverse(), svg };
+    drag.current = { vein: true, pointerId: event.pointerId, streamId: stream.id, pointIndex, points: stream.controlPoints.map((point) => ({ ...point })), inverse: matrix.inverse(), svg, captureTarget: event.currentTarget };
     event.currentTarget.setPointerCapture?.(event.pointerId); event.preventDefault();
   };
   const movePan = (event) => {
@@ -806,7 +810,7 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
                     <MaterialLayers path={renderedSurface.path} surfaceBounds={renderedSurface.bounds} finish={surfaceMaterialFinish(activeFinish === 'NegativeSpace' ? activeFormulation.finish : (activeNailIndex === index ? activeFinish : (nailPolishes[index]?.finish || activeFinish)))} color={activeNailIndex === index ? activePolishColor : (nailPolishes[index]?.colorHex || activePolishColor)} fleckColor={activeNailIndex === index ? activeFormulation.fleckColor : (nailPolishes[index]?.fleckColor || activeFormulation.fleckColor)} glitterDensity={activeNailIndex === index ? activeFormulation.glitterDensity : (nailPolishes[index]?.glitterDensity ?? activeFormulation.glitterDensity)} opacity={activeNailIndex === index ? (appliedEffect.id === 'NegativeSpace' ? activeFormulation.opacity : appliedEffect.id === 'Marble' ? appliedEffect.opacity : appliedEffect.layers[0].opacity) : (nailPolishes[index]?.opacity ?? (appliedEffect.id === 'Marble' ? appliedEffect.opacity : appliedEffect.layers[0].opacity))} shine={activeNailIndex === index ? appliedEffect.shine : (nailPolishes[index]?.shine ?? appliedEffect.shine)} uid={`hero-material-${index}`} baseProps={{ className: 'nail-design-studio__nail-polish', 'data-design-layer': 'polish', 'data-hero-material-layer': 'true', 'data-polish-finish': surfaceMaterialFinish(activeFinish === 'NegativeSpace' ? activeFormulation.finish : (activeNailIndex === index ? activeFinish : (nailPolishes[index]?.finish || activeFinish))), 'data-hero-effect': appliedEffect.id, 'data-hero-lighting': 'Hero Lighting Engine', 'data-hero-reflection': appliedLighting.profile.reflection, 'data-material-id': renderedSurface.material.id }}/>
                     {(appliedEffect.id === 'Marble' ? [] : appliedEffect.layers.slice(1)).map((layer, layerIndex) => layer.kind === 'color-block' ? <ColorBlockRegions key={layerIndex} layer={layer} bounds={renderedSurface.bounds} clipId={`hero-effect-mask-${index}`} /> : ['linear-gradient', 'radial-gradient'].includes(layer.kind) ? <path key={layerIndex} data-effect-layer={layer.kind === 'radial-gradient' ? 'aura' : undefined} d={renderedSurface.path} fill={`url(#hero-finish-${index}-${layerIndex + 1})`} opacity={layer.opacity} clipPath={layer.kind === 'radial-gradient' ? `url(#hero-effect-mask-${index})` : undefined} filter={layer.kind === 'radial-gradient' ? `url(#hero-aura-softness-${index})` : undefined} /> : layer.kind === 'veins' ? <MarbleVeins key={layerIndex} effect={heroDocument.nail.effect} nailIdentity={`${heroDocument.metadata.id}:nail-${index}`} clipId={`hero-effect-mask-${index}`} /> : layer.paths?.map((path, pathIndex) => <path key={`${layerIndex}-${pathIndex}`} d={path} stroke={layer.color} opacity={layer.opacity} fill="none" vectorEffect="non-scaling-stroke" />))}
                     </DesignCoverage>
-                    {appliedEffect.id === 'Marble' && <MarbleVeins effect={heroDocument.nail.effect} nailIdentity={`${heroDocument.metadata.id}:nail-${index}`} clipId={`hero-effect-mask-${index}`} selectedId={activeTool.id === 'effects' && activeNailIndex === index ? selectedStream?.id : undefined} editShape={activeTool.id === 'effects' && activeNailIndex === index && editMarbleShape} onSelect={activeTool.id === 'effects' && activeNailIndex === index ? selectMarbleStream : undefined} onPointDown={startVeinPointDrag} />}
+                    {appliedEffect.id === 'Marble' && <MarbleVeins effect={heroDocument.nail.effect} nailIdentity={`${heroDocument.metadata.id}:nail-${index}`} clipId={`hero-effect-mask-${index}`} selectedId={!moveMarble && activeTool.id === 'effects' && activeNailIndex === index ? selectedStream?.id : undefined} editShape={!moveMarble && activeTool.id === 'effects' && activeNailIndex === index && editMarbleShape} onSelect={!moveMarble && activeTool.id === 'effects' && activeNailIndex === index ? selectMarbleStream : undefined} onPointDown={startVeinPointDrag} />}
                     <FrenchTipRegion data={frenchTips[index]} nailPath={renderedSurface.path} bounds={renderedSurface.bounds} uid={`hero-french-${index}`} />
                     <path data-hero-lighting-layer="full-surface-depth" data-surface-finish={appliedLighting.effectId} d={renderedSurface.path} fill={`url(#hero-light-depth-${index})`} opacity={appliedLighting.profile.veinPreservation} />
                     <path d={renderedSurface.path} fill={`url(#hero-light-apex-${index})`} style={{ mixBlendMode: 'screen' }} />
