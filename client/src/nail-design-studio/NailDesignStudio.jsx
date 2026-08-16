@@ -528,8 +528,8 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
     drag.current = { pointerId: event.pointerId, x: event.clientX, y: event.clientY, panX: pan.x, panY: pan.y };
     event.currentTarget.setPointerCapture?.(event.pointerId);
   };
-  const marblePointerContext = (event) => {
-    const svg = event.currentTarget.ownerSVGElement; const matrix = event.currentTarget.getScreenCTM?.();
+  const marblePointerContext = (event, coordinateTarget = event.currentTarget) => {
+    const svg = event.currentTarget.ownerSVGElement; const matrix = coordinateTarget?.getScreenCTM?.();
     if (!svg || !matrix) return null;
     const inverse = matrix.inverse(); const cursor = svg.createSVGPoint(); cursor.x = event.clientX; cursor.y = event.clientY;
     return { svg, inverse, point: cursor.matrixTransform(inverse) };
@@ -549,7 +549,7 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
     captureVeinPointer(event, { kind: 'point', streamId: stream.id, pointIndex, points: stream.controlPoints.map((point) => ({ ...point })), inverse: context.inverse, svg: context.svg });
   };
   const startVeinWidthDrag = (event, stream, position, center, normal) => {
-    const context = marblePointerContext(event); if (!context || event.button !== 0) return;
+    const context = marblePointerContext(event, event.currentTarget.parentElement); if (!context || event.button !== 0) return;
     setMoveMarble(false);
     captureVeinPointer(event, { kind: 'width', streamId: stream.id, position, center, normal, start: context.point, width: stream.width, widthProfile: { ...stream.widthProfile }, inverse: context.inverse, svg: context.svg });
   };
