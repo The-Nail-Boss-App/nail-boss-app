@@ -743,8 +743,38 @@ describe('DS-TK01A French Tip integration', () => {
     const ribbon = container.querySelector('[data-stream-id="primary-1"] [data-vein-component="variable-width-ribbon"]');
     expect(ribbon.dataset.widthProfile).toBe('2.5,1,0.25');
     expect(ribbon.getAttribute('d')).toMatch(/Z$/);
-    await click([...container.querySelectorAll('button')].find((button) => button.textContent === 'Edit Vein'));
     expect(container.querySelectorAll('[data-stream-id="primary-1"] [data-marble-control-point]').length).toBeGreaterThanOrEqual(4);
+    expect(container.querySelectorAll('[data-stream-id="primary-1"] [data-marble-width-handle]').length).toBe(3);
+    expect(container.querySelector('[data-marble-hit-target="primary-1"]').closest('[data-effect-layer="marble"]')).toBe(container.querySelectorAll('[data-effect-layer="marble"]')[1]);
+    expect(container.querySelector('details summary').textContent).toContain('Accessible geometry controls');
+  });
+
+  it('moves one selected vein and edits the authoritative width profile in Marble coordinates', async () => {
+    await click([...container.querySelectorAll('[role="tab"]')].find((item) => item.textContent === 'Effects'));
+    const effect = container.querySelector('select[aria-label="Effect"]');
+    await act(async () => { effect.value = 'Marble'; effect.dispatchEvent(new Event('change', { bubbles: true })); });
+    const identity = { inverse: () => identity };
+    const originalMatrix = window.SVGElement.prototype.getScreenCTM; const originalPoint = window.SVGSVGElement.prototype.createSVGPoint;
+    window.SVGElement.prototype.getScreenCTM = () => identity;
+    window.SVGSVGElement.prototype.createSVGPoint = () => ({ x: 0, y: 0, matrixTransform() { return { x: this.x, y: this.y }; } });
+    const desk = container.querySelector('[data-testid="nail-stage-container"]');
+    const target = container.querySelector('[data-marble-hit-target="primary-1"]');
+    const before = target.getAttribute('d');
+    const otherBefore = container.querySelector('[data-stream-id="primary-0"] [data-vein-component="variable-width-ribbon"]').getAttribute('d');
+    const transformBefore = container.querySelector('[data-marble-transform]').dataset.marbleTransform;
+    await act(async () => target.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0, clientX: 10, clientY: 10 })));
+    await act(async () => desk.dispatchEvent(new MouseEvent('pointermove', { bubbles: true, button: 0, clientX: 22, clientY: 4 })));
+    expect(container.querySelector('[data-marble-hit-target="primary-1"]').getAttribute('d')).not.toBe(before);
+    expect(container.querySelector('[data-stream-id="primary-0"] [data-vein-component="variable-width-ribbon"]').getAttribute('d')).toBe(otherBefore);
+    expect(container.querySelector('[data-marble-transform]').dataset.marbleTransform).toBe(transformBefore);
+    await act(async () => desk.dispatchEvent(new MouseEvent('pointerup', { bubbles: true })));
+    const width = container.querySelector('[data-marble-width-handle="start"] rect');
+    const profileBefore = container.querySelector('[data-stream-id="primary-1"] [data-vein-component="variable-width-ribbon"]').dataset.widthProfile;
+    await act(async () => width.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0, clientX: 10, clientY: 10 })));
+    await act(async () => desk.dispatchEvent(new MouseEvent('pointermove', { bubbles: true, button: 0, clientX: 40, clientY: 40 })));
+    expect(container.querySelector('[data-stream-id="primary-1"] [data-vein-component="variable-width-ribbon"]').dataset.widthProfile).not.toBe(profileBefore);
+    expect(container.querySelectorAll('[data-marble-width-handle]').length).toBe(3);
+    window.SVGElement.prototype.getScreenCTM = originalMatrix; window.SVGSVGElement.prototype.createSVGPoint = originalPoint;
   });
 
   it('gives Move Marble precedence over the direct vein editing overlay and restores editing afterward', async () => {
@@ -760,7 +790,6 @@ describe('DS-TK01A French Tip integration', () => {
     // Direct selection and handles remain authoritative while Move Marble is off.
     await act(async () => container.querySelector('[data-marble-hit-target="primary-1"]').dispatchEvent(pointer('pointerdown', 1, 100, 100)));
     expect(container.querySelector('[role="option"][aria-selected="true"]').textContent).toContain('Primary 2');
-    await click([...container.querySelectorAll('button')].find((button) => button.textContent === 'Edit Vein'));
     const controlPoint = container.querySelector('[data-stream-id="primary-1"] [data-marble-control-point]');
     expect(controlPoint).toBeTruthy();
 
