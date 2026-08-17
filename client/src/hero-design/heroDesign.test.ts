@@ -12,13 +12,43 @@ import {
   DEFAULT_HERO_MATERIAL_REFERENCE, HERO_MATERIAL_LIBRARY, HeroMaterialEngine,
   registerHeroMaterialEngine, resolveHeroNailMaterial, updateHeroMaterial,
   validateHeroNailMaterial,
-  HERO_EFFECT_IDS, HeroEffectEngine, registerHeroEffectEngine, applyHeroEffectToSurface, createMarbleVeinModel, marblePathFromPoints, marbleRibbonBounds, marbleRibbonPath,
+  HERO_EFFECT_IDS, HeroEffectEngine, registerHeroEffectEngine, applyHeroEffectToSurface, createMarbleVeinModel, deformMarbleControlPoints, nearestMarbleCenterlinePoint, normalizeCustomMarbleStreams, normalizeDeletedMarbleStreamIds, marblePathFromPoints, marbleRibbonBounds, marbleRibbonPath,
   updateHeroEffect, HeroLightingEngine, registerHeroLightingEngine, applyHeroLightingToEffect, connectHeroLightingInvalidation,
 } from './index';
 
 const layer = (id: string): HeroLayer => ({
   id, name: id, type: 'base', opacity: 1, visible: true, locked: false, blendMode: 'normal',
   transform: { x: 0.5, y: 0.5, scaleX: 1, scaleY: 1, rotation: 0 }, payload: { color: '#fff' },
+});
+
+describe('FX-R01E.3 continuous geological Marble model', () => {
+  const marble = (extra = {}) => ({ id: 'Marble' as const, version: '1' as const, parameters: { baseColor: '#F2E9E7', veinColor: '#704F59', veinDensity: 1, marbleSeed: 'geology-r3', marbleGeometryVersion: 2, ...extra } });
+  test('resolves and deforms arbitrary centerline sections with local falloff and bounded insertion', () => {
+    const points = [{ x: 0, y: 0 }, { x: 40, y: 20 }, { x: 90, y: 12 }, { x: 140, y: 45 }];
+    const hit = nearestMarbleCenterlinePoint(points, { x: 66, y: 15 });
+    expect(hit.t).toBeGreaterThan(.35); expect(hit.t).toBeLessThan(.65); expect(hit.point).not.toEqual(points[1]);
+    const changed = deformMarbleControlPoints(points, hit.t, 0, 30);
+    expect(changed.length).toBe(5); expect(changed[2].y - points[2].y).toBeGreaterThan(changed[0].y - points[0].y);
+    let repeated = changed; for (let index = 0; index < 30; index += 1) repeated = deformMarbleControlPoints(repeated, .47, 1, 0);
+    expect(repeated.length).toBeLessThanOrEqual(12);
+  });
+  test('keeps geometry deterministic, styling-independent, hierarchical, and flow-coherent', () => {
+    const first = createMarbleVeinModel(marble(), 'nail-a'); const again = createMarbleVeinModel(marble(), 'nail-a');
+    const styled = createMarbleVeinModel(marble({ streamOverrides: { 'primary-0': { formulation: { color: '#D4AF37', finish: 'Glitter' } } } }), 'nail-a');
+    expect(first.map((stream) => stream.generatedPath)).toEqual(again.map((stream) => stream.generatedPath)); expect(styled.map((stream) => stream.generatedPath)).toEqual(first.map((stream) => stream.generatedPath));
+    const span = (stream: any) => Math.hypot(stream.controlPoints.at(-1).x - stream.controlPoints[0].x, stream.controlPoints.at(-1).y - stream.controlPoints[0].y);
+    const average = (items: any[]) => items.reduce((sum, item) => sum + span(item), 0) / items.length;
+    expect(average(first.filter((s) => s.veinClass === 'primary'))).toBeGreaterThan(average(first.filter((s) => s.veinClass === 'hairline')));
+    expect(Math.max(...first.filter((s) => s.veinClass === 'hairline').map((s) => s.width))).toBeLessThan(Math.min(...first.filter((s) => s.veinClass === 'primary').map((s) => s.width)));
+    expect(first.filter((s) => s.veinClass === 'primary')).toHaveLength(2); expect(first.filter((s) => s.veinClass === 'secondary')).toHaveLength(4);
+  });
+  test('merges persistent custom streams and generated tombstones without identity changes', () => {
+    const custom = { 'custom-secondary-stable-a': { veinClass: 'secondary', controlPoints: [{ x: 10, y: 200 }, { x: 50, y: 150 }, { x: 90, y: 95 }], creationBaseline: [{ x: 10, y: 200 }, { x: 50, y: 150 }, { x: 90, y: 95 }], width: 1.1, widthProfile: { start: 1, middle: .8, end: .2 }, formulation: { color: '#D4AF37', finish: 'Glitter' }, opacity: .8, softness: 0, visible: true } };
+    expect(Object.keys(normalizeCustomMarbleStreams(custom))).toEqual(['custom-secondary-stable-a']); expect(normalizeDeletedMarbleStreamIds(['secondary-1', 'bad'])).toEqual(['secondary-1']);
+    const streams = createMarbleVeinModel(marble({ customStreams: custom, deletedStreamIds: ['secondary-1'] }), 'nail-a');
+    expect(streams.find((stream) => stream.id === 'secondary-1')?.visible).toBe(false); expect(streams.find((stream) => stream.id === 'custom-secondary-stable-a')).toMatchObject({ custom: true, finish: 'Glitter', width: 1.1 });
+    expect(streams.find((stream) => stream.id === 'secondary-2')?.id).toBe('secondary-2');
+  });
 });
 const document = () => createHeroDesignDocument({ id: 'design-1', name: 'Hero', now: '2026-08-03T00:00:00.000Z', shapeId: 'Almond', maskId: 'almond-mask' });
 

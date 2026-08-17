@@ -749,6 +749,23 @@ describe('DS-TK01A French Tip integration', () => {
     expect(container.querySelector('details summary').textContent).toContain('Accessible geometry controls');
   });
 
+  it('adds, duplicates, hides, and deletes independently persisted Marble streams', async () => {
+    await click([...container.querySelectorAll('[role="tab"]')].find((item) => item.textContent === 'Effects'));
+    const effect = container.querySelector('select[aria-label="Effect"]');
+    await act(async () => { effect.value = 'Marble'; effect.dispatchEvent(new Event('change', { bubbles: true })); });
+    await click([...container.querySelectorAll('[aria-label="Add Vein"] button')].find((button) => button.textContent.includes('Secondary')));
+    const selected = container.querySelector('[role="option"][aria-selected="true"]'); expect(selected.textContent).toContain('Custom Secondary');
+    const customId = selected.closest('button').getAttribute('key') || container.querySelector('[data-stream-id^="custom-secondary-"]').dataset.streamId;
+    expect(container.querySelector(`[data-stream-id="${customId}"] [data-marble-width-handle]`)).toBeTruthy();
+    const finish = container.querySelector('select[aria-label="Selected Vein Finish"]'); await act(async () => { finish.value = 'Glitter'; finish.dispatchEvent(new Event('change', { bubbles: true })); });
+    await click([...container.querySelectorAll('button')].find((button) => button.textContent === 'Duplicate Vein'));
+    const customStreams = container.querySelectorAll('[data-stream-id^="custom-secondary-"]'); expect(customStreams.length).toBeGreaterThanOrEqual(2);
+    expect([...customStreams].some((stream) => stream.querySelector('[data-material-profile="GlitterMaterial"]'))).toBe(true);
+    await click([...container.querySelectorAll('button')].find((button) => button.textContent === 'Hide Vein')); expect([...container.querySelectorAll('[role="option"]')].find((option) => option.getAttribute('aria-selected') === 'true').textContent).toContain('Off');
+    await click([...container.querySelectorAll('button')].find((button) => button.textContent === 'Show Vein'));
+    const confirm = jest.spyOn(window, 'confirm').mockReturnValue(true); await click([...container.querySelectorAll('button')].find((button) => button.textContent === 'Delete Vein')); expect(confirm).toHaveBeenCalled(); confirm.mockRestore();
+  });
+
   it('moves one selected vein and edits the authoritative width profile in Marble coordinates', async () => {
     await click([...container.querySelectorAll('[role="tab"]')].find((item) => item.textContent === 'Effects'));
     const effect = container.querySelector('select[aria-label="Effect"]');
