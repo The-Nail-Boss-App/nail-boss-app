@@ -262,7 +262,7 @@ export const stageLightingOpacity = (finish, shine, role, opacity) => {
   return opacity;
 };
 
-function initialNailDeskHeroState() {
+export function initialNailDeskHeroState() {
   const fallback = createHeroDesignDocument({ id: 'nail-desk-hero', name: 'Untitled Design', shapeId: 'Almond', maskId: 'almond-mask' });
   try {
     const stored = window.localStorage.getItem('anitaset.hero-design.v1:nail-desk-hero');
@@ -270,7 +270,7 @@ function initialNailDeskHeroState() {
     const parsed = JSON.parse(stored);
     const finish = interfaceFinish(parsed?.metadata?.activePolishFormulation?.finish || parsed?.nail?.effect?.id || 'Cream');
     const persistedParameters = parsed?.nail?.effect?.parameters || {};
-    const normalized = normalizePolishForFinish({ ...persistedParameters, ...parsed?.metadata?.activePolishFormulation, ...(parsed?.nail?.effect?.id === 'Marble' ? { marbleGeometryVersion: persistedParameters.marbleGeometryVersion === 2 ? 2 : 1 } : {}) }, finish);
+    const normalized = normalizePolishForFinish({ ...persistedParameters, ...parsed?.metadata?.activePolishFormulation, ...(parsed?.nail?.effect?.id === 'Marble' ? { marbleGeometryVersion: persistedParameters.marbleGeometryVersion } : {}) }, finish, { marbleGeometryFallback: 1 });
     const persistedEffect = parsed?.nail?.effect;
     const mountedEffect = persistedEffect?.id === 'ColorBlock' ? colorBlockEffect(persistedEffect.parameters) : persistedEffect?.id === 'NegativeSpace' ? negativeSpaceEffect(persistedEffect.parameters) : normalizePersistedAuraEffect(persistedEffect);
     const document = { ...parsed, nail: { ...parsed.nail, effect: mountedEffect || heroEffectForPolish(normalized) } };

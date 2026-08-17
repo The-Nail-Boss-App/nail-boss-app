@@ -1,9 +1,9 @@
 import React, { act } from 'react';
 import { createRoot } from 'react-dom/client';
-import NailDesignStudio, { canScrollInWheelDirection, creamHeroSurfaceResponse, glitterHeroSurfaceResponse, jellyHeroSurfaceResponse, matteHeroSurfaceResponse, stageLightingOpacity, surfaceMaterialFinish } from './NailDesignStudio';
+import NailDesignStudio, { canScrollInWheelDirection, creamHeroSurfaceResponse, glitterHeroSurfaceResponse, initialNailDeskHeroState, jellyHeroSurfaceResponse, matteHeroSurfaceResponse, stageLightingOpacity, surfaceMaterialFinish } from './NailDesignStudio';
 import { heroEffectForPolish, normalizePersistedAuraEffect, normalizePolishForFinish } from './polishFinish';
 import { GLITTER_REFERENCE_BOUNDS, glitterParticleField, MATERIAL_PROFILES, materialProfile } from './MaterialRenderer';
-import { createHeroDesignDocument } from '../hero-design/index.ts';
+import { createHeroDesignDocument, createMarbleVeinModel } from '../hero-design/index.ts';
 import { loadFrenchTips } from './FrenchTip';
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
@@ -28,6 +28,17 @@ describe('DS-03 Polish Studio repair', () => {
     window.localStorage.removeItem('anitaset.hero-design.v1:nail-desk-hero');
     container = document.createElement('div'); document.body.appendChild(container); root = createRoot(container);
     await act(async () => root.render(<NailDesignStudio />));
+  });
+
+  it('mounts missing-version legacy Marble as v1 without changing its seeded paths', () => {
+    const saved = createHeroDesignDocument({ id: 'nail-desk-hero', name: 'Legacy Marble', shapeId: 'Almond', maskId: 'almond-mask' });
+    saved.nail.effect = { id: 'Marble', version: '1', parameters: { baseColor: '#F2E9E7', veinColor: '#704F59', veinDensity: 1, marbleSeed: 'legacy-nail-desk-layout' } };
+    window.localStorage.setItem('anitaset.hero-design.v1:nail-desk-hero', JSON.stringify(saved));
+    const hydrated = initialNailDeskHeroState().document.nail.effect;
+    expect(hydrated.parameters.marbleGeometryVersion).toBe(1);
+    const actual = createMarbleVeinModel(hydrated, 'nail-desk-hero:nail-0').map(({ id, generatedPath }) => ({ id, generatedPath }));
+    const expected = createMarbleVeinModel({ ...saved.nail.effect, parameters: { ...saved.nail.effect.parameters, marbleGeometryVersion: 1 } }, 'nail-desk-hero:nail-0').map(({ id, generatedPath }) => ({ id, generatedPath }));
+    expect(actual).toEqual(expected);
   });
   afterEach(() => { act(() => root.unmount()); container.remove(); window.localStorage.removeItem('anitaset.hero-design.v1:nail-desk-hero'); });
 
@@ -173,6 +184,9 @@ describe('DS-03 Polish Studio repair', () => {
     expect(normalizePolishForFinish({ glitterDensity: .8 }, 'retired-finish').finish).toBe('Cream');
     expect(normalizePolishForFinish({ colorHex: '#F2E9E7', veinColor: 'broken', veinDensity: Number.NaN }, 'Marble')).toMatchObject({ veinColor: '#8A405D', veinDensity: .42, marbleSeed: 'marble-layout-v1' });
     expect(heroEffectForPolish(normalizePolishForFinish({ finish: 'Marble', marbleSeed: 'saved-layout' }, 'Marble')).parameters).toMatchObject({ marbleSeed: 'saved-layout', marbleGeometryVersion: 2 });
+    expect(normalizePolishForFinish({ finish: 'Marble', marbleSeed: 'legacy-layout' }, 'Marble', { marbleGeometryFallback: 1 }).marbleGeometryVersion).toBe(1);
+    expect(normalizePolishForFinish({ finish: 'Marble', marbleGeometryVersion: 1 }, 'Marble', { marbleGeometryFallback: 1 }).marbleGeometryVersion).toBe(1);
+    expect(normalizePolishForFinish({ finish: 'Marble', marbleGeometryVersion: 2 }, 'Marble', { marbleGeometryFallback: 1 }).marbleGeometryVersion).toBe(2);
 
     const select = container.querySelector('select[aria-label="Finish"]');
     for (const finish of ['Cream', 'Jelly', 'Matte', 'Glitter']) {

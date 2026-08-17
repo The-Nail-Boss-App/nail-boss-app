@@ -38,7 +38,7 @@ const SPECIFIC = {
 };
 
 /** The only boundary at which persisted or edited polish data changes finish. */
-export function normalizePolishForFinish(polish = {}, requestedFinish = 'Cream') {
+export function normalizePolishForFinish(polish = {}, requestedFinish = 'Cream', { marbleGeometryFallback = 2 } = {}) {
   const finish = FINISH_DEFAULTS[requestedFinish] ? requestedFinish : 'Cream';
   if (finish !== requestedFinish && typeof console !== 'undefined') console.warn(`Unsupported polish finish "${requestedFinish}" normalized to Cream.`);
   const defaults = FINISH_DEFAULTS[finish];
@@ -51,7 +51,7 @@ export function normalizePolishForFinish(polish = {}, requestedFinish = 'Cream')
     const density = Number(polish.veinDensity);
     normalized.veinDensity = Number.isFinite(density) ? Math.min(1, Math.max(0, density)) : defaults.veinDensity;
     normalized.marbleSeed = typeof polish.marbleSeed === 'string' && polish.marbleSeed.length > 0 && polish.marbleSeed.length <= 128 ? polish.marbleSeed : defaults.marbleSeed;
-    normalized.marbleGeometryVersion = polish.marbleGeometryVersion === 1 ? 1 : 2;
+    normalized.marbleGeometryVersion = [1, 2].includes(polish.marbleGeometryVersion) ? polish.marbleGeometryVersion : marbleGeometryFallback;
     const transform = polish.marbleTransform || {};
     const clamp = (value, min, max, fallback) => Number.isFinite(Number(value)) ? Math.min(max, Math.max(min, Number(value))) : fallback;
     normalized.marbleTransform = { panX: clamp(transform.panX, -120, 120, 0), panY: clamp(transform.panY, -180, 180, 0), scale: clamp(transform.scale, .55, 2.5, 1), rotation: clamp(transform.rotation, -180, 180, 0) };
