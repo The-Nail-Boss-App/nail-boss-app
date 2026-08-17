@@ -145,6 +145,7 @@ export const DEFAULT_MARBLE_TRANSFORM = Object.freeze({ panX: 0, panY: 0, scale:
 export const CURRENT_MARBLE_GEOMETRY_VERSION = 2;
 export const MAX_MARBLE_CONTROL_POINTS = 12;
 export const CUSTOM_MARBLE_STREAM_LIMITS = Object.freeze({ primary: 4, secondary: 8, hairline: 12 });
+export const MARBLE_WIDTH_BOUNDS = Object.freeze({ primary: Object.freeze({ min: .1, max: 8, default: 2.5 }), secondary: Object.freeze({ min: .1, max: 5, default: 1.15 }), hairline: Object.freeze({ min: .1, max: 1.5, default: .38 }), diffusion: Object.freeze({ min: .1, max: 24, default: 14 }) });
 interface HeroMarbleGeometryStream { id: string; veinClass: HeroMarbleVeinClass; path: string; width: number; opacity: number; softness: number; densityRank: number }
 const marbleGeometryCache = new Map<string, readonly HeroMarbleGeometryStream[]>();
 
@@ -153,6 +154,10 @@ export function normalizeMarbleLayoutSeed(value: unknown): string {
 }
 
 const clamp = (value: unknown, min: number, max: number, fallback: number) => typeof value === 'number' && Number.isFinite(value) ? Math.min(max, Math.max(min, value)) : fallback;
+export function marbleVeinClassFromId(id: string): HeroMarbleVeinClass | undefined {
+  return id.match(/^(?:custom-)?(primary|secondary|hairline|diffusion)(?:-|$)/)?.[1] as HeroMarbleVeinClass | undefined;
+}
+export function marbleWidthBoundsForClass(veinClass: HeroMarbleVeinClass) { return MARBLE_WIDTH_BOUNDS[veinClass]; }
 export function normalizeMarbleTransform(value: unknown) {
   const transform = value && typeof value === 'object' ? value as Record<string, unknown> : {};
   return Object.freeze({ panX: clamp(transform.panX, -120, 120, 0), panY: clamp(transform.panY, -180, 180, 0), scale: clamp(transform.scale, .55, 2.5, 1), rotation: clamp(transform.rotation, -180, 180, 0) });
@@ -165,7 +170,8 @@ export function normalizeMarbleStreamOverrides(value: unknown): Record<string, R
     if (!/^(?:(primary|secondary|hairline|diffusion)-\d+|custom-(primary|secondary|hairline)-[a-z0-9-]+)$/.test(id) || !raw || typeof raw !== 'object' || Array.isArray(raw)) return;
     const override = raw as Record<string, unknown>; const next: Record<string, unknown> = {};
     if (color(override.color)) next.color = (override.color as string).toUpperCase();
-    if (typeof override.width === 'number') next.width = clamp(override.width, .1, id.startsWith('hairline') ? 1.5 : id.startsWith('primary') ? 8 : 5, 1);
+    const veinClass = marbleVeinClassFromId(id); const widthBounds = marbleWidthBoundsForClass(veinClass!);
+    if (override.width !== undefined) next.width = clamp(override.width, widthBounds.min, widthBounds.max, widthBounds.default);
     if (typeof override.opacity === 'number') next.opacity = clamp(override.opacity, 0, 1, 1);
     if (typeof override.softness === 'number') next.softness = clamp(override.softness, 0, 6, 0);
     if (typeof override.visible === 'boolean') next.visible = override.visible;
@@ -193,8 +199,8 @@ export function normalizeCustomMarbleStreams(value: unknown): Record<string, Her
     const normalizePoints = (points: unknown) => Array.isArray(points) && points.length >= 2 && points.length <= MAX_MARBLE_CONTROL_POINTS && points.every((point) => point && typeof point === 'object' && Number.isFinite(Number((point as Record<string, unknown>).x)) && Number.isFinite(Number((point as Record<string, unknown>).y))) ? points.map((point) => ({ x: clamp(Number((point as Record<string, unknown>).x), -1000, 1000, 0), y: clamp(Number((point as Record<string, unknown>).y), -1000, 1200, 0) })) : null;
     const points = normalizePoints(item.controlPoints); if (!points) return;
     const baseline = normalizePoints(item.creationBaseline) || points.map((point) => ({ ...point })); const formulation = item.formulation && typeof item.formulation === 'object' ? item.formulation as Record<string, unknown> : {};
-    const defaultWidth = veinClass === 'primary' ? 2.5 : veinClass === 'secondary' ? 1.15 : .38;
-    result[id] = { veinClass, controlPoints: points, creationBaseline: baseline, width: clamp(item.width, .1, veinClass === 'primary' ? 8 : veinClass === 'secondary' ? 5 : 1.5, defaultWidth), widthProfile: { start: clamp((item.widthProfile as Record<string, unknown>)?.start, .1, 3, 1.15), middle: clamp((item.widthProfile as Record<string, unknown>)?.middle, .1, 3, 1), end: clamp((item.widthProfile as Record<string, unknown>)?.end, .1, 3, .35) }, formulation: { color: color(formulation.color) ? (formulation.color as string).toUpperCase() : '#8A405D', finish: ['Cream', 'Jelly', 'Matte', 'Glitter'].includes(formulation.finish as string) ? formulation.finish as HeroMarbleVeinFinish : 'Cream' }, opacity: clamp(item.opacity, 0, 1, .72), softness: clamp(item.softness, 0, 6, 0), visible: item.visible !== false };
+    const widthBounds = marbleWidthBoundsForClass(veinClass);
+    result[id] = { veinClass, controlPoints: points, creationBaseline: baseline, width: clamp(item.width, widthBounds.min, widthBounds.max, widthBounds.default), widthProfile: { start: clamp((item.widthProfile as Record<string, unknown>)?.start, .1, 3, 1.15), middle: clamp((item.widthProfile as Record<string, unknown>)?.middle, .1, 3, 1), end: clamp((item.widthProfile as Record<string, unknown>)?.end, .1, 3, .35) }, formulation: { color: color(formulation.color) ? (formulation.color as string).toUpperCase() : '#8A405D', finish: ['Cream', 'Jelly', 'Matte', 'Glitter'].includes(formulation.finish as string) ? formulation.finish as HeroMarbleVeinFinish : 'Cream' }, opacity: clamp(item.opacity, 0, 1, .72), softness: clamp(item.softness, 0, 6, 0), visible: item.visible !== false };
   });
   return result;
 }
@@ -352,7 +358,7 @@ export function createMarbleVeinModel(effect: HeroEffectReference, nailIdentity 
   const overrides = normalizeMarbleStreamOverrides(effect.parameters.streamOverrides);
   const version = effect.parameters.marbleGeometryVersion === 1 ? 1 : CURRENT_MARBLE_GEOMETRY_VERSION;
   const deleted = new Set(normalizeDeletedMarbleStreamIds(effect.parameters.deletedStreamIds));
-  const generated = createMarbleGeometry(nailIdentity, marbleSeed, version).map((stream) => Object.freeze({
+  const generated = createMarbleGeometry(nailIdentity, marbleSeed, version).filter((stream) => !deleted.has(stream.id)).map((stream) => Object.freeze({
     id: stream.id, veinClass: stream.veinClass, color: (overrides[stream.id]?.formulation as Record<string, unknown>)?.color as string || overrides[stream.id]?.color as string || color,
     finish: ((overrides[stream.id]?.formulation as Record<string, unknown>)?.finish || 'Cream') as HeroMarbleVeinFinish,
     path: overrides[stream.id]?.geometryOverride ? marblePathFromPoints((overrides[stream.id].geometryOverride as { points: HeroMarblePoint[] }).points) : stream.path, generatedPath: stream.path,
@@ -361,7 +367,7 @@ export function createMarbleVeinModel(effect: HeroEffectReference, nailIdentity 
     opacity: overrides[stream.id]?.opacity as number ?? rounded(stream.opacity * (.55 + density * .75)), softness: overrides[stream.id]?.softness as number ?? stream.softness,
     // Primary veins anchor the composition. Density progressively reveals only
     // deterministic subordinate streams, so already-visible paths never move.
-    visible: !deleted.has(stream.id) && (stream.veinClass === 'primary' || stream.densityRank <= density) && overrides[stream.id]?.visible !== false,
+    visible: (stream.veinClass === 'primary' || stream.densityRank <= density) && overrides[stream.id]?.visible !== false,
   }));
   const custom = Object.entries(normalizeCustomMarbleStreams(effect.parameters.customStreams)).map(([id, stream]) => {
     const override = overrides[id] || {}; const points = (override.geometryOverride as { points?: HeroMarblePoint[] })?.points || stream.controlPoints; const formulation = override.formulation as Record<string, unknown> || stream.formulation;

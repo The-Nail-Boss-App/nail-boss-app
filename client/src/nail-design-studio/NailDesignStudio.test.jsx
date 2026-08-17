@@ -172,7 +172,7 @@ describe('DS-03 Polish Studio repair', () => {
     expect(heroEffectForPolish(glitter).parameters.glitterDensity).toBeUndefined();
     expect(normalizePolishForFinish({ glitterDensity: .8 }, 'retired-finish').finish).toBe('Cream');
     expect(normalizePolishForFinish({ colorHex: '#F2E9E7', veinColor: 'broken', veinDensity: Number.NaN }, 'Marble')).toMatchObject({ veinColor: '#8A405D', veinDensity: .42, marbleSeed: 'marble-layout-v1' });
-    expect(heroEffectForPolish(normalizePolishForFinish({ finish: 'Marble', marbleSeed: 'saved-layout' }, 'Marble')).parameters.marbleSeed).toBe('saved-layout');
+    expect(heroEffectForPolish(normalizePolishForFinish({ finish: 'Marble', marbleSeed: 'saved-layout' }, 'Marble')).parameters).toMatchObject({ marbleSeed: 'saved-layout', marbleGeometryVersion: 2 });
 
     const select = container.querySelector('select[aria-label="Finish"]');
     for (const finish of ['Cream', 'Jelly', 'Matte', 'Glitter']) {
@@ -764,6 +764,21 @@ describe('DS-TK01A French Tip integration', () => {
     await click([...container.querySelectorAll('button')].find((button) => button.textContent === 'Hide Vein')); expect([...container.querySelectorAll('[role="option"]')].find((option) => option.getAttribute('aria-selected') === 'true').textContent).toContain('Off');
     await click([...container.querySelectorAll('button')].find((button) => button.textContent === 'Show Vein'));
     const confirm = jest.spyOn(window, 'confirm').mockReturnValue(true); await click([...container.querySelectorAll('button')].find((button) => button.textContent === 'Delete Vein')); expect(confirm).toHaveBeenCalled(); confirm.mockRestore();
+  });
+
+  it('removes deleted generated veins from active selection while keeping Hide reversible', async () => {
+    await click([...container.querySelectorAll('[role="tab"]')].find((item) => item.textContent === 'Effects'));
+    const effect = container.querySelector('select[aria-label="Effect"]'); await act(async () => { effect.value = 'Marble'; effect.dispatchEvent(new Event('change', { bubbles: true })); });
+    await act(async () => container.querySelector('[data-marble-hit-target="primary-1"]').dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 })));
+    await click([...container.querySelectorAll('button')].find((button) => button.textContent === 'Hide Vein'));
+    expect([...container.querySelectorAll('[role="option"]')].some((option) => option.textContent.includes('Primary 2') && option.textContent.includes('Off'))).toBe(true);
+    await click([...container.querySelectorAll('button')].find((button) => button.textContent === 'Show Vein'));
+    const confirm = jest.spyOn(window, 'confirm').mockReturnValue(true); await click([...container.querySelectorAll('button')].find((button) => button.textContent === 'Delete Vein')); confirm.mockRestore();
+    expect([...container.querySelectorAll('[role="option"]')].some((option) => option.textContent.includes('Primary 2'))).toBe(false);
+    expect(container.querySelector('[data-stream-id="primary-1"]')).toBeNull(); expect(container.querySelector('[data-marble-hit-target="primary-1"]')).toBeNull(); expect(container.querySelector('[data-marble-selection="primary-1"]')).toBeNull();
+    expect(container.querySelector('[role="option"][aria-selected="true"]')).toBeTruthy();
+    await click([...container.querySelectorAll('button')].find((button) => button.textContent === 'Randomize Layout'));
+    expect(container.querySelector('[data-stream-id="primary-1"]')).toBeNull();
   });
 
   it('moves one selected vein and edits the authoritative width profile in Marble coordinates', async () => {

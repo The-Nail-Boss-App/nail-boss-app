@@ -12,7 +12,7 @@ import {
   DEFAULT_HERO_MATERIAL_REFERENCE, HERO_MATERIAL_LIBRARY, HeroMaterialEngine,
   registerHeroMaterialEngine, resolveHeroNailMaterial, updateHeroMaterial,
   validateHeroNailMaterial,
-  HERO_EFFECT_IDS, HeroEffectEngine, registerHeroEffectEngine, applyHeroEffectToSurface, createMarbleVeinModel, deformMarbleControlPoints, nearestMarbleCenterlinePoint, normalizeCustomMarbleStreams, normalizeDeletedMarbleStreamIds, marblePathFromPoints, marbleRibbonBounds, marbleRibbonPath,
+  HERO_EFFECT_IDS, HeroEffectEngine, registerHeroEffectEngine, applyHeroEffectToSurface, createMarbleVeinModel, deformMarbleControlPoints, nearestMarbleCenterlinePoint, normalizeCustomMarbleStreams, normalizeDeletedMarbleStreamIds, normalizeMarbleStreamOverrides, marbleWidthBoundsForClass, marblePathFromPoints, marbleRibbonBounds, marbleRibbonPath,
   updateHeroEffect, HeroLightingEngine, registerHeroLightingEngine, applyHeroLightingToEffect, connectHeroLightingInvalidation,
 } from './index';
 
@@ -46,8 +46,16 @@ describe('FX-R01E.3 continuous geological Marble model', () => {
     const custom = { 'custom-secondary-stable-a': { veinClass: 'secondary', controlPoints: [{ x: 10, y: 200 }, { x: 50, y: 150 }, { x: 90, y: 95 }], creationBaseline: [{ x: 10, y: 200 }, { x: 50, y: 150 }, { x: 90, y: 95 }], width: 1.1, widthProfile: { start: 1, middle: .8, end: .2 }, formulation: { color: '#D4AF37', finish: 'Glitter' }, opacity: .8, softness: 0, visible: true } };
     expect(Object.keys(normalizeCustomMarbleStreams(custom))).toEqual(['custom-secondary-stable-a']); expect(normalizeDeletedMarbleStreamIds(['secondary-1', 'bad'])).toEqual(['secondary-1']);
     const streams = createMarbleVeinModel(marble({ customStreams: custom, deletedStreamIds: ['secondary-1'] }), 'nail-a');
-    expect(streams.find((stream) => stream.id === 'secondary-1')?.visible).toBe(false); expect(streams.find((stream) => stream.id === 'custom-secondary-stable-a')).toMatchObject({ custom: true, finish: 'Glitter', width: 1.1 });
+    expect(streams.find((stream) => stream.id === 'secondary-1')).toBeUndefined(); expect(streams.find((stream) => stream.id === 'custom-secondary-stable-a')).toMatchObject({ custom: true, finish: 'Glitter', width: 1.1 });
     expect(streams.find((stream) => stream.id === 'secondary-2')?.id).toBe('secondary-2');
+  });
+  test('uses identical class-sensitive width bounds for generated and custom stream IDs', () => {
+    expect(marbleWidthBoundsForClass('primary')).toEqual({ min: .1, max: 8, default: 2.5 });
+    const normalized = normalizeMarbleStreamOverrides({ 'primary-0': { width: 99 }, 'custom-primary-stable': { width: 6.75 }, 'secondary-0': { width: 99 }, 'custom-secondary-stable': { width: 99 }, 'hairline-0': { width: 99 }, 'custom-hairline-stable': { width: 99 } });
+    expect(normalized['primary-0'].width).toBe(8); expect(normalized['custom-primary-stable'].width).toBe(6.75);
+    expect(normalized['secondary-0'].width).toBe(5); expect(normalized['custom-secondary-stable'].width).toBe(5);
+    expect(normalized['hairline-0'].width).toBe(1.5); expect(normalized['custom-hairline-stable'].width).toBe(1.5);
+    expect(normalizeMarbleStreamOverrides({ 'custom-primary-bad': { width: Number.NaN, widthProfile: { start: 9, middle: -1, end: 'bad' } } })['custom-primary-bad']).toMatchObject({ width: 2.5, widthProfile: { start: 3, middle: .1, end: 1 } });
   });
 });
 const document = () => createHeroDesignDocument({ id: 'design-1', name: 'Hero', now: '2026-08-03T00:00:00.000Z', shapeId: 'Almond', maskId: 'almond-mask' });
@@ -352,14 +360,33 @@ describe('Hero Design integration shell', () => {
 
   test('hydrates legacy Marble designs with a stable layout seed', async () => {
     const legacy = document();
-    legacy.nail.effect = { id: 'Marble', version: '1', parameters: { baseColor: '#F2E9E7', veinColor: '#704F59', veinDensity: .46 } };
+    legacy.nail.effect = { id: 'Marble', version: '1', parameters: { baseColor: '#F2E9E7', veinColor: '#704F59', veinDensity: .46, streamOverrides: { 'primary-0': { geometryOverride: { points: [{ x: 1, y: 2 }, { x: 30, y: 40 }] } } } } };
     const values = new Map([['anitaset.hero-design.v1:design-1', JSON.stringify(legacy)]]);
     const storage = { getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => values.set(key, value), removeItem: (key: string) => values.delete(key) };
     const adapter = new HeroLocalStoragePersistenceAdapter(storage);
     const first = await adapter.load('design-1'); const second = await adapter.load('design-1');
     expect(first?.nail.effect.parameters.marbleSeed).toBe('marble-layout-v1');
+    expect(first?.nail.effect.parameters.marbleGeometryVersion).toBe(1);
     expect(second?.nail.effect.parameters.marbleSeed).toBe(first?.nail.effect.parameters.marbleSeed);
+    expect(first?.nail.effect.parameters.streamOverrides).toEqual(legacy.nail.effect.parameters.streamOverrides);
+    const legacyGeometry = createMarbleVeinModel(first!.nail.effect, 'legacy:nail-0').map(({ id, generatedPath }) => ({ id, generatedPath }));
+    const explicitV1 = createMarbleVeinModel({ ...first!.nail.effect, parameters: { ...first!.nail.effect.parameters, marbleGeometryVersion: 1 } }, 'legacy:nail-0').map(({ id, generatedPath }) => ({ id, generatedPath }));
+    expect(legacyGeometry).toEqual(explicitV1);
     expect(adapter.compatibilityDiagnostics).toContain('Legacy Hero design design-1 had no Marble layout seed; the deterministic default was applied.');
+  });
+
+  test.each([1, 2])('hydrates and persists explicit Marble geometry version %i', async (version) => {
+    const saved = document(); saved.nail.effect = { id: 'Marble', version: '1', parameters: { baseColor: '#F2E9E7', veinColor: '#704F59', veinDensity: .46, marbleSeed: 'versioned-layout', marbleGeometryVersion: version } };
+    const values = new Map<string, string>(); const storage = { getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => values.set(key, value), removeItem: (key: string) => values.delete(key) }; const adapter = new HeroLocalStoragePersistenceAdapter(storage);
+    await adapter.save(saved); expect((await adapter.load('design-1'))?.nail.effect.parameters.marbleGeometryVersion).toBe(version);
+  });
+
+  test('persists generated deletion tombstones and valid custom Primary widths', async () => {
+    const saved = document(); saved.nail.effect = { id: 'Marble', version: '1', parameters: { baseColor: '#F2E9E7', veinColor: '#704F59', veinDensity: 1, marbleSeed: 'managed-layout', marbleGeometryVersion: 2, deletedStreamIds: ['primary-0'], customStreams: { 'custom-primary-wide': { veinClass: 'primary', controlPoints: [{ x: 1, y: 2 }, { x: 30, y: 40 }], creationBaseline: [{ x: 1, y: 2 }, { x: 30, y: 40 }], width: 6.75, widthProfile: { start: 1, middle: 1, end: .3 }, formulation: { color: '#D4AF37', finish: 'Cream' }, opacity: .8, softness: 0, visible: true } } } };
+    const values = new Map<string, string>(); const adapter = new HeroLocalStoragePersistenceAdapter({ getItem: (key) => values.get(key) ?? null, setItem: (key, value) => values.set(key, value), removeItem: (key) => values.delete(key) });
+    await adapter.save(saved); const loaded = await adapter.load('design-1'); const streams = createMarbleVeinModel(loaded!.nail.effect, 'managed:nail-0');
+    expect(loaded?.nail.effect.parameters.deletedStreamIds).toEqual(['primary-0']); expect(streams.some(({ id }) => id === 'primary-0')).toBe(false);
+    expect(streams.find(({ id }) => id === 'custom-primary-wide')?.width).toBe(6.75); expect(streams.some(({ id }) => id === 'primary-1')).toBe(true);
   });
 
   test('keeps Marble composition transforms and per-stream styling independent from geometry', () => {
