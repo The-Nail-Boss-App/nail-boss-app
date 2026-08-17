@@ -1,7 +1,7 @@
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import {
   applyHeroEffectToSurface, applyHeroLightingToEffect, createHeroDesignDocument, createHeroSurfaceInput, HeroDesignEventBus,
-  HeroEngineRegistry, HeroLocalStoragePersistenceAdapter, HeroSurfaceRenderingEngine, createMarbleVeinModel, marbleRibbonBounds, marbleRibbonParticleBounds, marbleRibbonPath, initialHeroDesignState,
+  HeroEngineRegistry, HeroLocalStoragePersistenceAdapter, HeroSurfaceRenderingEngine, createMarbleVeinModel, deformMarbleControlPoints, nearestMarbleCenterlinePoint, marbleWidthBoundsForClass, CUSTOM_MARBLE_STREAM_LIMITS, marbleRibbonBounds, marbleRibbonParticleBounds, marbleRibbonPath, initialHeroDesignState,
   heroDesignReducer, registerHeroEffectEngine, registerHeroLightingEngine, updateHeroEffect, updateHeroShape,
 } from '../hero-design/index.ts';
 import { USER_FACING_NAIL_SHAPES } from '../config/features';
@@ -262,14 +262,15 @@ export const stageLightingOpacity = (finish, shine, role, opacity) => {
   return opacity;
 };
 
-function initialNailDeskHeroState() {
+export function initialNailDeskHeroState() {
   const fallback = createHeroDesignDocument({ id: 'nail-desk-hero', name: 'Untitled Design', shapeId: 'Almond', maskId: 'almond-mask' });
   try {
     const stored = window.localStorage.getItem('anitaset.hero-design.v1:nail-desk-hero');
     if (!stored) return heroDesignReducer(initialHeroDesignState, { type: 'createDesign', document: fallback });
     const parsed = JSON.parse(stored);
     const finish = interfaceFinish(parsed?.metadata?.activePolishFormulation?.finish || parsed?.nail?.effect?.id || 'Cream');
-    const normalized = normalizePolishForFinish({ ...parsed?.nail?.effect?.parameters, ...parsed?.metadata?.activePolishFormulation }, finish);
+    const persistedParameters = parsed?.nail?.effect?.parameters || {};
+    const normalized = normalizePolishForFinish({ ...persistedParameters, ...parsed?.metadata?.activePolishFormulation, ...(parsed?.nail?.effect?.id === 'Marble' ? { marbleGeometryVersion: persistedParameters.marbleGeometryVersion } : {}) }, finish, { marbleGeometryFallback: 1 });
     const persistedEffect = parsed?.nail?.effect;
     const mountedEffect = persistedEffect?.id === 'ColorBlock' ? colorBlockEffect(persistedEffect.parameters) : persistedEffect?.id === 'NegativeSpace' ? negativeSpaceEffect(persistedEffect.parameters) : normalizePersistedAuraEffect(persistedEffect);
     const document = { ...parsed, nail: { ...parsed.nail, effect: mountedEffect || heroEffectForPolish(normalized) } };
@@ -434,7 +435,7 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
     changeFinishParameter('streamOverrides', { ...overrides, [selectedStream.id]: { ...overrides[selectedStream.id], [key]: value } });
   };
   const randomizeMarble = () => {
-    const overrides = Object.fromEntries(Object.entries(heroDocument.nail.effect.parameters.streamOverrides || {}).map(([id, override]) => [id, Object.fromEntries(Object.entries(override).filter(([key]) => !['geometryOverride', 'widthProfile'].includes(key)))]));
+    const overrides = Object.fromEntries(Object.entries(heroDocument.nail.effect.parameters.streamOverrides || {}).map(([id, override]) => [id, id.startsWith('custom-') ? override : Object.fromEntries(Object.entries(override).filter(([key]) => !['geometryOverride', 'widthProfile'].includes(key))) ]));
     const parameters = { ...heroDocument.nail.effect.parameters, marbleSeed: `marble-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 9)}`, streamOverrides: overrides };
     changeHero((current) => updateHeroEffect(current, { ...current.document.nail.effect, parameters }, heroEvents.current));
   };
@@ -444,8 +445,30 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
     delete overrides[selectedStream.id];
     changeFinishParameter('streamOverrides', overrides); setMarbleHexDraft(heroDocument.nail.effect.parameters.veinColor);
   };
+  const addMarbleVein = (veinClass) => {
+    const customStreams = heroDocument.nail.effect.parameters.customStreams || {}; const count = Object.values(customStreams).filter((stream) => stream.veinClass === veinClass).length;
+    if (count >= CUSTOM_MARBLE_STREAM_LIMITS[veinClass]) return;
+    const id = `custom-${veinClass}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`; const offset = count * 14;
+    const width = marbleWidthBoundsForClass(veinClass).default; const points = [{ x: 38 + offset, y: 292 }, { x: 76 + offset, y: 248 }, { x: 105 + offset, y: 194 }, { x: 139 + offset, y: 142 }];
+    const stream = { veinClass, controlPoints: points, creationBaseline: points, width, widthProfile: { start: 1.2, middle: 1, end: .3 }, formulation: { color: heroDocument.nail.effect.parameters.veinColor, finish: 'Cream' }, opacity: veinClass === 'hairline' ? .42 : .72, softness: 0, visible: true };
+    changeFinishParameter('customStreams', { ...customStreams, [id]: stream }); setSelectedMarbleStream(id); setMarbleHexDraft(stream.formulation.color);
+  };
+  const duplicateMarbleVein = () => {
+    if (!selectedStream || selectedStream.veinClass === 'diffusion') return; const veinClass = selectedStream.veinClass; const customStreams = heroDocument.nail.effect.parameters.customStreams || {};
+    if (Object.values(customStreams).filter((stream) => stream.veinClass === veinClass).length >= CUSTOM_MARBLE_STREAM_LIMITS[veinClass]) return;
+    const id = `custom-${veinClass}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`; const points = selectedStream.controlPoints.map(({ x, y }) => ({ x: x + 9, y: y + 7 }));
+    const stream = { veinClass, controlPoints: points, creationBaseline: points, width: selectedStream.width, widthProfile: { ...selectedStream.widthProfile }, formulation: { color: selectedStream.color, finish: selectedStream.finish }, opacity: selectedStream.opacity, softness: selectedStream.softness, visible: selectedStream.visible };
+    changeFinishParameter('customStreams', { ...customStreams, [id]: stream }); setSelectedMarbleStream(id); setMarbleHexDraft(stream.formulation.color);
+  };
+  const deleteMarbleVein = () => {
+    if (!selectedStream || !window.confirm('Delete this vein?')) return;
+    const deletedId = selectedStream.id; const fallback = marbleStreams.find((stream) => stream.id !== deletedId);
+    if (selectedStream.custom) { const customStreams = { ...(heroDocument.nail.effect.parameters.customStreams || {}) }; delete customStreams[selectedStream.id]; const overrides = { ...(heroDocument.nail.effect.parameters.streamOverrides || {}) }; delete overrides[selectedStream.id]; const parameters = { ...heroDocument.nail.effect.parameters, customStreams, streamOverrides: overrides }; changeHero((current) => updateHeroEffect(current, { ...current.document.nail.effect, parameters }, heroEvents.current)); }
+    else changeFinishParameter('deletedStreamIds', [...new Set([...(heroDocument.nail.effect.parameters.deletedStreamIds || []), selectedStream.id])]);
+    setSelectedMarbleStream(fallback?.id || null); if (fallback) setMarbleHexDraft(fallback.color);
+  };
   const resetMarble = () => {
-    const next = { ...heroDocument.nail.effect.parameters, marbleTransform: { panX: 0, panY: 0, scale: 1, rotation: 0 }, streamOverrides: {} };
+    const next = { ...heroDocument.nail.effect.parameters, marbleTransform: { panX: 0, panY: 0, scale: 1, rotation: 0 }, streamOverrides: {}, customStreams: {}, deletedStreamIds: [] };
     changeHero((current) => updateHeroEffect(current, { ...current.document.nail.effect, parameters: next }, heroEvents.current));
   };
 
@@ -541,7 +564,8 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
   const startVeinBodyDrag = (event, stream) => {
     const context = marblePointerContext(event); if (!context || event.button !== 0) return;
     setMoveMarble(false);
-    captureVeinPointer(event, { kind: 'body', streamId: stream.id, points: stream.controlPoints.map((point) => ({ ...point })), start: context.point, inverse: context.inverse, svg: context.svg });
+    const nearest = nearestMarbleCenterlinePoint(stream.controlPoints, context.point);
+    captureVeinPointer(event, { kind: event.shiftKey ? 'body' : 'local', streamId: stream.id, grabT: nearest.t, points: stream.controlPoints.map((point) => ({ ...point })), start: context.point, inverse: context.inverse, svg: context.svg });
   };
   const startVeinPointDrag = (event, stream, pointIndex) => {
     const context = marblePointerContext(event); if (!context || event.button !== 0) return;
@@ -563,8 +587,8 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
         const value = Math.max(.1, Math.min(3, drag.current.widthProfile[drag.current.position] + delta / Math.max(4, drag.current.width * 2)));
         next = { ...current, widthProfile: { ...drag.current.widthProfile, [drag.current.position]: Number(value.toFixed(2)) } };
       } else {
-        const dx = drag.current.kind === 'body' ? point.x - drag.current.start.x : 0; const dy = drag.current.kind === 'body' ? point.y - drag.current.start.y : 0;
-        const points = drag.current.points.map((item, index) => drag.current.kind === 'body' || index === drag.current.pointIndex ? { x: Number((drag.current.kind === 'body' ? item.x + dx : point.x).toFixed(2)), y: Number((drag.current.kind === 'body' ? item.y + dy : point.y).toFixed(2)) } : item);
+        const dx = ['body', 'local'].includes(drag.current.kind) ? point.x - drag.current.start.x : 0; const dy = ['body', 'local'].includes(drag.current.kind) ? point.y - drag.current.start.y : 0;
+        const points = drag.current.kind === 'local' ? deformMarbleControlPoints(drag.current.points, drag.current.grabT, dx, dy) : drag.current.points.map((item, index) => drag.current.kind === 'body' || index === drag.current.pointIndex ? { x: Number((drag.current.kind === 'body' ? item.x + dx : point.x).toFixed(2)), y: Number((drag.current.kind === 'body' ? item.y + dy : point.y).toFixed(2)) } : item);
         next = { ...current, geometryOverride: { points } };
       }
       changeFinishParameter('streamOverrides', { ...overrides, [drag.current.streamId]: next }); return;
@@ -782,18 +806,18 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
               <label>Rotation <output>{heroDocument.nail.effect.parameters.marbleTransform?.rotation || 0}°</output><input aria-label="Marble Rotation" type="range" min="-180" max="180" value={heroDocument.nail.effect.parameters.marbleTransform?.rotation || 0} onChange={(event) => changeMarbleTransform('rotation', Number(event.target.value))} /></label>
               <div className="nail-design-studio__marble-actions"><button type="button" onClick={randomizeMarble}>Randomize Layout</button><button type="button" onClick={resetMarble}>Reset Layout &amp; Veins</button></div>
               <label>Vein density <input aria-label="Vein density" type="range" min="0" max="1" step=".01" value={heroDocument.nail.effect.parameters.veinDensity} onChange={(event) => changeFinishParameter('veinDensity', Number(event.target.value))} /></label>
-              <h3>Veins</h3><div className="nail-design-studio__marble-streams" role="listbox" aria-label="Marble Veins">{marbleStreams.map((stream) => <button type="button" role="option" aria-selected={selectedStream?.id === stream.id} data-visible={stream.visible} key={stream.id} onClick={() => selectMarbleStream(stream.id, stream.color)}><i style={{ backgroundColor: stream.color }} />{stream.veinClass.charAt(0).toUpperCase() + stream.veinClass.slice(1)} {Number(stream.id.split('-')[1]) + 1}<span>{stream.visible ? 'On' : 'Off'}</span></button>)}</div>
-              {selectedStream && <fieldset><legend>Selected Vein — {selectedStream.veinClass.charAt(0).toUpperCase() + selectedStream.veinClass.slice(1)} {Number(selectedStream.id.split('-')[1]) + 1}</legend><h3>Appearance</h3><label>Color / HEX<span className="nail-design-studio__color-row"><input aria-label="Selected Vein Color" type="color" value={selectedStream.color} onChange={(event) => { const value = event.target.value.toUpperCase(); setMarbleHexDraft(value); changeStreamOverride('formulation', { ...(heroDocument.nail.effect.parameters.streamOverrides?.[selectedStream.id]?.formulation || {}), color: value, finish: selectedStream.finish }); }} /><input aria-label="Selected Vein HEX" value={marbleHexDraft} maxLength="7" onChange={(event) => setMarbleHexDraft(event.target.value.toUpperCase())} onBlur={() => /^#[0-9A-F]{6}$/.test(marbleHexDraft) ? changeStreamOverride('formulation', { ...(heroDocument.nail.effect.parameters.streamOverrides?.[selectedStream.id]?.formulation || {}), color: marbleHexDraft, finish: selectedStream.finish }) : setMarbleHexDraft(selectedStream.color)} /></span></label>
+              <h3>Veins</h3><div className="nail-design-studio__marble-add" aria-label="Add Vein">{['primary', 'secondary', 'hairline'].map((veinClass) => { const count = Object.values(heroDocument.nail.effect.parameters.customStreams || {}).filter((stream) => stream.veinClass === veinClass).length; return <button key={veinClass} type="button" disabled={count >= CUSTOM_MARBLE_STREAM_LIMITS[veinClass]} title={count >= CUSTOM_MARBLE_STREAM_LIMITS[veinClass] ? `${veinClass} vein limit reached` : undefined} onClick={() => addMarbleVein(veinClass)}>+ {veinClass.charAt(0).toUpperCase() + veinClass.slice(1)}</button>; })}</div><div className="nail-design-studio__marble-streams" role="listbox" aria-label="Marble Veins">{marbleStreams.map((stream) => <button type="button" role="option" aria-selected={selectedStream?.id === stream.id} data-visible={stream.visible} key={stream.id} onClick={() => selectMarbleStream(stream.id, stream.color)}><i style={{ backgroundColor: stream.color }} />{stream.custom ? 'Custom ' : ''}{stream.veinClass.charAt(0).toUpperCase() + stream.veinClass.slice(1)} {stream.custom ? marbleStreams.filter((item) => item.custom && item.veinClass === stream.veinClass).findIndex((item) => item.id === stream.id) + 1 : Number(stream.id.split('-')[1]) + 1}<span>{stream.visible ? 'On' : 'Off'}</span></button>)}</div>
+              {selectedStream && <fieldset><legend>Selected Vein — {selectedStream.custom ? 'Custom ' : ''}{selectedStream.veinClass.charAt(0).toUpperCase() + selectedStream.veinClass.slice(1)}</legend><h3>Appearance</h3><label>Color / HEX<span className="nail-design-studio__color-row"><input aria-label="Selected Vein Color" type="color" value={selectedStream.color} onChange={(event) => { const value = event.target.value.toUpperCase(); setMarbleHexDraft(value); changeStreamOverride('formulation', { ...(heroDocument.nail.effect.parameters.streamOverrides?.[selectedStream.id]?.formulation || {}), color: value, finish: selectedStream.finish }); }} /><input aria-label="Selected Vein HEX" value={marbleHexDraft} maxLength="7" onChange={(event) => setMarbleHexDraft(event.target.value.toUpperCase())} onBlur={() => /^#[0-9A-F]{6}$/.test(marbleHexDraft) ? changeStreamOverride('formulation', { ...(heroDocument.nail.effect.parameters.streamOverrides?.[selectedStream.id]?.formulation || {}), color: marbleHexDraft, finish: selectedStream.finish }) : setMarbleHexDraft(selectedStream.color)} /></span></label>
                 {selectedStream.veinClass === 'diffusion' ? <p>Diffusion keeps its translucent geological finish.</p> : <label>Finish<select aria-label="Selected Vein Finish" value={selectedStream.finish} onChange={(event) => changeStreamOverride('formulation', { ...(heroDocument.nail.effect.parameters.streamOverrides?.[selectedStream.id]?.formulation || {}), color: selectedStream.color, finish: event.target.value })}><option>Cream</option><option>Jelly</option><option>Matte</option><option>Glitter</option></select></label>}
                 <label>Opacity <output>{Math.round(selectedStream.opacity * 100)}%</output><input aria-label="Selected Vein Opacity" type="range" min="0" max="1" step=".01" value={selectedStream.opacity} onChange={(event) => changeStreamOverride('opacity', Number(event.target.value))} /></label>
                 <label>Softness <output>{selectedStream.softness.toFixed(1)}</output><input aria-label="Selected Vein Softness" type="range" min="0" max="6" step=".1" value={selectedStream.softness} onChange={(event) => changeStreamOverride('softness', Number(event.target.value))} /></label>
-                <label><input aria-label="Selected Vein Visible" type="checkbox" checked={(heroDocument.nail.effect.parameters.streamOverrides?.[selectedStream.id]?.visible) !== false} onChange={(event) => changeStreamOverride('visible', event.target.checked)} />Visible</label>
-                <p className="nail-design-studio__marble-direct-hint">Drag the vein to move it. Pull round handles to shape it and diamond handles to change thickness.</p>
+                <button type="button" onClick={() => changeStreamOverride('visible', !selectedStream.visible)}>{selectedStream.visible ? 'Hide Vein' : 'Show Vein'}</button>
+                <p className="nail-design-studio__marble-direct-hint">Drag any section to sculpt it. Shift-drag the vein to move it. Pull round endpoints to stretch and diamond handles to change thickness.</p>
                 <details className="nail-design-studio__marble-advanced"><summary>Accessible geometry controls</summary>
-                  <label>Overall Width <output>{selectedStream.width.toFixed(1)}</output><input aria-label="Selected Vein Overall Width" type="range" min=".1" max={selectedStream.veinClass === 'primary' ? 8 : selectedStream.veinClass === 'hairline' ? 1.5 : 5} step=".1" value={selectedStream.width} onChange={(event) => changeStreamOverride('width', Number(event.target.value))} /></label>
+                  <label>Overall Width <output>{selectedStream.width.toFixed(1)}</output><input aria-label="Selected Vein Overall Width" type="range" min={marbleWidthBoundsForClass(selectedStream.veinClass).min} max={marbleWidthBoundsForClass(selectedStream.veinClass).max} step=".1" value={selectedStream.width} onChange={(event) => changeStreamOverride('width', Number(event.target.value))} /></label>
                   {['start', 'middle', 'end'].map((position) => <label key={position}>{position.charAt(0).toUpperCase() + position.slice(1)} Width <output>{Math.round(selectedStream.widthProfile[position] * 100)}%</output><input aria-label={`${position.charAt(0).toUpperCase() + position.slice(1)} Width`} type="range" min=".1" max="3" step=".05" value={selectedStream.widthProfile[position]} onChange={(event) => changeStreamOverride('widthProfile', { ...selectedStream.widthProfile, [position]: Number(event.target.value) })} /></label>)}
                 </details>
-                <button type="button" onClick={resetSelectedVein}>Reset Selected Vein</button></fieldset>}
+                <div className="nail-design-studio__marble-actions"><button type="button" disabled={selectedStream.veinClass === 'diffusion'} onClick={duplicateMarbleVein}>Duplicate Vein</button><button type="button" onClick={deleteMarbleVein}>Delete Vein</button><button type="button" onClick={resetSelectedVein}>Reset Selected Vein</button></div></fieldset>}
             </section>}
             {activeTool.id === 'effects' && heroDocument.nail.effect.id === 'Aura' && <><label>Aura center color<input aria-label="Aura center color" type="color" value={heroDocument.nail.effect.parameters.centerColor} onChange={(event) => changeFinishParameter('centerColor', event.target.value.toUpperCase())} /></label><label>Aura color<input aria-label="Aura color" type="color" value={heroDocument.nail.effect.parameters.auraColor} onChange={(event) => changeFinishParameter('auraColor', event.target.value.toUpperCase())} /></label><label>Aura softness <output>{Math.round(heroDocument.nail.effect.parameters.softness * 100)}%</output><input aria-label="Aura softness" type="range" min="0" max="1" step=".01" value={heroDocument.nail.effect.parameters.softness} onChange={(event) => changeFinishParameter('softness', Number(event.target.value))} /></label><label>Aura intensity <output>{Math.round(heroDocument.nail.effect.parameters.intensity * 100)}%</output><input aria-label="Aura intensity" type="range" min="0" max="1" step=".01" value={heroDocument.nail.effect.parameters.intensity} onChange={(event) => changeFinishParameter('intensity', Number(event.target.value))} /></label></>}
             {activeTool.id === 'effects' && heroDocument.nail.effect.id === 'ColorBlock' && <><label>Color A<input aria-label="Color A" type="color" value={heroDocument.nail.effect.parameters.primaryColor} onChange={(event) => changeFinishParameter('primaryColor', event.target.value.toUpperCase())} /></label><label>Color B<input aria-label="Color B" type="color" value={heroDocument.nail.effect.parameters.secondaryColor} onChange={(event) => changeFinishParameter('secondaryColor', event.target.value.toUpperCase())} /></label><label>Block Direction<select aria-label="Block Direction" value={heroDocument.nail.effect.parameters.direction} onChange={(event) => changeFinishParameter('direction', event.target.value)}><option value="vertical">Vertical</option><option value="horizontal">Horizontal</option><option value="diagonal">Diagonal</option></select></label><label>Split Position <output>{Math.round(heroDocument.nail.effect.parameters.splitPosition * 100)}%</output><input aria-label="Split Position" aria-valuetext={`${Math.round(heroDocument.nail.effect.parameters.splitPosition * 100)}%`} type="range" min="0" max="1" step=".01" value={heroDocument.nail.effect.parameters.splitPosition} onChange={(event) => changeFinishParameter('splitPosition', Number(event.target.value))} /></label></>}

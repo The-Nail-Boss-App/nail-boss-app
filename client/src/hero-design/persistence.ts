@@ -1,7 +1,7 @@
 import { HeroDesignDocument } from './contracts';
 import { validateHeroDesignDocument } from './validation';
 import { DEFAULT_HERO_MATERIAL_REFERENCE } from './material';
-import { DEFAULT_HERO_EFFECT_REFERENCE, normalizeMarbleLayoutSeed, normalizeMarbleStreamOverrides, normalizeMarbleTransform } from './effect';
+import { DEFAULT_HERO_EFFECT_REFERENCE, normalizeCustomMarbleStreams, normalizeDeletedMarbleStreamIds, normalizeMarbleLayoutSeed, normalizeMarbleStreamOverrides, normalizeMarbleTransform } from './effect';
 
 export interface HeroPersistenceAdapter {
   create(document: HeroDesignDocument): Promise<HeroDesignDocument>;
@@ -42,7 +42,7 @@ export class HeroLocalStoragePersistenceAdapter implements HeroPersistenceAdapte
     }
     if (document.nail?.effect?.id === 'Marble') {
       const parameters = document.nail.effect.parameters;
-      document = { ...document, nail: { ...document.nail, effect: { ...document.nail.effect, parameters: { ...parameters, marbleSeed: normalizeMarbleLayoutSeed(parameters.marbleSeed), marbleTransform: normalizeMarbleTransform(parameters.marbleTransform), streamOverrides: normalizeMarbleStreamOverrides(parameters.streamOverrides) } } } };
+      document = { ...document, nail: { ...document.nail, effect: { ...document.nail.effect, parameters: { ...parameters, marbleGeometryVersion: parameters.marbleGeometryVersion === 2 ? 2 : 1, marbleSeed: normalizeMarbleLayoutSeed(parameters.marbleSeed), marbleTransform: normalizeMarbleTransform(parameters.marbleTransform), streamOverrides: normalizeMarbleStreamOverrides(parameters.streamOverrides), customStreams: normalizeCustomMarbleStreams(parameters.customStreams), deletedStreamIds: normalizeDeletedMarbleStreamIds(parameters.deletedStreamIds) } } } };
       if (!parameters.marbleSeed) {
       this.compatibilityDiagnostics.push(`Legacy Hero design ${id} had no Marble layout seed; the deterministic default was applied.`);
       }

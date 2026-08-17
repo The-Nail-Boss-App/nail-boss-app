@@ -3,7 +3,7 @@ export const FINISH_DEFAULTS = Object.freeze({
   Gradient: { colorA: '#D94C70', colorB: '#7D2E68', direction: 90, opacity: 1, viscosity: .62, shine: .68 },
   Chrome: { baseColor: '#D94C70', opacity: 1, viscosity: .62, shine: .9, metallicReflection: .7 },
   'Cat Eye': { baseColor: '#521A46', stripeDirection: 22, stripeWidth: .18, stripeStrength: .88, opacity: 1, viscosity: .68, shine: .76 },
-  Marble: { baseColor: '#F1CAD8', veinColor: '#8A405D', veinDensity: .42, marbleSeed: 'marble-layout-v1', marbleTransform: Object.freeze({ panX: 0, panY: 0, scale: 1, rotation: 0 }), streamOverrides: Object.freeze({}), opacity: 1, viscosity: .72, shine: .58 },
+  Marble: { baseColor: '#F1CAD8', veinColor: '#8A405D', veinDensity: .42, marbleSeed: 'marble-layout-v1', marbleGeometryVersion: 2, marbleTransform: Object.freeze({ panX: 0, panY: 0, scale: 1, rotation: 0 }), streamOverrides: Object.freeze({}), customStreams: Object.freeze({}), deletedStreamIds: Object.freeze([]), opacity: 1, viscosity: .72, shine: .58 },
   Aura: { baseColor: '#F9DDE8', centerColor: '#FFEAF2', auraColor: '#FF5EA8', softness: .86, intensity: .68, opacity: 1, viscosity: .62, shine: .68 },
   Jelly: { baseColor: '#D94C70', translucency: .52, opacity: 1, viscosity: .46, shine: .74 },
   Matte: { baseColor: '#D94C70', opacity: 1, viscosity: .66, shine: .08, matteSoftness: .72 },
@@ -33,12 +33,12 @@ export function negativeSpaceEffect(parameters = {}) {
 const SHARED = ['opacity', 'viscosity', 'shine'];
 const SPECIFIC = {
   Gradient: ['colorB', 'direction'], Chrome: ['metallicReflection'], 'Cat Eye': ['stripeDirection', 'stripeWidth', 'stripeStrength'],
-  Marble: ['veinColor', 'veinDensity', 'marbleSeed', 'marbleTransform', 'streamOverrides'], Aura: ['centerColor', 'auraColor', 'softness', 'intensity'], Jelly: ['translucency'], Matte: ['matteSoftness'], Glass: ['translucency', 'glassClarity'],
+  Marble: ['veinColor', 'veinDensity', 'marbleSeed', 'marbleGeometryVersion', 'marbleTransform', 'streamOverrides', 'customStreams', 'deletedStreamIds'], Aura: ['centerColor', 'auraColor', 'softness', 'intensity'], Jelly: ['translucency'], Matte: ['matteSoftness'], Glass: ['translucency', 'glassClarity'],
   'Chrome-ready': ['metallicReflection'], Shimmer: ['shimmerIntensity'], Metallic: ['metallicReflection'], Glitter: ['fleckColor', 'glitterDensity'],
 };
 
 /** The only boundary at which persisted or edited polish data changes finish. */
-export function normalizePolishForFinish(polish = {}, requestedFinish = 'Cream') {
+export function normalizePolishForFinish(polish = {}, requestedFinish = 'Cream', { marbleGeometryFallback = 2 } = {}) {
   const finish = FINISH_DEFAULTS[requestedFinish] ? requestedFinish : 'Cream';
   if (finish !== requestedFinish && typeof console !== 'undefined') console.warn(`Unsupported polish finish "${requestedFinish}" normalized to Cream.`);
   const defaults = FINISH_DEFAULTS[finish];
@@ -51,10 +51,13 @@ export function normalizePolishForFinish(polish = {}, requestedFinish = 'Cream')
     const density = Number(polish.veinDensity);
     normalized.veinDensity = Number.isFinite(density) ? Math.min(1, Math.max(0, density)) : defaults.veinDensity;
     normalized.marbleSeed = typeof polish.marbleSeed === 'string' && polish.marbleSeed.length > 0 && polish.marbleSeed.length <= 128 ? polish.marbleSeed : defaults.marbleSeed;
+    normalized.marbleGeometryVersion = [1, 2].includes(polish.marbleGeometryVersion) ? polish.marbleGeometryVersion : marbleGeometryFallback;
     const transform = polish.marbleTransform || {};
     const clamp = (value, min, max, fallback) => Number.isFinite(Number(value)) ? Math.min(max, Math.max(min, Number(value))) : fallback;
     normalized.marbleTransform = { panX: clamp(transform.panX, -120, 120, 0), panY: clamp(transform.panY, -180, 180, 0), scale: clamp(transform.scale, .55, 2.5, 1), rotation: clamp(transform.rotation, -180, 180, 0) };
     normalized.streamOverrides = polish.streamOverrides && typeof polish.streamOverrides === 'object' && !Array.isArray(polish.streamOverrides) ? polish.streamOverrides : {};
+    normalized.customStreams = polish.customStreams && typeof polish.customStreams === 'object' && !Array.isArray(polish.customStreams) ? polish.customStreams : {};
+    normalized.deletedStreamIds = Array.isArray(polish.deletedStreamIds) ? polish.deletedStreamIds : [];
   }
   if (finish === 'Glitter') {
     // Older saves have no fleck color. This fixed warm-silver fallback remains
@@ -73,7 +76,7 @@ export function heroEffectForPolish(polish) {
   const p = normalizePolishForFinish(polish, polish.finish);
   const id = ({ Cream: 'Solid', Matte: 'Solid', Glitter: 'Solid', Glass: 'Jelly', 'Chrome-ready': 'Chrome', Shimmer: 'Chrome', Metallic: 'Chrome' })[p.finish] || p.finish;
   const parameters = { [id === 'Gradient' ? 'colorA' : 'baseColor']: p.colorHex, opacity: p.opacity, viscosity: p.viscosity, shine: p.shine };
-  const allowed = { Gradient: ['colorB', 'direction'], 'Cat Eye': ['stripeDirection', 'stripeWidth', 'stripeStrength'], Marble: ['veinColor', 'veinDensity', 'marbleSeed', 'marbleTransform', 'streamOverrides'], Aura: ['centerColor', 'auraColor', 'softness', 'intensity'], Jelly: ['translucency'] }[id] || [];
+  const allowed = { Gradient: ['colorB', 'direction'], 'Cat Eye': ['stripeDirection', 'stripeWidth', 'stripeStrength'], Marble: ['veinColor', 'veinDensity', 'marbleSeed', 'marbleGeometryVersion', 'marbleTransform', 'streamOverrides', 'customStreams', 'deletedStreamIds'], Aura: ['centerColor', 'auraColor', 'softness', 'intensity'], Jelly: ['translucency'] }[id] || [];
   allowed.forEach((key) => { parameters[key] = p[key] ?? FINISH_DEFAULTS[p.finish][key]; });
   return { id, version: '1', parameters };
 }
