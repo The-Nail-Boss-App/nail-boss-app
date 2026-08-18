@@ -45,9 +45,9 @@ describe('DS-03 Polish Studio repair', () => {
     const effect = container.querySelector('select[aria-label="Effect"]');
     await act(async () => { effect.value = 'Marble'; effect.dispatchEvent(new Event('change', { bubbles: true })); });
     await click(container.querySelector('input[value="full"]'));
-    const mode = container.querySelector('select[aria-label="Marble Set Mode"]');
-    await act(async () => { mode.value = 'flow'; mode.dispatchEvent(new Event('change', { bubbles: true })); });
-    await click([...container.querySelectorAll('.nail-design-studio__marble-set button')].find((button) => button.textContent === 'Apply to Set'));
+    await click([...container.querySelectorAll('[aria-label="Marble workspace mode"] button')].find((button) => button.textContent === 'Set'));
+    await click([...container.querySelectorAll('[aria-label="Marble Set Style"] button')].find((button) => button.textContent === 'Flow'));
+    await click([...container.querySelectorAll('.nail-design-studio__marble-set button')].find((button) => button.textContent === 'Coordinate From This Nail'));
     const panel = container.querySelector('.nail-design-studio__marble-set');
     expect(panel.dataset.marbleSetMode).toBe('flow'); expect(panel.dataset.marbleSetMembers.split(',')).toHaveLength(10);
     const transforms = [...container.querySelectorAll('[data-effect-layer="marble"]:not(:has([data-marble-hit-target])) [data-marble-transform]')].map((node) => node.getAttribute('transform'));
@@ -58,7 +58,7 @@ describe('DS-03 Polish Studio repair', () => {
     expect(panel.dataset.marbleSetSeed).toBe(seed); expect(panel.dataset.marbleSetMembers.split(',')).toHaveLength(10);
     const activeMarble = container.querySelectorAll('[data-testid="nail-slot"]')[2].querySelector('[data-effect-layer="marble"] [data-marble-transform]');
     const beforeDetach = activeMarble.getAttribute('transform');
-    await click([...container.querySelectorAll('.nail-design-studio__marble-set button')].find((button) => button.textContent === 'Detach Nail From Set'));
+    await click([...container.querySelectorAll('.nail-design-studio__marble-set button')].find((button) => button.textContent === 'Detach Current Nail'));
     expect(container.querySelectorAll('[data-testid="nail-slot"]')[2].querySelector('[data-effect-layer="marble"] [data-marble-transform]').getAttribute('transform')).toBe(beforeDetach);
     expect(panel.dataset.marbleSetMembers).not.toContain('nail-2');
     await click([...container.querySelectorAll('button')].find((button) => button.textContent === 'Save Changes'));
@@ -67,6 +67,30 @@ describe('DS-03 Polish Studio repair', () => {
     expect(saved.metadata.marbleSetCoordination.participatingNailIds).not.toContain('nail-2');
     expect(saved.metadata.marbleNailStates['nail-2'].marbleSeed).toBeTruthy();
   });
+  it('presents the simplified Marble appearance and progressively disclosed set workflow', async () => {
+    await click([...container.querySelectorAll('[role="tab"]')].find((item) => item.textContent === 'Effects'));
+    const effect = container.querySelector('select[aria-label="Effect"]');
+    await act(async () => { effect.value = 'Marble'; effect.dispatchEvent(new Event('change', { bubbles: true })); });
+    const effects = container.querySelector('[aria-label="Effects Studio"]');
+    expect(effects.querySelector('.polish-bottle-figure')).toBeNull();
+    expect(effects.querySelector('input[aria-label="Base Color picker"]')).toBeNull();
+    expect(effects.querySelector('input[aria-label="Base Color HEX"]')).toBeNull();
+    expect(effects.querySelector('input[aria-label="Marble Horizontal Position"]')).toBeNull();
+    expect(effects.querySelector('input[aria-label="Marble Vertical Position"]')).toBeNull();
+    expect([...effects.querySelectorAll('.nail-design-studio__marble-add summary')].map((item) => item.textContent)).toEqual(['+ Add Vein']);
+    expect([...effects.querySelectorAll('[aria-label="Marble workspace mode"] button')].map((item) => item.textContent)).toEqual(['Independent', 'Set']);
+    expect(container.querySelector('[aria-label="Marble Set composition"]')).toBeNull();
+    expect(effects.querySelector('input[aria-label="Selected Vein Color"]')).toBeTruthy();
+    expect(effects.querySelector('select[aria-label="Selected Vein Finish"]')).toBeTruthy();
+    await click([...effects.querySelectorAll('[aria-label="Marble workspace mode"] button')].find((item) => item.textContent === 'Set'));
+    const set = container.querySelector('[aria-label="Marble Set composition"]');
+    expect([...set.querySelectorAll('[aria-label="Marble Set Style"] button')].map((item) => item.textContent)).toEqual(['Coordinated', 'Flow']);
+    expect(set.querySelectorAll('input[aria-label="Marble Set Variation"]')).toHaveLength(1);
+    expect([...set.querySelectorAll('button')].some((item) => item.textContent === 'Coordinate From This Nail')).toBe(true);
+    expect(set.textContent).not.toMatch(/Primary set color|Primary set finish|Secondary set color|Secondary set finish|Hairline set color|Hairline set finish/);
+    expect(set.querySelector('.nail-design-studio__marble-more').open).toBe(false);
+  });
+
   afterEach(() => { act(() => root.unmount()); container.remove(); window.localStorage.removeItem('anitaset.hero-design.v1:nail-desk-hero'); });
 
   it('uses Cream terminology, a compact safe HEX editor, and the shared premium bottle renderer', async () => {
@@ -741,11 +765,8 @@ describe('DS-TK01A French Tip integration', () => {
     const veinColor = container.querySelector('input[aria-label="Selected Vein Color"]');
     await act(async () => { Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set.call(veinColor, '#D4AF37'); veinColor.dispatchEvent(new Event('change', { bubbles: true })); });
 
-    const cases = [
-      ['Marble Horizontal Position', '120'], ['Marble Horizontal Position', '-120'],
-      ['Marble Vertical Position', '180'], ['Marble Vertical Position', '-180'],
-      ['Marble Scale', '2.5'], ['Marble Rotation', '47'],
-    ];
+    await click([...container.querySelectorAll('details summary')].find((summary) => summary.textContent === 'Transform'));
+    const cases = [['Marble Scale', '2.5'], ['Marble Rotation', '47']];
     for (const [label, value] of cases) {
       await type(container.querySelector(`input[aria-label="${label}"]`), value);
       const marble = container.querySelector('[data-effect-layer="marble"]');
@@ -780,6 +801,7 @@ describe('DS-TK01A French Tip integration', () => {
     const finish = container.querySelector('select[aria-label="Selected Vein Finish"]');
     await act(async () => { finish.value = 'Glitter'; finish.dispatchEvent(new Event('change', { bubbles: true })); });
     expect(container.querySelector('[data-stream-id="primary-1"] [data-material-profile="GlitterMaterial"]')).toBeTruthy();
+    await click([...container.querySelectorAll('details summary')].find((summary) => summary.textContent === 'Accessible geometry'));
     await type(container.querySelector('input[aria-label="Start Width"]'), '2.5'); await type(container.querySelector('input[aria-label="End Width"]'), '.25');
     const ribbon = container.querySelector('[data-stream-id="primary-1"] [data-vein-component="variable-width-ribbon"]');
     expect(ribbon.dataset.widthProfile).toBe('2.5,1,0.25');
@@ -787,24 +809,24 @@ describe('DS-TK01A French Tip integration', () => {
     expect(container.querySelectorAll('[data-stream-id="primary-1"] [data-marble-control-point]').length).toBeGreaterThanOrEqual(4);
     expect(container.querySelectorAll('[data-stream-id="primary-1"] [data-marble-width-handle]').length).toBe(3);
     expect(container.querySelector('[data-marble-hit-target="primary-1"]').closest('[data-effect-layer="marble"]')).toBe(container.querySelectorAll('[data-effect-layer="marble"]')[1]);
-    expect(container.querySelector('details summary').textContent).toContain('Accessible geometry controls');
+    expect([...container.querySelectorAll('details summary')].some((summary) => summary.textContent === 'Accessible geometry')).toBe(true);
   });
 
   it('adds, duplicates, hides, and deletes independently persisted Marble streams', async () => {
     await click([...container.querySelectorAll('[role="tab"]')].find((item) => item.textContent === 'Effects'));
     const effect = container.querySelector('select[aria-label="Effect"]');
     await act(async () => { effect.value = 'Marble'; effect.dispatchEvent(new Event('change', { bubbles: true })); });
-    await click([...container.querySelectorAll('[aria-label="Add Vein"] button')].find((button) => button.textContent.includes('Secondary')));
+    await click([...container.querySelectorAll('.nail-design-studio__marble-add button')].find((button) => button.textContent.includes('Secondary')));
     const selected = container.querySelector('[role="option"][aria-selected="true"]'); expect(selected.textContent).toContain('Custom Secondary');
     const customId = selected.closest('button').getAttribute('key') || container.querySelector('[data-stream-id^="custom-secondary-"]').dataset.streamId;
     expect(container.querySelector(`[data-stream-id="${customId}"] [data-marble-width-handle]`)).toBeTruthy();
     const finish = container.querySelector('select[aria-label="Selected Vein Finish"]'); await act(async () => { finish.value = 'Glitter'; finish.dispatchEvent(new Event('change', { bubbles: true })); });
-    await click([...container.querySelectorAll('button')].find((button) => button.textContent === 'Duplicate Vein'));
+    await click([...container.querySelectorAll('button')].find((button) => button.textContent === 'Duplicate'));
     const customStreams = container.querySelectorAll('[data-stream-id^="custom-secondary-"]'); expect(customStreams.length).toBeGreaterThanOrEqual(2);
     expect([...customStreams].some((stream) => stream.querySelector('[data-material-profile="GlitterMaterial"]'))).toBe(true);
     await click([...container.querySelectorAll('button')].find((button) => button.textContent === 'Hide Vein')); expect([...container.querySelectorAll('[role="option"]')].find((option) => option.getAttribute('aria-selected') === 'true').textContent).toContain('Off');
     await click([...container.querySelectorAll('button')].find((button) => button.textContent === 'Show Vein'));
-    const confirm = jest.spyOn(window, 'confirm').mockReturnValue(true); await click([...container.querySelectorAll('button')].find((button) => button.textContent === 'Delete Vein')); expect(confirm).toHaveBeenCalled(); confirm.mockRestore();
+    const confirm = jest.spyOn(window, 'confirm').mockReturnValue(true); await click([...container.querySelectorAll('button')].find((button) => button.textContent === 'Delete')); expect(confirm).toHaveBeenCalled(); confirm.mockRestore();
   });
 
   it('removes deleted generated veins from active selection while keeping Hide reversible', async () => {
@@ -814,11 +836,10 @@ describe('DS-TK01A French Tip integration', () => {
     await click([...container.querySelectorAll('button')].find((button) => button.textContent === 'Hide Vein'));
     expect([...container.querySelectorAll('[role="option"]')].some((option) => option.textContent.includes('Primary 2') && option.textContent.includes('Off'))).toBe(true);
     await click([...container.querySelectorAll('button')].find((button) => button.textContent === 'Show Vein'));
-    const confirm = jest.spyOn(window, 'confirm').mockReturnValue(true); await click([...container.querySelectorAll('button')].find((button) => button.textContent === 'Delete Vein')); confirm.mockRestore();
+    const confirm = jest.spyOn(window, 'confirm').mockReturnValue(true); await click([...container.querySelectorAll('button')].find((button) => button.textContent === 'Delete')); confirm.mockRestore();
     expect([...container.querySelectorAll('[role="option"]')].some((option) => option.textContent.includes('Primary 2'))).toBe(false);
     expect(container.querySelector('[data-stream-id="primary-1"]')).toBeNull(); expect(container.querySelector('[data-marble-hit-target="primary-1"]')).toBeNull(); expect(container.querySelector('[data-marble-selection="primary-1"]')).toBeNull();
     expect(container.querySelector('[role="option"][aria-selected="true"]')).toBeTruthy();
-    await click([...container.querySelectorAll('button')].find((button) => button.textContent === 'Randomize Layout'));
     expect(container.querySelector('[data-stream-id="primary-1"]')).toBeNull();
   });
 
@@ -1096,7 +1117,7 @@ describe('adaptive Nail Desk', () => {
     expect(effects.querySelector('[aria-label="Recently Used"]')).toBeNull();
     expect([...effects.querySelectorAll('button')].some((item) => item.textContent === 'Apply Polish')).toBe(false);
 
-    for (const [index, [value, expectedControl]] of [['Gradient', 'Direction'], ['Marble', 'Vein density'], ['Chrome', 'Metallic Reflection'], ['Cat Eye', 'Stripe strength']].entries()) {
+    for (const [index, [value, expectedControl]] of [['Gradient', 'Direction'], ['Marble', 'Selected Vein Opacity'], ['Chrome', 'Metallic Reflection'], ['Cat Eye', 'Stripe strength']].entries()) {
       await act(async () => { selector.value = value; selector.dispatchEvent(new Event('change', { bubbles: true })); });
       expect(container.querySelector('[data-design-layer="polish"]').dataset.heroEffect).toBe(value);
       expect(effects.querySelector(`[aria-label="${expectedControl}"]`)).toBeTruthy();
@@ -1110,9 +1131,12 @@ describe('adaptive Nail Desk', () => {
         expect(marble.querySelector('[data-vein-component="mineral-fragments"]')).toBeTruthy();
       }
       const effectColor = effects.querySelector('input[aria-label="Base Color picker"]');
-      const color = `#${String(index + 1).repeat(6)}`;
-      await act(async () => { Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set.call(effectColor, color); effectColor.dispatchEvent(new Event('change', { bubbles: true })); });
-      expect(container.querySelector('svg[data-testid="stage-nail"]').dataset.activePolishColor).toBe(color);
+      if (value === 'Marble') expect(effectColor).toBeNull();
+      else {
+        const color = `#${String(index + 1).repeat(6)}`;
+        await act(async () => { Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set.call(effectColor, color); effectColor.dispatchEvent(new Event('change', { bubbles: true })); });
+        expect(container.querySelector('svg[data-testid="stage-nail"]').dataset.activePolishColor).toBe(color);
+      }
     }
 
     await act(async () => { selector.value = 'ColorBlock'; selector.dispatchEvent(new Event('change', { bubbles: true })); });
