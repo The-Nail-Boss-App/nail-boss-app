@@ -40,6 +40,33 @@ describe('DS-03 Polish Studio repair', () => {
     const expected = createMarbleVeinModel({ ...saved.nail.effect, parameters: { ...saved.nail.effect.parameters, marbleGeometryVersion: 1 } }, 'nail-desk-hero:nail-0').map(({ id, generatedPath }) => ({ id, generatedPath }));
     expect(actual).toEqual(expected);
   });
+  it('keeps the real FX-R01F relationship, resolved Flow transform, and detached frame across nail switching and save', async () => {
+    await click([...container.querySelectorAll('[role="tab"]')].find((item) => item.textContent === 'Effects'));
+    const effect = container.querySelector('select[aria-label="Effect"]');
+    await act(async () => { effect.value = 'Marble'; effect.dispatchEvent(new Event('change', { bubbles: true })); });
+    await click(container.querySelector('input[value="full"]'));
+    const mode = container.querySelector('select[aria-label="Marble Set Mode"]');
+    await act(async () => { mode.value = 'flow'; mode.dispatchEvent(new Event('change', { bubbles: true })); });
+    await click([...container.querySelectorAll('.nail-design-studio__marble-set button')].find((button) => button.textContent === 'Apply to Set'));
+    const panel = container.querySelector('.nail-design-studio__marble-set');
+    expect(panel.dataset.marbleSetMode).toBe('flow'); expect(panel.dataset.marbleSetMembers.split(',')).toHaveLength(10);
+    const transforms = [...container.querySelectorAll('[data-effect-layer="marble"]:not(:has([data-marble-hit-target])) [data-marble-transform]')].map((node) => node.getAttribute('transform'));
+    expect(new Set(transforms).size).toBeGreaterThan(1);
+    expect(container.querySelector('[data-effect-layer="marble"]').getAttribute('clip-path')).toMatch(/^url\(#hero-effect-mask-/);
+    const seed = panel.dataset.marbleSetSeed;
+    await click(container.querySelectorAll('[data-testid="nail-slot"]')[2]);
+    expect(panel.dataset.marbleSetSeed).toBe(seed); expect(panel.dataset.marbleSetMembers.split(',')).toHaveLength(10);
+    const activeMarble = container.querySelectorAll('[data-testid="nail-slot"]')[2].querySelector('[data-effect-layer="marble"] [data-marble-transform]');
+    const beforeDetach = activeMarble.getAttribute('transform');
+    await click([...container.querySelectorAll('.nail-design-studio__marble-set button')].find((button) => button.textContent === 'Detach Nail From Set'));
+    expect(container.querySelectorAll('[data-testid="nail-slot"]')[2].querySelector('[data-effect-layer="marble"] [data-marble-transform]').getAttribute('transform')).toBe(beforeDetach);
+    expect(panel.dataset.marbleSetMembers).not.toContain('nail-2');
+    await click([...container.querySelectorAll('button')].find((button) => button.textContent === 'Save Changes'));
+    const saved = JSON.parse(window.localStorage.getItem('anitaset.hero-design.v1:nail-desk-hero'));
+    expect(saved.nail.effect.parameters.marbleSetCoordination.setSeed).toBe(seed);
+    expect(saved.metadata.marbleSetCoordination.participatingNailIds).not.toContain('nail-2');
+    expect(saved.metadata.marbleNailStates['nail-2'].marbleSeed).toBeTruthy();
+  });
   afterEach(() => { act(() => root.unmount()); container.remove(); window.localStorage.removeItem('anitaset.hero-design.v1:nail-desk-hero'); });
 
   it('uses Cream terminology, a compact safe HEX editor, and the shared premium bottle renderer', async () => {
