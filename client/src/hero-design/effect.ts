@@ -10,6 +10,7 @@ import { resolveHeroNailMaterial } from './material';
 import { HeroDesignDocument } from './contracts';
 import { HeroDesignState, heroDesignReducer } from './state';
 import { HeroSurfaceRenderResult } from './surface';
+import { coordinatedMarbleParameters } from '../nail-design-studio/marbleSetCoordination';
 
 export const HERO_EFFECT_IDS = Object.freeze(['Solid', 'Gradient', 'Chrome', 'Cat Eye', 'Marble', 'Aura', 'ColorBlock', 'NegativeSpace', 'Jelly'] as const);
 export const DEFAULT_HERO_EFFECT_REFERENCE: Readonly<HeroEffectReference> = Object.freeze({
@@ -60,6 +61,7 @@ const finishRules: Record<HeroEffectId, Record<string, ParameterRule>> = {
     marbleGeometryVersion: { required: false, validate: (value) => value === 1 || value === 2, message: 'marbleGeometryVersion must be a supported version.' },
     customStreams: { required: false, validate: marbleState, message: 'customStreams must be keyed by stable custom stream ID.' },
     deletedStreamIds: { required: false, validate: (value) => Array.isArray(value), message: 'deletedStreamIds must be an array.' },
+    marbleSetCoordination: { required: false, validate: marbleState, message: 'marbleSetCoordination must be an object.' },
   },
   Aura: {
     baseColor: { required: true, validate: color, message: 'baseColor must be a six-digit hex color.' },
@@ -352,6 +354,8 @@ function createMarbleGeometry(nailIdentity: string, marbleSeed: string, version 
 /** A deterministic geological model whose stable paths receive current styling. */
 export function createMarbleVeinModel(effect: HeroEffectReference, nailIdentity = 'nail-0'): readonly HeroMarbleStream[] {
   if (effect.id !== 'Marble') return [];
+  const stableNailId = nailIdentity.match(/nail-\d+$/)?.[0] || nailIdentity;
+  effect = { ...effect, parameters: coordinatedMarbleParameters(effect.parameters, effect.parameters.marbleSetCoordination, stableNailId) };
   const color = effect.parameters.veinColor as string;
   const density = numberParameter(effect.parameters, 'veinDensity', .42);
   const marbleSeed = normalizeMarbleLayoutSeed(effect.parameters.marbleSeed);

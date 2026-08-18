@@ -10,6 +10,7 @@ import { MaterialLayers } from './MaterialRenderer';
 import { FINISH_DEFAULTS, VISIBLE_POLISH_FINISHES, colorBlockEffect, heroEffectForPolish, negativeSpaceEffect, normalizePersistedAuraEffect, normalizePolishForFinish, polishSignature } from './polishFinish';
 import { addProjectPolish, touchRecentPolish } from '../design-studio/polishWorkflow';
 import { FrenchTipControls, FrenchTipRegion, loadFrenchTips } from './FrenchTip';
+import { createMarbleSetSeed, deriveCoordinationFromNail, normalizeMarbleSetCoordination } from './marbleSetCoordination';
 import './NailDesignStudio.css';
 
 export const canScrollInWheelDirection = (element, deltaY) => {
@@ -320,6 +321,9 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
   const [moveMarble, setMoveMarble] = useState(false);
   const [selectedMarbleStream, setSelectedMarbleStream] = useState('primary-0');
   const [marbleHexDraft, setMarbleHexDraft] = useState('#8A405D');
+  const [marbleSetMode, setMarbleSetMode] = useState('independent');
+  const [marbleSetTargets, setMarbleSetTargets] = useState('all');
+  const [marbleSetVariation, setMarbleSetVariation] = useState('medium');
   const [heroState, setHeroState] = useState(initialNailDeskHeroState);
   const [nailShapeOpen, setNailShapeOpen] = useState(false);
   const [nailSizeOpen, setNailSizeOpen] = useState(false);
@@ -471,6 +475,13 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
     const next = { ...heroDocument.nail.effect.parameters, marbleTransform: { panX: 0, panY: 0, scale: 1, rotation: 0 }, streamOverrides: {}, customStreams: {}, deletedStreamIds: [] };
     changeHero((current) => updateHeroEffect(current, { ...current.document.nail.effect, parameters: next }, heroEvents.current));
   };
+  const marbleTargetIds = () => (marbleSetTargets === 'selected' ? selectedNails : Array.from({ length: 10 }, (_, index) => index)).map((index) => `nail-${index}`);
+  const updateMarbleSet = (coordination) => changeFinishParameter('marbleSetCoordination', normalizeMarbleSetCoordination(coordination));
+  const applyMarbleSet = () => updateMarbleSet({ ...normalizeMarbleSetCoordination(heroDocument.nail.effect.parameters.marbleSetCoordination), mode: marbleSetMode, variation: marbleSetVariation, setSeed: heroDocument.nail.effect.parameters.marbleSetCoordination?.setSeed || createMarbleSetSeed(heroDocument.metadata.id), participatingNailIds: marbleTargetIds(), density: heroDocument.nail.effect.parameters.veinDensity });
+  const coordinateFromThisNail = () => updateMarbleSet({ ...deriveCoordinationFromNail(heroDocument.nail.effect, heroDocument.nail.effect.parameters.marbleSetCoordination), mode: marbleSetMode === 'independent' ? 'coordinated' : marbleSetMode, variation: marbleSetVariation, participatingNailIds: marbleTargetIds() });
+  const randomizeMarbleSet = () => updateMarbleSet({ ...normalizeMarbleSetCoordination(heroDocument.nail.effect.parameters.marbleSetCoordination), setSeed: createMarbleSetSeed(Date.now()) });
+  const detachMarbleNail = () => { const set = normalizeMarbleSetCoordination(heroDocument.nail.effect.parameters.marbleSetCoordination); updateMarbleSet({ ...set, participatingNailIds: set.participatingNailIds.filter((id) => id !== `nail-${activeNailIndex}`) }); };
+  const resetMarbleSet = () => { setMarbleSetMode('independent'); updateMarbleSet(undefined); };
 
   useEffect(() => { window.localStorage.setItem(POLISH_RACK_KEY, JSON.stringify(savedPolishes)); }, [savedPolishes]);
   useEffect(() => { setHexDraft(activePolishColor); setHexInvalid(false); }, [activePolishColor]);
@@ -799,6 +810,14 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
             {activeTool.id === 'effects' && heroDocument.nail.effect.id === 'Gradient' && <><label>Color B<input aria-label="Color B" type="color" value={heroDocument.nail.effect.parameters.colorB} onChange={(event) => changeFinishParameter('colorB', event.target.value.toUpperCase())} /></label><label>Direction <input aria-label="Direction" type="range" min="0" max="360" value={heroDocument.nail.effect.parameters.direction} onChange={(event) => changeFinishParameter('direction', Number(event.target.value))} /></label></>}
             {activeTool.id === 'effects' && heroDocument.nail.effect.id === 'Cat Eye' && <><label>Stripe direction <input aria-label="Stripe direction" type="range" min="0" max="360" value={heroDocument.nail.effect.parameters.stripeDirection} onChange={(event) => changeFinishParameter('stripeDirection', Number(event.target.value))} /></label><label>Stripe width <input aria-label="Stripe width" type="range" min="0" max="1" step=".01" value={heroDocument.nail.effect.parameters.stripeWidth} onChange={(event) => changeFinishParameter('stripeWidth', Number(event.target.value))} /></label><label>Stripe strength <input aria-label="Stripe strength" type="range" min="0" max="1" step=".01" value={heroDocument.nail.effect.parameters.stripeStrength} onChange={(event) => changeFinishParameter('stripeStrength', Number(event.target.value))} /></label></>}
             {activeTool.id === 'effects' && heroDocument.nail.effect.id === 'Marble' && <section className="nail-design-studio__marble-controls" aria-label="Marble controls">
+              <section className="nail-design-studio__marble-set"><h3>Marble Set</h3>
+                <label>Mode<select aria-label="Marble Set Mode" value={marbleSetMode} onChange={(event) => setMarbleSetMode(event.target.value)}><option value="independent">Independent</option><option value="coordinated">Coordinated Set</option><option value="flow">Flow Across Set</option></select></label>
+                <label>Targets<select aria-label="Marble Set Targets" value={marbleSetTargets} onChange={(event) => setMarbleSetTargets(event.target.value)}><option value="all">All Marble Nails</option><option value="selected">Selected Nails</option></select></label>
+                {marbleSetMode !== 'independent' && <label>Variation<select aria-label="Marble Set Variation" value={marbleSetVariation} onChange={(event) => setMarbleSetVariation(event.target.value)}><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option></select></label>}
+                <div className="nail-design-studio__marble-actions"><button type="button" onClick={applyMarbleSet}>Apply to Set</button><button type="button" onClick={coordinateFromThisNail}>Coordinate From This Nail</button><button type="button" onClick={randomizeMarbleSet}>Randomize Set</button></div>
+                {normalizeMarbleSetCoordination(heroDocument.nail.effect.parameters.marbleSetCoordination).participatingNailIds.includes(`nail-${activeNailIndex}`) && <div className="nail-design-studio__marble-actions"><button type="button" onClick={applyMarbleSet}>Reapply Set Style</button><button type="button" onClick={applyMarbleSet}>Reset Nail to Set</button><button type="button" onClick={detachMarbleNail}>Detach Nail From Set</button></div>}
+                <button type="button" onClick={resetMarbleSet}>Reset Set Coordination</button>
+              </section>
               <h3>Layout</h3><button type="button" aria-pressed={moveMarble} onClick={() => setMoveMarble((active) => !active)}>Move Marble</button>
               <label>Horizontal Position <output>{Math.round(heroDocument.nail.effect.parameters.marbleTransform?.panX || 0)}</output><input aria-label="Marble Horizontal Position" type="range" min="-120" max="120" value={heroDocument.nail.effect.parameters.marbleTransform?.panX || 0} onChange={(event) => changeMarbleTransform('panX', Number(event.target.value))} /></label>
               <label>Vertical Position <output>{Math.round(heroDocument.nail.effect.parameters.marbleTransform?.panY || 0)}</output><input aria-label="Marble Vertical Position" type="range" min="-180" max="180" value={heroDocument.nail.effect.parameters.marbleTransform?.panY || 0} onChange={(event) => changeMarbleTransform('panY', Number(event.target.value))} /></label>

@@ -33,7 +33,7 @@ export function negativeSpaceEffect(parameters = {}) {
 const SHARED = ['opacity', 'viscosity', 'shine'];
 const SPECIFIC = {
   Gradient: ['colorB', 'direction'], Chrome: ['metallicReflection'], 'Cat Eye': ['stripeDirection', 'stripeWidth', 'stripeStrength'],
-  Marble: ['veinColor', 'veinDensity', 'marbleSeed', 'marbleGeometryVersion', 'marbleTransform', 'streamOverrides', 'customStreams', 'deletedStreamIds'], Aura: ['centerColor', 'auraColor', 'softness', 'intensity'], Jelly: ['translucency'], Matte: ['matteSoftness'], Glass: ['translucency', 'glassClarity'],
+  Marble: ['veinColor', 'veinDensity', 'marbleSeed', 'marbleGeometryVersion', 'marbleTransform', 'streamOverrides', 'customStreams', 'deletedStreamIds', 'marbleSetCoordination'], Aura: ['centerColor', 'auraColor', 'softness', 'intensity'], Jelly: ['translucency'], Matte: ['matteSoftness'], Glass: ['translucency', 'glassClarity'],
   'Chrome-ready': ['metallicReflection'], Shimmer: ['shimmerIntensity'], Metallic: ['metallicReflection'], Glitter: ['fleckColor', 'glitterDensity'],
 };
 
