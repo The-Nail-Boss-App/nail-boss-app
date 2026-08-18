@@ -52,15 +52,22 @@ describe('DS-03 Polish Studio repair', () => {
     expect(panel.dataset.marbleSetMode).toBe('flow'); expect(panel.dataset.marbleSetMembers.split(',')).toHaveLength(10);
     const transforms = [...container.querySelectorAll('[data-effect-layer="marble"]:not(:has([data-marble-hit-target])) [data-marble-transform]')].map((node) => node.getAttribute('transform'));
     expect(new Set(transforms).size).toBeGreaterThan(1);
+    await click([...container.querySelectorAll('[aria-label="Marble Set Style"] button')].find((button) => button.textContent === 'Coordinated'));
+    const coordinatedTransforms = [...container.querySelectorAll('[data-effect-layer="marble"]:not(:has([data-marble-hit-target])) [data-marble-transform]')].map((node) => node.getAttribute('transform'));
+    expect(panel.dataset.marbleSetMode).toBe('coordinated'); expect(coordinatedTransforms).not.toEqual(transforms);
+    await click([...container.querySelectorAll('[aria-label="Marble Set Style"] button')].find((button) => button.textContent === 'Flow'));
+    expect(panel.dataset.marbleSetMode).toBe('flow');
     expect(container.querySelector('[data-effect-layer="marble"]').getAttribute('clip-path')).toMatch(/^url\(#hero-effect-mask-/);
     const seed = panel.dataset.marbleSetSeed;
     await click(container.querySelectorAll('[data-testid="nail-slot"]')[2]);
     expect(panel.dataset.marbleSetSeed).toBe(seed); expect(panel.dataset.marbleSetMembers.split(',')).toHaveLength(10);
     const activeMarble = container.querySelectorAll('[data-testid="nail-slot"]')[2].querySelector('[data-effect-layer="marble"] [data-marble-transform]');
     const beforeDetach = activeMarble.getAttribute('transform');
-    await click([...container.querySelectorAll('.nail-design-studio__marble-set button')].find((button) => button.textContent === 'Detach Current Nail'));
+    const detach = [...container.querySelectorAll('.nail-design-studio__marble-set button')].find((button) => button.textContent === 'Detach Current Nail');
+    expect(detach).toBeTruthy(); await click(detach);
     expect(container.querySelectorAll('[data-testid="nail-slot"]')[2].querySelector('[data-effect-layer="marble"] [data-marble-transform]').getAttribute('transform')).toBe(beforeDetach);
     expect(panel.dataset.marbleSetMembers).not.toContain('nail-2');
+    expect([...container.querySelectorAll('.nail-design-studio__marble-set button')].some((button) => button.textContent === 'Detach Current Nail')).toBe(false);
     await click([...container.querySelectorAll('button')].find((button) => button.textContent === 'Save Changes'));
     const saved = JSON.parse(window.localStorage.getItem('anitaset.hero-design.v1:nail-desk-hero'));
     expect(saved.nail.effect.parameters.marbleSetCoordination.setSeed).toBe(seed);
@@ -82,7 +89,10 @@ describe('DS-03 Polish Studio repair', () => {
     expect(container.querySelector('[aria-label="Marble Set composition"]')).toBeNull();
     expect(effects.querySelector('input[aria-label="Selected Vein Color"]')).toBeTruthy();
     expect(effects.querySelector('select[aria-label="Selected Vein Finish"]')).toBeTruthy();
+    const rightToggle = container.querySelector('.nail-design-studio__panel-toggle--right');
+    await click(rightToggle); expect(rightToggle.getAttribute('aria-expanded')).toBe('false');
     await click([...effects.querySelectorAll('[aria-label="Marble workspace mode"] button')].find((item) => item.textContent === 'Set'));
+    expect(rightToggle.getAttribute('aria-expanded')).toBe('true');
     const set = container.querySelector('[aria-label="Marble Set composition"]');
     expect([...set.querySelectorAll('[aria-label="Marble Set Style"] button')].map((item) => item.textContent)).toEqual(['Coordinated', 'Flow']);
     expect(set.querySelectorAll('input[aria-label="Marble Set Variation"]')).toHaveLength(1);
@@ -859,9 +869,16 @@ describe('DS-TK01A French Tip integration', () => {
     await act(async () => target.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0, clientX: 10, clientY: 10 })));
     await act(async () => desk.dispatchEvent(new MouseEvent('pointermove', { bubbles: true, button: 0, clientX: 22, clientY: 4 })));
     expect(container.querySelector('[data-marble-hit-target="primary-1"]').getAttribute('d')).not.toBe(before);
+    const finalLivePath = container.querySelector('[data-marble-hit-target="primary-1"]').getAttribute('d');
     expect(container.querySelector('[data-stream-id="primary-0"] [data-vein-component="variable-width-ribbon"]').getAttribute('d')).toBe(otherBefore);
     expect(container.querySelector('[data-marble-transform]').dataset.marbleTransform).toBe(transformBefore);
     await act(async () => desk.dispatchEvent(new MouseEvent('pointerup', { bubbles: true })));
+    expect(container.querySelector('[data-marble-hit-target="primary-1"]').getAttribute('d')).toBe(finalLivePath);
+    await type(container.querySelector('input[aria-label="Selected Vein Opacity"]'), '.61');
+    expect(container.querySelector('[data-marble-hit-target="primary-1"]').getAttribute('d')).toBe(finalLivePath);
+    await click([...container.querySelectorAll('button')].find((button) => button.textContent === 'Save Changes'));
+    const saved = JSON.parse(window.localStorage.getItem('anitaset.hero-design.v1:nail-desk-hero'));
+    expect(createMarbleVeinModel(saved.nail.effect, 'nail-desk-hero:nail-0').find(({ id }) => id === 'primary-1').path).toBe(finalLivePath);
     const width = container.querySelector('[data-marble-width-handle="start"] rect');
     const profileBefore = container.querySelector('[data-stream-id="primary-1"] [data-vein-component="variable-width-ribbon"]').dataset.widthProfile;
     await act(async () => width.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0, clientX: 10, clientY: 10 })));
@@ -869,6 +886,21 @@ describe('DS-TK01A French Tip integration', () => {
     expect(container.querySelector('[data-stream-id="primary-1"] [data-vein-component="variable-width-ribbon"]').dataset.widthProfile).not.toBe(profileBefore);
     expect(container.querySelectorAll('[data-marble-width-handle]').length).toBe(3);
     window.SVGElement.prototype.getScreenCTM = originalMatrix; window.SVGSVGElement.prototype.createSVGPoint = originalPoint;
+  });
+
+  it('lists only rendered veins plus intentional hidden/custom streams', async () => {
+    await click([...container.querySelectorAll('[role="tab"]')].find((item) => item.textContent === 'Effects'));
+    const effect = container.querySelector('select[aria-label="Effect"]');
+    await act(async () => { effect.value = 'Marble'; effect.dispatchEvent(new Event('change', { bubbles: true })); });
+    const listed = () => [...container.querySelectorAll('[aria-label="Marble Veins"] [role="option"]')];
+    const renderedIds = new Set([...container.querySelectorAll('[data-effect-layer="marble"]:not(:has([data-marble-hit-target])) [data-stream-id]')].map((node) => node.dataset.streamId));
+    expect(listed()).toHaveLength(renderedIds.size);
+    expect(listed().every((option) => option.dataset.visible === 'true')).toBe(true);
+    expect(listed().some((option) => option.textContent.includes('Secondary 4'))).toBe(false);
+    await click([...container.querySelectorAll('.nail-design-studio__marble-add button')].find((button) => button.textContent.includes('Hairline')));
+    expect(listed().some((option) => option.textContent.includes('Custom Hairline'))).toBe(true);
+    await click([...container.querySelectorAll('button')].find((button) => button.textContent === 'Hide Vein'));
+    expect(listed().some((option) => option.textContent.includes('Custom Hairline') && option.textContent.includes('Off'))).toBe(true);
   });
 
   it('projects width drags through the unrotated Marble group coordinate space', async () => {

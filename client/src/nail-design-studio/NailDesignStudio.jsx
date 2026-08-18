@@ -383,7 +383,12 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
   const nailStageLightingOpacity = (index, role, opacity) => stageLightingOpacity(nailStageFinish(index), nailStageShine(index), role, opacity);
   const marbleEffectForNail = (index) => heroDocument.nail.effect.id !== 'Marble' ? heroDocument.nail.effect : { ...heroDocument.nail.effect, parameters: { ...(index === activeNailIndex ? heroDocument.nail.effect.parameters : marbleNailStates[`nail-${index}`] || heroDocument.nail.effect.parameters), marbleSetCoordination } };
   const marbleStreams = heroDocument.nail.effect.id === 'Marble' ? createMarbleVeinModel(marbleEffectForNail(activeNailIndex), `${heroDocument.metadata.id}:nail-${activeNailIndex}`) : [];
-  const selectedStream = marbleStreams.find(({ id }) => id === selectedMarbleStream) || marbleStreams[0];
+  // The generator keeps a stable maximum inventory so density can reveal veins
+  // without reshuffling geometry. That reserve is renderer state, not an artist
+  // selection list. Keep only rendered streams, plus explicitly hidden/custom
+  // streams that the artist can intentionally show again.
+  const artistMarbleStreams = marbleStreams.filter((stream) => stream.visible || stream.custom || heroDocument.nail.effect.parameters.streamOverrides?.[stream.id]?.visible === false);
+  const selectedStream = artistMarbleStreams.find(({ id }) => id === selectedMarbleStream) || artistMarbleStreams[0];
   useEffect(() => {
     if (drag.current?.vein && (moveMarble || !selectedStream?.visible || drag.current.streamId !== selectedStream.id)) {
       const activeDrag = drag.current;
@@ -433,6 +438,17 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
     }
     if (activeFinish === 'NegativeSpace') {
       changeHero((current) => updateHeroEffect(current, negativeSpaceEffect({ ...current.document.nail.effect.parameters, [key]: value }), heroEvents.current));
+      return;
+    }
+    // Marble geometry is authored document state. Do not round-trip a pointer
+    // frame through the render-derived formulation snapshot: rapid pointer
+    // events can otherwise rebuild from an older streamOverrides object after
+    // the final live frame. Merge against the reducer's current document so the
+    // last geometryOverride remains authoritative through pointer-up/rerender.
+    if (activeFinish === 'Marble' && heroDocument.nail.effect.id === 'Marble') {
+      const preview = normalizePolishForFinish({ ...activeFormulation, ...heroDocument.nail.effect.parameters, [key]: value }, activeFinish);
+      setFinishFormulation(preview);
+      changeHero((current) => updateHeroEffect(current, { ...current.document.nail.effect, parameters: { ...current.document.nail.effect.parameters, [key]: value } }, heroEvents.current));
       return;
     }
     const next = normalizePolishForFinish({ ...activeFormulation, [key]: value, ...(['baseColor', 'colorA'].includes(key) ? { colorHex: value } : {}) }, activeFinish);
@@ -501,7 +517,14 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
       updateMarbleSet({ ...marbleSetCoordination, mode: 'independent' });
       return;
     }
+    setRightPanelOpen(true);
     setMarbleSetMode(marbleSetMode === 'independent' ? 'coordinated' : marbleSetMode);
+  };
+  const changeMarbleSetStyle = (mode) => {
+    setMarbleSetMode(mode);
+    // Once a set exists, a style choice is a committed, visible change rather
+    // than a pending control that silently leaves the artwork untouched.
+    if (marbleSetCoordination.participatingNailIds.length) updateMarbleSet({ ...marbleSetCoordination, mode });
   };
   const detachMarbleNail = () => {
     const nailId = `nail-${activeNailIndex}`;
@@ -866,7 +889,7 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
                 <label>Rotation <output>{heroDocument.nail.effect.parameters.marbleTransform?.rotation || 0}°</output><input aria-label="Marble Rotation" type="range" min="-180" max="180" value={heroDocument.nail.effect.parameters.marbleTransform?.rotation || 0} onChange={(event) => changeMarbleTransform('rotation', Number(event.target.value))} /></label>
               </details>
               <div className="nail-design-studio__marble-section-heading"><h3>Veins</h3><details className="nail-design-studio__marble-add"><summary>+ Add Vein</summary><div>{['primary', 'secondary', 'hairline'].map((veinClass) => { const count = Object.values(heroDocument.nail.effect.parameters.customStreams || {}).filter((stream) => stream.veinClass === veinClass).length; return <button key={veinClass} type="button" disabled={count >= CUSTOM_MARBLE_STREAM_LIMITS[veinClass]} title={count >= CUSTOM_MARBLE_STREAM_LIMITS[veinClass] ? `${veinClass} vein limit reached` : undefined} onClick={() => addMarbleVein(veinClass)}>{veinClass.charAt(0).toUpperCase() + veinClass.slice(1)}</button>; })}</div></details></div>
-              <div className="nail-design-studio__marble-streams" role="listbox" aria-label="Marble Veins">{marbleStreams.map((stream) => <button type="button" role="option" aria-selected={selectedStream?.id === stream.id} data-visible={stream.visible} key={stream.id} onClick={() => selectMarbleStream(stream.id, stream.color)}><i style={{ backgroundColor: stream.color }} />{stream.custom ? 'Custom ' : ''}{stream.veinClass.charAt(0).toUpperCase() + stream.veinClass.slice(1)} {stream.custom ? marbleStreams.filter((item) => item.custom && item.veinClass === stream.veinClass).findIndex((item) => item.id === stream.id) + 1 : Number(stream.id.split('-')[1]) + 1}<span>{stream.visible ? 'On' : 'Off'}</span></button>)}</div>
+              <div className="nail-design-studio__marble-streams" role="listbox" aria-label="Marble Veins">{artistMarbleStreams.map((stream) => <button type="button" role="option" aria-selected={selectedStream?.id === stream.id} data-visible={stream.visible} key={stream.id} onClick={() => selectMarbleStream(stream.id, stream.color)}><i style={{ backgroundColor: stream.color }} />{stream.custom ? 'Custom ' : ''}{stream.veinClass.charAt(0).toUpperCase() + stream.veinClass.slice(1)} {stream.custom ? artistMarbleStreams.filter((item) => item.custom && item.veinClass === stream.veinClass).findIndex((item) => item.id === stream.id) + 1 : Number(stream.id.split('-')[1]) + 1}<span>{stream.visible ? 'On' : 'Off'}</span></button>)}</div>
               {selectedStream && <fieldset><legend>Selected Vein — {selectedStream.custom ? 'Custom ' : ''}{selectedStream.veinClass.charAt(0).toUpperCase() + selectedStream.veinClass.slice(1)}</legend><label>Color / HEX<span className="nail-design-studio__color-row"><input aria-label="Selected Vein Color" type="color" value={selectedStream.color} onChange={(event) => { const value = event.target.value.toUpperCase(); setMarbleHexDraft(value); changeStreamOverride('formulation', { ...(heroDocument.nail.effect.parameters.streamOverrides?.[selectedStream.id]?.formulation || {}), color: value, finish: selectedStream.finish }); }} /><input aria-label="Selected Vein HEX" value={marbleHexDraft} maxLength="7" onChange={(event) => setMarbleHexDraft(event.target.value.toUpperCase())} onBlur={() => /^#[0-9A-F]{6}$/.test(marbleHexDraft) ? changeStreamOverride('formulation', { ...(heroDocument.nail.effect.parameters.streamOverrides?.[selectedStream.id]?.formulation || {}), color: marbleHexDraft, finish: selectedStream.finish }) : setMarbleHexDraft(selectedStream.color)} /></span></label>
                 {selectedStream.veinClass === 'diffusion' ? <p>Diffusion keeps its translucent geological finish.</p> : <label>Finish<select aria-label="Selected Vein Finish" value={selectedStream.finish} onChange={(event) => changeStreamOverride('formulation', { ...(heroDocument.nail.effect.parameters.streamOverrides?.[selectedStream.id]?.formulation || {}), color: selectedStream.color, finish: event.target.value })}><option>Cream</option><option>Jelly</option><option>Matte</option><option>Glitter</option></select></label>}
                 <label>Opacity <output>{Math.round(selectedStream.opacity * 100)}%</output><input aria-label="Selected Vein Opacity" type="range" min="0" max="1" step=".01" value={selectedStream.opacity} onChange={(event) => changeStreamOverride('opacity', Number(event.target.value))} /></label>
@@ -951,7 +974,7 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
         {rightPanelOpen && !focusMode && <aside id="design-properties-panel" className="nail-design-studio__panel nail-design-studio__properties" aria-label="Design properties panel">
           {activeTool.id === 'effects' && heroDocument.nail.effect.id === 'Marble' && marbleSetMode !== 'independent' && <section className="nail-design-studio__marble-set" aria-label="Marble Set composition" data-marble-set-mode={marbleSetCoordination.mode} data-marble-set-seed={marbleSetCoordination.setSeed} data-marble-set-members={marbleSetCoordination.participatingNailIds.join(',')}>
             <h2>Marble Set</h2>
-            <div className="nail-design-studio__marble-set-style" role="group" aria-label="Marble Set Style"><span>Style</span><button type="button" aria-pressed={marbleSetMode === 'coordinated'} onClick={() => setMarbleSetMode('coordinated')}>Coordinated</button><button type="button" aria-pressed={marbleSetMode === 'flow'} onClick={() => setMarbleSetMode('flow')}>Flow</button></div>
+            <div className="nail-design-studio__marble-set-style" role="group" aria-label="Marble Set Style"><span>Style</span><button type="button" aria-pressed={marbleSetMode === 'coordinated'} onClick={() => changeMarbleSetStyle('coordinated')}>Coordinated</button><button type="button" aria-pressed={marbleSetMode === 'flow'} onClick={() => changeMarbleSetStyle('flow')}>Flow</button></div>
             <label className="nail-design-studio__marble-variation">Variation <span>Similar</span><input aria-label="Marble Set Variation" type="range" min="0" max="2" step="1" value={{ low: 0, medium: 1, high: 2 }[marbleSetVariation]} onChange={(event) => setMarbleSetVariation(['low', 'medium', 'high'][Number(event.target.value)])} /><span>Unique</span></label>
             <button type="button" className="nail-design-studio__marble-coordinate" onClick={coordinateFromThisNail}>Coordinate From This Nail</button>
             <button type="button" onClick={randomizeMarbleSet}>Randomize</button>
