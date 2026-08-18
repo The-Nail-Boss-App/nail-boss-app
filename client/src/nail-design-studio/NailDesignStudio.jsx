@@ -10,7 +10,7 @@ import { MaterialLayers } from './MaterialRenderer';
 import { FINISH_DEFAULTS, VISIBLE_POLISH_FINISHES, colorBlockEffect, heroEffectForPolish, negativeSpaceEffect, normalizePersistedAuraEffect, normalizePolishForFinish, polishSignature } from './polishFinish';
 import { addProjectPolish, touchRecentPolish } from '../design-studio/polishWorkflow';
 import { FrenchTipControls, FrenchTipRegion, loadFrenchTips } from './FrenchTip';
-import { createMarbleSetSeed, deriveCoordinationFromNail, normalizeMarbleSetCoordination } from './marbleSetCoordination';
+import { createMarbleSetSeed, deriveCoordinationFromNail, detachMarbleParameters, normalizeMarbleSetCoordination, resolveMarbleRenderState } from './marbleSetCoordination';
 import './NailDesignStudio.css';
 
 export const canScrollInWheelDirection = (element, deltaY) => {
@@ -67,7 +67,8 @@ const profileWidth = (profile, position) => position <= .5 ? profile.start + (pr
 
 function MarbleVeins({ effect, nailIdentity, clipId, selectedId, interactionOnly = false, onSelect, onBodyDown, onPointDown, onWidthDown }) {
   const streams = createMarbleVeinModel(effect, nailIdentity);
-  const transform = effect.parameters.marbleTransform || { panX: 0, panY: 0, scale: 1, rotation: 0 };
+  const stableNailId = nailIdentity.match(/nail-\d+$/)?.[0] || nailIdentity;
+  const transform = resolveMarbleRenderState(effect, effect.parameters.marbleSetCoordination, stableNailId).parameters.marbleTransform || { panX: 0, panY: 0, scale: 1, rotation: 0 };
   const groupTransform = `translate(${transform.panX || 0} ${transform.panY || 0}) translate(120 180) rotate(${transform.rotation || 0}) scale(${transform.scale || 1}) translate(-120 -180)`;
   return <g data-effect-layer="marble" data-marble-alpha="localized-stream-geometry-only" data-marble-model="primary-secondary-hairline-diffusion" data-marble-clip-authority="hero-nail-mask" clipPath={`url(#${clipId})`}>
     <g data-marble-transform={groupTransform} transform={groupTransform}>
@@ -151,6 +152,12 @@ const loadPerNailPolish = () => {
 };
 const loadActivePolish = () => {
   try { return JSON.parse(window.localStorage.getItem('anitaset.hero-design.v1:nail-desk-hero'))?.metadata?.activePolishFormulation || null; } catch { return null; }
+};
+const loadMarbleSetCoordination = () => {
+  try { return normalizeMarbleSetCoordination(JSON.parse(window.localStorage.getItem('anitaset.hero-design.v1:nail-desk-hero'))?.metadata?.marbleSetCoordination); } catch { return normalizeMarbleSetCoordination(); }
+};
+const loadMarbleNailStates = () => {
+  try { const value = JSON.parse(window.localStorage.getItem('anitaset.hero-design.v1:nail-desk-hero'))?.metadata?.marbleNailStates; return value && typeof value === 'object' ? value : {}; } catch { return {}; }
 };
 
 const ASSET_SHORTCUTS = [
@@ -321,7 +328,9 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
   const [moveMarble, setMoveMarble] = useState(false);
   const [selectedMarbleStream, setSelectedMarbleStream] = useState('primary-0');
   const [marbleHexDraft, setMarbleHexDraft] = useState('#8A405D');
-  const [marbleSetMode, setMarbleSetMode] = useState('independent');
+  const [marbleSetCoordination, setMarbleSetCoordination] = useState(loadMarbleSetCoordination);
+  const [marbleNailStates, setMarbleNailStates] = useState(loadMarbleNailStates);
+  const [marbleSetMode, setMarbleSetMode] = useState(() => loadMarbleSetCoordination().mode);
   const [marbleSetTargets, setMarbleSetTargets] = useState('all');
   const [marbleSetVariation, setMarbleSetVariation] = useState('medium');
   const [heroState, setHeroState] = useState(initialNailDeskHeroState);
@@ -373,7 +382,8 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
   const nailStageFinish = (index) => surfaceMaterialFinish(activeNailIndex === index ? activeFinish : (nailPolishes[index]?.finish || activeFinish));
   const nailStageShine = (index) => activeNailIndex === index ? appliedEffect.shine : (nailPolishes[index]?.shine ?? appliedEffect.shine);
   const nailStageLightingOpacity = (index, role, opacity) => stageLightingOpacity(nailStageFinish(index), nailStageShine(index), role, opacity);
-  const marbleStreams = heroDocument.nail.effect.id === 'Marble' ? createMarbleVeinModel(heroDocument.nail.effect, `${heroDocument.metadata.id}:nail-${activeNailIndex}`) : [];
+  const marbleEffectForNail = (index) => heroDocument.nail.effect.id !== 'Marble' ? heroDocument.nail.effect : { ...heroDocument.nail.effect, parameters: { ...(index === activeNailIndex ? heroDocument.nail.effect.parameters : marbleNailStates[`nail-${index}`] || heroDocument.nail.effect.parameters), marbleSetCoordination } };
+  const marbleStreams = heroDocument.nail.effect.id === 'Marble' ? createMarbleVeinModel(marbleEffectForNail(activeNailIndex), `${heroDocument.metadata.id}:nail-${activeNailIndex}`) : [];
   const selectedStream = marbleStreams.find(({ id }) => id === selectedMarbleStream) || marbleStreams[0];
   useEffect(() => {
     if (drag.current?.vein && (moveMarble || !selectedStream?.visible || drag.current.streamId !== selectedStream.id)) {
@@ -476,12 +486,33 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
     changeHero((current) => updateHeroEffect(current, { ...current.document.nail.effect, parameters: next }, heroEvents.current));
   };
   const marbleTargetIds = () => (marbleSetTargets === 'selected' ? selectedNails : Array.from({ length: 10 }, (_, index) => index)).map((index) => `nail-${index}`);
-  const updateMarbleSet = (coordination) => changeFinishParameter('marbleSetCoordination', normalizeMarbleSetCoordination(coordination));
+  const updateMarbleSet = (coordination) => {
+    const normalized = normalizeMarbleSetCoordination(coordination);
+    setMarbleSetCoordination(normalized);
+    changeFinishParameter('marbleSetCoordination', normalized);
+  };
   const applyMarbleSet = () => updateMarbleSet({ ...normalizeMarbleSetCoordination(heroDocument.nail.effect.parameters.marbleSetCoordination), mode: marbleSetMode, variation: marbleSetVariation, setSeed: heroDocument.nail.effect.parameters.marbleSetCoordination?.setSeed || createMarbleSetSeed(heroDocument.metadata.id), participatingNailIds: marbleTargetIds(), density: heroDocument.nail.effect.parameters.veinDensity });
   const coordinateFromThisNail = () => updateMarbleSet({ ...deriveCoordinationFromNail(heroDocument.nail.effect, heroDocument.nail.effect.parameters.marbleSetCoordination), mode: marbleSetMode === 'independent' ? 'coordinated' : marbleSetMode, variation: marbleSetVariation, participatingNailIds: marbleTargetIds() });
   const randomizeMarbleSet = () => updateMarbleSet({ ...normalizeMarbleSetCoordination(heroDocument.nail.effect.parameters.marbleSetCoordination), setSeed: createMarbleSetSeed(Date.now()) });
-  const detachMarbleNail = () => { const set = normalizeMarbleSetCoordination(heroDocument.nail.effect.parameters.marbleSetCoordination); updateMarbleSet({ ...set, participatingNailIds: set.participatingNailIds.filter((id) => id !== `nail-${activeNailIndex}`) }); };
-  const resetMarbleSet = () => { setMarbleSetMode('independent'); updateMarbleSet(undefined); };
+  const detachMarbleNail = () => {
+    const nailId = `nail-${activeNailIndex}`;
+    const localEffect = marbleEffectForNail(activeNailIndex);
+    const detached = detachMarbleParameters({ ...localEffect, parameters: { ...localEffect.parameters, marbleSetCoordination } }, nailId);
+    const nextSet = normalizeMarbleSetCoordination({ ...marbleSetCoordination, participatingNailIds: marbleSetCoordination.participatingNailIds.filter((id) => id !== nailId) });
+    setMarbleNailStates((states) => ({ ...states, [nailId]: detached.parameters }));
+    setMarbleSetCoordination(nextSet);
+    changeHero((current) => updateHeroEffect(current, { ...detached, parameters: { ...detached.parameters, marbleSetCoordination: nextSet } }, heroEvents.current));
+  };
+  const resetMarbleSet = () => {
+    const frozen = { ...marbleNailStates };
+    marbleSetCoordination.participatingNailIds.forEach((nailId) => {
+      const index = Number(nailId.split('-')[1]);
+      frozen[nailId] = detachMarbleParameters({ ...marbleEffectForNail(index), parameters: { ...marbleEffectForNail(index).parameters, marbleSetCoordination } }, nailId).parameters;
+    });
+    const independent = normalizeMarbleSetCoordination();
+    setMarbleNailStates(frozen); setMarbleSetCoordination(independent); setMarbleSetMode('independent');
+    changeFinishParameter('marbleSetCoordination', independent);
+  };
 
   useEffect(() => { window.localStorage.setItem(POLISH_RACK_KEY, JSON.stringify(savedPolishes)); }, [savedPolishes]);
   useEffect(() => { setHexDraft(activePolishColor); setHexInvalid(false); }, [activePolishColor]);
@@ -532,15 +563,18 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
   };
 
   const selectActiveNail = (index) => {
+    if (heroDocument.nail.effect.id === 'Marble') setMarbleNailStates((states) => ({ ...states, [`nail-${activeNailIndex}`]: { ...heroDocument.nail.effect.parameters, marbleSetCoordination: undefined } }));
     setActiveNailIndex(index);
     const storedFormulation = nailPolishes[index];
-    if (!storedFormulation) return;
-    const normalized = normalizePolishForFinish(storedFormulation, storedFormulation.finish);
+    const storedMarble = marbleNailStates[`nail-${index}`];
+    if (!storedFormulation && !storedMarble) return;
+    const source = storedMarble ? { ...(storedFormulation || activeFormulation), ...storedMarble, finish: 'Marble', marbleSetCoordination } : storedFormulation;
+    const normalized = normalizePolishForFinish(source, source.finish);
     setPolishName(normalized.name || polishName);
     setSelectedFinish(normalized.finish);
     setFinishFormulation(normalized);
     heroEffectEngine.invalidate();
-    setHeroState((current) => updateHeroEffect(current, heroEffectForPolish(normalized), heroEvents.current));
+    setHeroState((current) => updateHeroEffect(current, heroEffectForPolish({ ...normalized, ...(normalized.finish === 'Marble' ? { marbleSetCoordination } : {}) }), heroEvents.current));
   };
 
   const fitToView = () => { setZoom(1); setPan({ x: 0, y: 0 }); };
@@ -659,7 +693,9 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
   const saveDesign = async () => {
     if (!dirty || saveState === 'Saving…') return;
     setSaveState('Saving…');
-    await heroPersistence.current?.save({ ...heroDocument, metadata: { ...heroDocument.metadata, name: designName, polishFormulations: nailPolishes, activePolishFormulation: activeFormulation, frenchTips } });
+    const savedMarbleStates = heroDocument.nail.effect.id === 'Marble' ? { ...marbleNailStates, [`nail-${activeNailIndex}`]: { ...heroDocument.nail.effect.parameters, marbleSetCoordination: undefined } } : marbleNailStates;
+    const documentEffect = heroDocument.nail.effect.id === 'Marble' ? { ...heroDocument.nail.effect, parameters: { ...heroDocument.nail.effect.parameters, marbleSetCoordination } } : heroDocument.nail.effect;
+    await heroPersistence.current?.save({ ...heroDocument, nail: { ...heroDocument.nail, effect: documentEffect }, metadata: { ...heroDocument.metadata, name: designName, polishFormulations: nailPolishes, activePolishFormulation: activeFormulation, frenchTips, marbleSetCoordination, marbleNailStates: savedMarbleStates } });
     window.setTimeout(() => { setDirty(false); setSaveState('Saved'); }, 150);
   };
   const undo = () => {
@@ -810,12 +846,12 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
             {activeTool.id === 'effects' && heroDocument.nail.effect.id === 'Gradient' && <><label>Color B<input aria-label="Color B" type="color" value={heroDocument.nail.effect.parameters.colorB} onChange={(event) => changeFinishParameter('colorB', event.target.value.toUpperCase())} /></label><label>Direction <input aria-label="Direction" type="range" min="0" max="360" value={heroDocument.nail.effect.parameters.direction} onChange={(event) => changeFinishParameter('direction', Number(event.target.value))} /></label></>}
             {activeTool.id === 'effects' && heroDocument.nail.effect.id === 'Cat Eye' && <><label>Stripe direction <input aria-label="Stripe direction" type="range" min="0" max="360" value={heroDocument.nail.effect.parameters.stripeDirection} onChange={(event) => changeFinishParameter('stripeDirection', Number(event.target.value))} /></label><label>Stripe width <input aria-label="Stripe width" type="range" min="0" max="1" step=".01" value={heroDocument.nail.effect.parameters.stripeWidth} onChange={(event) => changeFinishParameter('stripeWidth', Number(event.target.value))} /></label><label>Stripe strength <input aria-label="Stripe strength" type="range" min="0" max="1" step=".01" value={heroDocument.nail.effect.parameters.stripeStrength} onChange={(event) => changeFinishParameter('stripeStrength', Number(event.target.value))} /></label></>}
             {activeTool.id === 'effects' && heroDocument.nail.effect.id === 'Marble' && <section className="nail-design-studio__marble-controls" aria-label="Marble controls">
-              <section className="nail-design-studio__marble-set"><h3>Marble Set</h3>
+              <section className="nail-design-studio__marble-set" data-marble-set-mode={marbleSetCoordination.mode} data-marble-set-seed={marbleSetCoordination.setSeed} data-marble-set-members={marbleSetCoordination.participatingNailIds.join(',')}><h3>Marble Set</h3>
                 <label>Mode<select aria-label="Marble Set Mode" value={marbleSetMode} onChange={(event) => setMarbleSetMode(event.target.value)}><option value="independent">Independent</option><option value="coordinated">Coordinated Set</option><option value="flow">Flow Across Set</option></select></label>
                 <label>Targets<select aria-label="Marble Set Targets" value={marbleSetTargets} onChange={(event) => setMarbleSetTargets(event.target.value)}><option value="all">All Marble Nails</option><option value="selected">Selected Nails</option></select></label>
                 {marbleSetMode !== 'independent' && <label>Variation<select aria-label="Marble Set Variation" value={marbleSetVariation} onChange={(event) => setMarbleSetVariation(event.target.value)}><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option></select></label>}
                 <div className="nail-design-studio__marble-actions"><button type="button" onClick={applyMarbleSet}>Apply to Set</button><button type="button" onClick={coordinateFromThisNail}>Coordinate From This Nail</button><button type="button" onClick={randomizeMarbleSet}>Randomize Set</button></div>
-                {normalizeMarbleSetCoordination(heroDocument.nail.effect.parameters.marbleSetCoordination).participatingNailIds.includes(`nail-${activeNailIndex}`) && <div className="nail-design-studio__marble-actions"><button type="button" onClick={applyMarbleSet}>Reapply Set Style</button><button type="button" onClick={applyMarbleSet}>Reset Nail to Set</button><button type="button" onClick={detachMarbleNail}>Detach Nail From Set</button></div>}
+                {marbleSetCoordination.participatingNailIds.includes(`nail-${activeNailIndex}`) && <div className="nail-design-studio__marble-actions"><button type="button" onClick={applyMarbleSet}>Reapply Set Style</button><button type="button" onClick={applyMarbleSet}>Reset Nail to Set</button><button type="button" onClick={detachMarbleNail}>Detach Nail From Set</button></div>}
                 <button type="button" onClick={resetMarbleSet}>Reset Set Coordination</button>
               </section>
               <h3>Layout</h3><button type="button" aria-pressed={moveMarble} onClick={() => setMoveMarble((active) => !active)}>Move Marble</button>
@@ -891,15 +927,15 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
                     {appliedEffect.id === 'NegativeSpace' && <path data-hero-base-surface="true" data-material-id={renderedSurface.material.id} d={renderedSurface.path} fill={renderedSurface.materialStyle.baseTint} opacity={renderedSurface.materialStyle.opacity} />}
                     <DesignCoverage active={appliedEffect.id === 'NegativeSpace'} maskId={`hero-negative-space-${index}`}>
                     <MaterialLayers path={renderedSurface.path} surfaceBounds={renderedSurface.bounds} finish={surfaceMaterialFinish(activeFinish === 'NegativeSpace' ? activeFormulation.finish : (activeNailIndex === index ? activeFinish : (nailPolishes[index]?.finish || activeFinish)))} color={activeNailIndex === index ? activePolishColor : (nailPolishes[index]?.colorHex || activePolishColor)} fleckColor={activeNailIndex === index ? activeFormulation.fleckColor : (nailPolishes[index]?.fleckColor || activeFormulation.fleckColor)} glitterDensity={activeNailIndex === index ? activeFormulation.glitterDensity : (nailPolishes[index]?.glitterDensity ?? activeFormulation.glitterDensity)} opacity={activeNailIndex === index ? (appliedEffect.id === 'NegativeSpace' ? activeFormulation.opacity : appliedEffect.id === 'Marble' ? appliedEffect.opacity : appliedEffect.layers[0].opacity) : (nailPolishes[index]?.opacity ?? (appliedEffect.id === 'Marble' ? appliedEffect.opacity : appliedEffect.layers[0].opacity))} shine={activeNailIndex === index ? appliedEffect.shine : (nailPolishes[index]?.shine ?? appliedEffect.shine)} uid={`hero-material-${index}`} baseProps={{ className: 'nail-design-studio__nail-polish', 'data-design-layer': 'polish', 'data-hero-material-layer': 'true', 'data-polish-finish': surfaceMaterialFinish(activeFinish === 'NegativeSpace' ? activeFormulation.finish : (activeNailIndex === index ? activeFinish : (nailPolishes[index]?.finish || activeFinish))), 'data-hero-effect': appliedEffect.id, 'data-hero-lighting': 'Hero Lighting Engine', 'data-hero-reflection': appliedLighting.profile.reflection, 'data-material-id': renderedSurface.material.id }}/>
-                    {(appliedEffect.id === 'Marble' ? [] : appliedEffect.layers.slice(1)).map((layer, layerIndex) => layer.kind === 'color-block' ? <ColorBlockRegions key={layerIndex} layer={layer} bounds={renderedSurface.bounds} clipId={`hero-effect-mask-${index}`} /> : ['linear-gradient', 'radial-gradient'].includes(layer.kind) ? <path key={layerIndex} data-effect-layer={layer.kind === 'radial-gradient' ? 'aura' : undefined} d={renderedSurface.path} fill={`url(#hero-finish-${index}-${layerIndex + 1})`} opacity={layer.opacity} clipPath={layer.kind === 'radial-gradient' ? `url(#hero-effect-mask-${index})` : undefined} filter={layer.kind === 'radial-gradient' ? `url(#hero-aura-softness-${index})` : undefined} /> : layer.kind === 'veins' ? <MarbleVeins key={layerIndex} effect={heroDocument.nail.effect} nailIdentity={`${heroDocument.metadata.id}:nail-${index}`} clipId={`hero-effect-mask-${index}`} /> : layer.paths?.map((path, pathIndex) => <path key={`${layerIndex}-${pathIndex}`} d={path} stroke={layer.color} opacity={layer.opacity} fill="none" vectorEffect="non-scaling-stroke" />))}
+                    {(appliedEffect.id === 'Marble' ? [] : appliedEffect.layers.slice(1)).map((layer, layerIndex) => layer.kind === 'color-block' ? <ColorBlockRegions key={layerIndex} layer={layer} bounds={renderedSurface.bounds} clipId={`hero-effect-mask-${index}`} /> : ['linear-gradient', 'radial-gradient'].includes(layer.kind) ? <path key={layerIndex} data-effect-layer={layer.kind === 'radial-gradient' ? 'aura' : undefined} d={renderedSurface.path} fill={`url(#hero-finish-${index}-${layerIndex + 1})`} opacity={layer.opacity} clipPath={layer.kind === 'radial-gradient' ? `url(#hero-effect-mask-${index})` : undefined} filter={layer.kind === 'radial-gradient' ? `url(#hero-aura-softness-${index})` : undefined} /> : layer.kind === 'veins' ? <MarbleVeins key={layerIndex} effect={marbleEffectForNail(index)} nailIdentity={`${heroDocument.metadata.id}:nail-${index}`} clipId={`hero-effect-mask-${index}`} /> : layer.paths?.map((path, pathIndex) => <path key={`${layerIndex}-${pathIndex}`} d={path} stroke={layer.color} opacity={layer.opacity} fill="none" vectorEffect="non-scaling-stroke" />))}
                     </DesignCoverage>
-                    {appliedEffect.id === 'Marble' && <MarbleVeins effect={heroDocument.nail.effect} nailIdentity={`${heroDocument.metadata.id}:nail-${index}`} clipId={`hero-effect-mask-${index}`} />}
+                    {appliedEffect.id === 'Marble' && <MarbleVeins effect={marbleEffectForNail(index)} nailIdentity={`${heroDocument.metadata.id}:nail-${index}`} clipId={`hero-effect-mask-${index}`} />}
                     <FrenchTipRegion data={frenchTips[index]} nailPath={renderedSurface.path} bounds={renderedSurface.bounds} uid={`hero-french-${index}`} />
                     <path data-hero-lighting-layer="full-surface-depth" data-surface-finish={appliedLighting.effectId} d={renderedSurface.path} fill={`url(#hero-light-depth-${index})`} opacity={appliedLighting.profile.veinPreservation} />
                     <path d={renderedSurface.path} fill={`url(#hero-light-apex-${index})`} style={{ mixBlendMode: 'screen' }} />
                     <path d={renderedSurface.path} fill={`url(#hero-light-primary-${index})`} style={{ mixBlendMode: 'screen' }} />
                     <path d={renderedSurface.path} fill={`url(#hero-light-edge-${index})`} style={{ mixBlendMode: 'screen' }} />
-                    {appliedEffect.id === 'Marble' && !moveMarble && activeTool.id === 'effects' && activeNailIndex === index && <MarbleVeins effect={heroDocument.nail.effect} nailIdentity={`${heroDocument.metadata.id}:nail-${index}`} clipId={`hero-effect-mask-${index}`} selectedId={selectedStream?.id} interactionOnly onSelect={selectMarbleStream} onBodyDown={startVeinBodyDrag} onPointDown={startVeinPointDrag} onWidthDown={startVeinWidthDrag} />}
+                    {appliedEffect.id === 'Marble' && !moveMarble && activeTool.id === 'effects' && activeNailIndex === index && <MarbleVeins effect={marbleEffectForNail(index)} nailIdentity={`${heroDocument.metadata.id}:nail-${index}`} clipId={`hero-effect-mask-${index}`} selectedId={selectedStream?.id} interactionOnly onSelect={selectMarbleStream} onBodyDown={startVeinBodyDrag} onPointDown={startVeinPointDrag} onWidthDown={startVeinWidthDrag} />}
                   </svg>
                 </button>
               ))}

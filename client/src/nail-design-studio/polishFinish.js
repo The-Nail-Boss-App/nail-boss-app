@@ -1,3 +1,5 @@
+import { normalizeMarbleSetCoordination } from './marbleSetCoordination';
+
 export const FINISH_DEFAULTS = Object.freeze({
   Cream: { baseColor: '#D94C70', opacity: 1, viscosity: .62, shine: .68 },
   Gradient: { colorA: '#D94C70', colorB: '#7D2E68', direction: 90, opacity: 1, viscosity: .62, shine: .68 },
@@ -58,6 +60,7 @@ export function normalizePolishForFinish(polish = {}, requestedFinish = 'Cream',
     normalized.streamOverrides = polish.streamOverrides && typeof polish.streamOverrides === 'object' && !Array.isArray(polish.streamOverrides) ? polish.streamOverrides : {};
     normalized.customStreams = polish.customStreams && typeof polish.customStreams === 'object' && !Array.isArray(polish.customStreams) ? polish.customStreams : {};
     normalized.deletedStreamIds = Array.isArray(polish.deletedStreamIds) ? polish.deletedStreamIds : [];
+    normalized.marbleSetCoordination = normalizeMarbleSetCoordination(polish.marbleSetCoordination);
   }
   if (finish === 'Glitter') {
     // Older saves have no fleck color. This fixed warm-silver fallback remains
@@ -76,7 +79,7 @@ export function heroEffectForPolish(polish) {
   const p = normalizePolishForFinish(polish, polish.finish);
   const id = ({ Cream: 'Solid', Matte: 'Solid', Glitter: 'Solid', Glass: 'Jelly', 'Chrome-ready': 'Chrome', Shimmer: 'Chrome', Metallic: 'Chrome' })[p.finish] || p.finish;
   const parameters = { [id === 'Gradient' ? 'colorA' : 'baseColor']: p.colorHex, opacity: p.opacity, viscosity: p.viscosity, shine: p.shine };
-  const allowed = { Gradient: ['colorB', 'direction'], 'Cat Eye': ['stripeDirection', 'stripeWidth', 'stripeStrength'], Marble: ['veinColor', 'veinDensity', 'marbleSeed', 'marbleGeometryVersion', 'marbleTransform', 'streamOverrides', 'customStreams', 'deletedStreamIds'], Aura: ['centerColor', 'auraColor', 'softness', 'intensity'], Jelly: ['translucency'] }[id] || [];
+  const allowed = { Gradient: ['colorB', 'direction'], 'Cat Eye': ['stripeDirection', 'stripeWidth', 'stripeStrength'], Marble: ['veinColor', 'veinDensity', 'marbleSeed', 'marbleGeometryVersion', 'marbleTransform', 'streamOverrides', 'customStreams', 'deletedStreamIds', 'marbleSetCoordination'], Aura: ['centerColor', 'auraColor', 'softness', 'intensity'], Jelly: ['translucency'] }[id] || [];
   allowed.forEach((key) => { parameters[key] = p[key] ?? FINISH_DEFAULTS[p.finish][key]; });
   return { id, version: '1', parameters };
 }

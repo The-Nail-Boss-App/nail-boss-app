@@ -58,17 +58,33 @@ export function coordinatedMarbleParameters(parameters, coordination, nailId) {
       if (!parameters.streamOverrides?.[id]?.formulation) generatedStyle[id] = { formulation: { ...set.palette[role] } };
     }
   }
+  const localOverrides = parameters.streamOverrides || {};
+  const streamOverrides = { ...localOverrides };
+  for (const [id, generated] of Object.entries(generatedStyle)) {
+    const local = localOverrides[id] || {};
+    streamOverrides[id] = {
+      ...generated, ...local,
+      formulation: { ...(generated.formulation || {}), ...(local.formulation || {}) },
+    };
+  }
+  const localTransform = parameters.marbleTransform || {};
   return {
     ...parameters,
     marbleSeed: identity,
     veinDensity: Math.max(.08, Math.min(1, set.density + jitter * .18)),
     marbleTransform: {
-      ...(parameters.marbleTransform || {}),
-      panX: set.mode === 'flow' ? flowPan : finite(parameters.marbleTransform?.panX, 0),
-      rotation: set.flow.angle + jitter * 18,
+      ...localTransform,
+      panX: finite(localTransform.panX, 0) + flowPan,
+      rotation: finite(localTransform.rotation, 0) + set.flow.angle + jitter * 18,
     },
-    streamOverrides: { ...generatedStyle, ...(parameters.streamOverrides || {}) },
+    streamOverrides,
   };
+}
+
+/** Renderer-only resolution. The supplied artist parameters are never mutated. */
+export function resolveMarbleRenderState(effect, coordination, nailId) {
+  if (!effect || effect.id !== 'Marble') return effect;
+  return { ...effect, parameters: coordinatedMarbleParameters(effect.parameters, coordination, nailId) };
 }
 
 export function deriveCoordinationFromNail(effect, coordination) {
@@ -84,7 +100,7 @@ export function deriveCoordinationFromNail(effect, coordination) {
 
 export function detachMarbleParameters(effect, nailId) {
   if (!effect || effect.id !== 'Marble') return effect;
-  // Materialize every currently visible generated path as a local override before ownership is removed.
-  // Existing custom/deleted data and local transform remain untouched.
-  return { ...effect, parameters: { ...effect.parameters, marbleSeed: `${effect.parameters.marbleSeed}|detached|${nailId}` } };
+  const coordination = normalizeMarbleSetCoordination(effect.parameters.marbleSetCoordination);
+  const resolved = coordinatedMarbleParameters(effect.parameters, coordination, nailId);
+  return { ...effect, parameters: { ...resolved, marbleSetCoordination: normalizeMarbleSetCoordination(undefined) } };
 }
