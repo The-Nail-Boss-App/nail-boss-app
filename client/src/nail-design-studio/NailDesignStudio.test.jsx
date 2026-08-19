@@ -50,11 +50,11 @@ describe('DS-03 Polish Studio repair', () => {
     await click([...container.querySelectorAll('.nail-design-studio__marble-set button')].find((button) => button.textContent === 'Coordinate From This Nail'));
     const panel = container.querySelector('.nail-design-studio__marble-set');
     expect(panel.dataset.marbleSetMode).toBe('flow'); expect(panel.dataset.marbleSetMembers.split(',')).toHaveLength(10);
-    const transforms = [...container.querySelectorAll('[data-effect-layer="marble"]:not(:has([data-marble-hit-target])) [data-marble-transform]')].map((node) => node.getAttribute('transform'));
-    expect(new Set(transforms).size).toBeGreaterThan(1);
+    const flowPaths = [...container.querySelectorAll('[data-effect-layer="marble"]:not(:has([data-marble-hit-target])) [data-stream-id="primary-0"] [data-vein-component="variable-width-ribbon"]')].map((node) => node.getAttribute('d'));
+    expect(new Set(flowPaths).size).toBeGreaterThan(1);
     await click([...container.querySelectorAll('[aria-label="Marble Set Style"] button')].find((button) => button.textContent === 'Coordinated'));
     const coordinatedTransforms = [...container.querySelectorAll('[data-effect-layer="marble"]:not(:has([data-marble-hit-target])) [data-marble-transform]')].map((node) => node.getAttribute('transform'));
-    expect(panel.dataset.marbleSetMode).toBe('coordinated'); expect(coordinatedTransforms).not.toEqual(transforms);
+    expect(panel.dataset.marbleSetMode).toBe('coordinated'); expect(coordinatedTransforms).not.toEqual(flowPaths);
     await click([...container.querySelectorAll('[aria-label="Marble Set Style"] button')].find((button) => button.textContent === 'Flow'));
     expect(panel.dataset.marbleSetMode).toBe('flow');
     expect(container.querySelector('[data-effect-layer="marble"]').getAttribute('clip-path')).toMatch(/^url\(#hero-effect-mask-/);
@@ -97,6 +97,7 @@ describe('DS-03 Polish Studio repair', () => {
     expect([...set.querySelectorAll('[aria-label="Marble Set Style"] button')].map((item) => item.textContent)).toEqual(['Coordinated', 'Flow']);
     expect(set.querySelectorAll('input[aria-label="Marble Set Variation"]')).toHaveLength(1);
     expect([...set.querySelectorAll('button')].some((item) => item.textContent === 'Coordinate From This Nail')).toBe(true);
+    expect(set.querySelector('.nail-design-studio__marble-more summary').textContent).toBe('More Choices');
     expect(set.textContent).not.toMatch(/Primary set color|Primary set finish|Secondary set color|Secondary set finish|Hairline set color|Hairline set finish/);
     expect(set.querySelector('.nail-design-studio__marble-more').open).toBe(false);
   });

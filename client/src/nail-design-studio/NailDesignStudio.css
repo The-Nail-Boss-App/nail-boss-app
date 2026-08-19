@@ -764,5 +764,9 @@
 .nail-design-studio__marble-add>div{display:grid;position:absolute;z-index:5;right:0;top:calc(100% + 4px);min-width:120px;padding:5px;gap:4px;background:#171a20;border:1px solid rgba(255,255,255,.18);box-shadow:0 8px 22px #0008}
 .nail-design-studio__marble-set-style{grid-template-columns:1fr 1fr}.nail-design-studio__marble-set-style span{grid-column:1/-1;font-size:.68rem;color:#d8dde3}
 .nail-design-studio__marble-variation{grid-template-columns:auto auto 1fr auto!important}.nail-design-studio__marble-variation>span{font-size:.6rem;color:#aeb5bf}
-.nail-design-studio__marble-coordinate{border-color:#c8ff4a!important;color:#fff}
-.nail-design-studio__marble-more summary{cursor:pointer;list-style:none;text-align:center;letter-spacing:.2em;border-top:1px solid rgba(255,255,255,.12);padding-top:7px}.nail-design-studio__marble-more summary::-webkit-details-marker{display:none}.nail-design-studio__marble-more>div{display:grid;gap:5px;margin-top:6px}
+.nail-design-studio__marble-coordinate{border-color:#9ccf25!important;background:#d8ff78!important;color:#172006!important;text-shadow:none!important}
+.nail-design-studio__marble-coordinate:hover:not(:disabled),.nail-design-studio__marble-coordinate[aria-pressed="true"]{background:#c8f45e!important;color:#101900!important}
+.nail-design-studio__marble-coordinate:focus-visible{outline:3px solid #35e3e4;outline-offset:2px;color:#101900!important}
+.nail-design-studio__marble-coordinate:active:not(:disabled){background:#aedb42!important;color:#0b1200!important}
+.nail-design-studio__marble-coordinate:disabled{background:#dce8bf!important;border-color:#a6b58a!important;color:#465136!important;opacity:1}
+.nail-design-studio__marble-more summary{cursor:pointer;list-style:none;text-align:center;letter-spacing:.04em;border-top:1px solid rgba(255,255,255,.12);padding-top:7px}.nail-design-studio__marble-more summary::-webkit-details-marker{display:none}.nail-design-studio__marble-more>div{display:grid;gap:5px;margin-top:6px}

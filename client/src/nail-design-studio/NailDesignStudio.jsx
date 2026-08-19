@@ -978,7 +978,7 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
             <label className="nail-design-studio__marble-variation">Variation <span>Similar</span><input aria-label="Marble Set Variation" type="range" min="0" max="2" step="1" value={{ low: 0, medium: 1, high: 2 }[marbleSetVariation]} onChange={(event) => setMarbleSetVariation(['low', 'medium', 'high'][Number(event.target.value)])} /><span>Unique</span></label>
             <button type="button" className="nail-design-studio__marble-coordinate" onClick={coordinateFromThisNail}>Coordinate From This Nail</button>
             <button type="button" onClick={randomizeMarbleSet}>Randomize</button>
-            <details className="nail-design-studio__marble-more"><summary aria-label="More Marble Set actions">•••</summary><div>
+            <details className="nail-design-studio__marble-more"><summary aria-label="More Marble Set actions">More Choices</summary><div>
               {marbleSetCoordination.participatingNailIds.includes(`nail-${activeNailIndex}`) && <><button type="button" onClick={detachMarbleNail}>Detach Current Nail</button><button type="button" onClick={applyMarbleSet}>Reset Current Nail to Set</button></>}
               <button type="button" onClick={applyMarbleSet}>Reapply Set Style</button><button type="button" onClick={resetMarbleSet}>Reset Set</button>
             </div></details>
