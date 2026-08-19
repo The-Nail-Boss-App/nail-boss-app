@@ -107,13 +107,22 @@ export function coordinatedMarbleParameters(parameters, coordination, nailId) {
   }
   const localOverrides = parameters.streamOverrides || {};
   const streamOverrides = { ...localOverrides };
-  for (const [id, generated] of Object.entries(generatedStyle)) {
+  // Geometry and style have separate ownership. In particular, formulation
+  // edits must never remove a projected slab window, and diffusion receives
+  // geometry even though it has no generated palette role.
+  const resolvedIds = new Set([...Object.keys(generatedStyle), ...Object.keys(flowProjection || {})]);
+  for (const id of resolvedIds) {
+    const generated = generatedStyle[id] || {};
     const local = localOverrides[id] || {};
-    streamOverrides[id] = {
-      ...generated, ...local,
-      ...(flowProjection?.[id] && !local.geometryOverride ? { geometryOverride: { points: flowProjection[id] } } : {}),
-      formulation: { ...(generated.formulation || {}), ...(local.formulation || {}) },
+    const resolved = { ...generated, ...local };
+    if (flowProjection?.[id] && !local.geometryOverride) resolved.geometryOverride = { points: flowProjection[id] };
+    const localFormulation = {
+      ...(local.formulation || {}),
+      ...(local.color ? { color: local.color } : {}),
+      ...(local.finish ? { finish: local.finish } : {}),
     };
+    if (generated.formulation || Object.keys(localFormulation).length) resolved.formulation = { ...(generated.formulation || {}), ...localFormulation };
+    streamOverrides[id] = resolved;
   }
   const localTransform = parameters.marbleTransform || {};
   return {
