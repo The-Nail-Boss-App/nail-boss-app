@@ -35,6 +35,53 @@ export function normalizeMarbleSetCoordination(value) {
 }
 
 export const nailOrder = (id) => { const match = String(id).match(/nail-(\d+)$/); return match ? Number(match[1]) : hash(String(id)); };
+
+const rounded = (value) => Number(value.toFixed(2));
+const FLOW_STREAMS = Object.freeze([
+  Object.freeze({ id: 'diffusion-0', role: 'primary', phase: .11, amplitude: 22 }),
+  Object.freeze({ id: 'diffusion-1', role: 'primary', phase: .63, amplitude: 17 }),
+  Object.freeze({ id: 'primary-0', role: 'primary', phase: .18, amplitude: 19 }),
+  Object.freeze({ id: 'primary-1', role: 'primary', phase: .71, amplitude: 15 }),
+  Object.freeze({ id: 'secondary-0', role: 'secondary', phase: .31, amplitude: 11 }),
+  Object.freeze({ id: 'secondary-1', role: 'secondary', phase: .82, amplitude: 9 }),
+]);
+
+/**
+ * Builds geology in virtual-set coordinates before any nail is considered.
+ * X is measured in logical nail-window widths; Y is the canonical Hero space.
+ */
+export function createVirtualMarbleComposition(coordination) {
+  const set = normalizeMarbleSetCoordination(coordination);
+  const count = Math.max(1, set.participatingNailIds.length);
+  const angleSlope = Math.tan(set.flow.angle * Math.PI / 180) * 34;
+  return Object.freeze({
+    id: `virtual-slab-v1|${set.setSeed}|${set.flow.angle}|${set.flow.curvature}|${count}`,
+    windowCount: count,
+    streams: Object.freeze(FLOW_STREAMS.map((definition, index) => {
+      const base = 62 + unit(`${set.setSeed}|${definition.id}|base`) * 190;
+      const frequency = .58 + unit(`${set.setSeed}|${definition.id}|frequency`) * .72;
+      const phase = (definition.phase + unit(`${set.setSeed}|${definition.id}|phase`)) * Math.PI * 2;
+      const amplitude = definition.amplitude * (.72 + unit(`${set.setSeed}|${definition.id}|amplitude`) * .56);
+      const branchStart = definition.role === 'secondary' ? Math.floor(unit(`${set.setSeed}|${definition.id}|start`) * Math.max(1, count - 1)) : 0;
+      const branchEnd = definition.role === 'secondary' ? Math.min(count, branchStart + 2 + Math.floor(unit(`${set.setSeed}|${definition.id}|span`) * Math.max(1, count - branchStart - 1))) : count;
+      return Object.freeze({ ...definition, index, base, frequency, phase, amplitude, angleSlope, curvature: set.flow.curvature, start: branchStart, end: branchEnd });
+    })),
+  });
+}
+
+const virtualY = (stream, x) => stream.base + stream.angleSlope * (x - 2.25)
+  + Math.sin(x * stream.frequency + stream.phase) * stream.amplitude
+  + Math.sin(x * .31 + stream.phase * .47) * stream.curvature * 24;
+
+/** Projects one stable logical window into nail-local Hero composition space. */
+export function projectVirtualMarbleWindow(composition, order) {
+  const sampleX = [-30, 35, 100, 165, 230];
+  return Object.fromEntries(composition.streams.map((stream) => {
+    const outsideBranch = stream.role === 'secondary' && (order < stream.start || order >= stream.end);
+    const points = sampleX.map((x) => ({ x, y: rounded(outsideBranch ? -240 : virtualY(stream, order + x / 200)) }));
+    return [stream.id, Object.freeze(points)];
+  }));
+}
 export const marbleGeometryIdentity = (coordination, nailId) => {
   const set = normalizeMarbleSetCoordination(coordination);
   if (set.mode === 'independent' || !set.participatingNailIds.includes(nailId)) return null;
@@ -49,7 +96,7 @@ export function coordinatedMarbleParameters(parameters, coordination, nailId) {
   const strength = { low: .28, medium: .55, high: .82 }[set.variation];
   const order = set.participatingNailIds.indexOf(nailId);
   const jitter = (unit(`${identity}|variation`) - .5) * strength;
-  const flowPan = set.mode === 'flow' ? (order - (set.participatingNailIds.length - 1) / 2) * 34 : 0;
+  const flowProjection = set.mode === 'flow' ? projectVirtualMarbleWindow(createVirtualMarbleComposition(set), order) : null;
   const generatedStyle = {};
   for (const role of ['primary', 'secondary', 'hairline']) {
     for (let index = 0; index < (role === 'primary' ? 2 : role === 'secondary' ? 4 : 5); index += 1) {
@@ -64,6 +111,7 @@ export function coordinatedMarbleParameters(parameters, coordination, nailId) {
     const local = localOverrides[id] || {};
     streamOverrides[id] = {
       ...generated, ...local,
+      ...(flowProjection?.[id] && !local.geometryOverride ? { geometryOverride: { points: flowProjection[id] } } : {}),
       formulation: { ...(generated.formulation || {}), ...(local.formulation || {}) },
     };
   }
@@ -74,8 +122,8 @@ export function coordinatedMarbleParameters(parameters, coordination, nailId) {
     veinDensity: Math.max(.08, Math.min(1, set.density + jitter * .18)),
     marbleTransform: {
       ...localTransform,
-      panX: finite(localTransform.panX, 0) + flowPan,
-      rotation: finite(localTransform.rotation, 0) + set.flow.angle + jitter * 18,
+      panX: finite(localTransform.panX, 0),
+      rotation: finite(localTransform.rotation, 0) + (set.mode === 'coordinated' ? set.flow.angle + jitter * 18 : 0),
     },
     streamOverrides,
   };

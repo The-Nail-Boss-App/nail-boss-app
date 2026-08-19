@@ -1,4 +1,4 @@
-import { coordinatedMarbleParameters, createMarbleSetSeed, deriveCoordinationFromNail, detachMarbleParameters, marbleGeometryIdentity, normalizeMarbleSetCoordination, resolveMarbleRenderState } from './marbleSetCoordination';
+import { coordinatedMarbleParameters, createMarbleSetSeed, createVirtualMarbleComposition, deriveCoordinationFromNail, detachMarbleParameters, marbleGeometryIdentity, normalizeMarbleSetCoordination, projectVirtualMarbleWindow, resolveMarbleRenderState } from './marbleSetCoordination';
 import { heroEffectForPolish, normalizePolishForFinish } from './polishFinish';
 
 const set = normalizeMarbleSetCoordination({ mode: 'coordinated', setSeed: 'slab-7', participatingNailIds: ['nail-1', 'nail-0'], variation: 'low', flow: { angle: 12, curvature: .3 } });
@@ -17,7 +17,28 @@ describe('Marble set coordination', () => {
   });
   it('uses logical order for deterministic Flow Across Set windows', () => {
     const flow = { ...set, mode: 'flow' };
-    expect(coordinatedMarbleParameters({}, flow, 'nail-0').marbleTransform.panX).toBeLessThan(coordinatedMarbleParameters({}, flow, 'nail-1').marbleTransform.panX);
+    const left = coordinatedMarbleParameters({}, flow, 'nail-0'); const right = coordinatedMarbleParameters({}, flow, 'nail-1');
+    expect(left.streamOverrides['primary-0'].geometryOverride).not.toEqual(right.streamOverrides['primary-0'].geometryOverride);
+  });
+  it('creates one deterministic virtual slab whose primary trajectories meet at neighboring boundaries', () => {
+    const flow = normalizeMarbleSetCoordination({ ...set, mode: 'flow', participatingNailIds: ['nail-4', 'nail-0', 'nail-2', 'nail-1', 'nail-3'] });
+    const slab = createVirtualMarbleComposition(flow); const again = createVirtualMarbleComposition(JSON.parse(JSON.stringify(flow)));
+    expect(again).toEqual(slab);
+    expect(createVirtualMarbleComposition({ ...flow, setSeed: 'another-slab' })).not.toEqual(slab);
+    const first = projectVirtualMarbleWindow(slab, 0)['primary-0']; const second = projectVirtualMarbleWindow(slab, 1)['primary-0'];
+    const rightEdge = first.find(({ x }) => x === 230); const leftEdge = second.find(({ x }) => x === 35);
+    expect(Math.abs(rightEdge.y - leftEdge.y)).toBeLessThan(14);
+  });
+  it('keeps Coordinated related but independently seeded instead of projecting slab geometry', () => {
+    const first = coordinatedMarbleParameters({}, set, 'nail-0'); const second = coordinatedMarbleParameters({}, set, 'nail-1');
+    expect(first.marbleSeed).not.toBe(second.marbleSeed);
+    expect(first.streamOverrides['primary-0'].geometryOverride).toBeUndefined();
+  });
+  it('uses stable identities, not responsive pixels, to select distinct slab portions', () => {
+    const flow = normalizeMarbleSetCoordination({ ...set, mode: 'flow', participatingNailIds: ['nail-2', 'nail-0', 'nail-1'] });
+    const geometry = (id) => coordinatedMarbleParameters({}, flow, id).streamOverrides['primary-0'].geometryOverride.points;
+    expect(geometry('nail-0')).toEqual(geometry('nail-0'));
+    expect(geometry('nail-0')).not.toEqual(geometry('nail-2'));
   });
   it('derives style and flow without changing the source effect', () => {
     const effect = { id: 'Marble', parameters: { veinDensity: .7, marbleTransform: { rotation: 33 }, streamOverrides: { 'primary-0': { formulation: { color: '#ABCDEF', finish: 'Jelly' } } } } };
@@ -43,8 +64,8 @@ describe('Marble set coordination', () => {
     const local = { panX: 7, panY: 4, scale: 1.2, rotation: 9 };
     const effect = { id: 'Marble', parameters: { marbleTransform: local } };
     const flow = { ...set, mode: 'flow' }; const resolved = resolveMarbleRenderState(effect, flow, 'nail-0');
-    expect(resolved.parameters.marbleTransform.panX).not.toBe(local.panX);
-    expect(resolved.parameters.marbleTransform.rotation).not.toBe(local.rotation);
+    expect(resolved.parameters.marbleTransform).toEqual(local);
+    expect(resolved.parameters.streamOverrides['primary-0'].geometryOverride.points).toHaveLength(5);
     expect(effect.parameters.marbleTransform).toBe(local);
     expect(resolveMarbleRenderState(effect, undefined, 'nail-0').parameters.marbleTransform).toEqual(local);
   });
