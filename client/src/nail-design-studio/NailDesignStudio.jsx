@@ -10,7 +10,7 @@ import { MaterialLayers } from './MaterialRenderer';
 import { FINISH_DEFAULTS, VISIBLE_POLISH_FINISHES, colorBlockEffect, heroEffectForPolish, negativeSpaceEffect, normalizePersistedAuraEffect, normalizePolishForFinish, polishSignature } from './polishFinish';
 import { addProjectPolish, touchRecentPolish } from '../design-studio/polishWorkflow';
 import { FrenchTipControls, FrenchTipRegion, loadFrenchTips } from './FrenchTip';
-import { createMarbleSetSeed, deriveCoordinationFromNail, detachMarbleParameters, normalizeMarbleSetCoordination, resolveMarbleRenderState } from './marbleSetCoordination';
+import { createMarbleSetSeed, deriveCoordinationFromNail, detachMarbleParameters, materializeMarbleSourceHandoff, normalizeMarbleSetCoordination, resolveMarbleRenderState } from './marbleSetCoordination';
 import './NailDesignStudio.css';
 
 export const canScrollInWheelDirection = (element, deltaY) => {
@@ -512,7 +512,15 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
     changeFinishParameter('marbleSetCoordination', normalized);
   };
   const applyMarbleSet = () => updateMarbleSet({ ...normalizeMarbleSetCoordination(heroDocument.nail.effect.parameters.marbleSetCoordination), mode: marbleSetMode, variation: marbleSetVariation, setSeed: heroDocument.nail.effect.parameters.marbleSetCoordination?.setSeed || createMarbleSetSeed(heroDocument.metadata.id), participatingNailIds: marbleTargetIds(), density: heroDocument.nail.effect.parameters.veinDensity });
-  const coordinateFromThisNail = () => updateMarbleSet({ ...deriveCoordinationFromNail(heroDocument.nail.effect, marbleSetCoordination, `nail-${activeNailIndex}`), mode: marbleSetMode === 'independent' ? 'coordinated' : marbleSetMode, variation: marbleSetVariation, participatingNailIds: marbleTargetIds() });
+  const coordinateFromThisNail = () => {
+    const sourceNailId = `nail-${activeNailIndex}`;
+    const handoff = materializeMarbleSourceHandoff(heroDocument.nail.effect, marbleSetCoordination, sourceNailId);
+    const normalized = normalizeMarbleSetCoordination({ ...handoff.coordination, mode: marbleSetMode === 'independent' ? 'coordinated' : marbleSetMode, variation: marbleSetVariation, participatingNailIds: marbleTargetIds() });
+    const localParameters = { ...handoff.materializedEffect.parameters, marbleSetCoordination: undefined };
+    setMarbleNailStates((states) => ({ ...states, [sourceNailId]: localParameters }));
+    setMarbleSetCoordination(normalized);
+    changeHero((current) => updateHeroEffect(current, { ...current.document.nail.effect, parameters: { ...localParameters, marbleSetCoordination: normalized } }, heroEvents.current));
+  };
   const randomizeMarbleSet = () => updateMarbleSet({ ...normalizeMarbleSetCoordination(heroDocument.nail.effect.parameters.marbleSetCoordination), setSeed: createMarbleSetSeed(Date.now()) });
   const changeMarbleWorkspaceMode = (mode) => {
     if (mode === 'independent') {

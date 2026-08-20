@@ -1,3 +1,5 @@
+import { GENERATED_MARBLE_STREAM_IDS, RENDERABLE_GENERATED_MARBLE_STREAM_IDS } from '../hero-design/marbleInventory';
+
 export const MARBLE_SET_COORDINATION_VERSION = 1;
 export const MARBLE_SET_MODES = Object.freeze(['independent', 'coordinated', 'flow']);
 export const MARBLE_SET_VARIATIONS = Object.freeze(['low', 'medium', 'high']);
@@ -34,8 +36,8 @@ export function normalizeMarbleSetCoordination(value) {
     sourceNailId: typeof source.sourceNailId === 'string' ? source.sourceNailId : '',
     sourceStructure: {
       primary: Math.max(0, Math.min(4, Math.floor(finite(source.sourceStructure?.primary, 0)))),
-      secondary: Math.max(0, Math.min(4, Math.floor(finite(source.sourceStructure?.secondary, 0)))),
-      hairline: Math.max(0, Math.min(5, Math.floor(finite(source.sourceStructure?.hairline, 0)))),
+      secondary: Math.max(0, Math.min(8, Math.floor(finite(source.sourceStructure?.secondary, 0)))),
+      hairline: Math.max(0, Math.min(12, Math.floor(finite(source.sourceStructure?.hairline, 0)))),
       deletedGeneratedIds: [...new Set((Array.isArray(source.sourceStructure?.deletedGeneratedIds) ? source.sourceStructure.deletedGeneratedIds : []).filter((id) => /^(diffusion|primary|secondary|hairline)-\d+$/.test(id)))].sort(),
     },
   };
@@ -52,6 +54,29 @@ const FLOW_STREAMS = Object.freeze([
   Object.freeze({ id: 'secondary-0', role: 'secondary', phase: .31, amplitude: 11 }),
   Object.freeze({ id: 'secondary-1', role: 'secondary', phase: .82, amplitude: 9 }),
 ]);
+const FLOW_BASE_IDS = new Set(FLOW_STREAMS.map(({ id }) => id));
+
+/** Compresses arbitrary source counts into the finite inventory the renderer owns. */
+export function mapSourceStructureToRenderableStreams(sourceStructure) {
+  const structure = normalizeMarbleSetCoordination({ sourceStructure }).sourceStructure;
+  const candidates = [
+    ...GENERATED_MARBLE_STREAM_IDS.secondary.filter((id) => !FLOW_BASE_IDS.has(id)),
+    ...GENERATED_MARBLE_STREAM_IDS.hairline,
+  ];
+  const weightedIntent = [
+    ...Array.from({ length: structure.primary }, () => 'primary'),
+    ...Array.from({ length: structure.secondary }, () => 'secondary'),
+    ...Array.from({ length: structure.hairline }, () => 'hairline'),
+  ];
+  // Capacity overflow intentionally folds back onto existing candidates and
+  // increases their geological weight rather than inventing an identity.
+  const mapped = new Map();
+  weightedIntent.forEach((role, index) => {
+    const id = candidates[index % candidates.length]; const current = mapped.get(id);
+    mapped.set(id, { id, role: current?.role === 'primary' || role === 'primary' ? 'primary' : role, rank: candidates.indexOf(id), weight: (current?.weight || 0) + 1 });
+  });
+  return Object.freeze([...mapped.values()].map(Object.freeze));
+}
 
 /**
  * Builds geology in virtual-set coordinates before any nail is considered.
@@ -64,12 +89,9 @@ export function createVirtualMarbleComposition(coordination) {
   const deleted = new Set(set.sourceStructure.deletedGeneratedIds);
   // Source additions describe hierarchy, not cloned artwork. Map them onto
   // unused generated stream classes so they become coherent slab trajectories.
-  const additions = [
-    ...Array.from({ length: set.sourceStructure.primary }, (_, index) => ({ id: `secondary-${index + 2}`, role: 'primary', phase: .24 + index * .17, amplitude: 16 - index })),
-    ...Array.from({ length: set.sourceStructure.secondary }, (_, index) => ({ id: `hairline-${index}`, role: 'secondary', phase: .37 + index * .13, amplitude: 8 - index * .5 })),
-    ...Array.from({ length: set.sourceStructure.hairline }, (_, index) => ({ id: `hairline-${Math.min(4, set.sourceStructure.secondary + index)}`, role: 'secondary', phase: .49 + index * .11, amplitude: 5.5 - index * .35 })),
-  ];
+  const additions = mapSourceStructureToRenderableStreams(set.sourceStructure).map(({ id, role, rank, weight }) => ({ id, role: role === 'primary' ? 'primary' : 'secondary', phase: .24 + rank * .11, amplitude: Math.max(4.5, 16 - rank * .65) * (1 + Math.min(.3, (weight - 1) * .06)) }));
   const definitions = [...FLOW_STREAMS, ...additions].filter((item, index, items) => !deleted.has(item.id) && items.findIndex(({ id }) => id === item.id) === index);
+  if (definitions.some(({ id }) => !RENDERABLE_GENERATED_MARBLE_STREAM_IDS.includes(id))) throw new Error('Flow structure mapped to a non-renderable Marble stream.');
   return Object.freeze({
     id: `virtual-slab-v1|${set.setSeed}|${JSON.stringify(set.sourceStructure)}|${set.flow.angle}|${set.flow.curvature}|${count}`,
     windowCount: count,
@@ -180,6 +202,14 @@ export function deriveCoordinationFromNail(effect, coordination, sourceNailId = 
     deletedGeneratedIds: effect?.parameters?.deletedStreamIds || [],
   };
   return normalizeMarbleSetCoordination({ ...set, sourceNailId: sourceNailId || set.sourceNailId, sourceStructure, density: effect?.parameters?.veinDensity, flow: { ...set.flow, angle: effect?.parameters?.marbleTransform?.rotation ?? set.flow.angle }, palette });
+}
+
+/** Freezes exactly what is visible before transferring source ownership. */
+export function materializeMarbleSourceHandoff(effect, coordination, sourceNailId) {
+  const currentSet = normalizeMarbleSetCoordination(coordination);
+  const materializedEffect = resolveMarbleRenderState({ ...effect, parameters: { ...effect.parameters, marbleSetCoordination: currentSet } }, currentSet, sourceNailId);
+  const nextCoordination = deriveCoordinationFromNail(materializedEffect, currentSet, sourceNailId);
+  return { materializedEffect: { ...materializedEffect, parameters: { ...materializedEffect.parameters, marbleSetCoordination: undefined } }, coordination: nextCoordination };
 }
 
 export function detachMarbleParameters(effect, nailId) {
