@@ -79,6 +79,38 @@ describe('Marble set coordination', () => {
     const before = JSON.stringify(effect); const derived = deriveCoordinationFromNail(effect, set);
     expect(JSON.stringify(effect)).toBe(before); expect(derived.palette.primary).toEqual({ color: '#ABCDEF', finish: 'Jelly' }); expect(derived.flow.angle).toBe(33);
   });
+  it('re-derives structural intent without mutating the source or cloning its artwork', () => {
+    const effect = { id: 'Marble', parameters: { veinDensity: .7, customStreams: {
+      'custom-primary-source': { veinClass: 'primary', visible: true, controlPoints: [{ x: 1, y: 2 }, { x: 9, y: 12 }] },
+      'custom-hairline-source': { veinClass: 'hairline', visible: true },
+    }, deletedStreamIds: ['secondary-1'], streamOverrides: {} } };
+    const before = JSON.stringify(effect); const updated = deriveCoordinationFromNail(effect, set, 'nail-0');
+    expect(JSON.stringify(effect)).toBe(before);
+    expect(updated.sourceNailId).toBe('nail-0');
+    expect(updated.sourceStructure).toEqual({ primary: 1, secondary: 0, hairline: 1, deletedGeneratedIds: ['secondary-1'] });
+    expect(updated).not.toHaveProperty('customStreams');
+  });
+  it.each(['coordinated', 'flow'])('uses updated source structure for %s while preserving neighbor overrides', (mode) => {
+    const baseline = normalizeMarbleSetCoordination({ ...set, mode, sourceNailId: 'nail-0' });
+    const updated = normalizeMarbleSetCoordination({ ...baseline, sourceStructure: { primary: 1, deletedGeneratedIds: ['secondary-1'] } });
+    expect(marbleGeometryIdentity(updated, 'nail-1')).not.toBe(marbleGeometryIdentity(baseline, 'nail-1'));
+    if (mode === 'flow') {
+      const slab = createVirtualMarbleComposition(updated);
+      expect(slab.streams.some(({ id }) => id === 'secondary-2')).toBe(true);
+      expect(slab.streams.some(({ id }) => id === 'secondary-1')).toBe(false);
+    }
+    const geometryOverride = { points: [{ x: 4, y: 5 }, { x: 8, y: 9 }] };
+    const customStreams = { local: { veinClass: 'primary' } }; const deletedStreamIds = ['primary-1'];
+    const local = { customStreams, deletedStreamIds, marbleTransform: { panX: 8 }, streamOverrides: { 'primary-0': { geometryOverride, formulation: { color: '#123456', finish: 'Jelly' }, opacity: .4 } } };
+    const resolved = coordinatedMarbleParameters(local, updated, 'nail-1');
+    expect(resolved.streamOverrides['primary-0']).toMatchObject(local.streamOverrides['primary-0']);
+    expect(resolved.customStreams).toBe(customStreams); expect(resolved.deletedStreamIds).toEqual(['primary-1', 'secondary-1']); expect(resolved.marbleTransform.panX).toBe(8);
+  });
+  it('keeps the source nail byte-for-byte visually authoritative after an update', () => {
+    const source = { marbleSeed: 'source', customStreams: { art: { veinClass: 'primary' } }, deletedStreamIds: ['primary-1'], streamOverrides: { 'primary-0': { opacity: .3 } } };
+    const updated = normalizeMarbleSetCoordination({ ...set, mode: 'flow', sourceNailId: 'nail-0', sourceStructure: { primary: 1 } });
+    expect(coordinatedMarbleParameters(source, updated, 'nail-0')).toEqual(source);
+  });
   it('creates persisted-looking deterministic seeds without Math.random geometry', () => expect(createMarbleSetSeed(123)).toBe(createMarbleSetSeed(123)));
   it('carries the normalized relationship through the canonical Hero effect factory', () => {
     const polish = normalizePolishForFinish({ finish: 'Marble', marbleSetCoordination: set }, 'Marble');

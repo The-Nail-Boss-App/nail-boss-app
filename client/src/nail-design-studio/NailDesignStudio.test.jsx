@@ -48,6 +48,7 @@ describe('DS-03 Polish Studio repair', () => {
     await click([...container.querySelectorAll('[aria-label="Marble workspace mode"] button')].find((button) => button.textContent === 'Set'));
     await click([...container.querySelectorAll('[aria-label="Marble Set Style"] button')].find((button) => button.textContent === 'Flow'));
     await click([...container.querySelectorAll('.nail-design-studio__marble-set button')].find((button) => button.textContent === 'Coordinate From This Nail'));
+    expect([...container.querySelectorAll('.nail-design-studio__marble-set button')].some((button) => button.textContent === 'Update Set From This Nail')).toBe(true);
     const panel = container.querySelector('.nail-design-studio__marble-set');
     expect(panel.dataset.marbleSetMode).toBe('flow'); expect(panel.dataset.marbleSetMembers.split(',')).toHaveLength(10);
     const flowPaths = [...container.querySelectorAll('[data-effect-layer="marble"]:not(:has([data-marble-hit-target])) [data-stream-id="primary-0"] [data-vein-component="variable-width-ribbon"]')].map((node) => node.getAttribute('d'));

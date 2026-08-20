@@ -66,9 +66,12 @@ const marbleSplineSegments = (points, fallback) => points.length < 2 ? [fallback
 const profileWidth = (profile, position) => position <= .5 ? profile.start + (profile.middle - profile.start) * position * 2 : profile.middle + (profile.end - profile.middle) * (position - .5) * 2;
 
 function MarbleVeins({ effect, nailIdentity, clipId, selectedId, interactionOnly = false, onSelect, onBodyDown, onPointDown, onWidthDown }) {
-  const streams = createMarbleVeinModel(effect, nailIdentity);
   const stableNailId = nailIdentity.match(/nail-\d+$/)?.[0] || nailIdentity;
-  const transform = resolveMarbleRenderState(effect, effect.parameters.marbleSetCoordination, stableNailId).parameters.marbleTransform || { panX: 0, panY: 0, scale: 1, rotation: 0 };
+  // Both paint and hit/selection geometry consume this exact resolved effect.
+  // Resolving only the transform left the overlay on a stale generated path.
+  const resolvedEffect = resolveMarbleRenderState(effect, effect.parameters.marbleSetCoordination, stableNailId);
+  const streams = createMarbleVeinModel(resolvedEffect, nailIdentity);
+  const transform = resolvedEffect.parameters.marbleTransform || { panX: 0, panY: 0, scale: 1, rotation: 0 };
   const groupTransform = `translate(${transform.panX || 0} ${transform.panY || 0}) translate(120 180) rotate(${transform.rotation || 0}) scale(${transform.scale || 1}) translate(-120 -180)`;
   return <g data-effect-layer="marble" data-marble-alpha="localized-stream-geometry-only" data-marble-model="primary-secondary-hairline-diffusion" data-marble-clip-authority="hero-nail-mask" clipPath={`url(#${clipId})`}>
     <g data-marble-transform={groupTransform} transform={groupTransform}>
@@ -509,7 +512,7 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
     changeFinishParameter('marbleSetCoordination', normalized);
   };
   const applyMarbleSet = () => updateMarbleSet({ ...normalizeMarbleSetCoordination(heroDocument.nail.effect.parameters.marbleSetCoordination), mode: marbleSetMode, variation: marbleSetVariation, setSeed: heroDocument.nail.effect.parameters.marbleSetCoordination?.setSeed || createMarbleSetSeed(heroDocument.metadata.id), participatingNailIds: marbleTargetIds(), density: heroDocument.nail.effect.parameters.veinDensity });
-  const coordinateFromThisNail = () => updateMarbleSet({ ...deriveCoordinationFromNail(heroDocument.nail.effect, heroDocument.nail.effect.parameters.marbleSetCoordination), mode: marbleSetMode === 'independent' ? 'coordinated' : marbleSetMode, variation: marbleSetVariation, participatingNailIds: marbleTargetIds() });
+  const coordinateFromThisNail = () => updateMarbleSet({ ...deriveCoordinationFromNail(heroDocument.nail.effect, marbleSetCoordination, `nail-${activeNailIndex}`), mode: marbleSetMode === 'independent' ? 'coordinated' : marbleSetMode, variation: marbleSetVariation, participatingNailIds: marbleTargetIds() });
   const randomizeMarbleSet = () => updateMarbleSet({ ...normalizeMarbleSetCoordination(heroDocument.nail.effect.parameters.marbleSetCoordination), setSeed: createMarbleSetSeed(Date.now()) });
   const changeMarbleWorkspaceMode = (mode) => {
     if (mode === 'independent') {
@@ -976,7 +979,7 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
             <h2>Marble Set</h2>
             <div className="nail-design-studio__marble-set-style" role="group" aria-label="Marble Set Style"><span>Style</span><button type="button" aria-pressed={marbleSetMode === 'coordinated'} onClick={() => changeMarbleSetStyle('coordinated')}>Coordinated</button><button type="button" aria-pressed={marbleSetMode === 'flow'} onClick={() => changeMarbleSetStyle('flow')}>Flow</button></div>
             <label className="nail-design-studio__marble-variation">Variation <span>Similar</span><input aria-label="Marble Set Variation" type="range" min="0" max="2" step="1" value={{ low: 0, medium: 1, high: 2 }[marbleSetVariation]} onChange={(event) => setMarbleSetVariation(['low', 'medium', 'high'][Number(event.target.value)])} /><span>Unique</span></label>
-            <button type="button" className="nail-design-studio__marble-coordinate" onClick={coordinateFromThisNail}>Coordinate From This Nail</button>
+            <button type="button" className="nail-design-studio__marble-coordinate" onClick={coordinateFromThisNail}>{marbleSetCoordination.mode !== 'independent' && marbleSetCoordination.participatingNailIds.length ? 'Update Set From This Nail' : 'Coordinate From This Nail'}</button>
             <button type="button" onClick={randomizeMarbleSet}>Randomize</button>
             <details className="nail-design-studio__marble-more"><summary aria-label="More Marble Set actions">More Choices</summary><div>
               {marbleSetCoordination.participatingNailIds.includes(`nail-${activeNailIndex}`) && <><button type="button" onClick={detachMarbleNail}>Detach Current Nail</button><button type="button" onClick={applyMarbleSet}>Reset Current Nail to Set</button></>}
