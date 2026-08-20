@@ -48,6 +48,7 @@ describe('DS-03 Polish Studio repair', () => {
     await click([...container.querySelectorAll('[aria-label="Marble workspace mode"] button')].find((button) => button.textContent === 'Set'));
     await click([...container.querySelectorAll('[aria-label="Marble Set Style"] button')].find((button) => button.textContent === 'Flow'));
     await click([...container.querySelectorAll('.nail-design-studio__marble-set button')].find((button) => button.textContent === 'Coordinate From This Nail'));
+    expect([...container.querySelectorAll('.nail-design-studio__marble-set button')].some((button) => button.textContent === 'Update Set From This Nail')).toBe(true);
     const panel = container.querySelector('.nail-design-studio__marble-set');
     expect(panel.dataset.marbleSetMode).toBe('flow'); expect(panel.dataset.marbleSetMembers.split(',')).toHaveLength(10);
     const flowPaths = [...container.querySelectorAll('[data-effect-layer="marble"]:not(:has([data-marble-hit-target])) [data-stream-id="primary-0"] [data-vein-component="variable-width-ribbon"]')].map((node) => node.getAttribute('d'));
@@ -73,6 +74,33 @@ describe('DS-03 Polish Studio repair', () => {
     expect(saved.nail.effect.parameters.marbleSetCoordination.setSeed).toBe(seed);
     expect(saved.metadata.marbleSetCoordination.participatingNailIds).not.toContain('nail-2');
     expect(saved.metadata.marbleNailStates['nail-2'].marbleSeed).toBeTruthy();
+  });
+  it.each(['Coordinated', 'Flow'])('hands off the %s source without changing the neighbor frame and persists ownership', async (mode) => {
+    await click([...container.querySelectorAll('[role="tab"]')].find((item) => item.textContent === 'Effects'));
+    const effect = container.querySelector('select[aria-label="Effect"]');
+    await act(async () => { effect.value = 'Marble'; effect.dispatchEvent(new Event('change', { bubbles: true })); });
+    await click(container.querySelector('input[value="full"]'));
+    await click([...container.querySelectorAll('[aria-label="Marble workspace mode"] button')].find((button) => button.textContent === 'Set'));
+    await click([...container.querySelectorAll('[aria-label="Marble Set Style"] button')].find((button) => button.textContent === mode));
+    await click([...container.querySelectorAll('.nail-design-studio__marble-set button')].find((button) => button.textContent === 'Coordinate From This Nail'));
+    await click(container.querySelectorAll('[data-testid="nail-slot"]')[1]);
+    const active = () => container.querySelectorAll('[data-testid="nail-slot"]')[1];
+    const frame = () => ({
+      path: active().querySelector('[data-stream-id="primary-0"] [data-vein-component="variable-width-ribbon"]').getAttribute('d'),
+      transform: active().querySelector('[data-marble-transform]').getAttribute('transform'),
+      widthProfile: active().querySelector('[data-stream-id="primary-0"] [data-vein-component="variable-width-ribbon"]').dataset.widthProfile,
+    });
+    const before = frame();
+    await click([...container.querySelectorAll('.nail-design-studio__marble-set button')].find((button) => button.textContent === 'Update Set From This Nail'));
+    expect(frame()).toEqual(before);
+    await type(container.querySelector('input[aria-label="Selected Vein Opacity"]'), '.63');
+    expect(frame()).toEqual(before);
+    await click([...container.querySelectorAll('button')].find((button) => button.textContent === 'Save Changes'));
+    const saved = JSON.parse(window.localStorage.getItem('anitaset.hero-design.v1:nail-desk-hero'));
+    expect(saved.metadata.marbleSetCoordination.sourceNailId).toBe('nail-1');
+    expect(saved.metadata.marbleSetCoordination.participatingNailIds).toContain('nail-0');
+    expect(saved.metadata.marbleNailStates['nail-1'].streamOverrides['primary-0'].opacity).toBe(.63);
+    expect(initialNailDeskHeroState().document.nail.effect.parameters.marbleSetCoordination.sourceNailId).toBe('nail-1');
   });
   it('presents the simplified Marble appearance and progressively disclosed set workflow', async () => {
     await click([...container.querySelectorAll('[role="tab"]')].find((item) => item.textContent === 'Effects'));

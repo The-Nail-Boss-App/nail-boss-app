@@ -11,6 +11,8 @@ import { HeroDesignDocument } from './contracts';
 import { HeroDesignState, heroDesignReducer } from './state';
 import { HeroSurfaceRenderResult } from './surface';
 import { coordinatedMarbleParameters } from '../nail-design-studio/marbleSetCoordination';
+import { GENERATED_MARBLE_STREAM_COUNTS } from './marbleInventory';
+export { GENERATED_MARBLE_STREAM_COUNTS, GENERATED_MARBLE_STREAM_IDS, RENDERABLE_GENERATED_MARBLE_STREAM_IDS } from './marbleInventory';
 
 export const HERO_EFFECT_IDS = Object.freeze(['Solid', 'Gradient', 'Chrome', 'Cat Eye', 'Marble', 'Aura', 'ColorBlock', 'NegativeSpace', 'Jelly'] as const);
 export const DEFAULT_HERO_EFFECT_REFERENCE: Readonly<HeroEffectReference> = Object.freeze({
@@ -342,10 +344,10 @@ function createMarbleGeometry(nailIdentity: string, marbleSeed: string, version 
         width: rounded(width[0] + random() * (width[1] - width[0])), opacity: rounded(opacityRange[0] + random() * (opacityRange[1] - opacityRange[0])), softness: rounded(softness[0] + random() * (softness[1] - softness[0])), densityRank: rounded((index + 1) / count) }));
     }
   };
-  add('diffusion', 2, [11, 18], [.055, .1], [2.8, 5]);
-  add('primary', 2, [2, 3.8], [.55, .88], [0, .55]);
-  add('secondary', 4, [.65, 1.55], [.28, .62], [0, .9], true);
-  add('hairline', 5, [.22, .55], [.18, .48], [0, .3], true);
+  add('diffusion', GENERATED_MARBLE_STREAM_COUNTS.diffusion, [11, 18], [.055, .1], [2.8, 5]);
+  add('primary', GENERATED_MARBLE_STREAM_COUNTS.primary, [2, 3.8], [.55, .88], [0, .55]);
+  add('secondary', GENERATED_MARBLE_STREAM_COUNTS.secondary, [.65, 1.55], [.28, .62], [0, .9], true);
+  add('hairline', GENERATED_MARBLE_STREAM_COUNTS.hairline, [.22, .55], [.18, .48], [0, .3], true);
   const geometry = Object.freeze(streams);
   marbleGeometryCache.set(cacheKey, geometry);
   return geometry;
