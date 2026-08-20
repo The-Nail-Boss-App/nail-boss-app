@@ -10,7 +10,7 @@ import { MaterialLayers } from './MaterialRenderer';
 import { FINISH_DEFAULTS, VISIBLE_POLISH_FINISHES, colorBlockEffect, heroEffectForPolish, negativeSpaceEffect, normalizePersistedAuraEffect, normalizePolishForFinish, polishSignature } from './polishFinish';
 import { addProjectPolish, touchRecentPolish } from '../design-studio/polishWorkflow';
 import { FrenchTipControls, FrenchTipRegion, loadFrenchTips } from './FrenchTip';
-import { createMarbleSetSeed, deriveCoordinationFromNail, detachMarbleParameters, materializeMarbleSourceHandoff, normalizeMarbleSetCoordination, resolveMarbleRenderState } from './marbleSetCoordination';
+import { createMarbleSetSeed, deformSharedFlowStream, deriveSharedFlowStreams, detachMarbleParameters, materializeMarbleSourceHandoff, nailLocalToSharedFlow, normalizeMarbleSetCoordination, resolveMarbleRenderState, sharedFlowStreamForSegment } from './marbleSetCoordination';
 import './NailDesignStudio.css';
 
 export const canScrollInWheelDirection = (element, deltaY) => {
@@ -515,7 +515,9 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
   const coordinateFromThisNail = () => {
     const sourceNailId = `nail-${activeNailIndex}`;
     const handoff = materializeMarbleSourceHandoff(heroDocument.nail.effect, marbleSetCoordination, sourceNailId);
-    const normalized = normalizeMarbleSetCoordination({ ...handoff.coordination, mode: marbleSetMode === 'independent' ? 'coordinated' : marbleSetMode, variation: marbleSetVariation, participatingNailIds: marbleTargetIds() });
+    const preliminary = normalizeMarbleSetCoordination({ ...handoff.coordination, mode: marbleSetMode === 'independent' ? 'coordinated' : marbleSetMode, variation: marbleSetVariation, participatingNailIds: marbleTargetIds() });
+    const resolvedSourceStreams = createMarbleVeinModel(handoff.materializedEffect, `${heroDocument.metadata.id}:${sourceNailId}`);
+    const normalized = normalizeMarbleSetCoordination({ ...preliminary, sharedFlowStreams: preliminary.mode === 'flow' ? deriveSharedFlowStreams(preliminary, resolvedSourceStreams) : [] });
     const localParameters = { ...handoff.materializedEffect.parameters, marbleSetCoordination: undefined };
     setMarbleNailStates((states) => ({ ...states, [sourceNailId]: localParameters }));
     setMarbleSetCoordination(normalized);
@@ -653,12 +655,16 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
     const context = marblePointerContext(event); if (!context || event.button !== 0) return;
     setMoveMarble(false);
     const nearest = nearestMarbleCenterlinePoint(stream.controlPoints, context.point);
-    captureVeinPointer(event, { kind: event.shiftKey ? 'body' : 'local', streamId: stream.id, grabT: nearest.t, points: stream.controlPoints.map((point) => ({ ...point })), start: context.point, inverse: context.inverse, svg: context.svg });
+    const sharedStream = marbleSetCoordination.mode === 'flow' ? sharedFlowStreamForSegment(marbleSetCoordination, stream.id) : null;
+    const sharedGrab = sharedStream ? nailLocalToSharedFlow(nearest.point || context.point, marbleSetCoordination, `nail-${activeNailIndex}`) : null;
+    captureVeinPointer(event, { kind: event.shiftKey && !sharedStream ? 'body' : 'local', streamId: stream.id, grabT: nearest.t, points: stream.controlPoints.map((point) => ({ ...point })), start: context.point, inverse: context.inverse, svg: context.svg, sharedStream, sharedGrab, sharedCoordination: marbleSetCoordination });
   };
   const startVeinPointDrag = (event, stream, pointIndex) => {
     const context = marblePointerContext(event); if (!context || event.button !== 0) return;
     setMoveMarble(false);
-    captureVeinPointer(event, { kind: 'point', streamId: stream.id, pointIndex, points: stream.controlPoints.map((point) => ({ ...point })), inverse: context.inverse, svg: context.svg });
+    const sharedStream = marbleSetCoordination.mode === 'flow' ? sharedFlowStreamForSegment(marbleSetCoordination, stream.id) : null;
+    const sharedGrab = sharedStream ? nailLocalToSharedFlow(stream.controlPoints[pointIndex], marbleSetCoordination, `nail-${activeNailIndex}`) : null;
+    captureVeinPointer(event, { kind: 'point', streamId: stream.id, pointIndex, points: stream.controlPoints.map((point) => ({ ...point })), start: context.point, inverse: context.inverse, svg: context.svg, sharedStream, sharedGrab, sharedCoordination: marbleSetCoordination });
   };
   const startVeinWidthDrag = (event, stream, position, center, normal) => {
     const context = marblePointerContext(event, event.currentTarget.parentElement); if (!context || event.button !== 0) return;
@@ -669,6 +675,14 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
     if (!drag.current || drag.current.pointerId !== event.pointerId) return;
     if (drag.current.vein) {
       const cursor = drag.current.svg.createSVGPoint(); cursor.x = event.clientX; cursor.y = event.clientY; const point = cursor.matrixTransform(drag.current.inverse);
+      if (drag.current.sharedStream && drag.current.sharedGrab && drag.current.kind !== 'width') {
+        const dx = point.x - drag.current.start.x; const dy = point.y - drag.current.start.y;
+        const changed = deformSharedFlowStream(drag.current.sharedStream, drag.current.sharedGrab, dx, dy);
+        const coordination = normalizeMarbleSetCoordination({ ...drag.current.sharedCoordination, sharedFlowStreams: drag.current.sharedCoordination.sharedFlowStreams.map((stream) => stream.id === changed.id ? changed : stream) });
+        setMarbleSetCoordination(coordination);
+        changeFinishParameter('marbleSetCoordination', coordination);
+        return;
+      }
       const overrides = heroDocument.nail.effect.parameters.streamOverrides || {}; const current = overrides[drag.current.streamId] || {}; let next;
       if (drag.current.kind === 'width') {
         const delta = (point.x - drag.current.start.x) * drag.current.normal.x + (point.y - drag.current.start.y) * drag.current.normal.y;

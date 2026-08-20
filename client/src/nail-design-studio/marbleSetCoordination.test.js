@@ -1,10 +1,32 @@
-import { coordinatedMarbleParameters, createMarbleSetSeed, createVirtualMarbleComposition, deriveCoordinationFromNail, detachMarbleParameters, mapSourceStructureToRenderableStreams, marbleGeometryIdentity, materializeMarbleSourceHandoff, normalizeMarbleSetCoordination, projectVirtualMarbleWindow, resolveMarbleRenderState } from './marbleSetCoordination';
+import { coordinatedMarbleParameters, createMarbleSetSeed, createVirtualMarbleComposition, deformSharedFlowStream, deriveCoordinationFromNail, deriveSharedFlowStreams, detachMarbleParameters, mapSourceStructureToRenderableStreams, marbleGeometryIdentity, materializeMarbleSourceHandoff, nailLocalToSharedFlow, normalizeMarbleSetCoordination, projectSharedFlowStream, projectVirtualMarbleWindow, resolveMarbleRenderState, sharedFlowStreamForSegment } from './marbleSetCoordination';
 import { RENDERABLE_GENERATED_MARBLE_STREAM_IDS } from '../hero-design/marbleInventory';
 import { heroEffectForPolish, normalizePolishForFinish } from './polishFinish';
 import { createMarbleVeinModel } from '../hero-design/index.ts';
 
 const set = normalizeMarbleSetCoordination({ mode: 'coordinated', setSeed: 'slab-7', participatingNailIds: ['nail-1', 'nail-0'], variation: 'low', flow: { angle: 12, curvature: .3 } });
 describe('Marble set coordination', () => {
+  it('derives one persistent source-ancestry Flow curve and successive continuous windows', () => {
+    const base = normalizeMarbleSetCoordination({ mode: 'flow', setSeed: 'source-flow', sourceNailId: 'nail-0', participatingNailIds: ['nail-0', 'nail-1', 'nail-2'] });
+    const source = [{ id: 'primary-0', veinClass: 'primary', visible: true, controlPoints: [{ x: -30, y: 280 }, { x: 70, y: 220 }, { x: 150, y: 170 }, { x: 230, y: 135 }] }];
+    const sharedFlowStreams = deriveSharedFlowStreams(base, source); const flow = normalizeMarbleSetCoordination({ ...base, sharedFlowStreams });
+    expect(sharedFlowStreams).toHaveLength(1); expect(sharedFlowStreams[0]).toMatchObject({ sourceStreamId: 'primary-0', renderStreamId: 'primary-0' });
+    expect(normalizeMarbleSetCoordination(JSON.parse(JSON.stringify(flow))).sharedFlowStreams).toEqual(flow.sharedFlowStreams);
+    const index = projectSharedFlowStream(sharedFlowStreams[0], flow, 'nail-0'); const middle = projectSharedFlowStream(sharedFlowStreams[0], flow, 'nail-1');
+    expect(index).not.toEqual(middle); expect(index.at(-1).y).toBe(middle[0].y);
+    expect(sharedFlowStreamForSegment(flow, 'primary-0')?.id).toBe(sharedFlowStreams[0].id);
+  });
+  it('maps non-source nail edits into shared space with localized cross-window deformation', () => {
+    const base = normalizeMarbleSetCoordination({ mode: 'flow', setSeed: 'edit-flow', sourceNailId: 'nail-0', participatingNailIds: ['nail-0', 'nail-1', 'nail-2', 'nail-3'] });
+    const stream = deriveSharedFlowStreams(base, [{ id: 'primary-0', veinClass: 'primary', visible: true, controlPoints: [{ x: -30, y: 260 }, { x: 70, y: 215 }, { x: 150, y: 175 }, { x: 230, y: 145 }] }])[0];
+    const flow = normalizeMarbleSetCoordination({ ...base, sharedFlowStreams: [stream] }); const grab = nailLocalToSharedFlow({ x: 100, y: projectSharedFlowStream(stream, flow, 'nail-1')[2].y }, flow, 'nail-1');
+    const changed = deformSharedFlowStream(stream, grab, 0, 40, 170); const near = stream.points.reduce((best, point, index) => Math.abs(point.x - grab.x) < Math.abs(stream.points[best].x - grab.x) ? index : best, 0);
+    expect(changed.points[near].y - stream.points[near].y).toBeGreaterThan(30);
+    expect(Math.abs(changed.points[0].y - stream.points[0].y)).toBeLessThan(1);
+    const beforeMiddle = projectSharedFlowStream(stream, flow, 'nail-1'); const afterFlow = normalizeMarbleSetCoordination({ ...flow, sharedFlowStreams: [changed] });
+    expect(projectSharedFlowStream(changed, afterFlow, 'nail-1')).not.toEqual(beforeMiddle);
+    expect(projectSharedFlowStream(changed, afterFlow, 'nail-0').at(-1).y).toBe(projectSharedFlowStream(changed, afterFlow, 'nail-1')[0].y);
+    expect(projectSharedFlowStream(changed, afterFlow, 'nail-1').at(-1).y).toBe(projectSharedFlowStream(changed, afterFlow, 'nail-2')[0].y);
+  });
   it('hydrates legacy documents as Independent without inference', () => expect(normalizeMarbleSetCoordination(undefined).mode).toBe('independent'));
   it('is deterministic, unique by stable nail identity, and independent of layout pixels', () => {
     expect(marbleGeometryIdentity(set, 'nail-0')).toBe(marbleGeometryIdentity(set, 'nail-0'));
