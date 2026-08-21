@@ -1,4 +1,4 @@
-import { coordinatedMarbleParameters, createMarbleSetSeed, createVirtualMarbleComposition, deformSharedFlowStream, deriveCoordinationFromNail, deriveSharedFlowStreams, detachMarbleParameters, mapSourceStructureToRenderableStreams, marbleGeometryIdentity, materializeMarbleSourceHandoff, nailLocalToSharedFlow, normalizeMarbleSetCoordination, projectSharedFlowStream, projectVirtualMarbleWindow, resolveMarbleRenderState, sharedFlowStreamForSegment } from './marbleSetCoordination';
+import { coordinatedMarbleParameters, createMarbleSetSeed, createVirtualMarbleComposition, deformSharedFlowStream, deriveCoordinationFromNail, deriveSharedFlowStreams, detachMarbleParameters, mapSourceStructureToRenderableStreams, marbleGeometryIdentity, materializeMarbleSourceHandoff, nailLocalToSharedFlow, normalizeMarbleSetCoordination, projectSharedFlowStream, projectVirtualMarbleWindow, regenerateSharedFlowStreams, resolveMarbleRenderState, sharedFlowStreamForSegment } from './marbleSetCoordination';
 import { RENDERABLE_GENERATED_MARBLE_STREAM_IDS } from '../hero-design/marbleInventory';
 import { heroEffectForPolish, normalizePolishForFinish } from './polishFinish';
 import { createMarbleVeinModel } from '../hero-design/index.ts';
@@ -26,6 +26,38 @@ describe('Marble set coordination', () => {
     expect(projectSharedFlowStream(changed, afterFlow, 'nail-1')).not.toEqual(beforeMiddle);
     expect(projectSharedFlowStream(changed, afterFlow, 'nail-0').at(-1).y).toBe(projectSharedFlowStream(changed, afterFlow, 'nail-1')[0].y);
     expect(projectSharedFlowStream(changed, afterFlow, 'nail-1').at(-1).y).toBe(projectSharedFlowStream(changed, afterFlow, 'nail-2')[0].y);
+  });
+  it('reserves render IDs from visible ownership so hidden reserves cannot starve custom ancestry', () => {
+    const flow = normalizeMarbleSetCoordination({ mode: 'flow', setSeed: 'custom-flow', sourceNailId: 'nail-0', participatingNailIds: ['nail-0', 'nail-1'] });
+    const points = [{ x: -30, y: 260 }, { x: 90, y: 190 }, { x: 230, y: 130 }];
+    const inventory = RENDERABLE_GENERATED_MARBLE_STREAM_IDS.map((id, index) => ({ id, veinClass: id.split('-')[0], visible: index === 0, controlPoints: points }));
+    const streams = deriveSharedFlowStreams(flow, [...inventory, { id: 'custom-primary-a', custom: true, veinClass: 'primary', visible: true, controlPoints: points }, { id: 'custom-secondary-b', custom: true, veinClass: 'secondary', visible: true, controlPoints: points }]);
+    const custom = streams.filter((stream) => stream.sourceStreamId.startsWith('custom-'));
+    expect(custom).toHaveLength(2); expect(custom.every((stream) => RENDERABLE_GENERATED_MARBLE_STREAM_IDS.includes(stream.renderStreamId))).toBe(true);
+    expect(streams.every((stream) => stream.renderStreamId)).toBe(true);
+    const resolved = coordinatedMarbleParameters({}, normalizeMarbleSetCoordination({ ...flow, sharedFlowStreams: streams }), 'nail-1');
+    custom.forEach((stream) => expect(resolved.streamOverrides[stream.renderStreamId].geometryOverride.points.length).toBeGreaterThan(1));
+  });
+  it('keeps source-relative geometry fixed when a preceding participant detaches', () => {
+    const before = normalizeMarbleSetCoordination({ mode: 'flow', setSeed: 'relative-flow', sourceNailId: 'nail-2', participatingNailIds: ['nail-0', 'nail-1', 'nail-2', 'nail-3'] });
+    const source = [{ id: 'primary-0', veinClass: 'primary', visible: true, controlPoints: [{ x: -30, y: 270 }, { x: 80, y: 210 }, { x: 230, y: 145 }] }];
+    const withGeometry = normalizeMarbleSetCoordination({ ...before, sharedFlowStreams: deriveSharedFlowStreams(before, source) });
+    const sourceBefore = projectSharedFlowStream(withGeometry.sharedFlowStreams[0], withGeometry, 'nail-2');
+    const detached = normalizeMarbleSetCoordination({ ...withGeometry, participatingNailIds: ['nail-0', 'nail-2', 'nail-3'] });
+    expect(projectSharedFlowStream(detached.sharedFlowStreams[0], detached, 'nail-2')).toEqual(sourceBefore);
+    expect(normalizeMarbleSetCoordination(JSON.parse(JSON.stringify(detached))).sharedFlowStreams).toEqual(detached.sharedFlowStreams);
+    expect(projectSharedFlowStream(detached.sharedFlowStreams[0], detached, 'nail-2').at(-1).y).toBe(projectSharedFlowStream(detached.sharedFlowStreams[0], detached, 'nail-3')[0].y);
+  });
+  it('randomizes persisted continuation deterministically while preserving source ancestry and anchor', () => {
+    const base = normalizeMarbleSetCoordination({ mode: 'flow', setSeed: 'old-seed', sourceNailId: 'nail-1', participatingNailIds: ['nail-0', 'nail-1', 'nail-2'] });
+    const source = [{ id: 'primary-0', veinClass: 'primary', visible: true, controlPoints: [{ x: -30, y: 270 }, { x: 80, y: 205 }, { x: 230, y: 140 }] }];
+    const initial = normalizeMarbleSetCoordination({ ...base, sharedFlowStreams: deriveSharedFlowStreams(base, source) });
+    const randomized = regenerateSharedFlowStreams(initial, 'new-seed'); const repeated = regenerateSharedFlowStreams(initial, 'new-seed');
+    expect(randomized.setSeed).toBe('new-seed'); expect(randomized.sharedFlowStreams).toEqual(repeated.sharedFlowStreams);
+    expect(randomized.sharedFlowStreams[0].points).not.toEqual(initial.sharedFlowStreams[0].points);
+    expect(randomized.sharedFlowStreams[0].sourceStreamId).toBe(initial.sharedFlowStreams[0].sourceStreamId);
+    expect(projectSharedFlowStream(randomized.sharedFlowStreams[0], randomized, 'nail-1')).toEqual(projectSharedFlowStream(initial.sharedFlowStreams[0], initial, 'nail-1'));
+    expect(normalizeMarbleSetCoordination(JSON.parse(JSON.stringify(randomized))).sharedFlowStreams).toEqual(randomized.sharedFlowStreams);
   });
   it('hydrates legacy documents as Independent without inference', () => expect(normalizeMarbleSetCoordination(undefined).mode).toBe('independent'));
   it('is deterministic, unique by stable nail identity, and independent of layout pixels', () => {

@@ -10,7 +10,7 @@ import { MaterialLayers } from './MaterialRenderer';
 import { FINISH_DEFAULTS, VISIBLE_POLISH_FINISHES, colorBlockEffect, heroEffectForPolish, negativeSpaceEffect, normalizePersistedAuraEffect, normalizePolishForFinish, polishSignature } from './polishFinish';
 import { addProjectPolish, touchRecentPolish } from '../design-studio/polishWorkflow';
 import { FrenchTipControls, FrenchTipRegion, loadFrenchTips } from './FrenchTip';
-import { createMarbleSetSeed, deformSharedFlowStream, deriveSharedFlowStreams, detachMarbleParameters, materializeMarbleSourceHandoff, nailLocalToSharedFlow, normalizeMarbleSetCoordination, resolveMarbleRenderState, sharedFlowStreamForSegment } from './marbleSetCoordination';
+import { createMarbleSetSeed, deformSharedFlowStream, deriveSharedFlowStreams, detachMarbleParameters, materializeMarbleSourceHandoff, nailLocalToSharedFlow, normalizeMarbleSetCoordination, regenerateSharedFlowStreams, resolveMarbleRenderState, sharedFlowStreamForSegment } from './marbleSetCoordination';
 import './NailDesignStudio.css';
 
 export const canScrollInWheelDirection = (element, deltaY) => {
@@ -523,7 +523,10 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
     setMarbleSetCoordination(normalized);
     changeHero((current) => updateHeroEffect(current, { ...current.document.nail.effect, parameters: { ...localParameters, marbleSetCoordination: normalized } }, heroEvents.current));
   };
-  const randomizeMarbleSet = () => updateMarbleSet({ ...normalizeMarbleSetCoordination(heroDocument.nail.effect.parameters.marbleSetCoordination), setSeed: createMarbleSetSeed(Date.now()) });
+  const randomizeMarbleSet = () => {
+    const current = normalizeMarbleSetCoordination(heroDocument.nail.effect.parameters.marbleSetCoordination); const setSeed = createMarbleSetSeed(Date.now());
+    updateMarbleSet(current.mode === 'flow' && current.sharedFlowStreams.length ? regenerateSharedFlowStreams(current, setSeed) : { ...current, setSeed });
+  };
   const changeMarbleWorkspaceMode = (mode) => {
     if (mode === 'independent') {
       setMarbleSetMode('independent');
@@ -537,7 +540,16 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
     setMarbleSetMode(mode);
     // Once a set exists, a style choice is a committed, visible change rather
     // than a pending control that silently leaves the artwork untouched.
-    if (marbleSetCoordination.participatingNailIds.length) updateMarbleSet({ ...marbleSetCoordination, mode });
+    if (marbleSetCoordination.participatingNailIds.length) {
+      let next = normalizeMarbleSetCoordination({ ...marbleSetCoordination, mode });
+      if (mode === 'flow' && !next.sharedFlowStreams.length) {
+        const sourceIndex = Number(next.sourceNailId.split('-')[1]); const sourceEffect = marbleEffectForNail(sourceIndex);
+        const resolvedSource = resolveMarbleRenderState(sourceEffect, marbleSetCoordination, next.sourceNailId);
+        const sourceStreams = createMarbleVeinModel(resolvedSource, `${heroDocument.metadata.id}:${next.sourceNailId}`);
+        next = normalizeMarbleSetCoordination({ ...next, sharedFlowStreams: deriveSharedFlowStreams(next, sourceStreams) });
+      }
+      updateMarbleSet(next);
+    }
   };
   const detachMarbleNail = () => {
     const nailId = `nail-${activeNailIndex}`;
