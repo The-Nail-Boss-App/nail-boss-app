@@ -75,6 +75,25 @@ describe('DS-03 Polish Studio repair', () => {
     expect(saved.metadata.marbleSetCoordination.participatingNailIds).not.toContain('nail-2');
     expect(saved.metadata.marbleNailStates['nail-2'].marbleSeed).toBeTruthy();
   });
+  it('initializes shared ancestry on Coordinated to Flow and randomizes persisted continuation immediately', async () => {
+    await click([...container.querySelectorAll('[role="tab"]')].find((item) => item.textContent === 'Effects'));
+    const effect = container.querySelector('select[aria-label="Effect"]');
+    await act(async () => { effect.value = 'Marble'; effect.dispatchEvent(new Event('change', { bubbles: true })); });
+    await click(container.querySelector('input[value="full"]'));
+    await click([...container.querySelectorAll('[aria-label="Marble workspace mode"] button')].find((button) => button.textContent === 'Set'));
+    await click([...container.querySelectorAll('.nail-design-studio__marble-set button')].find((button) => button.textContent === 'Coordinate From This Nail'));
+    expect(container.querySelector('.nail-design-studio__marble-set').dataset.marbleSetMode).toBe('coordinated');
+    await click([...container.querySelectorAll('[aria-label="Marble Set Style"] button')].find((button) => button.textContent === 'Flow'));
+    const panel = container.querySelector('.nail-design-studio__marble-set'); const firstSeed = panel.dataset.marbleSetSeed;
+    const firstPath = container.querySelectorAll('[data-testid="nail-slot"]')[1].querySelector('[data-stream-id="primary-0"] [data-vein-component="variable-width-ribbon"]').getAttribute('d');
+    await click([...panel.querySelectorAll('button')].find((button) => button.textContent === 'Randomize'));
+    expect(panel.dataset.marbleSetSeed).not.toBe(firstSeed);
+    expect(container.querySelectorAll('[data-testid="nail-slot"]')[1].querySelector('[data-stream-id="primary-0"] [data-vein-component="variable-width-ribbon"]').getAttribute('d')).not.toBe(firstPath);
+    await click([...container.querySelectorAll('button')].find((button) => button.textContent === 'Save Changes'));
+    const saved = JSON.parse(window.localStorage.getItem('anitaset.hero-design.v1:nail-desk-hero'));
+    expect(saved.metadata.marbleSetCoordination.sharedFlowStreams.length).toBeGreaterThan(0);
+    expect(saved.metadata.marbleSetCoordination.sharedFlowStreams.every((stream) => stream.renderStreamId)).toBe(true);
+  });
   it.each(['Coordinated', 'Flow'])('hands off the %s source without changing the neighbor frame and persists ownership', async (mode) => {
     await click([...container.querySelectorAll('[role="tab"]')].find((item) => item.textContent === 'Effects'));
     const effect = container.querySelector('select[aria-label="Effect"]');
