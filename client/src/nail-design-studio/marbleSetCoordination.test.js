@@ -19,9 +19,9 @@ describe('Marble set coordination', () => {
     const base = normalizeMarbleSetCoordination({ mode: 'flow', setSeed: 'edit-flow', sourceNailId: 'nail-0', participatingNailIds: ['nail-0', 'nail-1', 'nail-2', 'nail-3'] });
     const stream = deriveSharedFlowStreams(base, [{ id: 'primary-0', veinClass: 'primary', visible: true, controlPoints: [{ x: -30, y: 260 }, { x: 70, y: 215 }, { x: 150, y: 175 }, { x: 230, y: 145 }] }])[0];
     const flow = normalizeMarbleSetCoordination({ ...base, sharedFlowStreams: [stream] }); const grab = nailLocalToSharedFlow({ x: 100, y: projectSharedFlowStream(stream, flow, 'nail-1')[2].y }, flow, 'nail-1');
-    const changed = deformSharedFlowStream(stream, grab, 0, 40, 170); const near = stream.points.reduce((best, point, index) => Math.abs(point.x - grab.x) < Math.abs(stream.points[best].x - grab.x) ? index : best, 0);
-    expect(changed.points[near].y - stream.points[near].y).toBeGreaterThan(30);
-    expect(Math.abs(changed.points[0].y - stream.points[0].y)).toBeLessThan(1);
+    const changed = deformSharedFlowStream(stream, grab, 0, 40, 170); const near = stream.controlPoints.reduce((best, point, index) => Math.abs(point.u - grab.u) < Math.abs(stream.controlPoints[best].u - grab.u) ? index : best, 0);
+    expect(changed.controlPoints[near].y - stream.controlPoints[near].y).toBeGreaterThan(30);
+    expect(Math.abs(changed.controlPoints[0].y - stream.controlPoints[0].y)).toBeLessThan(1);
     const beforeMiddle = projectSharedFlowStream(stream, flow, 'nail-1'); const afterFlow = normalizeMarbleSetCoordination({ ...flow, sharedFlowStreams: [changed] });
     expect(projectSharedFlowStream(changed, afterFlow, 'nail-1')).not.toEqual(beforeMiddle);
     expect(projectSharedFlowStream(changed, afterFlow, 'nail-0').at(-1).y).toBe(projectSharedFlowStream(changed, afterFlow, 'nail-1')[0].y);
@@ -54,9 +54,9 @@ describe('Marble set coordination', () => {
     const initial = normalizeMarbleSetCoordination({ ...base, sharedFlowStreams: deriveSharedFlowStreams(base, source) });
     const randomized = regenerateSharedFlowStreams(initial, 'new-seed'); const repeated = regenerateSharedFlowStreams(initial, 'new-seed');
     expect(randomized.setSeed).toBe('new-seed'); expect(randomized.sharedFlowStreams).toEqual(repeated.sharedFlowStreams);
-    expect(randomized.sharedFlowStreams[0].points).not.toEqual(initial.sharedFlowStreams[0].points);
+    expect(randomized.sharedFlowStreams[0].controlPoints).not.toEqual(initial.sharedFlowStreams[0].controlPoints);
     expect(randomized.sharedFlowStreams[0].sourceStreamId).toBe(initial.sharedFlowStreams[0].sourceStreamId);
-    expect(projectSharedFlowStream(randomized.sharedFlowStreams[0], randomized, 'nail-1')).toEqual(projectSharedFlowStream(initial.sharedFlowStreams[0], initial, 'nail-1'));
+    expect(projectSharedFlowStream(randomized.sharedFlowStreams[0], randomized, 'nail-1').map(({ x, y }) => ({ x, y }))).toEqual(projectSharedFlowStream(initial.sharedFlowStreams[0], initial, 'nail-1').map(({ x, y }) => ({ x, y })));
     expect(normalizeMarbleSetCoordination(JSON.parse(JSON.stringify(randomized))).sharedFlowStreams).toEqual(randomized.sharedFlowStreams);
   });
   it('hydrates legacy documents as Independent without inference', () => expect(normalizeMarbleSetCoordination(undefined).mode).toBe('independent'));
@@ -225,4 +225,33 @@ describe('Marble set coordination', () => {
     expect(detached.parameters).toMatchObject({ marbleSeed: before.marbleSeed, veinDensity: before.veinDensity, marbleTransform: before.marbleTransform, streamOverrides: before.streamOverrides, customStreams: effect.parameters.customStreams, deletedStreamIds: effect.parameters.deletedStreamIds });
     expect(detached.parameters.marbleSetCoordination.mode).toBe('independent');
   });
+  it.each([
+    ['vertical', [{ x: 80, y: 290 }, { x: 80, y: 220 }, { x: 80, y: 130 }]],
+    ['repeated x', [{ x: 40, y: 280 }, { x: 90, y: 230 }, { x: 90, y: 180 }, { x: 150, y: 120 }]],
+    ['S curve', [{ x: 30, y: 270 }, { x: 150, y: 230 }, { x: 45, y: 180 }, { x: 170, y: 120 }]],
+    ['backtracking', [{ x: 30, y: 270 }, { x: 170, y: 220 }, { x: 70, y: 170 }, { x: 140, y: 110 }]],
+  ])('preserves authored order for %s shared geometry', (_name, points) => {
+    const base = normalizeMarbleSetCoordination({ mode: 'flow', sourceNailId: 'nail-1', participatingNailIds: ['nail-0', 'nail-1', 'nail-2'] });
+    const stream = deriveSharedFlowStreams(base, [{ id: 'primary-0', veinClass: 'primary', controlPoints: points }])[0];
+    const source = projectSharedFlowStream(stream, { ...base, sharedFlowStreams: [stream] }, 'nail-1');
+    expect(source.map(({ x, y }) => ({ x, y }))).toEqual(points);
+    expect(stream.controlPoints.every((point, index) => index === 0 || point.u >= stream.controlPoints[index - 1].u)).toBe(true);
+  });
+  it('migrates v2 arrays without sorting and rejects implicit v3 slab fallback', () => {
+    const points = [{ x: 120, y: 10 }, { x: 20, y: 30 }, { x: 120, y: 50 }];
+    const migrated = normalizeMarbleSetCoordination({ version: 2, mode: 'flow', sharedFlowStreams: [{ id: 'old', sourceStreamId: 'primary-0', points }] });
+    expect(migrated.sharedFlowStreams[0].controlPoints.map(({ x, y }) => ({ x, y }))).toEqual(points);
+    const invalid = normalizeMarbleSetCoordination({ version: 3, mode: 'flow', participatingNailIds: ['nail-0'] });
+    expect(createVirtualMarbleComposition(invalid).streams).toEqual([]);
+  });
+  it('maps a neighboring projection to u and deforms by curve distance without reordering', () => {
+    const base = normalizeMarbleSetCoordination({ mode: 'flow', sourceNailId: 'nail-0', participatingNailIds: ['nail-0', 'nail-1', 'nail-2'] });
+    const stream = deriveSharedFlowStreams(base, [{ id: 'primary-0', veinClass: 'primary', controlPoints: [{ x: 20, y: 280 }, { x: 180, y: 220 }, { x: 30, y: 150 }] }])[0];
+    const set = normalizeMarbleSetCoordination({ ...base, sharedFlowStreams: [stream] }); const neighbor = projectSharedFlowStream(stream, set, 'nail-1');
+    const grab = nailLocalToSharedFlow(neighbor[1], set, 'nail-1'); const changed = deformSharedFlowStream(stream, grab, 80, 0, 90);
+    expect(grab.sharedStreamId).toBe(stream.id); expect(grab.u).toBe(neighbor[1].u);
+    expect(changed.controlPoints.map(({ u }) => u)).toEqual(stream.controlPoints.map(({ u }) => u));
+    expect(projectSharedFlowStream(changed, { ...set, sharedFlowStreams: [changed] }, 'nail-1')).not.toEqual(neighbor);
+  });
+
 });
