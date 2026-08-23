@@ -11,6 +11,7 @@ import { FINISH_DEFAULTS, VISIBLE_POLISH_FINISHES, colorBlockEffect, heroEffectF
 import { addProjectPolish, touchRecentPolish } from '../design-studio/polishWorkflow';
 import { FrenchTipControls, FrenchTipRegion, loadFrenchTips } from './FrenchTip';
 import { createMarbleSetSeed, deformSharedFlowStream, deriveSharedFlowStreams, detachMarbleParameters, materializeMarbleSourceHandoff, nailLocalToSharedFlow, normalizeMarbleSetCoordination, regenerateSharedFlowStreams, resolveMarbleRenderState, sharedFlowStreamForSegment } from './marbleSetCoordination';
+import './StudioPrimitives.css';
 import './NailDesignStudio.css';
 
 export const canScrollInWheelDirection = (element, deltaY) => {
