@@ -668,14 +668,14 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
     setMoveMarble(false);
     const nearest = nearestMarbleCenterlinePoint(stream.controlPoints, context.point);
     const sharedStream = marbleSetCoordination.mode === 'flow' ? sharedFlowStreamForSegment(marbleSetCoordination, stream.id) : null;
-    const sharedGrab = sharedStream ? nailLocalToSharedFlow(nearest.point || context.point, marbleSetCoordination, `nail-${activeNailIndex}`) : null;
+    const sharedGrab = sharedStream ? nailLocalToSharedFlow(nearest.point || context.point, marbleSetCoordination, `nail-${activeNailIndex}`, sharedStream.id) : null;
     captureVeinPointer(event, { kind: event.shiftKey && !sharedStream ? 'body' : 'local', streamId: stream.id, grabT: nearest.t, points: stream.controlPoints.map((point) => ({ ...point })), start: context.point, inverse: context.inverse, svg: context.svg, sharedStream, sharedGrab, sharedCoordination: marbleSetCoordination });
   };
   const startVeinPointDrag = (event, stream, pointIndex) => {
     const context = marblePointerContext(event); if (!context || event.button !== 0) return;
     setMoveMarble(false);
     const sharedStream = marbleSetCoordination.mode === 'flow' ? sharedFlowStreamForSegment(marbleSetCoordination, stream.id) : null;
-    const sharedGrab = sharedStream ? nailLocalToSharedFlow(stream.controlPoints[pointIndex], marbleSetCoordination, `nail-${activeNailIndex}`) : null;
+    const sharedGrab = sharedStream ? nailLocalToSharedFlow(stream.controlPoints[pointIndex], marbleSetCoordination, `nail-${activeNailIndex}`, sharedStream.id) : null;
     captureVeinPointer(event, { kind: 'point', streamId: stream.id, pointIndex, points: stream.controlPoints.map((point) => ({ ...point })), start: context.point, inverse: context.inverse, svg: context.svg, sharedStream, sharedGrab, sharedCoordination: marbleSetCoordination });
   };
   const startVeinWidthDrag = (event, stream, position, center, normal) => {
@@ -689,7 +689,7 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
       const cursor = drag.current.svg.createSVGPoint(); cursor.x = event.clientX; cursor.y = event.clientY; const point = cursor.matrixTransform(drag.current.inverse);
       if (drag.current.sharedStream && drag.current.sharedGrab && drag.current.kind !== 'width') {
         const dx = point.x - drag.current.start.x; const dy = point.y - drag.current.start.y;
-        const changed = deformSharedFlowStream(drag.current.sharedStream, drag.current.sharedGrab, dx, dy);
+        const scale = drag.current.sharedGrab.projectionScale || 1; const changed = deformSharedFlowStream(drag.current.sharedStream, drag.current.sharedGrab, dx / scale, dy / scale);
         const coordination = normalizeMarbleSetCoordination({ ...drag.current.sharedCoordination, sharedFlowStreams: drag.current.sharedCoordination.sharedFlowStreams.map((stream) => stream.id === changed.id ? changed : stream) });
         setMarbleSetCoordination(coordination);
         changeFinishParameter('marbleSetCoordination', coordination);

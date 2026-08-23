@@ -5,6 +5,7 @@ import { heroEffectForPolish, normalizePersistedAuraEffect, normalizePolishForFi
 import { GLITTER_REFERENCE_BOUNDS, glitterParticleField, MATERIAL_PROFILES, materialProfile } from './MaterialRenderer';
 import { createHeroDesignDocument, createMarbleVeinModel } from '../hero-design/index.ts';
 import { loadFrenchTips } from './FrenchTip';
+import { normalizeMarbleSetCoordination, projectSharedFlowStream } from './marbleSetCoordination';
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -175,7 +176,12 @@ describe('DS-03 Polish Studio repair', () => {
     await type(container.querySelector('input[aria-label="Selected Vein Opacity"]'), '.66');
     expect(container.querySelector('[data-marble-hit-target="primary-0"]').getAttribute('d')).toBe(finalMovePath);
     await click([...container.querySelectorAll('button')].find((button) => button.textContent === 'Save Changes'));
-    const savedCurve = JSON.parse(window.localStorage.getItem('anitaset.hero-design.v1:nail-desk-hero')).metadata.marbleSetCoordination.sharedFlowStreams;
+    const savedCoordination = normalizeMarbleSetCoordination(JSON.parse(window.localStorage.getItem('anitaset.hero-design.v1:nail-desk-hero')).metadata.marbleSetCoordination); const savedCurve = savedCoordination.sharedFlowStreams;
+    const selectedShared = savedCurve.find(({ sourceStreamId }) => sourceStreamId === 'primary-0');
+    expect(selectedShared.deformed).toBe(true); expect(savedCurve.filter(({ id }) => id !== selectedShared.id).every(({ deformed }) => !deformed)).toBe(true);
+    const secondProjection = projectSharedFlowStream(selectedShared, savedCoordination, 'nail-1'); const laterProjection = projectSharedFlowStream(selectedShared, savedCoordination, 'nail-5');
+    [secondProjection, laterProjection].forEach((projection) => expect(projection.every(({ x, y }) => x >= -30 && x <= 230 && y >= 20 && y <= 310)).toBe(true));
+    expect(secondProjection[0].projectedParameterRange).not.toEqual(laterProjection[0].projectedParameterRange);
     await act(async () => root.unmount()); root = createRoot(container); await act(async () => root.render(<NailDesignStudio />));
     expect(initialNailDeskHeroState().document.metadata.marbleSetCoordination.sharedFlowStreams).toEqual(savedCurve);
     window.SVGElement.prototype.getScreenCTM = originalMatrix; window.SVGSVGElement.prototype.createSVGPoint = originalPoint;

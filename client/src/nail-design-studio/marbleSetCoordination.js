@@ -35,8 +35,8 @@ export function normalizeMarbleSetCoordination(value) {
     const controlPoints = hasStableU ? raw : parameterize(raw);
     const renderStreamId = typeof stream.renderStreamId === 'string' ? stream.renderStreamId.slice(0, 160) : stream.sourceStreamId.slice(0, 160);
     if (controlPoints.length < 2 || !RENDERABLE_GENERATED_MARBLE_STREAM_IDS.includes(renderStreamId)) return [];
-    const range = stream.sourceRange;
-    return [{ id: stream.id.slice(0, 160), sourceStreamId: stream.sourceStreamId.slice(0, 160), renderStreamId, veinClass: ['diffusion', 'primary', 'secondary', 'hairline'].includes(stream.veinClass) ? stream.veinClass : 'primary', controlPoints, sourceRange: Array.isArray(range) && range.length === 2 ? [finite(range[0], 0), finite(range[1], 1)] : [0, 1], deformed: stream.deformed === true, widthSamples: Array.isArray(stream.widthSamples) ? stream.widthSamples.map((item) => Math.max(.1, finite(item, 1))) : [] }];
+    const range = stream.sourceRange; const migratedRange = Number(source.version) < 3 ? legacySourceRange(controlPoints, source) : null;
+    return [{ id: stream.id.slice(0, 160), sourceStreamId: stream.sourceStreamId.slice(0, 160), renderStreamId, veinClass: ['diffusion', 'primary', 'secondary', 'hairline'].includes(stream.veinClass) ? stream.veinClass : 'primary', controlPoints, sourceRange: Array.isArray(range) && range.length === 2 ? [finite(range[0], 0), finite(range[1], 1)] : migratedRange || [0, 1], deformed: stream.deformed === true, widthSamples: Array.isArray(stream.widthSamples) ? stream.widthSamples.map((item) => Math.max(.1, finite(item, 1))) : [] }];
   });
   return {
     mode, version: MARBLE_SET_COORDINATION_VERSION,
@@ -70,6 +70,26 @@ const parameterize = (points) => {
   return points.map((point, index) => ({ u: Number((distances[index] / total).toFixed(8)), x: rounded(point.x), y: rounded(point.y) }));
 };
 
+const legacyUAtX = (points, x, preferLast = false) => {
+  const matches = [];
+  for (let index = 1; index < points.length; index += 1) {
+    const a = points[index - 1], b = points[index];
+    if (x < Math.min(a.x, b.x) || x > Math.max(a.x, b.x)) continue;
+    const t = Math.abs(b.x - a.x) < .0001 ? 0 : (x - a.x) / (b.x - a.x);
+    matches.push(a.u + (b.u - a.u) * t);
+  }
+  return matches.length ? matches[preferLast ? matches.length - 1 : 0] : null;
+};
+
+/** Recovers the old v2 source x-window; malformed curves use nail-order fractions deterministically. */
+const legacySourceRange = (points, source) => {
+  const start = legacyUAtX(points, FLOW_WINDOW_LEFT); const end = legacyUAtX(points, FLOW_WINDOW_RIGHT, true);
+  if (start !== null && end !== null && end > start) return [Number(start.toFixed(8)), Number(end.toFixed(8))];
+  const ids = [...new Set((Array.isArray(source.participatingNailIds) ? source.participatingNailIds : []).filter((id) => typeof id === 'string'))].sort((a, b) => nailOrder(a) - nailOrder(b));
+  const count = Math.max(1, ids.length); const order = Math.max(0, ids.indexOf(source.sourceNailId));
+  return [order / count, (order + 1) / count];
+};
+
 const interpolateSharedPoint = (points, u) => {
   if (u <= points[0].u) return { ...points[0], u };
   if (u >= points.at(-1).u) return { ...points.at(-1), u };
@@ -90,15 +110,17 @@ const nailParameterRange = (set, nailId, stream) => {
 };
 
 /** Maps stable nail-local Hero coordinates into layout-independent shared set space. */
-export function nailLocalToSharedFlow(point, coordination, nailId) {
-  const set = normalizeMarbleSetCoordination(coordination); const genericRange = nailParameterRange(set, nailId);
-  if (!genericRange) return null;
-  let best = null;
-  set.sharedFlowStreams.forEach((stream) => projectSharedFlowStream(stream, set, nailId).forEach((candidate) => {
-    const distance = Math.hypot(candidate.x - finite(point?.x, 0), candidate.y - finite(point?.y, 0));
-    if (!best || distance < best.distance) best = { u: candidate.u, x: candidate.x, y: candidate.y, distance, sharedStreamId: stream.id, projectedParameterRange: candidate.projectedParameterRange };
-  }));
-  return best || { u: (genericRange[0] + genericRange[1]) / 2, x: rounded(finite(point?.x, 0)), y: rounded(finite(point?.y, 0)), projectedParameterRange: genericRange };
+export function nailLocalToSharedFlow(point, coordination, nailId, sharedStreamId) {
+  const set = normalizeMarbleSetCoordination(coordination); const stream = set.sharedFlowStreams.find((item) => item.id === sharedStreamId || item.sourceStreamId === sharedStreamId || item.renderStreamId === sharedStreamId);
+  if (!stream) return null;
+  let best = null; const projected = projectSharedFlowStream(stream, set, nailId); const target = { x: finite(point?.x, 0), y: finite(point?.y, 0) };
+  projected.slice(1).forEach((right, index) => {
+    const left = projected[index]; const vx = right.x - left.x, vy = right.y - left.y; const lengthSquared = vx * vx + vy * vy;
+    const t = Math.max(0, Math.min(1, lengthSquared ? ((target.x - left.x) * vx + (target.y - left.y) * vy) / lengthSquared : 0));
+    const x = left.x + vx * t, y = left.y + vy * t; const distance = Math.hypot(x - target.x, y - target.y);
+    if (!best || distance < best.distance) best = { u: left.u + (right.u - left.u) * t, x: rounded(x), y: rounded(y), distance, projectionScale: left.projectionScale, sharedStreamId: stream.id, projectedParameterRange: left.projectedParameterRange };
+  });
+  return best;
 }
 
 /** Projects a shared stream into one nail's logical window (the SVG mask clips paint locally). */
@@ -106,7 +128,11 @@ export function projectSharedFlowStream(stream, coordination, nailId) {
   const set = normalizeMarbleSetCoordination(coordination); const range = nailParameterRange(set, nailId, stream);
   if (!range) return [];
   const points = stream.controlPoints || parameterize(stream.points || []); const [start, end] = range;
-  return [interpolateSharedPoint(points, start), ...points.filter(({ u }) => u > start && u < end), interpolateSharedPoint(points, end)].map(({ u, x, y }) => ({ x, y, u, sharedStreamId: stream.id, projectedParameterRange: range }));
+  const sampled = [interpolateSharedPoint(points, start), ...points.filter(({ u }) => u > start && u < end), interpolateSharedPoint(points, end)];
+  const isSource = nailId === set.sourceNailId; const minX = Math.min(...sampled.map(({ x }) => x)); const maxX = Math.max(...sampled.map(({ x }) => x)); const minY = Math.min(...sampled.map(({ y }) => y)); const maxY = Math.max(...sampled.map(({ y }) => y));
+  const scale = isSource ? 1 : Math.min(1, FLOW_WINDOW_WIDTH / Math.max(1, maxX - minX), 290 / Math.max(1, maxY - minY));
+  const offsetX = isSource ? 0 : 100 - (minX + maxX) * scale / 2; const offsetY = isSource ? 0 : 165 - (minY + maxY) * scale / 2;
+  return sampled.map(({ u, x, y }) => ({ x: rounded(x * scale + offsetX), y: rounded(y * scale + offsetY), u, sharedX: x, sharedY: y, projectionScale: scale, sharedStreamId: stream.id, projectedParameterRange: range }));
 }
 
 /**
