@@ -5,6 +5,7 @@ import { heroEffectForPolish, normalizePersistedAuraEffect, normalizePolishForFi
 import { GLITTER_REFERENCE_BOUNDS, glitterParticleField, MATERIAL_PROFILES, materialProfile } from './MaterialRenderer';
 import { createHeroDesignDocument, createMarbleVeinModel } from '../hero-design/index.ts';
 import { loadFrenchTips } from './FrenchTip';
+import { normalizeMarbleSetCoordination, projectSharedFlowStream } from './marbleSetCoordination';
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -147,6 +148,43 @@ describe('DS-03 Polish Studio repair', () => {
     expect(set.querySelector('.nail-design-studio__marble-more summary').textContent).toBe('More Choices');
     expect(set.textContent).not.toMatch(/Primary set color|Primary set finish|Secondary set color|Secondary set finish|Hairline set color|Hairline set finish/);
     expect(set.querySelector('.nail-design-studio__marble-more').open).toBe(false);
+  });
+
+  it('keeps a non-source shared Flow drag exact through pointer-up, rerender, save, and remount', async () => {
+    await click([...container.querySelectorAll('[role="tab"]')].find((item) => item.textContent === 'Effects'));
+    const effect = container.querySelector('select[aria-label="Effect"]');
+    await act(async () => { effect.value = 'Marble'; effect.dispatchEvent(new Event('change', { bubbles: true })); });
+    await click(container.querySelector('input[value="full"]'));
+    await click([...container.querySelectorAll('[aria-label="Marble workspace mode"] button')].find((button) => button.textContent === 'Set'));
+    await click([...container.querySelectorAll('[aria-label="Marble Set Style"] button')].find((button) => button.textContent === 'Flow'));
+    const sourcePath = container.querySelector('[data-marble-hit-target="primary-0"]').getAttribute('d');
+    await click([...container.querySelectorAll('.nail-design-studio__marble-set button')].find((button) => button.textContent === 'Coordinate From This Nail'));
+    expect(container.querySelector('[data-marble-hit-target="primary-0"]').getAttribute('d')).toBe(sourcePath);
+    await click(container.querySelectorAll('[data-testid="nail-slot"]')[1]);
+    const identity = { inverse: () => identity }; const originalMatrix = window.SVGElement.prototype.getScreenCTM; const originalPoint = window.SVGSVGElement.prototype.createSVGPoint;
+    window.SVGElement.prototype.getScreenCTM = () => identity;
+    window.SVGSVGElement.prototype.createSVGPoint = () => ({ x: 0, y: 0, matrixTransform() { return { x: this.x, y: this.y }; } });
+    const desk = container.querySelector('[data-testid="nail-stage-container"]'); const target = container.querySelector('[data-marble-hit-target="primary-0"]');
+    const adjacentBefore = container.querySelectorAll('[data-testid="nail-slot"]')[0].querySelector('[data-stream-id="primary-0"] path').getAttribute('d');
+    await act(async () => target.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0, clientX: 90, clientY: 190 })));
+    await act(async () => desk.dispatchEvent(new MouseEvent('pointermove', { bubbles: true, pointerId: 0, clientX: 125, clientY: 170 })));
+    const finalMovePath = container.querySelector('[data-marble-hit-target="primary-0"]').getAttribute('d');
+    expect(finalMovePath).not.toBe(sourcePath);
+    expect(container.querySelectorAll('[data-testid="nail-slot"]')[0].querySelector('[data-stream-id="primary-0"] path').getAttribute('d')).not.toBe(adjacentBefore);
+    await act(async () => desk.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, pointerId: 0 })));
+    expect(container.querySelector('[data-marble-hit-target="primary-0"]').getAttribute('d')).toBe(finalMovePath);
+    await type(container.querySelector('input[aria-label="Selected Vein Opacity"]'), '.66');
+    expect(container.querySelector('[data-marble-hit-target="primary-0"]').getAttribute('d')).toBe(finalMovePath);
+    await click([...container.querySelectorAll('button')].find((button) => button.textContent === 'Save Changes'));
+    const savedCoordination = normalizeMarbleSetCoordination(JSON.parse(window.localStorage.getItem('anitaset.hero-design.v1:nail-desk-hero')).metadata.marbleSetCoordination); const savedCurve = savedCoordination.sharedFlowStreams;
+    const selectedShared = savedCurve.find(({ sourceStreamId }) => sourceStreamId === 'primary-0');
+    expect(selectedShared.deformed).toBe(true); expect(savedCurve.filter(({ id }) => id !== selectedShared.id).every(({ deformed }) => !deformed)).toBe(true);
+    const secondProjection = projectSharedFlowStream(selectedShared, savedCoordination, 'nail-1'); const laterProjection = projectSharedFlowStream(selectedShared, savedCoordination, 'nail-5');
+    [secondProjection, laterProjection].forEach((projection) => expect(projection.every(({ x, y }) => x >= -30 && x <= 230 && y >= 20 && y <= 310)).toBe(true));
+    expect(secondProjection[0].projectedParameterRange).not.toEqual(laterProjection[0].projectedParameterRange);
+    await act(async () => root.unmount()); root = createRoot(container); await act(async () => root.render(<NailDesignStudio />));
+    expect(initialNailDeskHeroState().document.metadata.marbleSetCoordination.sharedFlowStreams).toEqual(savedCurve);
+    window.SVGElement.prototype.getScreenCTM = originalMatrix; window.SVGSVGElement.prototype.createSVGPoint = originalPoint;
   });
 
   afterEach(() => { act(() => root.unmount()); container.remove(); window.localStorage.removeItem('anitaset.hero-design.v1:nail-desk-hero'); });

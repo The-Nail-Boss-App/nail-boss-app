@@ -1,6 +1,6 @@
 import { GENERATED_MARBLE_STREAM_IDS, RENDERABLE_GENERATED_MARBLE_STREAM_IDS } from '../hero-design/marbleInventory';
 
-export const MARBLE_SET_COORDINATION_VERSION = 2;
+export const MARBLE_SET_COORDINATION_VERSION = 3;
 export const MARBLE_SET_MODES = Object.freeze(['independent', 'coordinated', 'flow']);
 export const MARBLE_SET_VARIATIONS = Object.freeze(['low', 'medium', 'high']);
 
@@ -28,11 +28,15 @@ export function normalizeMarbleSetCoordination(value) {
     palette[role] = { color: color(item.color, DEFAULT_STYLE[role].color), finish: finish(item.finish, DEFAULT_STYLE[role].finish) };
   }
   const sharedStreams = (Array.isArray(source.sharedFlowStreams) ? source.sharedFlowStreams : []).flatMap((stream) => {
-    if (!stream || typeof stream.id !== 'string' || typeof stream.sourceStreamId !== 'string' || !Array.isArray(stream.points) || stream.points.length < 2) return [];
-    const points = stream.points.flatMap((point) => Number.isFinite(Number(point?.x)) && Number.isFinite(Number(point?.y)) ? [{ x: rounded(Number(point.x)), y: rounded(Number(point.y)) }] : []);
+    const serialized = Array.isArray(stream?.controlPoints) ? stream.controlPoints : stream?.points;
+    if (!stream || typeof stream.id !== 'string' || typeof stream.sourceStreamId !== 'string' || !Array.isArray(serialized) || serialized.length < 2) return [];
+    const raw = serialized.flatMap((point) => Number.isFinite(Number(point?.x)) && Number.isFinite(Number(point?.y)) ? [{ ...(Number.isFinite(Number(point.u)) ? { u: Number(point.u) } : {}), x: rounded(Number(point.x)), y: rounded(Number(point.y)) }] : []);
+    const hasStableU = Number(source.version) >= 3 && raw.every((point, index) => Number.isFinite(point.u) && (index === 0 || point.u >= raw[index - 1].u));
+    const controlPoints = hasStableU ? raw : parameterize(raw);
     const renderStreamId = typeof stream.renderStreamId === 'string' ? stream.renderStreamId.slice(0, 160) : stream.sourceStreamId.slice(0, 160);
-    if (points.length < 2 || !RENDERABLE_GENERATED_MARBLE_STREAM_IDS.includes(renderStreamId)) return [];
-    return [{ id: stream.id.slice(0, 160), sourceStreamId: stream.sourceStreamId.slice(0, 160), renderStreamId, veinClass: ['diffusion', 'primary', 'secondary', 'hairline'].includes(stream.veinClass) ? stream.veinClass : 'primary', points, widthSamples: Array.isArray(stream.widthSamples) ? stream.widthSamples.map((item) => Math.max(.1, finite(item, 1))) : [] }];
+    if (controlPoints.length < 2 || !RENDERABLE_GENERATED_MARBLE_STREAM_IDS.includes(renderStreamId)) return [];
+    const range = stream.sourceRange; const migratedRange = Number(source.version) < 3 ? legacySourceRange(controlPoints, source) : null;
+    return [{ id: stream.id.slice(0, 160), sourceStreamId: stream.sourceStreamId.slice(0, 160), renderStreamId, veinClass: ['diffusion', 'primary', 'secondary', 'hairline'].includes(stream.veinClass) ? stream.veinClass : 'primary', controlPoints, sourceRange: Array.isArray(range) && range.length === 2 ? [finite(range[0], 0), finite(range[1], 1)] : migratedRange || [0, 1], deformed: stream.deformed === true, widthSamples: Array.isArray(stream.widthSamples) ? stream.widthSamples.map((item) => Math.max(.1, finite(item, 1))) : [] }];
   });
   return {
     mode, version: MARBLE_SET_COORDINATION_VERSION,
@@ -41,6 +45,7 @@ export function normalizeMarbleSetCoordination(value) {
     flow: { angle: Math.max(-75, Math.min(75, finite(source.flow?.angle, -28))), curvature: Math.max(-1, Math.min(1, finite(source.flow?.curvature, .2))) },
     variation, density: Math.max(0, Math.min(1, finite(source.density, .42))), palette,
     sourceNailId: typeof source.sourceNailId === 'string' ? source.sourceNailId : '', sharedFlowStreams: sharedStreams,
+    flowInitializationState: sharedStreams.length ? 'ready' : (source.flowInitializationState === 'legacy' ? 'legacy' : (source.flowInitializationState === 'uninitialized' || Number(source.version) >= 3 ? 'uninitialized' : 'legacy')),
     sourceStructure: {
       primary: Math.max(0, Math.min(4, Math.floor(finite(source.sourceStructure?.primary, 0)))),
       secondary: Math.max(0, Math.min(8, Math.floor(finite(source.sourceStructure?.secondary, 0)))),
@@ -57,28 +62,77 @@ export const FLOW_WINDOW_WIDTH = 260;
 export const FLOW_WINDOW_LEFT = -30;
 export const FLOW_WINDOW_RIGHT = 230;
 
-const interpolateSharedPoint = (points, x) => {
-  if (x <= points[0].x) return { x, y: points[0].y };
-  if (x >= points.at(-1).x) return { x, y: points.at(-1).y };
-  const right = points.findIndex((point) => point.x >= x); const a = points[right - 1]; const b = points[right];
-  const t = (x - a.x) / Math.max(.0001, b.x - a.x);
-  return { x, y: a.y + (b.y - a.y) * t };
+const parameterize = (points) => {
+  if (!points.length) return [];
+  const distances = [0];
+  for (let index = 1; index < points.length; index += 1) distances.push(distances[index - 1] + Math.hypot(points[index].x - points[index - 1].x, points[index].y - points[index - 1].y));
+  const total = distances.at(-1) || 1;
+  return points.map((point, index) => ({ u: Number((distances[index] / total).toFixed(8)), x: rounded(point.x), y: rounded(point.y) }));
+};
+
+const legacyUAtX = (points, x, preferLast = false) => {
+  const matches = [];
+  for (let index = 1; index < points.length; index += 1) {
+    const a = points[index - 1], b = points[index];
+    if (x < Math.min(a.x, b.x) || x > Math.max(a.x, b.x)) continue;
+    const t = Math.abs(b.x - a.x) < .0001 ? 0 : (x - a.x) / (b.x - a.x);
+    matches.push(a.u + (b.u - a.u) * t);
+  }
+  return matches.length ? matches[preferLast ? matches.length - 1 : 0] : null;
+};
+
+/** Recovers the old v2 source x-window; malformed curves use nail-order fractions deterministically. */
+const legacySourceRange = (points, source) => {
+  const start = legacyUAtX(points, FLOW_WINDOW_LEFT); const end = legacyUAtX(points, FLOW_WINDOW_RIGHT, true);
+  if (start !== null && end !== null && end > start) return [Number(start.toFixed(8)), Number(end.toFixed(8))];
+  const ids = [...new Set((Array.isArray(source.participatingNailIds) ? source.participatingNailIds : []).filter((id) => typeof id === 'string'))].sort((a, b) => nailOrder(a) - nailOrder(b));
+  const count = Math.max(1, ids.length); const order = Math.max(0, ids.indexOf(source.sourceNailId));
+  return [order / count, (order + 1) / count];
+};
+
+const interpolateSharedPoint = (points, u) => {
+  if (u <= points[0].u) return { ...points[0], u };
+  if (u >= points.at(-1).u) return { ...points.at(-1), u };
+  const right = points.findIndex((point) => point.u >= u); const a = points[right - 1]; const b = points[right];
+  const t = (u - a.u) / Math.max(.00000001, b.u - a.u);
+  return { u, x: rounded(a.x + (b.x - a.x) * t), y: rounded(a.y + (b.y - a.y) * t) };
+};
+
+const nailParameterRange = (set, nailId, stream) => {
+  const order = set.participatingNailIds.indexOf(nailId); const count = set.participatingNailIds.length; const sourceOrder = Math.max(0, set.participatingNailIds.indexOf(set.sourceNailId));
+  if (order < 0 || !count) return null;
+  if (!stream?.sourceRange) return [order / count, (order + 1) / count];
+  const [sourceStart, sourceEnd] = stream.sourceRange;
+  if (order === sourceOrder) return [sourceStart, sourceEnd];
+  if (order < sourceOrder) return [sourceStart * order / sourceOrder, sourceStart * (order + 1) / sourceOrder];
+  const afterCount = count - sourceOrder - 1; const afterIndex = order - sourceOrder - 1;
+  return [sourceEnd + (1 - sourceEnd) * afterIndex / afterCount, sourceEnd + (1 - sourceEnd) * (afterIndex + 1) / afterCount];
 };
 
 /** Maps stable nail-local Hero coordinates into layout-independent shared set space. */
-export function nailLocalToSharedFlow(point, coordination, nailId) {
-  const set = normalizeMarbleSetCoordination(coordination); const order = set.participatingNailIds.indexOf(nailId); const sourceOrder = set.participatingNailIds.indexOf(set.sourceNailId);
-  if (order < 0) return null;
-  return { x: rounded((order - Math.max(0, sourceOrder)) * FLOW_WINDOW_WIDTH + finite(point?.x, 0)), y: rounded(finite(point?.y, 0)) };
+export function nailLocalToSharedFlow(point, coordination, nailId, sharedStreamId) {
+  const set = normalizeMarbleSetCoordination(coordination); const stream = set.sharedFlowStreams.find((item) => item.id === sharedStreamId || item.sourceStreamId === sharedStreamId || item.renderStreamId === sharedStreamId);
+  if (!stream) return null;
+  let best = null; const projected = projectSharedFlowStream(stream, set, nailId); const target = { x: finite(point?.x, 0), y: finite(point?.y, 0) };
+  projected.slice(1).forEach((right, index) => {
+    const left = projected[index]; const vx = right.x - left.x, vy = right.y - left.y; const lengthSquared = vx * vx + vy * vy;
+    const t = Math.max(0, Math.min(1, lengthSquared ? ((target.x - left.x) * vx + (target.y - left.y) * vy) / lengthSquared : 0));
+    const x = left.x + vx * t, y = left.y + vy * t; const distance = Math.hypot(x - target.x, y - target.y);
+    if (!best || distance < best.distance) best = { u: left.u + (right.u - left.u) * t, x: rounded(x), y: rounded(y), distance, projectionScale: left.projectionScale, sharedStreamId: stream.id, projectedParameterRange: left.projectedParameterRange };
+  });
+  return best;
 }
 
 /** Projects a shared stream into one nail's logical window (the SVG mask clips paint locally). */
 export function projectSharedFlowStream(stream, coordination, nailId) {
-  const set = normalizeMarbleSetCoordination(coordination); const order = set.participatingNailIds.indexOf(nailId); const sourceOrder = Math.max(0, set.participatingNailIds.indexOf(set.sourceNailId));
-  if (order < 0) return [];
-  const relativeOrder = order - sourceOrder; const start = relativeOrder * FLOW_WINDOW_WIDTH + FLOW_WINDOW_LEFT; const end = relativeOrder * FLOW_WINDOW_WIDTH + FLOW_WINDOW_RIGHT;
-  const xs = [start, ...stream.points.filter((point) => point.x > start && point.x < end).map((point) => point.x), end];
-  return xs.map((x) => { const point = interpolateSharedPoint(stream.points, x); return { x: rounded(x - relativeOrder * FLOW_WINDOW_WIDTH), y: rounded(point.y) }; });
+  const set = normalizeMarbleSetCoordination(coordination); const range = nailParameterRange(set, nailId, stream);
+  if (!range) return [];
+  const points = stream.controlPoints || parameterize(stream.points || []); const [start, end] = range;
+  const sampled = [interpolateSharedPoint(points, start), ...points.filter(({ u }) => u > start && u < end), interpolateSharedPoint(points, end)];
+  const isSource = nailId === set.sourceNailId; const minX = Math.min(...sampled.map(({ x }) => x)); const maxX = Math.max(...sampled.map(({ x }) => x)); const minY = Math.min(...sampled.map(({ y }) => y)); const maxY = Math.max(...sampled.map(({ y }) => y));
+  const scale = isSource ? 1 : Math.min(1, FLOW_WINDOW_WIDTH / Math.max(1, maxX - minX), 290 / Math.max(1, maxY - minY));
+  const offsetX = isSource ? 0 : 100 - (minX + maxX) * scale / 2; const offsetY = isSource ? 0 : 165 - (minY + maxY) * scale / 2;
+  return sampled.map(({ u, x, y }) => ({ x: rounded(x * scale + offsetX), y: rounded(y * scale + offsetY), u, sharedX: x, sharedY: y, projectionScale: scale, sharedStreamId: stream.id, projectedParameterRange: range }));
 }
 
 /**
@@ -87,7 +141,6 @@ export function projectSharedFlowStream(stream, coordination, nailId) {
  */
 export function deriveSharedFlowStreams(coordination, sourceStreams) {
   const set = normalizeMarbleSetCoordination(coordination); const sourceOrder = Math.max(0, set.participatingNailIds.indexOf(set.sourceNailId));
-  const minX = -sourceOrder * FLOW_WINDOW_WIDTH + FLOW_WINDOW_LEFT; const maxX = (set.participatingNailIds.length - 1 - sourceOrder) * FLOW_WINDOW_WIDTH + FLOW_WINDOW_RIGHT;
   const visible = (sourceStreams || []).filter((stream) => stream?.visible !== false && Array.isArray(stream.controlPoints) && stream.controlPoints.length > 1);
   // Hidden procedural reserve streams are deliberately absent here: they must
   // remain showable as local inventory without starving visible custom ancestry.
@@ -96,15 +149,23 @@ export function deriveSharedFlowStreams(coordination, sourceStreams) {
   return visible.flatMap((stream) => {
     const renderStreamId = stream.renderStreamId || (stream.custom ? available[customIndex++] : stream.id);
     if (!RENDERABLE_GENERATED_MARBLE_STREAM_IDS.includes(renderStreamId)) return [];
-    const source = stream.controlPoints.map((point) => ({ x: rounded(point.x), y: rounded(point.y) })).sort((a, b) => a.x - b.x);
+    const source = stream.controlPoints.map((point) => ({ x: rounded(point.x), y: rounded(point.y) }));
     const first = source[0], second = source[1], last = source.at(-1), beforeLast = source.at(-2);
-    const slopeBefore = (second.y - first.y) / Math.max(1, second.x - first.x); const slopeAfter = (last.y - beforeLast.y) / Math.max(1, last.x - beforeLast.x);
     const seedPhase = unit(`${set.setSeed}|${stream.id}|continuation`) * Math.PI * 2;
-    const points = [];
-    for (let x = minX; x < first.x; x += 52) { const distance = x - first.x; points.push({ x, y: rounded(first.y + slopeBefore * distance + Math.sin(distance / 155 + seedPhase) * Math.min(18, Math.abs(distance) * .035)) }); }
-    points.push(...source);
-    for (let x = last.x + 52; x <= maxX + 52; x += 52) { const distance = x - last.x; points.push({ x, y: rounded(last.y + slopeAfter * distance + Math.sin(distance / 145 + seedPhase) * Math.min(24, distance * .04)) }); }
-    return [Object.freeze({ id: `flow-${hash(`${set.setSeed}|${stream.id}`).toString(36)}`, sourceStreamId: stream.id, renderStreamId, veinClass: stream.veinClass, points: points.sort((a, b) => a.x - b.x), widthSamples: [] })];
+    const evolve = (anchor, tangent, count, direction) => {
+      const length = Math.hypot(tangent.x, tangent.y) || 1; let angle = Math.atan2(tangent.y, tangent.x); let current = { ...anchor }; const result = [];
+      for (let index = 1; index <= count * 5; index += 1) {
+        angle += direction * set.flow.curvature * .018 + Math.sin(seedPhase + index * .61) * .012;
+        current = { x: rounded(current.x + Math.cos(angle) * 52 * direction), y: rounded(current.y + Math.sin(angle) * 52 * direction) };
+        result.push(current);
+      }
+      return result;
+    };
+    const before = evolve(first, { x: second.x - first.x, y: second.y - first.y }, sourceOrder, -1).reverse();
+    const after = evolve(last, { x: last.x - beforeLast.x, y: last.y - beforeLast.y }, set.participatingNailIds.length - sourceOrder - 1, 1);
+    const controlPoints = parameterize([...before, ...source, ...after]);
+    const sourceStart = controlPoints[before.length].u; const sourceEnd = controlPoints[before.length + source.length - 1].u;
+    return [Object.freeze({ id: `flow-${hash(`${set.setSeed}|${stream.id}`).toString(36)}`, sourceStreamId: stream.id, renderStreamId, veinClass: stream.veinClass, controlPoints, sourceRange: [sourceStart, sourceEnd], widthSamples: [] })];
   });
 }
 
@@ -114,22 +175,19 @@ export function regenerateSharedFlowStreams(coordination, setSeed) {
   const sourceStreams = current.sharedFlowStreams.map((stream) => ({
     id: stream.sourceStreamId, renderStreamId: stream.renderStreamId, veinClass: stream.veinClass, visible: true,
     custom: stream.sourceStreamId.startsWith('custom-'),
-    controlPoints: [
-      interpolateSharedPoint(stream.points, FLOW_WINDOW_LEFT),
-      ...stream.points.filter((point) => point.x > FLOW_WINDOW_LEFT && point.x < FLOW_WINDOW_RIGHT),
-      interpolateSharedPoint(stream.points, FLOW_WINDOW_RIGHT),
-    ],
+    controlPoints: [interpolateSharedPoint(stream.controlPoints, stream.sourceRange[0]), ...stream.controlPoints.filter(({ u }) => u > stream.sourceRange[0] && u < stream.sourceRange[1]), interpolateSharedPoint(stream.controlPoints, stream.sourceRange[1])],
   }));
   return normalizeMarbleSetCoordination({ ...next, sharedFlowStreams: deriveSharedFlowStreams(next, sourceStreams) });
 }
 
 /** Gaussian falloff keeps a grabbed section local while retaining a seam-free curve. */
-export function deformSharedFlowStream(stream, grabPoint, dx, dy, radius = 180) {
-  const safeRadius = Math.max(24, finite(radius, 180));
-  return { ...stream, points: stream.points.map((point) => {
-    const distance = Math.hypot(point.x - grabPoint.x, (point.y - grabPoint.y) * .35); const influence = Math.exp(-4 * (distance / safeRadius) ** 2);
-    return { x: rounded(point.x + dx * influence), y: rounded(point.y + dy * influence) };
-  }).sort((a, b) => a.x - b.x) };
+export function deformSharedFlowStream(stream, grabPoint, dx, dy, radius = 320) {
+  const safeRadius = Math.max(24, finite(radius, 320));
+  const points = stream.controlPoints || parameterize(stream.points || []); const totalLength = points.slice(1).reduce((sum, point, index) => sum + Math.hypot(point.x - points[index].x, point.y - points[index].y), 0);
+  return { ...stream, deformed: true, controlPoints: points.map((point) => {
+    const distance = Math.abs(point.u - finite(grabPoint?.u, .5)) * totalLength; const influence = Math.exp(-4 * (distance / safeRadius) ** 2);
+    return { u: point.u, x: rounded(point.x + dx * influence), y: rounded(point.y + dy * influence) };
+  }) };
 }
 
 export function sharedFlowStreamForSegment(coordination, sourceStreamId) {
@@ -174,7 +232,8 @@ export function mapSourceStructureToRenderableStreams(sourceStructure) {
 export function createVirtualMarbleComposition(coordination) {
   const set = normalizeMarbleSetCoordination(coordination);
   const count = Math.max(1, set.participatingNailIds.length);
-  if (set.sharedFlowStreams.length) return Object.freeze({ id: `shared-flow-v2|${set.setSeed}`, windowCount: count, sourceOrder: Math.max(0, set.participatingNailIds.indexOf(set.sourceNailId)), shared: true, streams: Object.freeze(set.sharedFlowStreams.map((stream) => Object.freeze({ ...stream, id: stream.renderStreamId, role: stream.veinClass }))) });
+  if (set.sharedFlowStreams.length) return Object.freeze({ id: `shared-flow-v3|${set.setSeed}`, windowCount: count, sourceOrder: Math.max(0, set.participatingNailIds.indexOf(set.sourceNailId)), shared: true, streams: Object.freeze(set.sharedFlowStreams.map((stream) => Object.freeze({ ...stream, id: stream.renderStreamId, role: stream.veinClass }))) });
+  if (set.mode === 'flow' && set.flowInitializationState === 'uninitialized') return Object.freeze({ id: `shared-flow-v3-uninitialized|${set.setSeed}`, windowCount: count, shared: true, streams: Object.freeze([]) });
   const angleSlope = Math.tan(set.flow.angle * Math.PI / 180) * 34;
   const deleted = new Set(set.sourceStructure.deletedGeneratedIds);
   // Source additions describe hierarchy, not cloned artwork. Map them onto
@@ -225,7 +284,7 @@ export function coordinatedMarbleParameters(parameters, coordination, nailId) {
   const set = normalizeMarbleSetCoordination(coordination);
   // The source is the reference artwork. Set regeneration is applied beneath
   // neighboring local state and must never regenerate the source itself.
-  if (set.sourceNailId === nailId && set.participatingNailIds.includes(nailId) && !(set.mode === 'flow' && set.sharedFlowStreams.length)) return { ...parameters };
+  if (set.sourceNailId === nailId && set.participatingNailIds.includes(nailId) && (!(set.mode === 'flow' && set.sharedFlowStreams.length) || set.sharedFlowStreams.every((stream) => !stream.deformed))) return { ...parameters };
   const identity = marbleGeometryIdentity(set, nailId);
   if (!identity) return { ...parameters };
   const strength = { low: .28, medium: .55, high: .82 }[set.variation];
