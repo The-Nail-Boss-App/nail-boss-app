@@ -460,7 +460,7 @@ describe('DS-03 Polish Studio repair', () => {
   it('relocates opacity to the material properties while keeping the shared Hero polish state', async () => {
     const properties = container.querySelector('[data-testid="polish-material-properties"]');
     expect(properties.getAttribute('aria-label')).toBe('Polish material properties');
-    expect([...properties.querySelectorAll(':scope > label')].slice(0, 3).map((label) => label.firstChild.textContent)).toEqual(['Opacity ', 'Shine ', 'Viscosity ']);
+    expect([...properties.querySelectorAll(':scope > label')].slice(0, 3).map((label) => label.firstChild.textContent)).toEqual(['Opacity', 'Shine', 'Viscosity']);
     const opacity = properties.querySelector('input[aria-label="Opacity"]');
     await type(opacity, '0.43');
     expect(properties.querySelector('label output').textContent).toBe('43%');
@@ -1262,7 +1262,7 @@ describe('adaptive Nail Desk', () => {
     expect(effects.querySelector('input[aria-label="Color A"]')).toBeTruthy();
     expect(effects.querySelector('input[aria-label="Color B"]')).toBeTruthy();
     for (const direction of ['vertical', 'horizontal', 'diagonal']) {
-      await act(async () => { const control = effects.querySelector('select[aria-label="Block Direction"]'); control.value = direction; control.dispatchEvent(new Event('change', { bubbles: true })); });
+      await click([...effects.querySelectorAll('[role="group"][aria-label="Block Direction"] button')].find((button) => button.textContent.includes(direction.charAt(0).toUpperCase() + direction.slice(1))));
       expect(container.querySelector('[data-effect-layer="color-block"]').dataset.blockDirection).toBe(direction);
     }
     await type(effects.querySelector('input[aria-label="Split Position"]'), '0.25');
@@ -1317,6 +1317,42 @@ describe('adaptive Nail Desk', () => {
     await click(button('Polish'));
     expect(container.querySelectorAll('[data-testid="project-palette-swatch"]')).toHaveLength(paletteCount);
     expect(container.querySelectorAll('[data-testid="recently-used"] [role="listitem"]')).toHaveLength(recentCount);
+  });
+
+  it('keeps incomplete Color Block HEX drafts out of effect state for both regions', async () => {
+    await click(button('Effects'));
+    const selector = container.querySelector('select[aria-label="Effect"]');
+    await act(async () => { selector.value = 'ColorBlock'; selector.dispatchEvent(new Event('change', { bubbles: true })); });
+    const primaryPicker = container.querySelector('input[aria-label="Color A"]');
+    const secondaryPicker = container.querySelector('input[aria-label="Color B"]');
+    const primaryHex = container.querySelector('input[aria-label="Color A HEX"]');
+    const secondaryHex = container.querySelector('input[aria-label="Color B HEX"]');
+    const initialPrimary = container.querySelector('[data-color-block-region="a"]').getAttribute('fill');
+    const initialSecondary = container.querySelector('[data-color-block-region="b"]').getAttribute('fill');
+
+    for (const draft of ['#', '#1', '#12', '#123', '#1234', '#12345']) {
+      await type(primaryHex, draft);
+      expect(primaryHex.value).toBe(draft);
+      expect(container.querySelector('[data-color-block-region="a"]').getAttribute('fill')).toBe(initialPrimary);
+    }
+    await type(secondaryHex, '#12345');
+    expect(secondaryHex.value).toBe('#12345');
+    expect(container.querySelector('[data-color-block-region="b"]').getAttribute('fill')).toBe(initialSecondary);
+
+    await type(primaryHex, '#123456');
+    await type(secondaryHex, '#ABCDEF');
+    expect(container.querySelector('[data-color-block-region="a"]').getAttribute('fill')).toBe('#123456');
+    expect(container.querySelector('[data-color-block-region="b"]').getAttribute('fill')).toBe('#ABCDEF');
+
+    await act(async () => { Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set.call(primaryPicker, '#654321'); primaryPicker.dispatchEvent(new Event('change', { bubbles: true })); });
+    await act(async () => { Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set.call(secondaryPicker, '#FEDCBA'); secondaryPicker.dispatchEvent(new Event('change', { bubbles: true })); });
+    expect(container.querySelector('[data-color-block-region="a"]').getAttribute('fill')).toBe('#654321');
+    expect(container.querySelector('[data-color-block-region="b"]').getAttribute('fill')).toBe('#FEDCBA');
+
+    await click([...container.querySelectorAll('[aria-label="Block Direction"] button')].find((control) => control.textContent.includes('Diagonal')));
+    await type(container.querySelector('input[aria-label="Split Position"]'), '0.25');
+    expect(container.querySelector('[data-effect-layer="color-block"]').dataset.blockDirection).toBe('diagonal');
+    expect(container.querySelector('[data-effect-layer="color-block"]').dataset.splitPosition).toBe('0.25');
   });
 
   it('ports legacy Aura into a clipped radial Hero effect without touching Polish history', async () => {

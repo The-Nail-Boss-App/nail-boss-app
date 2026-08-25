@@ -16,6 +16,10 @@ export function CreativeModeSelector({ label, options, value, onChange }) {
   return <div className="studio-creative-mode" role="group" aria-label={label}>{options.map(({ value: optionValue, label: optionLabel }) => <button type="button" key={optionValue} aria-pressed={value === optionValue} onClick={() => onChange(optionValue)}><span>{optionLabel}</span><i aria-hidden="true" /></button>)}</div>;
 }
 
+export function CreativeDirectionSelector({ label, options, value, onChange, colors = ['#FF2DA0', '#39E6F2'] }) {
+  return <div className="studio-creative-direction" role="group" aria-label={label}>{options.map(({ value: optionValue, label: optionLabel }) => <button type="button" key={optionValue} aria-pressed={value === optionValue} onClick={() => onChange(optionValue)}><i data-direction={optionValue} style={{ '--direction-a': colors[0], '--direction-b': colors[1] }} aria-hidden="true" /><span>{optionLabel}</span><b aria-hidden="true">✓</b></button>)}</div>;
+}
+
 export function MaterialChoice({ selected, label, children, onClick }) {
   return <button type="button" className="studio-material-choice" aria-pressed={selected} onClick={onClick}>{children}<span>{label}</span><i aria-hidden="true" /></button>;
 }
