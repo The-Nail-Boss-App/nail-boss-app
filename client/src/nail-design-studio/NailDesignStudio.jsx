@@ -318,6 +318,7 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
   const [frenchTipNotice, setFrenchTipNotice] = useState('');
   const [hexDraft, setHexDraft] = useState('#D94C70');
   const [hexInvalid, setHexInvalid] = useState(false);
+  const [colorBlockDrafts, setColorBlockDrafts] = useState({ primaryColor: '#D94C70', secondaryColor: '#F5E7EC' });
   const [savedDesignsOpen, setSavedDesignsOpen] = useState(false);
   const [collectionOpen, setCollectionOpen] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
@@ -461,6 +462,20 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
     const hero = heroEffectForPolish(next);
     changeHero((current) => updateHeroEffect(current, hero, heroEvents.current));
   };
+  const changeColorBlockDraft = (key, rawValue) => {
+    const value = rawValue.toUpperCase();
+    if (!/^#?[0-9A-F]{0,6}$/.test(value)) return;
+    setColorBlockDrafts((drafts) => ({ ...drafts, [key]: value }));
+    if (/^#[0-9A-F]{6}$/.test(value)) changeFinishParameter(key, value);
+  };
+  const changeColorBlockPicker = (key, rawValue) => {
+    const value = rawValue.toUpperCase();
+    setColorBlockDrafts((drafts) => ({ ...drafts, [key]: value }));
+    changeFinishParameter(key, value);
+  };
+  const resetColorBlockDraft = (key) => {
+    if (!/^#[0-9A-F]{6}$/.test(colorBlockDrafts[key])) setColorBlockDrafts((drafts) => ({ ...drafts, [key]: heroDocument.nail.effect.parameters[key] }));
+  };
   const changeMarbleTransform = (key, value) => changeFinishParameter('marbleTransform', { ...heroDocument.nail.effect.parameters.marbleTransform, [key]: value });
   const changeStreamOverride = (key, value) => {
     if (!selectedStream) return;
@@ -574,6 +589,11 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
 
   useEffect(() => { window.localStorage.setItem(POLISH_RACK_KEY, JSON.stringify(savedPolishes)); }, [savedPolishes]);
   useEffect(() => { setHexDraft(activePolishColor); setHexInvalid(false); }, [activePolishColor]);
+  useEffect(() => {
+    if (heroDocument.nail.effect.id !== 'ColorBlock') return;
+    const { primaryColor, secondaryColor } = heroDocument.nail.effect.parameters;
+    setColorBlockDrafts({ primaryColor, secondaryColor });
+  }, [heroDocument.nail.effect.id, heroDocument.nail.effect.parameters.primaryColor, heroDocument.nail.effect.parameters.secondaryColor]);
 
   const selectSavedPolish = (polish) => {
     setPolishName(polish.name);
@@ -969,7 +989,7 @@ const NailDesignStudio = forwardRef(function NailDesignStudio(_, ref) {
             {activeTool.id === 'effects' && heroDocument.nail.effect.id === 'ColorBlock' && <section className="nail-design-studio__effect-creative nail-design-studio__effect-creative--color-block" aria-label="Color Block controls">
               <header><small>Editorial contrast</small><h3>Color Block</h3></header>
               <div className="nail-design-studio__color-block-preview" data-direction={heroDocument.nail.effect.parameters.direction} style={{ '--block-a': heroDocument.nail.effect.parameters.primaryColor, '--block-b': heroDocument.nail.effect.parameters.secondaryColor, '--block-split': `${heroDocument.nail.effect.parameters.splitPosition * 100}%` }} role="img" aria-label={`${heroDocument.nail.effect.parameters.direction} color block split at ${Math.round(heroDocument.nail.effect.parameters.splitPosition * 100)} percent`} />
-              <div className="nail-design-studio__effect-colors"><CreativeColor label="Region one" value={heroDocument.nail.effect.parameters.primaryColor} colorAriaLabel="Color A" onChange={(event) => changeFinishParameter('primaryColor', event.target.value.toUpperCase())} /><CreativeColor label="Region two" value={heroDocument.nail.effect.parameters.secondaryColor} colorAriaLabel="Color B" onChange={(event) => changeFinishParameter('secondaryColor', event.target.value.toUpperCase())} /></div>
+              <div className="nail-design-studio__effect-colors"><CreativeColor label="Region one" value={heroDocument.nail.effect.parameters.primaryColor} hexValue={colorBlockDrafts.primaryColor} colorAriaLabel="Color A" hexAriaLabel="Color A HEX" onChange={(event) => changeColorBlockPicker('primaryColor', event.target.value)} onHexChange={(event) => changeColorBlockDraft('primaryColor', event.target.value)} onHexBlur={() => resetColorBlockDraft('primaryColor')} /><CreativeColor label="Region two" value={heroDocument.nail.effect.parameters.secondaryColor} hexValue={colorBlockDrafts.secondaryColor} colorAriaLabel="Color B" hexAriaLabel="Color B HEX" onChange={(event) => changeColorBlockPicker('secondaryColor', event.target.value)} onHexChange={(event) => changeColorBlockDraft('secondaryColor', event.target.value)} onHexBlur={() => resetColorBlockDraft('secondaryColor')} /></div>
               <div><h4>Block direction</h4><CreativeDirectionSelector label="Block Direction" value={heroDocument.nail.effect.parameters.direction} colors={[heroDocument.nail.effect.parameters.primaryColor, heroDocument.nail.effect.parameters.secondaryColor]} onChange={(value) => changeFinishParameter('direction', value)} options={[{ value: 'vertical', label: 'Vertical' }, { value: 'horizontal', label: 'Horizontal' }, { value: 'diagonal', label: 'Diagonal' }]} /></div>
               <CreativeSlider label="Split Position" valueLabel={`${Math.round(heroDocument.nail.effect.parameters.splitPosition * 100)}%`} aria-label="Split Position" aria-valuetext={`${Math.round(heroDocument.nail.effect.parameters.splitPosition * 100)}%`} min="0" max="1" step=".01" value={heroDocument.nail.effect.parameters.splitPosition} onChange={(event) => changeFinishParameter('splitPosition', Number(event.target.value))} />
             </section>}
