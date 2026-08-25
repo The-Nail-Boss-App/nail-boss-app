@@ -2,7 +2,7 @@ import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 
 global.IS_REACT_ACT_ENVIRONMENT = true;
-import { CreativeColor, CreativeModeSelector, CreativeSlider, NailTipPreview } from './StudioPrimitives';
+import { CreativeColor, CreativeDirectionSelector, CreativeModeSelector, CreativeSlider, NailTipPreview } from './StudioPrimitives';
 
 describe('AnitaSet Studio creative primitives', () => {
   let container;
@@ -29,5 +29,14 @@ describe('AnitaSet Studio creative primitives', () => {
   it('documents previews with the free edge at the bottom', () => {
     act(() => root.render(<NailTipPreview style="v" />));
     expect(container.querySelector('.studio-nail-tip-preview__tip').getAttribute('d')).toContain('L20 37');
+  });
+
+  it('offers visual direction choices without replacing native button semantics', () => {
+    const onChange = jest.fn();
+    act(() => root.render(<CreativeDirectionSelector label="Block direction" value="vertical" onChange={onChange} options={[{ value: 'vertical', label: 'Vertical' }, { value: 'horizontal', label: 'Horizontal' }, { value: 'diagonal', label: 'Diagonal' }]} />));
+    expect(container.querySelector('[role="group"]').getAttribute('aria-label')).toBe('Block direction');
+    expect(container.querySelector('button').getAttribute('aria-pressed')).toBe('true');
+    act(() => container.querySelectorAll('button')[2].click());
+    expect(onChange).toHaveBeenCalledWith('diagonal');
   });
 });

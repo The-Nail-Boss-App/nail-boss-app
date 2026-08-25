@@ -460,7 +460,7 @@ describe('DS-03 Polish Studio repair', () => {
   it('relocates opacity to the material properties while keeping the shared Hero polish state', async () => {
     const properties = container.querySelector('[data-testid="polish-material-properties"]');
     expect(properties.getAttribute('aria-label')).toBe('Polish material properties');
-    expect([...properties.querySelectorAll(':scope > label')].slice(0, 3).map((label) => label.firstChild.textContent)).toEqual(['Opacity ', 'Shine ', 'Viscosity ']);
+    expect([...properties.querySelectorAll(':scope > label')].slice(0, 3).map((label) => label.firstChild.textContent)).toEqual(['Opacity', 'Shine', 'Viscosity']);
     const opacity = properties.querySelector('input[aria-label="Opacity"]');
     await type(opacity, '0.43');
     expect(properties.querySelector('label output').textContent).toBe('43%');
@@ -1262,7 +1262,7 @@ describe('adaptive Nail Desk', () => {
     expect(effects.querySelector('input[aria-label="Color A"]')).toBeTruthy();
     expect(effects.querySelector('input[aria-label="Color B"]')).toBeTruthy();
     for (const direction of ['vertical', 'horizontal', 'diagonal']) {
-      await act(async () => { const control = effects.querySelector('select[aria-label="Block Direction"]'); control.value = direction; control.dispatchEvent(new Event('change', { bubbles: true })); });
+      await click([...effects.querySelectorAll('[role="group"][aria-label="Block Direction"] button')].find((button) => button.textContent.includes(direction.charAt(0).toUpperCase() + direction.slice(1))));
       expect(container.querySelector('[data-effect-layer="color-block"]').dataset.blockDirection).toBe(direction);
     }
     await type(effects.querySelector('input[aria-label="Split Position"]'), '0.25');
