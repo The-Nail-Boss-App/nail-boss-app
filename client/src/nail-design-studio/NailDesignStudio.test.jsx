@@ -150,6 +150,16 @@ describe('DS-03 Polish Studio repair', () => {
     expect(set.querySelector('.nail-design-studio__marble-more').open).toBe(false);
   });
 
+  it('presents Ombré state on a downward-facing nail result', async () => {
+    await click([...container.querySelectorAll('[role="tab"]')].find((item) => item.textContent === 'Effects'));
+    const effect = container.querySelector('select[aria-label="Effect"]');
+    await act(async () => { effect.value = 'Gradient'; effect.dispatchEvent(new Event('change', { bubbles: true })); });
+    const preview = container.querySelector('.nail-design-studio__ombre-preview');
+    expect(preview.dataset.tipOrientation).toBe('down');
+    expect(preview.getAttribute('aria-label')).toMatch(/Color A #[0-9A-F]{6} into Color B #[0-9A-F]{6} at \d+ degrees/i);
+    expect(preview.style.getPropertyValue('--ombre-direction')).toMatch(/deg$/);
+  });
+
   it('keeps a non-source shared Flow drag exact through pointer-up, rerender, save, and remount', async () => {
     await click([...container.querySelectorAll('[role="tab"]')].find((item) => item.textContent === 'Effects'));
     const effect = container.querySelector('select[aria-label="Effect"]');

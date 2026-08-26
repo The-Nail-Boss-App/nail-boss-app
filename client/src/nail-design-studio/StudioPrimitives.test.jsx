@@ -28,6 +28,7 @@ describe('AnitaSet Studio creative primitives', () => {
 
   it('documents previews with the free edge at the bottom', () => {
     act(() => root.render(<NailTipPreview style="v" />));
+    expect(container.querySelector('.studio-nail-tip-preview').dataset.tipOrientation).toBe('down');
     expect(container.querySelector('.studio-nail-tip-preview__tip').getAttribute('d')).toContain('L20 37');
   });
 
