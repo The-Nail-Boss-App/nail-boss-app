@@ -55,10 +55,8 @@ export function FrenchTipRegion({ data, nailPath, bounds, uid }) {
 }
 
 const STYLE_LABELS = { classic: 'Classic', deep: 'Deep', angled: 'Angled', v: 'V-French', reverse: 'Reverse' };
-const SWATCH_PATH = 'M 2 2 H 38 V 22 H 2 Z';
-
-function MaterialSwatch({ type, color, uid }) {
-  return <svg viewBox="0 0 40 24" aria-hidden="true" focusable="false"><MaterialLayers path={SWATCH_PATH} surfaceBounds={{ x: 2, y: 2, width: 36, height: 20 }} finish={type} color={color} uid={uid} /></svg>;
+function MaterialSwatch({ type, color }) {
+  return <span className="nail-design-studio__material-nail" data-material={type.toLowerCase()} data-tip-orientation="down" style={{ '--material-color': color }} aria-hidden="true"><i /><b /></span>;
 }
 
 export function FrenchTipControls({ value, scope, onScopeChange, onChange, onApply, notice }) {
@@ -69,7 +67,7 @@ export function FrenchTipControls({ value, scope, onScopeChange, onChange, onApp
   return <section className="nail-design-studio__french-tip" aria-label="French Tip controls" data-testid="french-tip-controls">
     <div className="nail-design-studio__french-header"><div><span className="nail-design-studio__feature-kicker">Fashion the free edge</span><strong>French Tip</strong><small>Shape a distinct tip material with runway precision.</small></div><label className="nail-design-studio__french-toggle"><input type="checkbox" aria-label="Enable French Tip" checked={Boolean(value)} onChange={(event) => event.target.checked ? onChange(data) : onChange(null)} /><span aria-hidden="true" />Enable</label></div>
     <fieldset disabled={!value}>
-      <section className="nail-design-studio__french-section" aria-labelledby="tip-type-heading"><h3 id="tip-type-heading">Tip Type</h3><div className="nail-design-studio__tip-types" role="group" aria-label="Tip Type">{FRENCH_TIP_TYPES.map((type) => <MaterialChoice key={type} label={type} selected={data.tipType === type} onClick={() => patch({ tipType: type })}><MaterialSwatch type={type} color={data.colorHex} uid={`tip-swatch-${type.toLowerCase()}`} /></MaterialChoice>)}</div></section>
+      <section className="nail-design-studio__french-section" aria-labelledby="tip-type-heading"><h3 id="tip-type-heading">Tip Type</h3><div className="nail-design-studio__tip-types" role="group" aria-label="Tip Type">{FRENCH_TIP_TYPES.map((type) => <MaterialChoice key={type} label={type} selected={data.tipType === type} onClick={() => patch({ tipType: type })}><MaterialSwatch type={type} color={data.colorHex} /></MaterialChoice>)}</div></section>
       <section className="nail-design-studio__french-section" aria-labelledby="tip-style-heading"><h3 id="tip-style-heading">Tip Style</h3><div className="nail-design-studio__tip-styles" role="group" aria-label="Tip Style">{FRENCH_TIP_STYLES.map((style) => <button type="button" key={style} aria-pressed={data.style === style} onClick={() => patch({ style })}><NailTipPreview style={style} /><span>{STYLE_LABELS[style]}</span></button>)}</div></section>
       <section className="nail-design-studio__french-section nail-design-studio__tip-color" aria-labelledby="tip-color-heading"><h3 id="tip-color-heading">Tip Color</h3><CreativeColor label="French Tip Color" value={data.colorHex} hexValue={colorDraft} colorAriaLabel="French Tip color" hexAriaLabel="French Tip HEX" onChange={(event) => { const next = event.target.value.toUpperCase(); setColorDraft(next); patch({ colorHex: next }); }} onHexChange={(event) => { const next = event.target.value.toUpperCase(); if (/^#?[0-9A-F]{0,6}$/.test(next)) setColorDraft(next); }} onHexBlur={() => { if (/^#[0-9A-F]{6}$/.test(colorDraft)) patch({ colorHex: colorDraft }); else setColorDraft(data.colorHex); }} /></section>
       <section className="nail-design-studio__french-section nail-design-studio__tip-tuning" aria-labelledby="tip-tuning-heading"><h3 id="tip-tuning-heading">Fine Tuning</h3>{[

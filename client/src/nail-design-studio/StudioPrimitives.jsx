@@ -37,5 +37,5 @@ export function NailTipPreview({ style }) {
     v: 'M7 26 L20 37 L33 26 L33 39 Q20 44 7 39Z',
     reverse: 'M7 7 L33 7 L30 17 Q20 8 10 17Z',
   };
-  return <svg className="studio-nail-tip-preview" viewBox="0 0 40 48" aria-hidden="true" focusable="false"><path className="studio-nail-tip-preview__nail" d="M8 5 Q20 1 32 5 L35 36 Q34 45 20 47 Q6 45 5 36Z" /><path className="studio-nail-tip-preview__tip" d={paths[style] || paths.classic} /></svg>;
+  return <svg className="studio-nail-tip-preview" data-tip-orientation="down" viewBox="0 0 40 48" aria-hidden="true" focusable="false"><path className="studio-nail-tip-preview__nail" d="M8 5 Q20 1 32 5 L35 36 Q34 45 20 47 Q6 45 5 36Z" /><path className="studio-nail-tip-preview__shine" d="M11 8 Q14 5 17 5 Q11 20 12 34" /><path className="studio-nail-tip-preview__tip" d={paths[style] || paths.classic} /></svg>;
 }
