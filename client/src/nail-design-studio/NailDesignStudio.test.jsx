@@ -804,7 +804,7 @@ describe('DS-TK01A French Tip integration', () => {
 
   it('enables, edits, targets, renders, and disables the legacy French Tip region', async () => {
     await click([...container.querySelectorAll('[role="tab"]')].find((item) => item.textContent === 'French Tip'));
-    const enabled = container.querySelector('input[aria-label="Enable French Tip"]');
+    const enabled = [...container.querySelectorAll('button')].find((button) => button.textContent === '+ Add French Tip');
     await click(enabled);
     let region = container.querySelector('[data-design-layer="french-tip"]');
     expect(region).toBeTruthy();
@@ -819,14 +819,14 @@ describe('DS-TK01A French Tip integration', () => {
     await click([...container.querySelectorAll('input[name="composition"]')].find((input) => input.value === 'full'));
     expect(container.querySelectorAll('[data-design-layer="french-tip"]')).toHaveLength(10);
 
-    await click(enabled);
+    await click([...container.querySelectorAll('button')].find((button) => button.textContent === 'Remove French Tip'));
     expect(container.querySelectorAll('[data-design-layer="french-tip"]')).toHaveLength(9);
   });
 
   it('paints transparent gold Marble beneath an uninterrupted blue Glitter French Tip', async () => {
     await editHex(container, '#000000');
     await click([...container.querySelectorAll('[role="tab"]')].find((item) => item.textContent === 'French Tip'));
-    await click(container.querySelector('input[aria-label="Enable French Tip"]'));
+    await click([...container.querySelectorAll('button')].find((button) => button.textContent === '+ Add French Tip'));
     const frenchControls = container.querySelector('[data-testid="french-tip-controls"]');
     await click([...frenchControls.querySelectorAll('button')].find((button) => button.textContent === 'Glitter'));
     const tipColor = frenchControls.querySelector('input[aria-label="French Tip color"]');
@@ -1154,7 +1154,7 @@ describe('DS-TK01A French Tip integration', () => {
 
   it('offers material and geometry separately without changing the base nail material', async () => {
     await click([...container.querySelectorAll('[role="tab"]')].find((item) => item.textContent === 'French Tip'));
-    await click(container.querySelector('input[aria-label="Enable French Tip"]'));
+    await click([...container.querySelectorAll('button')].find((button) => button.textContent === '+ Add French Tip'));
     const controls = container.querySelector('[data-testid="french-tip-controls"]');
     expect(controls.textContent).not.toContain('Preset');
     expect(['Cream', 'Jelly', 'Matte', 'Glitter'].every((type) => controls.querySelector(`button[aria-pressed][type="button"]`) && controls.textContent.includes(type))).toBe(true);
