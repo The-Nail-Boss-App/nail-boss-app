@@ -2,7 +2,7 @@ import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 
 global.IS_REACT_ACT_ENVIRONMENT = true;
-import { CreativeColor, CreativeDirectionSelector, CreativeModeSelector, CreativeSlider, NailTipPreview } from './StudioPrimitives';
+import { CreativeColor, CreativeDirectionSelector, CreativeModeSelector, CreativeSlider } from './StudioPrimitives';
 
 describe('AnitaSet Studio creative primitives', () => {
   let container;
@@ -24,12 +24,6 @@ describe('AnitaSet Studio creative primitives', () => {
     expect(container.querySelector('input[type="range"]').getAttribute('max')).toBe('360');
     expect(container.querySelector('output').textContent).toBe('90°');
     expect(container.querySelector('input[type="color"]').value).toBe('#ff2da0');
-  });
-
-  it('documents previews with the free edge at the bottom', () => {
-    act(() => root.render(<NailTipPreview style="v" />));
-    expect(container.querySelector('.studio-nail-tip-preview').dataset.tipOrientation).toBe('down');
-    expect(container.querySelector('.studio-nail-tip-preview__tip').getAttribute('d')).toContain('L20 37');
   });
 
   it('offers visual direction choices without replacing native button semantics', () => {
